@@ -17,10 +17,13 @@ Live URL: https://gen-lang-client-0893216108.web.app
 
 ## Android APK (GitHub Actions — no local Android SDK needed)
 
-The workflow `.github/workflows/android-apk.yml` builds an installable **debug APK** in the cloud.
+The workflow `.github/workflows/android-apk.yml` builds an installable APK in the cloud.
+If the signing secrets below are present it builds a **signed release APK** (`com.fitflow.app`,
+stable SHA-1 → native Google sign-in works); otherwise it falls back to an unsigned **debug**
+APK (fine for sideloading, but Google sign-in will NOT work in it).
 
 **Every push to `main`** → builds an APK you can download for 30 days:
-GitHub → **Actions** → latest run → **Artifacts** → `fitflow-debug-apk`.
+GitHub → **Actions** → latest run → **Artifacts** → `fitflow-apk`.
 
 **A version tag** → also publishes a **permanent GitHub Release**:
 
@@ -34,15 +37,60 @@ Bump the number for each build (`v1.0.1`, `v1.1.0`, …).
 
 You can also trigger a build manually: **Actions → Build Android APK → Run workflow**.
 
-### Optional repo Secrets (Settings → Secrets and variables → Actions)
-The APK builds fine **without** these (OFF/USDA barcode scanner + the native
-one-tap "Open settings" button work out of the box). Add them to enable more:
+### Repo Secrets (Settings → Secrets and variables → Actions)
 
-| Secret | Enables |
+| Secret | Enables | Required for |
+| --- | --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Signed **release** APK (stable SHA-1) | Native Google sign-in, Play Store |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore/key password | Native Google sign-in, Play Store |
+| `GOOGLE_SERVICES_JSON` | Firebase config in the app (base64 of `android/app/google-services.json`) | Native Google sign-in **and** push |
+| `GEMINI_API_KEY` | AI features (coach, AI label-reading, quick-add) | AI in the APK |
+| `VITE_USDA_API_KEY` | Richer food lookups (else public DEMO_KEY) | optional |
+
+The APK still builds with **none** of these (OFF/USDA scanner + one-tap settings work
+out of the box) — it just falls back to a debug build with email/password sign-in only.
+
+## Native Google sign-in (the APK-only setup)
+
+Google **blocks** OAuth inside Android WebViews (`Error 403: disallowed_useragent`), so the
+in-app "Continue with Google" uses the **native account picker** via
+`@capacitor-firebase/authentication` (web/PWA keeps the Google Identity Services widget).
+For Google to trust the app, three things must line up. Email/password sign-in works in the
+APK without any of this.
+
+**1. Register the app's signing SHA-1 in Firebase.**
+This repo's release keystore (generated locally, gitignored at `android/fitflow-release.keystore`)
+has fingerprint:
+
+```
+SHA-1:   60:61:26:8D:50:F6:C9:78:B9:6E:17:AB:9F:1C:C5:A2:DE:9D:64:F2
+SHA-256: C5:58:D3:B5:AC:C3:A1:E8:65:A9:EB:85:01:3A:43:BB:BF:53:90:F0:62:E5:E9:81:85:0C:D2:83:13:D2:27:35
+```
+
+Firebase Console → Project `gen-lang-client-0893216108` → ⚙ **Project settings** → **Your apps** →
+**Add app → Android** → package name **`com.fitflow.app`** → paste the **SHA-1** above → Register.
+(To recompute after re-keying: `keytool -list -v -keystore android/fitflow-release.keystore -alias fitflow`.)
+
+**2. Download the new `google-services.json`** from that same Android app card → place at
+`android/app/google-services.json` (gitignored). It now contains an `oauth_client` of type 3
+(the web client) which the native plugin uses as its `serverClientId`.
+
+**3. Add the three signing/config secrets to GitHub** (values were written to gitignored files
+in the repo root by the setup step — copy them, then delete the files):
+
+| GitHub secret | Value source |
 | --- | --- |
-| `GEMINI_API_KEY` | AI features in the APK (coach, AI label-reading, quick-add) |
-| `VITE_USDA_API_KEY` | Richer food lookups (else the public DEMO_KEY) |
-| `GOOGLE_SERVICES_JSON` | Push notifications (base64 of `android/app/google-services.json`) |
+| `ANDROID_KEYSTORE_BASE64` | contents of `.keystore-base64.txt` |
+| `ANDROID_KEYSTORE_PASSWORD` | contents of `.keystore-password.txt` |
+| `GOOGLE_SERVICES_JSON` | `base64 -w0 android/app/google-services.json` |
+
+> ⚠️ The keystore is your app's permanent identity — back up `android/fitflow-release.keystore`
+> and its password somewhere safe. Lose it and you can never update the Play Store listing.
+
+### Quick local check before pushing
+```bash
+cd android && ./gradlew assembleRelease   # produces app/build/outputs/apk/release/app-release.apk
+```
 
 ## Everyday editing loop
 

@@ -14,6 +14,7 @@ import { getFirestore, doc, getDocFromServer, updateDoc, serverTimestamp } from 
 import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { isSupported } from 'firebase/messaging';
+import { Capacitor } from '@capacitor/core';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
@@ -118,6 +119,35 @@ export const signInWithGoogle = async () => {
     console.error('Google sign-in failed:', error?.code, error?.message);
     throw error;
   }
+};
+
+// True only inside the Capacitor Android/iOS shell (the installed APK), not the PWA/browser.
+export const isNativeApp = (): boolean => {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+};
+
+// Native (APK) Google sign-in. Google blocks OAuth inside embedded WebViews
+// (Error 403: disallowed_useragent), so the GIS/popup web flow cannot work in the
+// app shell. This uses the native account picker via @capacitor-firebase/authentication
+// with skipNativeAuth=true (configured in capacitor.config.ts), then exchanges the
+// returned Google ID token for a JS-SDK session — keeping the web SDK `auth` object
+// as the single source of auth truth for the rest of the app (onAuthStateChanged, etc).
+export const signInWithGoogleNative = async () => {
+  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+  const result = await FirebaseAuthentication.signInWithGoogle();
+  const idToken = result.credential?.idToken;
+  if (!idToken) {
+    throw Object.assign(new Error('Native Google sign-in returned no ID token'), {
+      code: 'auth/native-no-id-token',
+    });
+  }
+  const credential = GoogleAuthProvider.credential(idToken);
+  const res = await signInWithCredential(auth, credential);
+  return res.user;
 };
 
 // Exchange a Google Identity Services ID token for a Firebase auth session.

@@ -14,6 +14,9 @@ android/**/*.jks
 android/app/google-services.json
 android/local.properties
 android/.gradle/
+*.keystore
+.keystore-password.txt
+.keystore-base64.txt
 
 # Firebase Functions build
 functions/lib/

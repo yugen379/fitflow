@@ -74,24 +74,52 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build debug APK
+      - name: Set up signing keystore (enables a signed RELEASE build)
+        id: keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/fitflow-release.keystore
+            {
+              echo "storeFile=../fitflow-release.keystore"
+              echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+              echo "keyAlias=fitflow"
+              echo "keyPassword=$ANDROID_KEYSTORE_PASSWORD"
+            } > android/keystore.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "Keystore configured → building a SIGNED RELEASE APK (stable SHA-1, native Google sign-in works)"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret → falling back to a DEBUG APK. Native Google sign-in will NOT work in it (ephemeral signing key)."
+          fi
+
+      - name: Build APK
+        id: build
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+            ./gradlew assembleRelease --no-daemon --stacktrace
+            echo "apk=android/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_OUTPUT"
+          else
+            ./gradlew assembleDebug --no-daemon --stacktrace
+            echo "apk=android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload APK artifact (every build — 30-day download)
         uses: actions/upload-artifact@v4
         with:
-          name: fitflow-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: fitflow-apk
+          path: ${{ steps.build.outputs.apk }}
           if-no-files-found: error
           retention-days: 30
 
       # --- Permanent Release (only when a vX.Y.Z tag is pushed) ---
       - name: Rename APK for the release
         if: startsWith(github.ref, 'refs/tags/')
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk "fitflow-${{ github.ref_name }}.apk"
+        run: cp "${{ steps.build.outputs.apk }}" "fitflow-${{ github.ref_name }}.apk"
 
       - name: Publish APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')

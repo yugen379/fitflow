@@ -3,8 +3,19 @@ import {
   GOOGLE_OAUTH_CLIENT_ID,
   signInWithGoogleCredential,
   signInWithGoogle,
+  signInWithGoogleNative,
+  isNativeApp,
   friendlyAuthError,
 } from '../lib/firebase';
+
+const GoogleGlyph = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.6 6.2 29.6 4 24 4 13 4 4 13 4 24s9 20 20 20c11 0 19.5-8 19.5-20 0-1.2-.1-2.4-.4-3.5z" />
+    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.6 6.2 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+    <path fill="#4CAF50" d="M24 44c5.5 0 10.5-2.1 14.2-5.5l-6.6-5.4c-2 1.4-4.6 2.3-7.6 2.3-5.3 0-9.7-3.4-11.3-8l-6.5 5c3.3 6.4 9.9 11.6 17.8 11.6z" />
+    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4-4 5.4l6.6 5.4C41.9 35.7 44 30.2 44 24c0-1.2-.1-2.4-.4-3.5z" />
+  </svg>
+);
 
 declare global {
   interface Window {
@@ -58,7 +69,44 @@ interface Props {
   onSigningChange?: (signing: boolean) => void;
 }
 
-export const GoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) => {
+// Native (APK) path: Google blocks OAuth inside the WebView, so we use the system
+// account picker via @capacitor-firebase/authentication instead of the GIS widget.
+const NativeGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) => {
+  const [signing, setSigning] = useState(false);
+
+  const handleNative = async () => {
+    if (signing) return;
+    setSigning(true);
+    onSigningChange?.(true);
+    try {
+      await signInWithGoogleNative();
+      // onAuthStateChanged takes over from here.
+    } catch (e: any) {
+      const code = e?.code as string | undefined;
+      // User dismissing the native picker isn't an error worth surfacing loudly.
+      const cancelled =
+        code === 'auth/native-cancelled' ||
+        /cancel/i.test(String(e?.message || '')) ||
+        /1001|12501/.test(String(code || ''));
+      if (!cancelled) onError?.(friendlyAuthError(code));
+      setSigning(false);
+      onSigningChange?.(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleNative}
+      disabled={signing}
+      className="btn-3d w-full h-14 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-60"
+    >
+      <GoogleGlyph />
+      <span>{signing ? 'Connecting…' : 'Continue with Google'}</span>
+    </button>
+  );
+};
+
+const WebGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [gsiReady, setGsiReady] = useState<boolean | null>(null);
   const [signing, setSigning] = useState(false);
@@ -140,12 +188,7 @@ export const GoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }
         disabled={signing}
         className="btn-3d w-full h-14 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-60"
       >
-        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.6 6.2 29.6 4 24 4 13 4 4 13 4 24s9 20 20 20c11 0 19.5-8 19.5-20 0-1.2-.1-2.4-.4-3.5z" />
-          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.6 6.2 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-          <path fill="#4CAF50" d="M24 44c5.5 0 10.5-2.1 14.2-5.5l-6.6-5.4c-2 1.4-4.6 2.3-7.6 2.3-5.3 0-9.7-3.4-11.3-8l-6.5 5c3.3 6.4 9.9 11.6 17.8 11.6z" />
-          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4-4 5.4l6.6 5.4C41.9 35.7 44 30.2 44 24c0-1.2-.1-2.4-.4-3.5z" />
-        </svg>
+        <GoogleGlyph />
         <span>{signing ? 'Connecting…' : 'Continue with Google'}</span>
       </button>
     );
@@ -161,3 +204,8 @@ export const GoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }
     </div>
   );
 };
+
+// Picks the right Google sign-in flow for the runtime: native account picker inside
+// the installed app (WebViews block OAuth), GIS widget on web/PWA.
+export const GoogleSignInButton: React.FC<Props> = (props) =>
+  isNativeApp() ? <NativeGoogleSignInButton {...props} /> : <WebGoogleSignInButton {...props} />;
