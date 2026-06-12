@@ -24,6 +24,25 @@ allprojects {
     }
 }
 
+// capacitor-health-connect@0.7.0 ships Kotlin 1.8.20, whose compiler has no JVM target
+// "21" — but JDK 21 (required by Capacitor 8 core and @capacitor-firebase/authentication)
+// otherwise forces jvmTarget=21, breaking ':capacitor-health-connect:compileReleaseKotlin'
+// with "Unknown Kotlin JVM target: 21". Pin just that module's Kotlin tasks to JVM 17 (a
+// target 1.8.20 supports). Dynamic dispatch + try/catch so it never affects other modules.
+subprojects { subproject ->
+    if (subproject.name == 'capacitor-health-connect') {
+        subproject.afterEvaluate {
+            subproject.tasks
+                .matching { it.name.startsWith('compile') && it.name.endsWith('Kotlin') }
+                .configureEach { kotlinTask ->
+                    try {
+                        kotlinTask.kotlinOptions.jvmTarget = '17'
+                    } catch (Exception ignored) {}
+                }
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
