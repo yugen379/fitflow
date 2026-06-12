@@ -14,8 +14,13 @@ on:
   workflow_dispatch: {}
   push:
     branches: [ main ]
+    tags: [ 'v*' ]          # pushing a tag like v1.0.0 publishes a permanent Release
     paths-ignore:
       - '**.md'
+
+# Needed so the workflow's token can create a GitHub Release.
+permissions:
+  contents: write
 
 jobs:
   build-apk:
@@ -75,10 +80,23 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK artifact (every build — 30-day download)
         uses: actions/upload-artifact@v4
         with:
           name: fitflow-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # --- Permanent Release (only when a vX.Y.Z tag is pushed) ---
+      - name: Rename APK for the release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "fitflow-${{ github.ref_name }}.apk"
+
+      - name: Publish APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: fitflow-${{ github.ref_name }}.apk
+          fail_on_unmatched_files: true
+          generate_release_notes: true
