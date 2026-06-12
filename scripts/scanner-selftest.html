@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FitFlow scanner self-test</title>
+  <!-- Real library the app ships (html5-qrcode 2.3.8), served from node_modules. -->
+  <script src="/node_modules/html5-qrcode/html5-qrcode.min.js"></script>
+  <style>html,body{margin:0;background:#000} #reader{width:640px;height:480px} #filereader{display:none}</style>
+</head>
+<body>
+  <div id="reader"></div>
+  <div id="filereader"></div>
+  <script>
+    // Proves two things against the REAL html5-qrcode the app ships:
+    //  (A) the live-camera path — gesture getUserMedia → scanner start → frame grab
+    //      (the exact mobile-critical sequence from Track.tsx), and
+    //  (B) the decoder reads a real EAN-13, via the library's scanFile() API on a
+    //      barcode we draw to a canvas (deterministic; no fake-stream colour issues).
+    // The resolver that turns the decoded digits into food is proven by proof:barcode.
+    window.__state = { gum: null, started: null, frameOk: null, fileDecoded: null, error: null };
+
+    // --- EAN-13 → canvas (same encoding as gen-barcode-y4m.mjs) ---
+    const L = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
+    const G = ['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
+    const R = ['1110010','1100110','1101100','1000010','1011100','1001110','1010000','1000100','1001000','1110100'];
+    const PARITY = ['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+    function ean13Bits(code){
+      const d = code.split('').map(Number); const par = PARITY[d[0]]; let b='101';
+      for(let i=0;i<6;i++) b += (par[i]==='L'?L:G)[d[i+1]];
+      b += '01010';
+      for(let i=0;i<6;i++) b += R[d[i+7]];
+      return b + '101';
+    }
+    function barcodeCanvas(code){
+      const bits = ean13Bits(code), MOD = 4, QUIET = 12, H = 200;
+      const w = (bits.length + QUIET*2)*MOD, h = H + 40;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = '#000';
+      for(let m=0;m<bits.length;m++){ if(bits[m]==='1') ctx.fillRect((QUIET+m)*MOD, 20, MOD, H); }
+      return c;
+    }
+
+    async function run(){
+      const CODE = '5901234123457';
+      // (B) Decode an EAN-13 via the library's file API.
+      try {
+        const canvas = barcodeCanvas(CODE);
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        const file = new File([blob], 'barcode.png', { type: 'image/png' });
+        const fileQr = new Html5Qrcode('filereader', {
+          formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.EAN_8],
+          verbose: false,
+        });
+        try { window.__state.fileDecoded = await fileQr.scanFile(file, false); }
+        finally { try { fileQr.clear(); } catch(e){} }
+      } catch (e) { window.__state.error = 'decode:' + ((e && (e.name||e.message)) || e); }
+
+      // (A) Live-camera path — same sequence as Track.tsx.
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        window.__state.gum = true;
+        probe.getTracks().forEach(t => t.stop());
+
+        const F = Html5QrcodeSupportedFormats;
+        const qr = new Html5Qrcode('reader', {
+          formatsToSupport: [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39, F.QR_CODE, F.ITF],
+          useBarCodeDetectorIfSupported: false,
+          verbose: false,
+        });
+        await qr.start({ facingMode: 'environment' }, { fps: 10, videoConstraints: { facingMode: 'environment' } }, () => {}, () => {});
+        window.__state.started = true;
+
+        // Frame grab (same as Track.grabFrameBase64) — feeds the AI fallback tier.
+        await new Promise(r => setTimeout(r, 800));
+        const video = document.querySelector('#reader video');
+        if (video && video.videoWidth) {
+          const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
+          c.getContext('2d').drawImage(video, 0, 0);
+          const b64 = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+          window.__state.frameOk = !!(b64 && b64.length > 100);
+        }
+        qr.stop().catch(()=>{});
+      } catch (e) { window.__state.error = (window.__state.error||'') + ' cam:' + ((e && (e.name||e.message)) || e); }
+    }
+    run();
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "FitFlow AI",
+  "description": "A high-performance, AI-powered fitness ecosystem featuring real-time tracking, social engagement, and intelligent coaching.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "AI-driven calorie estimation",
+    "Adaptive workout planning",
+    "Real-time social feeds",
+    "Comprehensive health analytics"
+  ]
+}

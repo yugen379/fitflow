@@ -1,0 +1,339 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    // Relaxed verification for now to ensure app works in all environments
+    function isVerified() { return isSignedIn(); } 
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // Schema Validation Helpers
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'photoURL', 'subscriptionType']) &&
+             data.displayName is string &&
+             data.photoURL is string &&
+             data.subscriptionType in ['free', 'premium'] &&
+             (!('uid' in data) || data.uid == request.auth.uid) &&
+             (!('streak' in data) || data.streak is number) &&
+             (!('points' in data) || data.points is number) &&
+             (!('level' in data) || data.level is number) &&
+             (!('badges' in data) || data.badges is list) &&
+             (!('healthConditions' in data) || data.healthConditions is list) &&
+             (!('dietaryPreferences' in data) || data.dietaryPreferences is list) &&
+             (!('fcmToken' in data) || data.fcmToken is string) &&
+             (!('notificationsEnabled' in data) || data.notificationsEnabled is bool) &&
+             (!('latestBodyFat' in data) || data.latestBodyFat is number) &&
+             (!('latestMuscleMass' in data) || data.latestMuscleMass is number) &&
+             (!('activeChallenges' in data) || data.activeChallenges is list) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt == request.time) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp || data.updatedAt == request.time);
+    }
+
+    function isValidBodyMetric(data) {
+      return data.keys().hasAll(['userId', 'weight', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.weight is number &&
+             (!('bodyFat' in data) || data.bodyFat is number || data.bodyFat == null) &&
+             (!('muscleMass' in data) || data.muscleMass is number || data.muscleMass == null) &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidProgression(data) {
+      // Must always carry a server timestamp; every other field is optional and typed if present.
+      return data.lastUpdated is timestamp &&
+             (!('bestWeight' in data) || data.bestWeight is number) &&
+             (!('bestReps' in data) || data.bestReps is number) &&
+             (!('bestEstimated1RM' in data) || data.bestEstimated1RM is number) &&
+             (!('suggestedWeight' in data) || data.suggestedWeight is number) &&
+             (!('suggestedReps' in data) || data.suggestedReps is number) &&
+             (!('trend' in data) || data.trend is string);
+    }
+
+    function isValidMealPlan(data) {
+      return data.keys().hasAll(['days', 'updatedAt']) &&
+             data.days is list &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidWaterLog(data) {
+      return data.keys().hasAll(['userId', 'amount', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.amount is number && data.amount > 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidSleepLog(data) {
+      return data.keys().hasAll(['userId', 'hours', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.hours is number && data.hours >= 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidWellnessLog(data) {
+      return data.keys().hasAll(['userId', 'mood', 'stressLevel', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.mood is string &&
+             data.stressLevel is number &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidActivityRoute(data) {
+      return data.keys().hasAll(['userId', 'type', 'distance', 'duration', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.type in ['run', 'cycle', 'walk'] &&
+             data.distance is number &&
+             data.duration is number &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'title', 'body', 'timestamp']) &&
+             data.userId is string &&
+             data.title is string &&
+             data.body is string &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidCatalogFood(data) {
+      return data.keys().hasAll(['name', 'calories', 'protein', 'carbs', 'fats', 'updatedAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.calories is number && data.calories > 0 &&
+             data.protein is number && data.protein >= 0 &&
+             data.carbs is number && data.carbs >= 0 &&
+             data.fats is number && data.fats >= 0 &&
+             (!('brand' in data) || data.brand is string) &&
+             (data.updatedAt is timestamp || data.updatedAt == request.time);
+    }
+
+    function isValidActivityDay(data) {
+      return data.keys().hasAll(['userId', 'day', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.day is string && data.day.size() <= 10 &&
+             (data.timestamp is timestamp || data.timestamp == request.time);
+    }
+
+    function isValidMeal(data) {
+      return data.keys().hasAll(['userId', 'name', 'calories', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 100 &&
+             data.calories is number && data.calories >= 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidWorkout(data) {
+      return data.keys().hasAll(['userId', 'type', 'duration', 'caloriesBurned', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.type is string &&
+             data.duration is number && data.duration > 0 &&
+             data.caloriesBurned is number &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidWeightRecord(data) {
+      return data.keys().hasAll(['userId', 'weight', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.weight is number && data.weight > 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll(['userId', 'username', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.username is string &&
+             data.createdAt == request.time;
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['userId', 'username', 'content', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.content is string && data.content.size() <= 1000 &&
+             data.createdAt == request.time;
+    }
+
+    // --- Collection Rules ---
+
+    // Connection Test
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Users
+    match /users/{userId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().subscriptionType == 'free';
+      allow update: if isOwner(userId) && (
+        // Action: Update Profile Info (allows fields added for flagship features)
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'age', 'weight', 'height', 'goal', 'goalWeight',
+          'streak', 'points', 'level', 'badges',
+          'healthConditions', 'dietaryPreferences',
+          'fcmToken', 'notificationsEnabled', 'lastReminderDate',
+          'latestBodyFat', 'latestMuscleMass',
+          'activeChallenges', 'updatedAt',
+          'voiceCoachingEnabled', 'voiceSpeed',
+          'preferredWorkoutTime', 'preferredWorkoutTimeSource',
+          'tzOffsetHours', 'tzId',
+          'weightUnit',
+          'googleFitConnected', 'googleFitAccessToken', 'googleFitExpiry',
+          'healthConnectConnected', 'healthKitConnected', 'lastHealthSync', 'lastHealthSource',
+        ])
+      );
+      allow delete: if isOwner(userId);
+
+      // Progression Subcollection
+      match /progression/{exerciseId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidProgression(incoming());
+      }
+    }
+
+    // Meals
+    match /meals/{mealId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(mealId) && isValidMeal(incoming());
+      allow update: if isOwner(existing().userId) && isValidMeal(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'calories', 'protein', 'carbs', 'fats']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Workouts
+    match /workouts/{workoutId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(workoutId) && isValidWorkout(incoming());
+      allow update: if isOwner(existing().userId) && isValidWorkout(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['type', 'duration', 'caloriesBurned', 'notes', 'exerciseLogs']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Weight History
+    match /weight_history/{recordId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(recordId) && isValidWeightRecord(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Community Posts
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isVerified() && isValidId(postId) && isValidPost(incoming());
+      allow update: if (isOwner(existing().userId) && isValidPost(incoming()) && 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['mediaUrl', 'content'])) ||
+                    (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'commentsCount'])); // Allow counters to change
+      allow delete: if isOwner(existing().userId);
+
+      // Comments Subcollection
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isVerified() && isValidId(commentId) && isValidComment(incoming());
+        allow update, delete: if isOwner(existing().userId);
+      }
+
+      // Likes Subcollection (Identity-based)
+      match /likes/{userId} {
+        allow read: if isSignedIn();
+        allow create, delete: if isOwner(userId);
+      }
+    }
+
+    // Following System
+    match /users/{userId}/following/{followedUserId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isOwner(userId) && userId != followedUserId;
+    }
+
+    match /users/{userId}/followers/{followerUserId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(followerUserId);
+    }
+
+    // Water Logs
+    match /water_logs/{logId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidWaterLog(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Sleep Logs
+    match /sleep_logs/{logId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidSleepLog(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Wellness Logs
+    match /wellness_logs/{logId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidWellnessLog(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Activity Routes
+    match /activity_routes/{routeId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidActivityRoute(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Body Metrics
+    match /body_metrics/{metricId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidBodyMetric(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Meal Plans
+    match /meal_plans/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidMealPlan(incoming());
+    }
+
+    // Notifications
+    match /notifications/{notifId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidNotification(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Shared Food Catalog (#3) — a compounding, app-wide DB of resolved foods.
+    // Any signed-in user may read it and contribute validated entries; doc id is a
+    // normalised food key. No deletes (append/update only).
+    match /food_catalog/{foodId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isVerified() && isValidCatalogFood(incoming());
+    }
+
+    // Active-day markers (#4) — one doc per user per day, id format <uid>_<YYYY-MM-DD>.
+    match /activity_days/{docId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update: if isVerified() && docId.matches('^' + request.auth.uid + '_.*$') && isValidActivityDay(incoming());
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Weekly AI Recaps — id format: <uid>_<weekId>, client reads, only server writes
+    match /weekly_recaps/{docId} {
+      allow read: if isSignedIn() && docId.matches('^' + request.auth.uid + '_.*$');
+      // Client may create cached recap (same path), server functions also write
+      allow create, update: if isSignedIn() && docId.matches('^' + request.auth.uid + '_.*$');
+      allow delete: if isSignedIn() && docId.matches('^' + request.auth.uid + '_.*$');
+    }
+  }
+}

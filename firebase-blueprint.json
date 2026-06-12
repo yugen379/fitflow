@@ -1,0 +1,265 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Public and private user profile information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "age": { "type": "number" },
+        "weight": { "type": "number" },
+        "height": { "type": "number" },
+        "goal": { "type": "string", "enum": ["fat_loss", "muscle_gain", "maintenance", "athletic_performance"] },
+        "healthConditions": { "type": "array", "items": { "type": "string" } },
+        "dietaryPreferences": { "type": "array", "items": { "type": "string" } },
+        "points": { "type": "number" },
+        "level": { "type": "number" },
+        "badges": { "type": "array", "items": { "type": "string" } },
+        "subscriptionType": { "type": "string", "enum": ["free", "premium"] },
+        "streak": { "type": "number" },
+        "fcmToken": { "type": "string" },
+        "notificationsEnabled": { "type": "boolean" },
+        "latestBodyFat": { "type": "number" },
+        "latestMuscleMass": { "type": "number" },
+        "activeChallenges": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "photoURL", "subscriptionType"]
+    },
+    "WaterLog": {
+      "title": "Water Log",
+      "description": "Daily hydration tracking",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "timestamp"]
+    },
+    "SleepLog": {
+      "title": "Sleep Log",
+      "description": "Tracking sleep duration and quality",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "hours": { "type": "number" },
+        "quality": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "hours", "timestamp"]
+    },
+    "WellnessLog": {
+      "title": "Wellness Log",
+      "description": "Tracking mood and stress levels",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "mood": { "type": "string" },
+        "stressLevel": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "mood", "stressLevel", "timestamp"]
+    },
+    "ActivityRoute": {
+      "title": "Activity Route",
+      "description": "GPS tracked outdoor activity session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["run", "cycle", "walk"] },
+        "distance": { "type": "number" },
+        "duration": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "distance", "duration", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app alerts for users",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "body", "timestamp"]
+    },
+    "Meal": {
+      "title": "Meal Record",
+      "description": "Recorded meal with nutritional information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fats": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["userId", "name", "calories", "timestamp"]
+    },
+    "Workout": {
+      "title": "Workout Record",
+      "description": "Recorded physical activity session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "duration": { "type": "number" },
+        "caloriesBurned": { "type": "number" },
+        "exerciseLogs": { "type": "array", "items": { "type": "object" } },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "duration", "caloriesBurned", "timestamp"]
+    },
+    "BodyMetric": {
+      "title": "Body Metric",
+      "description": "Biometric data point",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "weight": { "type": "number" },
+        "bodyFat": { "type": "number" },
+        "muscleMass": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "weight", "timestamp"]
+    },
+    "ProgressionLog": {
+      "title": "Progression Log",
+      "description": "Performance tracking for a specific exercise",
+      "type": "object",
+      "properties": {
+        "exerciseId": { "type": "string" },
+        "bestWeight": { "type": "number" },
+        "bestReps": { "type": "number" },
+        "history": { "type": "array", "items": { "type": "object" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["exerciseId", "bestWeight", "updatedAt"]
+    },
+    "MealPlan": {
+      "title": "Meal Plan",
+      "description": "AI-generated weekly meal plan",
+      "type": "object",
+      "properties": {
+        "days": { "type": "array", "items": { "type": "object" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["days", "updatedAt"]
+    },
+    "Post": {
+      "title": "Community Post",
+      "description": "Shareable content for the community feed",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "content": { "type": "string" },
+        "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username", "createdAt"]
+    },
+    "Comment": {
+      "title": "Post Comment",
+      "description": "User comment on a feed post",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username", "content", "createdAt"]
+    },
+    "Following": {
+      "title": "Following Relationship",
+      "description": "Record of a user following another user",
+      "type": "object",
+      "properties": {
+        "followedId": { "type": "string" },
+        "followedName": { "type": "string" },
+        "followedPhoto": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followedId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/meals/{mealId}": {
+      "schema": "Meal",
+      "description": "Meal tracking records"
+    },
+    "/workouts/{workoutId}": {
+      "schema": "Workout",
+      "description": "Workout sessions"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Community feed posts"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments on posts"
+    },
+    "/posts/{postId}/likes/{userId}": {
+      "schema": { "type": "object", "properties": { "timestamp": { "type": "string", "format": "date-time" } } },
+      "description": "Likes on posts"
+    },
+    "/users/{userId}/following/{followedUserId}": {
+      "schema": "Following",
+      "description": "Users that the current user is following"
+    },
+    "/users/{userId}/followers/{followerUserId}": {
+      "schema": { "type": "object", "properties": { "userId": { "type": "string" }, "timestamp": { "type": "string", "format": "date-time" } } },
+      "description": "Users that follow the current user"
+    },
+    "/water_logs/{logId}": {
+      "schema": "WaterLog",
+      "description": "Daily hydration tracking"
+    },
+    "/sleep_logs/{logId}": {
+      "schema": "SleepLog",
+      "description": "Tracking sleep duration and quality"
+    },
+    "/wellness_logs/{logId}": {
+      "schema": "WellnessLog",
+      "description": "Tracking mood and stress levels"
+    },
+    "/activity_routes/{routeId}": {
+      "schema": "ActivityRoute",
+      "description": "GPS tracked outdoor activity session"
+    },
+    "/body_metrics/{metricId}": {
+      "schema": "BodyMetric",
+      "description": "Detailed biometric records"
+    },
+    "/users/{userId}/progression/{exerciseId}": {
+      "schema": "ProgressionLog",
+      "description": "Per-exercise performance tracking"
+    },
+    "/meal_plans/{userId}": {
+      "schema": "MealPlan",
+      "description": "Generated meal plans"
+    },
+    "/notifications/{notifId}": {
+      "schema": "Notification",
+      "description": "In-app alerts for users"
+    }
+  }
+}

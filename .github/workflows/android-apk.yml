@@ -1,0 +1,84 @@
+name: Build Android APK
+
+# Builds an installable debug APK in the cloud — no local Android SDK needed.
+# Trigger it from the GitHub "Actions" tab (Run workflow), or it runs on pushes to main.
+# Download the APK from the run's "Artifacts" section, then sideload it on your phone.
+#
+# Optional repo Secrets (Settings → Secrets and variables → Actions):
+#   GEMINI_API_KEY        → enables AI features (coach, AI label read, quick-add) in the APK
+#   VITE_USDA_API_KEY     → richer food DB lookups (else the public DEMO_KEY is used)
+#   GOOGLE_SERVICES_JSON  → base64 of android/app/google-services.json → enables push notifications
+# The build works WITHOUT any of these (OFF/USDA scanner + the one-tap settings button still work).
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Write .env from secrets (optional — enables AI)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_USDA_API_KEY: ${{ secrets.VITE_USDA_API_KEY }}
+        run: |
+          : > .env
+          if [ -n "$GEMINI_API_KEY" ]; then echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env; echo "AI key: set"; else echo "AI key: not set (AI tier will degrade to OFF/USDA + manual)"; fi
+          if [ -n "$VITE_USDA_API_KEY" ]; then echo "VITE_USDA_API_KEY=$VITE_USDA_API_KEY" >> .env; fi
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Write google-services.json from secret (optional — enables push)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+            echo "google-services.json: written (push enabled)"
+          else
+            echo "google-services.json: not provided (push notifications disabled in this APK)"
+          fi
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Sync Capacitor → Android
+        run: npx cap sync android
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitflow-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30

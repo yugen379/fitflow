@@ -1,0 +1,1158 @@
+[
+  {
+    "id": "squats",
+    "name": "Squats",
+    "category": "Strength",
+    "muscleGroups": ["Quads", "Glutes", "Hamstrings"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 5,
+    "description": "A fundamental lower body exercise that targets the quads, hamstrings, and glutes.",
+    "instructions": [
+      "Stand with feet shoulder-width apart.",
+      "Lower your hips as if sitting in a chair.",
+      "Keep your chest up and back straight.",
+      "Return to the starting position."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "aclHkVaku9U",
+    "tips": ["Weight on heels", "Knees track over toes"],
+    "commonMistakes": ["Rounding the back", "Knees caving in"]
+  },
+  {
+    "id": "pushups",
+    "name": "Push-Ups",
+    "category": "Strength",
+    "muscleGroups": ["Chest", "Triceps", "Shoulders"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 4,
+    "description": "A classic upper body exercise that builds strength in the chest and arms.",
+    "instructions": [
+      "Start in a plank position.",
+      "Lower your body until your chest nearly touches the floor.",
+      "Push back up to the starting position."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "IODxDxX7oi4",
+    "tips": ["Core tight", "Elbows at 45 degrees"],
+    "commonMistakes": ["Sagging hips", "Elbows too flared"]
+  },
+  {
+    "id": "plank",
+    "name": "Plank",
+    "category": "Recovery",
+    "muscleGroups": ["Core", "Shoulders"],
+    "difficulty": "Beginner",
+    "duration": 2,
+    "calories_per_minute": 3,
+    "description": "An isometric core exercise that builds stability and endurance.",
+    "instructions": [
+      "Hold a push-up position but rest on your forearms.",
+      "Keep your body in a straight line from head to heels.",
+      "Engage your core and hold."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "pvIjsGZ0Zmc",
+    "tips": ["Look at floor", "Squeeze glutes"],
+    "commonMistakes": ["Butt in air", "Lower back arching"]
+  },
+  {
+    "id": "burpees",
+    "name": "Burpees",
+    "category": "HIIT",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Advanced",
+    "duration": 10,
+    "calories_per_minute": 10,
+    "description": "A high-intensity full-body exercise that combines a squat, jump, and push-up.",
+    "instructions": [
+      "Stand with feet shoulder-width apart.",
+      "Drop into a squat and place hands on floor.",
+      "Kick feet back into a plank.",
+      "Perform a push-up.",
+      "Jump feet back to hands.",
+      "Explode upwards into a jump."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "dZfeV_pL5N0",
+    "tips": ["Breathe rhythmically", "Land softly"],
+    "commonMistakes": ["Skipping the push-up", "Poor landing form"]
+  },
+  {
+    "id": "mountain_climbers",
+    "name": "Mountain Climbers",
+    "category": "Cardio",
+    "muscleGroups": ["Core", "Shoulders", "Quads"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 7,
+    "description": "A dynamic core exercise that also provides a cardio boost.",
+    "instructions": [
+      "Start in a plank position.",
+      "Alternately bring your knees toward your chest quickly.",
+      "Keep your movements smooth and controlled."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "nmwgirgXLYM",
+    "tips": ["Hands under shoulders", "Back flat"],
+    "commonMistakes": ["Raising hips too high", "Resting feet"]
+  },
+  {
+    "id": "deadlift_straight",
+    "name": "Deadlift",
+    "category": "Strength",
+    "muscleGroups": ["Back", "Glutes", "Hamstrings"],
+    "difficulty": "Advanced",
+    "duration": 8,
+    "calories_per_minute": 6,
+    "description": "The ultimate compound lift for total body strength.",
+    "instructions": [
+      "Stand with feet mid-foot under the bar.",
+      "Bend at the hips and knees to grab the bar.",
+      "Keep your chest up and back flat.",
+      "Lift the bar by extending hips and knees."
+    ],
+    "equipment": ["Barbell"],
+    "youtubeId": "op9kVnSso6Q",
+    "tips": ["Pry bar against shins", "Big breath at bottom"],
+    "commonMistakes": ["Rounded lower back", "Pulling with arms"]
+  },
+  {
+    "id": "bench_press",
+    "name": "Bench Press",
+    "category": "Strength",
+    "muscleGroups": ["Chest", "Triceps", "Shoulders"],
+    "difficulty": "Intermediate",
+    "duration": 8,
+    "calories_per_minute": 5,
+    "description": "Standard upper body pressing movement for chest growth.",
+    "instructions": [
+      "Lie on a bench with feet flat on floor.",
+      "Grip the bar slightly wider than shoulder width.",
+      "Lower the bar to mid-chest.",
+      "Press the bar back up to extension."
+    ],
+    "equipment": ["Barbell", "Bench"],
+    "youtubeId": "gRVjAtPip0Y",
+    "tips": ["Eyes under bar", "Retract shoulder blades"],
+    "commonMistakes": ["Bouncing bar off chest", "Lifting feet off floor"]
+  },
+  {
+    "id": "pullups",
+    "name": "Pull-Ups",
+    "category": "Strength",
+    "muscleGroups": ["Back", "Arms"],
+    "difficulty": "Advanced",
+    "duration": 5,
+    "calories_per_minute": 4,
+    "description": "Bodyweight exercise for a wider back.",
+    "instructions": [
+      "Grab the pull-up bar with palms facing away.",
+      "Pull your body up until your chin is over the bar.",
+      "Lower yourself back down with control."
+    ],
+    "equipment": ["Pull-up Bar"],
+    "youtubeId": "eGo4IYlbE5g",
+    "tips": ["Pull elbows to floor", "Keep core engaged"],
+    "commonMistakes": ["Kicking legs (kipping)", "Not going full range"]
+  },
+  {
+    "id": "shoulder_press_db",
+    "name": "Shoulder Press",
+    "category": "Strength",
+    "muscleGroups": ["Shoulders"],
+    "difficulty": "Intermediate",
+    "duration": 6,
+    "calories_per_minute": 4,
+    "description": "Overhead press for strong shoulders.",
+    "instructions": [
+      "Sit or stand with dumbbells at shoulder height.",
+      "Press dumbbells overhead until arms are extended.",
+      "Lower back to starting position."
+    ],
+    "equipment": ["Dumbbells"],
+    "youtubeId": "B-aVuyhvLHU",
+    "tips": ["Don't arch back", "Look straight ahead"],
+    "commonMistakes": ["Half reps", "Using too much momentum"]
+  },
+  {
+    "id": "bicep_curls",
+    "name": "Bicep Curls",
+    "category": "Strength",
+    "muscleGroups": ["Arms"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 3,
+    "description": "Isolation exercise for the biceps.",
+    "instructions": [
+      "Hold dumbbells with palms facing forward.",
+      "Curl weights toward shoulders.",
+      "Lower with control."
+    ],
+    "equipment": ["Dumbbells"],
+    "youtubeId": "ykJmrZ5v0Ww",
+    "tips": ["Keep elbows pinned to sides", "Full extension at bottom"],
+    "commonMistakes": ["Swinging the weights", "Partial range of motion"]
+  },
+  {
+    "id": "lunges_db",
+    "name": "Lunges",
+    "category": "Strength",
+    "muscleGroups": ["Legs", "Glutes"],
+    "difficulty": "Beginner",
+    "duration": 6,
+    "calories_per_minute": 5,
+    "description": "Unilateral leg exercise for balance and strength.",
+    "instructions": [
+      "Step forward with one leg.",
+      "Lower hips until both knees are at 90 degrees.",
+      "Push back to start."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "QOVaHwm-Q6U",
+    "tips": ["Keep torso upright", "Don't let front knee pass toes"],
+    "commonMistakes": ["Short steps", "Leaning too far forward"]
+  },
+  {
+    "id": "leg_press",
+    "name": "Leg Press",
+    "category": "Strength",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Intermediate",
+    "duration": 7,
+    "calories_per_minute": 5,
+    "description": "Machine-based leg training.",
+    "instructions": [
+      "Sit in the machine with feet shoulder-width apart.",
+      "Lower the platform toward your chest.",
+      "Push it back up without locking knees."
+    ],
+    "equipment": ["Machine"],
+    "youtubeId": "IZxyjW7MPJQ",
+    "tips": ["Keep back flat on seat", "Controlled descent"],
+    "commonMistakes": ["Locking knees at top", "Lifting lower back"]
+  },
+  {
+    "id": "calf_raises",
+    "name": "Calf Raises",
+    "category": "Strength",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 4,
+    "calories_per_minute": 3,
+    "description": "Develops the gastrocnemius and soleus.",
+    "instructions": [
+      "Stand on the edge of a step.",
+      "Raise your heels as high as possible.",
+      "Lower heels below the step level."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "-M4-G8p8fmc",
+    "tips": ["Hold for a second at top", "Full stretch at bottom"],
+    "commonMistakes": ["Bouncing", "Not going high enough"]
+  },
+  {
+    "id": "lat_pulldown",
+    "name": "Lat Pulldown",
+    "category": "Strength",
+    "muscleGroups": ["Back"],
+    "difficulty": "Beginner",
+    "duration": 6,
+    "calories_per_minute": 4,
+    "description": "Simulates a pull-up with adjustable weight.",
+    "instructions": [
+      "Sit at the machine and grab the wide bar.",
+      "Pull the bar down to your upper chest.",
+      "Release back up slowly."
+    ],
+    "equipment": ["Machine"],
+    "youtubeId": "CAwf7n6Luuc",
+    "tips": ["Squeeze shoulder blades", "Slight lean back"],
+    "commonMistakes": ["Pulling behind the neck", "Using too much body swing"]
+  },
+  {
+    "id": "cable_row",
+    "name": "Cable Row",
+    "category": "Strength",
+    "muscleGroups": ["Back"],
+    "difficulty": "Intermediate",
+    "duration": 6,
+    "calories_per_minute": 4,
+    "description": "Builds back thickness and strength.",
+    "instructions": [
+      "Sit at the row machine with feet on platforms.",
+      "Pull the handle toward your abdomen.",
+      "Return to starting position with full reach."
+    ],
+    "equipment": ["Machine"],
+    "youtubeId": "GZbfZ033f74",
+    "tips": ["Keep back straight", "Chest up"],
+    "commonMistakes": ["Rounding shoulders", "Pulling with too much momentum"]
+  },
+  {
+    "id": "face_pulls",
+    "name": "Face Pulls",
+    "category": "Strength",
+    "muscleGroups": ["Shoulders"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 3,
+    "description": "Great for rear delts and posture.",
+    "instructions": [
+      "Set cable to face height.",
+      "Pull rope toward your forehead, pulling ends apart.",
+      "Hold and return."
+    ],
+    "equipment": ["Machine"],
+    "youtubeId": "rep-qVOkqgk",
+    "tips": ["Keep elbows high", "Pause and squeeze"],
+    "commonMistakes": ["Pulling too low", "Not pulling apart enough"]
+  },
+  {
+    "id": "hip_thrust",
+    "name": "Hip Thrust",
+    "category": "Strength",
+    "muscleGroups": ["Glutes"],
+    "difficulty": "Intermediate",
+    "duration": 8,
+    "calories_per_minute": 5,
+    "description": "The best exercise for glute isolation.",
+    "instructions": [
+      "Sit on floor with back against bench, bar over hips.",
+      "Drive through heels to lift hips.",
+      "Squeeze glutes at top and lower."
+    ],
+    "equipment": ["Barbell", "Bench"],
+    "youtubeId": "xDmG_Pd8BUo",
+    "tips": ["Chin tucked", "Don't hyper-extend back"],
+    "commonMistakes": ["Pushing with lower back", "Not reaching full hip extension"]
+  },
+  {
+    "id": "romanian_deadlift",
+    "name": "Romanian Deadlift",
+    "category": "Strength",
+    "muscleGroups": ["Hamstrings", "Glutes"],
+    "difficulty": "Intermediate",
+    "duration": 7,
+    "calories_per_minute": 5,
+    "description": "Excellent for developing the posterior chain.",
+    "instructions": [
+      "Hold bar at hip height.",
+      "Hinge at hips, keeping bar close to legs.",
+      "Lower until you feel a big stretch in hamstrings.",
+      "Drive hips forward to return."
+    ],
+    "equipment": ["Barbell"],
+    "youtubeId": "JCXUYuzwvgM",
+    "tips": ["Keep back flat", "Knees slightly bent"],
+    "commonMistakes": ["Squatting the weight", "Rounding the spine"]
+  },
+  {
+    "id": "incline_press",
+    "name": "Incline Press",
+    "category": "Strength",
+    "muscleGroups": ["Chest", "Shoulders"],
+    "difficulty": "Intermediate",
+    "duration": 8,
+    "calories_per_minute": 5,
+    "description": "Targets the upper chest fibers.",
+    "instructions": [
+      "Lie on an incline bench at 30-45 degrees.",
+      "Lower the bar to your upper chest.",
+      "Press back to extension."
+    ],
+    "equipment": ["Barbell", "Bench"],
+    "youtubeId": "SrqOu55lrYU",
+    "tips": ["Don't let elbows flare 90 deg", "Solid foot placement"],
+    "commonMistakes": ["Bouncing off chest", "Too steep an angle"]
+  },
+  {
+    "id": "jump_rope",
+    "name": "Jump Rope",
+    "category": "Cardio",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Beginner",
+    "duration": 10,
+    "calories_per_minute": 12,
+    "description": "High-burn cardio that builds coordination.",
+    "instructions": [
+      "Hold rope ends at sides.",
+      "Jump as rope passes under feet.",
+      "Maintain a steady rhythm."
+    ],
+    "equipment": ["Jump Rope"],
+    "youtubeId": "u3zgHI8onvE",
+    "tips": ["Jump on balls of feet", "Use wrists to turn rope"],
+    "commonMistakes": ["Jumping too high", "Using full arms to turn"]
+  },
+  {
+    "id": "rowing_machine",
+    "name": "Rowing Machine",
+    "category": "Cardio",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Intermediate",
+    "duration": 15,
+    "calories_per_minute": 10,
+    "description": "Low-impact, full-body cardiovascular training.",
+    "instructions": [
+      "Drive with legs first.",
+      "Pivot hips and pull handle to chest.",
+      "Return in reverse order."
+    ],
+    "equipment": ["Machine"],
+    "youtubeId": "H07_V6OfS-Q",
+    "tips": ["60% legs, 20% core, 20% arms", "Smooth stroke"],
+    "commonMistakes": ["Pulling with arms first", "Rounding back at catch"]
+  },
+  {
+    "id": "stair_climber",
+    "name": "Stair Climber",
+    "category": "Cardio",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Intermediate",
+    "duration": 20,
+    "calories_per_minute": 8,
+    "description": "Intense lower body cardio.",
+    "instructions": [
+      "Climb steps at a steady pace.",
+      "Avoid leaning heavily on side rails.",
+      "Keep posture upright."
+    ],
+    "equipment": ["Machine"],
+    "youtubeId": "n8_H_7r46K8",
+    "tips": ["Full steps", "Engage glutes"],
+    "commonMistakes": ["Leaning on handles", "Half stepping"]
+  },
+  {
+    "id": "cycling",
+    "name": "Cycling",
+    "category": "Cardio",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 30,
+    "calories_per_minute": 7,
+    "description": "Steady-state cardio on a bike.",
+    "instructions": [
+      "Adjust seat height so leg is nearly straight at bottom.",
+      "Pedal at a consistent RPM.",
+      "Vary resistance for intensity."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "atR62_mCeb4",
+    "tips": ["Push and pull on pedals", "Light grip on bars"],
+    "commonMistakes": ["Seat too low", "Slouching"]
+  },
+  {
+    "id": "tabata_squats",
+    "name": "Tabata Squats",
+    "category": "HIIT",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Advanced",
+    "duration": 4,
+    "calories_per_minute": 15,
+    "description": "20s max effort squats, 10s rest for 8 rounds.",
+    "instructions": [
+      "Perform as many squats as possible in 20s.",
+      "Rest for 10s.",
+      "Repeat 8 times total."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "aclHkVaku9U",
+    "tips": ["Explosive speed", "Keep form safe despite fatigue"],
+    "commonMistakes": ["Losing depth", "Knees caving"]
+  },
+  {
+    "id": "kb_swings",
+    "name": "Kettlebell Swings",
+    "category": "HIIT",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Intermediate",
+    "duration": 10,
+    "calories_per_minute": 12,
+    "description": "Power-focused hip hinge movement.",
+    "instructions": [
+      "Hinge at hips to grab KB.",
+      "Snap hips forward to swing KB to chest height.",
+      "Hinge back as KB falls."
+    ],
+    "equipment": ["Kettlebell"],
+    "youtubeId": "sAESV_96-88",
+    "tips": ["Drive with hips, not arms", "Core tight at top"],
+    "commonMistakes": ["Squatting instead of hinging", "Pulling with shoulders"]
+  },
+  {
+    "id": "battle_ropes",
+    "name": "Battle Ropes",
+    "category": "HIIT",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 10,
+    "description": "Intense conditioning with weighted ropes.",
+    "instructions": [
+      "Hold ropes with knees slightly bent.",
+      "Whip ropes up and down quickly.",
+      "Maintain wave motion."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "8X5N2A4bM0w",
+    "tips": ["Stay low", "Move from shoulders"],
+    "commonMistakes": ["Straight legs", "Small range of motion"]
+  },
+  {
+    "id": "sled_push",
+    "name": "Sled Push",
+    "category": "HIIT",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Advanced",
+    "duration": 10,
+    "calories_per_minute": 12,
+    "description": "Total body conditioning push.",
+    "instructions": [
+      "Grip sled handles and lean in.",
+      "Drive with legs to push sled forward.",
+      "Maintain a 45 degree body angle."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "w3_2uC7t-7c",
+    "tips": ["Small steps", "Eyes down"],
+    "commonMistakes": ["Pushing too vertically", "Locking arms too much"]
+  },
+  {
+    "id": "warrior_1",
+    "name": "Warrior 1",
+    "category": "Yoga",
+    "muscleGroups": ["Legs", "Shoulders"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 3,
+    "description": "Builds focus, power, and stability.",
+    "instructions": [
+      "Step one foot forward into a lunge.",
+      "Turn back foot 45 degrees.",
+      "Reach arms to ceiling."
+    ],
+    "equipment": ["Yoga Mat"],
+    "youtubeId": "xV6V_oJ-S8U",
+    "tips": ["Square hips to front", "Deep breath"],
+    "commonMistakes": ["Arching lower back", "Front knee caving in"]
+  },
+  {
+    "id": "bridge_pose",
+    "name": "Bridge Pose",
+    "category": "Yoga",
+    "muscleGroups": ["Back", "Glutes"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 2,
+    "description": "Strengthens the segments of the spine and legs.",
+    "instructions": [
+      "Lie on back with knees bent.",
+      "Lift hips toward ceiling.",
+      "Clasp hands under back if possible."
+    ],
+    "equipment": ["Yoga Mat"],
+    "youtubeId": "7A5E95E4-mY",
+    "tips": ["Chest to chin", "Root through heels"],
+    "commonMistakes": ["Letting knees flare", "Holding breath"]
+  },
+  {
+    "id": "hip_flexor_stretch",
+    "name": "Hip Flexor Stretch",
+    "category": "Flexibility",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 3,
+    "calories_per_minute": 1,
+    "description": "Opens up tight hip flexors.",
+    "instructions": [
+      "Kneel on one knee.",
+      "Push hips forward slightly.",
+      "Keep torso tall."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "pvIjsGZ0Zmc",
+    "tips": ["Squeeze glute of back leg", "Don't over-arch"],
+    "commonMistakes": ["Leaning too far forward", "Loose core"]
+  },
+  {
+    "id": "chest_opener",
+    "name": "Chest Opener",
+    "category": "Flexibility",
+    "muscleGroups": ["Chest"],
+    "difficulty": "Beginner",
+    "duration": 3,
+    "calories_per_minute": 1,
+    "description": "Counteracts sitting with a chest stretch.",
+    "instructions": [
+      "Clasp hands behind back.",
+      "Squeeze shoulder blades and lift arms.",
+      "Expand chest."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "nmwgirgXLYM",
+    "tips": ["Soft knees", "Deep breaths"],
+    "commonMistakes": ["Hunching shoulders", "Holding breath"]
+  },
+  {
+    "id": "calf_stretch",
+    "name": "Calf Stretch",
+    "category": "Flexibility",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 3,
+    "calories_per_minute": 1,
+    "description": "Strecthed the gastrocnemius.",
+    "instructions": [
+      "Place hands on wall.",
+      "One foot back, heel on floor.",
+      "Lean in until stretch felt in calf."
+    ],
+    "equipment": ["Wall"],
+    "youtubeId": "ZZZoZ7Pst9I",
+    "tips": ["Back leg straight", "Toe pointing forward"],
+    "commonMistakes": ["Back heel lifting", "Bouncing"]
+  },
+  {
+    "id": "deadlift_straight_v2",
+    "name": "Romanian Deadlift",
+    "category": "Strength",
+    "muscleGroups": ["Back", "Glutes", "Hamstrings"],
+    "difficulty": "Intermediate",
+    "duration": 8,
+    "calories_per_minute": 5,
+    "description": "Lower body strength focused on hamstrings.",
+    "instructions": [
+      "Hold barbell at hips.",
+      "Hinge forward keeping back flat.",
+      "Lower to mid-shin.",
+      "Squeeze glutes to return."
+    ],
+    "equipment": ["Barbell"],
+    "youtubeId": "JCXUYuzwvgM",
+    "tips": ["Keep bar close to shins", "Neutral spine"],
+    "commonMistakes": ["Rounding back", "Squatting the weight"]
+  },
+  {
+    "id": "deadlift_stiff",
+    "name": "Stiff Leg Deadlift",
+    "category": "Strength",
+    "muscleGroups": ["Hamstrings"],
+    "difficulty": "Advanced",
+    "duration": 8,
+    "calories_per_minute": 5,
+    "description": "High hamstring activation variant.",
+    "instructions": [
+      "Hinge at hips with nearly straight legs.",
+      "Lower bar beyond shins.",
+      "Return to vertical."
+    ],
+    "equipment": ["Barbell"],
+    "youtubeId": "op9kVnSso6Q",
+    "tips": ["Go to your limit of flex", "Don't lock knees binary"],
+    "commonMistakes": ["Arching back", "Too much knee bend"]
+  },
+  {
+    "id": "shoulder_press_bb",
+    "name": "Shoulder Press",
+    "category": "Strength",
+    "muscleGroups": ["Shoulder"],
+    "difficulty": "Intermediate",
+    "duration": 6,
+    "calories_per_minute": 5,
+    "description": "Barbell overhead press.",
+    "instructions": [
+      "Rack bar at upper chest.",
+      "Press bar overhead.",
+      "Lock out at top."
+    ],
+    "equipment": ["Barbell"],
+    "youtubeId": "B-aVuyhvLHU",
+    "tips": ["Tuck chin as bar passes", "Full lockout"],
+    "commonMistakes": ["Using legs (push press)", "Excessive arching"]
+  },
+  {
+    "id": "tricep_extension",
+    "name": "Tricep Dips",
+    "category": "Strength",
+    "muscleGroups": ["Arms"],
+    "difficulty": "Intermediate",
+    "duration": 6,
+    "calories_per_minute": 4,
+    "description": "Dip station arm training.",
+    "instructions": [
+      "Support weight on bars.",
+      "Lower body by bending elbows.",
+      "Push back to straight arms."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "6kALZikcLcM",
+    "tips": ["Keep torso upright for triceps", "Control the descent"],
+    "commonMistakes": ["Partial reps", "Leaning too far forward"]
+  },
+  {
+    "id": "burpees_pushup",
+    "name": "Burpees with Push-Up",
+    "category": "HIIT",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Advanced",
+    "duration": 10,
+    "calories_per_minute": 11,
+    "description": "Enhanced burpee with extra chest work.",
+    "instructions": [
+      "Drop into squat.",
+      "Jump to plank and do a full push-up.",
+      "Jump back and explode up."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "dZfeV_pL5N0",
+    "tips": ["Consistent pace", "Elbows in"],
+    "commonMistakes": ["Worming push-up", "No jump"]
+  },
+  {
+    "id": "jump_jacks_v2",
+    "name": "Jump Jacks",
+    "category": "Cardio",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 8,
+    "description": "Traditional calisthenics.",
+    "instructions": [
+      "Jump and spread arms/legs.",
+      "Jump back together."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "nGaXj3kkmzU",
+    "tips": ["Stay rhythmic", "Full arm arc"],
+    "commonMistakes": ["Half arm movements", "Loud landings"]
+  },
+  {
+    "id": "mountain_climbers_v2",
+    "name": "Mountain Climbers",
+    "category": "Cardio",
+    "muscleGroups": ["Core", "Legs"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 9,
+    "description": "High heart rate floor exercise.",
+    "instructions": [
+      "Run your knees in while in plank."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "nmwgirgXLYM",
+    "tips": ["Drive knees hard", "Hold plank form"],
+    "commonMistakes": ["Butt high", "Slow pace"]
+  },
+  {
+    "id": "sprint_intervals",
+    "name": "Sprint Intervals",
+    "category": "Cardio",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Advanced",
+    "duration": 15,
+    "calories_per_minute": 15,
+    "description": "Alternating max effort with recovery.",
+    "instructions": [
+      "Sprint at 90% effort for 30s.",
+      "Walk/Jog for 60s.",
+      "Repeat."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "atR62_mCeb4",
+    "tips": ["High knee drive", "Pump arms"],
+    "commonMistakes": ["Not sprinting hard enough", "Skipping recovery"]
+  },
+  {
+    "id": "v_ups",
+    "name": "V-Ups",
+    "category": "Strength",
+    "muscleGroups": ["Core"],
+    "difficulty": "Advanced",
+    "duration": 5,
+    "calories_per_minute": 5,
+    "description": "Advanced core compression movement.",
+    "instructions": [
+      "Lie on back.",
+      "Simultaneously lift legs and torso to touch toes.",
+      "Balance on tailbone at top."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "9FGilxCkTz8",
+    "tips": ["Keep legs straight", "Slow descent"],
+    "commonMistakes": ["Bending knees", "Using momentum"]
+  },
+  {
+    "id": "hollow_hold",
+    "name": "Hollow Hold",
+    "category": "Strength",
+    "muscleGroups": ["Core"],
+    "difficulty": "Intermediate",
+    "duration": 3,
+    "calories_per_minute": 3,
+    "description": "Gymnastics foundational core hold.",
+    "instructions": [
+      "Lie on back.",
+      "Lift feet and shoulders 6 inches off floor.",
+      "Press lower back into ground."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "pvIjsGZ0Zmc",
+    "tips": ["Force lower back down", "Breathe through core"],
+    "commonMistakes": ["Arching back", "Feet too high"]
+  },
+  {
+    "id": "russian_twist_v2",
+    "name": "Russian Twist",
+    "category": "Strength",
+    "muscleGroups": ["Core"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 4,
+    "description": "Torso rotation strength.",
+    "instructions": [
+      "Sit with feet up.",
+      "Rotate side to side."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "NeAtimSCasY",
+    "tips": ["Follow hands with eyes", "Chest up"],
+    "commonMistakes": ["Moving only arms", "Curling spine"]
+  },
+  {
+    "id": "box_jumps_v2",
+    "name": "Box Jumps",
+    "category": "Cardio",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Advanced",
+    "duration": 5,
+    "calories_per_minute": 9,
+    "description": "Vertical power development.",
+    "instructions": [
+      "Jump onto a stable box."
+    ],
+    "equipment": ["Box"],
+    "youtubeId": "52r_Ul5k03g",
+    "tips": ["Land softly", "Stand fully at top"],
+    "commonMistakes": ["Landing stiff", "Box too high"]
+  },
+  {
+    "id": "tabata_burpees",
+    "name": "Burpees",
+    "category": "Cardio",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Advanced",
+    "duration": 4,
+    "calories_per_minute": 18,
+    "description": "Max speed burpees in tabata format.",
+    "instructions": [
+      "20s burpees, 10s rest."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "dZfeV_pL5N0",
+    "tips": ["Don't pace yourself", "Empty the tank"],
+    "commonMistakes": ["Slowing down", "Poor form"]
+  },
+  {
+    "id": "high_knees_v2",
+    "name": "High Knees",
+    "category": "Cardio",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 8,
+    "description": "Running in place with high knee drive.",
+    "instructions": [
+      "Lift knees above waist."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "ZZZoZ7Pst9I",
+    "tips": ["Stay tall", "Fast hands"],
+    "commonMistakes": ["Leaning back", "Low knees"]
+  },
+  {
+    "id": "mountain_climbers_v3",
+    "name": "Mountain Climbers",
+    "category": "HIIT",
+    "muscleGroups": ["Core"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 10,
+    "description": "High speed mountain climbers.",
+    "instructions": [
+      "Floor running in plank."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "nmwgirgXLYM",
+    "tips": ["Weight on hands", "Short breaths"],
+    "commonMistakes": ["Pike position", "Looking at feet"]
+  },
+  {
+    "id": "jump_jacks_v3",
+    "name": "Jump Jacks",
+    "category": "HIIT",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 11,
+    "description": "Burst speed jumping jacks.",
+    "instructions": [
+      "Sprint speed jacks."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "nGaXj3kkmzU",
+    "tips": ["Arms over head", "Wide feet"],
+    "commonMistakes": ["Half speed", "Bent arms"]
+  },
+  {
+    "id": "warrior_2",
+    "name": "Warrior 2",
+    "category": "Yoga",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 2,
+    "description": "Strengthens legs and builds focus.",
+    "instructions": [
+      "Wide stance, rotate front foot 90 deg.",
+      "Bend front knee, arms horizontal."
+    ],
+    "equipment": ["Yoga Mat"],
+    "youtubeId": "xV6V_oJ-S8U",
+    "tips": ["Look over front hand", "Tuck pelvis"],
+    "commonMistakes": ["Front knee falling in", "Leaning torso forward"]
+  },
+  {
+    "id": "tree_pose",
+    "name": "Tree Pose",
+    "category": "Yoga",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 1,
+    "description": "Balance based focus pose.",
+    "instructions": [
+      "Balance on one leg.",
+      "Place other foot on inner thigh or calf."
+    ],
+    "equipment": ["Yoga Mat"],
+    "youtubeId": "7A5E95E4-mY",
+    "tips": ["Focus on a spot", "Don't place foot on knee"],
+    "commonMistakes": ["Foot on joint", "Holding breath"]
+  },
+  {
+    "id": "bridge_pose_v2",
+    "name": "Bridge Pose",
+    "category": "Yoga",
+    "muscleGroups": ["Back"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 2,
+    "description": "Gentle back bend.",
+    "instructions": [
+      "Lift hips on back."
+    ],
+    "equipment": ["Yoga Mat"],
+    "youtubeId": "7A5E95E4-mY",
+    "tips": ["Parallell feet", "Lift chin"],
+    "commonMistakes": ["Feet too wide", "Crushing neck"]
+  },
+  {
+    "id": "quad_stretch",
+    "name": "Quad Stretch",
+    "category": "Flexibility",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 3,
+    "calories_per_minute": 1,
+    "description": "Stretches the quadriceps.",
+    "instructions": [
+      "Stand on one leg.",
+      "Grab other ankle and pull to glute.",
+      "Push hips forward."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "pvIjsGZ0Zmc",
+    "tips": ["Keep knees together", "Hold for 30s"],
+    "commonMistakes": ["Arching back", "Knee flaring"]
+  },
+  {
+    "id": "hamstring_stretch",
+    "name": "Hamstring Stretch",
+    "category": "Flexibility",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 3,
+    "calories_per_minute": 1,
+    "description": "Classic hamstring stretch.",
+    "instructions": [
+      "Sit and reach for toes."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "ZZZoZ7Pst9I",
+    "tips": ["Flat back", "Relax neck"],
+    "commonMistakes": ["Bouncing", "Rounded spine"]
+  },
+  {
+    "id": "shoulder_stretch",
+    "name": "Shoulder Stretch",
+    "category": "Flexibility",
+    "muscleGroups": ["Shoulder"],
+    "difficulty": "Beginner",
+    "duration": 3,
+    "calories_per_minute": 1,
+    "description": "Cross body shoulder stretch.",
+    "instructions": [
+      "Pull arm across chest."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "B-aVuyhvLHU",
+    "tips": ["Lower shoulder", "Pull gently"],
+    "commonMistakes": ["Shoulder hunched", "Short hold"]
+  },
+  {
+    "id": "cat_cow_v2",
+    "name": "Cat-Cow Stretch",
+    "category": "Flexibility",
+    "muscleGroups": ["Back"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 1,
+    "description": "Spinal mobility flow.",
+    "instructions": [
+      "Flow between arch and round."
+    ],
+    "equipment": ["Yoga Mat"],
+    "youtubeId": "kqnua4rHVRed",
+    "tips": ["Move with breath", "Segmental motion"],
+    "commonMistakes": ["Too fast", "Limited range"]
+  },
+  {
+    "id": "child_pose_v2",
+    "name": "Child's Pose",
+    "category": "Flexibility",
+    "muscleGroups": ["Full Body"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 1,
+    "description": "Full back relaxation.",
+    "instructions": [
+      "Kneel and fold."
+    ],
+    "equipment": ["Yoga Mat"],
+    "youtubeId": "2ASK5R7qaXC",
+    "tips": ["Wide knees", "Reach far"],
+    "commonMistakes": ["Hips too high", "Short breaths"]
+  },
+  {
+    "id": "leg_extension",
+    "name": "Leg Press",
+    "category": "Strength",
+    "muscleGroups": ["Legs"],
+    "difficulty": "Beginner",
+    "duration": 7,
+    "calories_per_minute": 4,
+    "description": "Lower body strength exercise focusing on legs.",
+    "instructions": [
+      "Sit on leg press machine.",
+      "Push plate with legs until extended.",
+      "Return with control."
+    ],
+    "equipment": ["Machine"],
+    "youtubeId": "IZxyjW7MPJQ",
+    "tips": ["Control the weight", "Breathe on push"],
+    "commonMistakes": ["Locking knees", "Half reps"]
+  },
+  {
+    "id": "dumbbell_row",
+    "name": "Dumbbell Row",
+    "category": "Strength",
+    "muscleGroups": ["Back"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 4,
+    "description": "One arm back strengthening.",
+    "instructions": [
+      "Place one hand on bench.",
+      "Pull dumbbell to hip with other arm.",
+      "Keep back flat."
+    ],
+    "equipment": ["Dumbbells", "Bench"],
+    "youtubeId": "GZbfZ033f74",
+    "tips": ["Pull to hip, not armpit", "Squeeze shoulder blade"],
+    "commonMistakes": ["Rounding back", "Rotating torso"]
+  },
+  {
+    "id": "plank_rotation",
+    "name": "Plank with Rotation",
+    "category": "HIIT",
+    "muscleGroups": ["Core"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 8,
+    "description": "Core stability and rotational power.",
+    "instructions": [
+      "Start in side plank.",
+      "Rotate torso and reach under.",
+      "Return to side plank."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "pvIjsGZ0Zmc",
+    "tips": ["Hips high", "Eyes on hand"],
+    "commonMistakes": ["Dropping hips", "Moving too fast"]
+  },
+  {
+    "id": "side_plank",
+    "name": "Side Plank",
+    "category": "Strength",
+    "muscleGroups": ["Core"],
+    "difficulty": "Intermediate",
+    "duration": 5,
+    "calories_per_minute": 4,
+    "description": "Builds oblique strength.",
+    "instructions": [
+      "Lie on side supported by forearm.",
+      "Lift hips until body straight.",
+      "Hold."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "pvIjsGZ0Zmc",
+    "tips": ["Shoulder over elbow", "Feet stacked"],
+    "commonMistakes": ["Hips sagging", "Shoulder collapsing"]
+  },
+  {
+    "id": "glute_bridges_v2",
+    "name": "Glute Bridges",
+    "category": "Strength",
+    "muscleGroups": ["Glutes"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 4,
+    "description": "Lying hip thrust movement.",
+    "instructions": [
+      "Lift hips while lying on back."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "wPM8icPu6H8",
+    "tips": ["Squeeze at top", "Tuck chin"],
+    "commonMistakes": ["Lower back arching", "Feet too far away"]
+  },
+  {
+    "id": "dead_bug_v2",
+    "name": "Dead Bug",
+    "category": "Strength",
+    "muscleGroups": ["Core"],
+    "difficulty": "Beginner",
+    "duration": 5,
+    "calories_per_minute": 3,
+    "description": "Safe core training.",
+    "instructions": [
+      "Lower opposite arm/leg on back."
+    ],
+    "equipment": ["None"],
+    "youtubeId": "g_BYB0R-4Ws",
+    "tips": ["Ribs to hips", "Back flat"],
+    "commonMistakes": ["Arching back", "Moving same side"]
+  }
+]

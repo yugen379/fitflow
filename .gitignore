@@ -1,0 +1,39 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Android signing — must never be committed
+android/keystore.properties
+android/**/*.keystore
+android/**/*.jks
+android/app/google-services.json
+android/local.properties
+android/.gradle/
+
+# Firebase Functions build
+functions/lib/
+functions/node_modules/
+
+# Apple
+ios/App/Pods/
+ios/App/build/
+
+# Local capacitor sync state
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/capacitor.settings.gradle
+android/app/capacitor.build.gradle
+
+# Proof-harness temp artifacts (generated barcode video, etc.)
+scripts/.tmp/
+
+# IDE
+.idea/
+.vscode/
+*.iml

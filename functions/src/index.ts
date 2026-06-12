@@ -1,0 +1,568 @@
+import * as functions from "firebase-functions";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { defineSecret } from "firebase-functions/params";
+import * as admin from "firebase-admin";
+import { GoogleGenAI } from "@google/genai";
+import Stripe from "stripe";
+
+admin.initializeApp();
+const db = admin.firestore();
+
+// Gemini key lives in Firebase Secret Manager (replaces the deprecated
+// functions.config() runtime config, which sunsets March 2027). Set it with:
+//   firebase functions:secrets:set GEMINI_API_KEY
+const geminiApiKey = defineSecret("GEMINI_API_KEY");
+
+// ---------------------------------------------------------------------------
+// Stripe billing — hosted Checkout + webhook to flip user.subscriptionType
+// ---------------------------------------------------------------------------
+const getStripe = (): Stripe | null => {
+  const key = (functions as any).config().stripe?.secret;
+  if (!key) return null;
+  return new Stripe(key, { apiVersion: "2024-12-18.acacia" as any });
+};
+
+export const createCheckoutSession = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  if (req.method === "OPTIONS") {
+    res.set("Access-Control-Allow-Methods", "POST");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+  const stripe = getStripe();
+  if (!stripe) { res.status(500).json({ error: "Stripe not configured" }); return; }
+
+  try {
+    const authHeader = req.headers.authorization || "";
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!idToken) { res.status(401).json({ error: "Missing auth token" }); return; }
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+
+    const { priceId, successUrl, cancelUrl } = req.body || {};
+    if (!priceId) { res.status(400).json({ error: "Missing priceId" }); return; }
+
+    // Reuse the existing Stripe customer if we've seen this uid before
+    const userDoc = await db.doc(`users/${uid}`).get();
+    let customerId = userDoc.data()?.stripeCustomerId as string | undefined;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: decoded.email,
+        metadata: { firebaseUid: uid },
+      });
+      customerId = customer.id;
+      await db.doc(`users/${uid}`).update({ stripeCustomerId: customerId });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { trial_period_days: 7, metadata: { firebaseUid: uid } },
+      allow_promotion_codes: true,
+      success_url: successUrl || "https://fitflow.app/pro?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: cancelUrl || "https://fitflow.app/pro",
+    });
+
+    res.json({ url: session.url, id: session.id });
+  } catch (err: any) {
+    console.error("createCheckoutSession error:", err);
+    res.status(500).json({ error: err?.message || "Checkout failed" });
+  }
+});
+
+export const stripeWebhook = functions.https.onRequest(async (req, res) => {
+  const stripe = getStripe();
+  const webhookSecret = (functions as any).config().stripe?.webhook;
+  if (!stripe || !webhookSecret) { res.status(500).send("Stripe not configured"); return; }
+
+  const sig = req.headers["stripe-signature"] as string;
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent((req as any).rawBody, sig, webhookSecret);
+  } catch (err: any) {
+    console.error("Webhook signature failed:", err?.message);
+    res.status(400).send(`Webhook Error: ${err?.message}`);
+    return;
+  }
+
+  const setSubscription = async (customerId: string, status: "premium" | "free") => {
+    const snap = await db.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
+    if (snap.empty) return;
+    await snap.docs[0].ref.update({
+      subscriptionType: status,
+      subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  };
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.customer && session.subscription) {
+          await setSubscription(session.customer as string, "premium");
+        }
+        break;
+      }
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        const active = ["active", "trialing"].includes(sub.status);
+        await setSubscription(sub.customer as string, active ? "premium" : "free");
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        await setSubscription(sub.customer as string, "free");
+        break;
+      }
+    }
+    res.json({ received: true });
+  } catch (err: any) {
+    console.error("Webhook handler error:", err);
+    res.status(500).send("Internal");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Account deletion — server-side cascade (more robust than client-side)
+// ---------------------------------------------------------------------------
+export const deleteAccount = functions.https.onCall(async (data: any, context: any) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign in required");
+  const uid = context.auth.uid;
+  const collections = [
+    "meals", "workouts", "water_logs", "sleep_logs", "wellness_logs",
+    "weight_history", "body_metrics", "activity_routes", "notifications",
+    "posts", "comments",
+  ];
+  for (const c of collections) {
+    const snap = await db.collection(c).where("userId", "==", uid).get();
+    if (snap.empty) continue;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+  await db.doc(`users/${uid}`).delete().catch(() => {});
+  await admin.auth().deleteUser(uid).catch(() => {});
+  return { deleted: true };
+});
+
+// ---------------------------------------------------------------------------
+// Gemini proxy — holds the API key server-side so it never ships in the client
+// bundle. Every Gemini-backed feature routes through here when the client has
+// VITE_GEMINI_PROXY_URL set. Mirrors the client model cascade and per-action
+// fallbacks so behavior is identical to the legacy direct-SDK path.
+// ---------------------------------------------------------------------------
+
+// Free-tier quota is enforced PER MODEL (5 req/min/model). Cascading across
+// models that each carry an independent quota bucket multiplies real-AI
+// throughput ~4x before anything degrades to a heuristic reply. (Keep this list
+// in sync with MODELS in src/services/geminiService.ts.)
+const GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-lite-latest",
+];
+
+const isRetryable = (e: any): boolean => {
+  const s = Number(e?.status ?? e?.code);
+  if (s === 429 || s === 500 || s === 503) return true;
+  const msg = String(e?.message || e || "");
+  return /RESOURCE_EXHAUSTED|quota|rate|unavailable|overloaded|deadline|timeout|network|fetch/i.test(msg);
+};
+
+const safeJsonParse = (text: string, fallback: any) => {
+  try {
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch {
+    return fallback;
+  }
+};
+
+// One pass over the model cascade. Returns trimmed text, or null if every model
+// failed. Retryable (quota/transient) errors advance to the next model; hard
+// errors stop. Never throws.
+const cascadeOnce = async (ai: GoogleGenAI, contents: any): Promise<string | null> => {
+  for (const model of GEMINI_MODELS) {
+    try {
+      const resp = await ai.models.generateContent({ model, contents });
+      const text = (resp.text || "").trim();
+      if (text) return text;
+    } catch (e: any) {
+      console.warn(`Gemini ${model} failed:`, e?.status || "", String(e?.message || e).slice(0, 80));
+      if (!isRetryable(e)) break;
+    }
+  }
+  return null;
+};
+
+// Retrying variant for user-facing text (the coach): if the whole cascade is
+// momentarily exhausted, back off and sweep again before giving up.
+const cascadeText = async (
+  ai: GoogleGenAI,
+  contents: any,
+  { retries = 1, minChars = 1, backoffMs = 600 }: { retries?: number; minChars?: number; backoffMs?: number } = {},
+): Promise<string | null> => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const text = await cascadeOnce(ai, contents);
+    if (text && text.length >= minChars) return text;
+    if (attempt < retries) await new Promise((r) => setTimeout(r, backoffMs * (attempt + 1)));
+  }
+  return null;
+};
+
+export const geminiProxy = functions.https.onRequest(
+  { secrets: [geminiApiKey] },
+  async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  if (req.method === "OPTIONS") {
+    res.set("Access-Control-Allow-Methods", "POST");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+  try {
+    const apiKey = geminiApiKey.value() || process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("Gemini API key is not configured in Firebase");
+    const ai = new GoogleGenAI({ apiKey });
+    const { action, payload = {} } = req.body || {};
+
+    // Run the cascade and parse JSON, falling back to the given shape on any
+    // failure so the client always receives usable structured content.
+    const json = async (contents: any, fallback: any) => {
+      const text = await cascadeOnce(ai, contents);
+      return text ? safeJsonParse(text, fallback) : fallback;
+    };
+    const vision = (base64Image: string, mimeType: string, text: string) => ({
+      parts: [
+        { inlineData: { data: base64Image, mimeType: mimeType || "image/jpeg" } },
+        { text },
+      ],
+    });
+
+    switch (action) {
+      case "estimateCalories": {
+        const out = await json(
+          `Analyze this food and return ONLY valid JSON.
+Format: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number}
+Food: "${payload.description}"`,
+          { name: payload.description, calories: 0, protein: 0, carbs: 0, fats: 0 },
+        );
+        res.json(out);
+        return;
+      }
+
+      case "analyzeMealImage": {
+        const out = await json(
+          vision(payload.base64Image, payload.mimeType, `Analyze this food image and return ONLY valid JSON.
+Format: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number}`),
+          { name: "Unknown meal", calories: 0, protein: 0, carbs: 0, fats: 0 },
+        );
+        res.json(out);
+        return;
+      }
+
+      case "analyzeNutritionLabel": {
+        const out = await json(
+          vision(payload.base64Image, payload.mimeType, `You are reading a packaged-food photo (a barcode/product or its nutrition label).
+Identify the product and return its nutrition PER 100g (or per 100ml). If the label only shows per-serving values, convert to per-100g using the stated serving size.
+Return ONLY valid JSON, no markdown:
+{"name": string, "brand": string, "calories": number, "protein": number, "carbs": number, "fats": number}
+If you genuinely cannot determine any nutrition, return {"calories": 0}.`),
+          { calories: 0 },
+        );
+        res.json(out);
+        return;
+      }
+
+      case "analyzeFormFrame": {
+        const exercise = payload.exerciseName;
+        const out = await json(
+          vision(payload.base64Image, payload.mimeType, `You are an elite strength coach. Analyze ONLY this exact frame for ${exercise} form.
+Return ONLY valid JSON, no markdown:
+{"exercise":"${exercise}","rating":<1-10 form score>,"status":"good"|"fix"|"danger","cue":"<single short coaching cue, max 12 words, imperative voice>","details":"<one optional secondary detail, max 18 words>"}
+If no person visible, return rating 0 status "fix" cue "Step into frame so I can see your full body."`),
+          { exercise, rating: 0, status: "fix", cue: "Show your full body for a check." },
+        );
+        res.json(out);
+        return;
+      }
+
+      case "generateWorkoutPlan": {
+        const ctx = payload.userHistory?.length ? JSON.stringify(payload.userHistory.slice(-3)) : "Starting fresh.";
+        const out = await json(
+          `Generate a workout for goal: ${payload.userGoals}. Context: ${ctx}.
+Return ONLY valid JSON: {"title": string, "description": string, "type": string,
+"exercises": [{"id": string, "name": string}]}`,
+          { title: "", description: "", type: "", exercises: [] },
+        );
+        res.json(out);
+        return;
+      }
+
+      case "generateMealPlan": {
+        const out = await json(
+          `Generate a 7-day meal plan. Preferences: ${payload.dietaryPreferences}. Target: ${payload.kCalTarget} kcal/day.
+Return ONLY a valid JSON array of 7 objects:
+[{"day": string, "breakfast": string, "lunch": string, "dinner": string, "snack": string, "calories": number}]`,
+          [],
+        );
+        res.json(out);
+        return;
+      }
+
+      case "getRecipe": {
+        const out = await json(
+          `Healthy recipe for "${payload.mealName}". Return ONLY valid JSON:
+{"ingredients": string[], "instructions": string[], "prepTime": string, "protein": number, "carbs": number, "fats": number}`,
+          null,
+        );
+        res.json(out);
+        return;
+      }
+
+      case "swapMeal": {
+        const out = await json(
+          `Suggest ONE alternative meal that replaces "${payload.original}". Reason: ${payload.reason}. Preferences: ${payload.dietaryPreferences}. Do NOT return "${payload.original}" — return a different dish.
+Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number, "why": string}`,
+          {},
+        );
+        res.json(out);
+        return;
+      }
+
+      case "dailyChallenge": {
+        const p = payload.profile || {};
+        const out = await json(
+          `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${p.goal || "general fitness"}" and a ${p.streak || 0}-day streak.
+Pick something they can finish in a single day. Vary the category.
+Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
+          { title: "Move 30 minutes", description: "Any sustained movement — walk, lift, ride.", target: 30, unit: "minutes", category: "movement" },
+        );
+        res.json(out);
+        return;
+      }
+
+      case "getAICoachInsight": {
+        const text = await cascadeText(
+          ai,
+          `You are an elite fitness AI. Give ONE sharp, motivational insight (max 20 words) based on:
+Calories today: ${payload.calories}, Water: ${payload.water}ml, Workouts: ${payload.workouts}, Streak: ${payload.streak} days.
+Return ONLY plain text, no JSON.`,
+        );
+        res.json({ text: (text || "").replace(/[*_`#]/g, "").trim() });
+        return;
+      }
+
+      case "askCoach": {
+        const profile = payload.profile || {};
+        const history: { role: string; text: string }[] = payload.history || [];
+        const transcript = history.slice(-8).map((m) => `${m.role === "user" ? "User" : "Coach"}: ${m.text}`).join("\n");
+        const text = await cascadeText(
+          ai,
+          `You are FitFlow Coach — an expert in strength training, nutrition, recovery, and behavior change.
+The user's goal is ${profile.goal || "general fitness"}. Weight: ${profile.weight || "n/a"}kg. Age: ${profile.age || "n/a"}.
+Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
+
+${transcript ? "Conversation so far:\n" + transcript + "\n\n" : ""}User: ${payload.message}
+Coach:`,
+          { retries: 1, minChars: 15 },
+        );
+        // Strip stray markdown and apply the same substance gate the client used.
+        // An empty string tells the client to use its on-device heuristic reply.
+        const clean = (text || "").replace(/[*_`#]/g, "").trim();
+        res.json({ text: clean.length >= 15 ? clean : "" });
+        return;
+      }
+
+      case "generateWeeklyRecap": {
+        const out = await json(
+          `You are an elite performance coach writing a friendly weekly recap.
+Goal: ${payload.goal || "general fitness"}. This week:
+- ${payload.workouts} workouts, ${payload.workoutMinutes} active minutes
+- ${payload.caloriesBurned} kcal burned, ${payload.caloriesConsumed} consumed
+- ${payload.waterMl}ml water, ${payload.sleepHours} hours sleep
+- ${payload.streak}-day streak${payload.topExercise ? `, top exercise: ${payload.topExercise}` : ""}
+
+Return ONLY valid JSON, no markdown:
+{"headline":"<≤8 word title>","highlight":"<1-2 sentence summary in plain English, sentence case>","win":"<1 short positive observation>","focus":"<one thing to focus on next week, plain language>","nextStep":"<one specific action they can take Monday>"}
+Tone: warm, direct, like a real human coach. No emojis.`,
+          {
+            headline: "A solid week of work.",
+            highlight: "You showed up and put in real effort this week. Keep that momentum.",
+            win: "Consistency built more progress than any single session.",
+            focus: "Hydration — small daily wins compound.",
+            nextStep: "Set a 10am hydration alarm and refill once before lunch.",
+          },
+        );
+        res.json(out);
+        return;
+      }
+
+      default:
+        res.status(400).json({ error: "Invalid action" });
+        return;
+    }
+  } catch (error: any) {
+    console.error("Cloud Function Proxy Error:", error);
+    res.status(500).json({ error: error.message || "Internal Server Error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Smart workout reminders — runs every hour, sends FCM to users whose
+// preferredWorkoutTime hour matches (now + 30 minutes).
+// Idempotency: lastReminderDate field on user prevents duplicate same-day sends.
+// ---------------------------------------------------------------------------
+export const sendWorkoutReminders = onSchedule(
+  { schedule: "every 30 minutes", timeZone: "UTC" },
+  async () => {
+    const now = new Date();
+    const target = new Date(now.getTime() + 30 * 60 * 1000); // 30 min from now
+    const targetHourUtc = target.getUTCHours();
+    const today = now.toISOString().slice(0, 10);
+
+    const snap = await db
+      .collection("users")
+      .where("notificationsEnabled", "==", true)
+      .get();
+
+    const messaging = admin.messaging();
+
+    const tasks = snap.docs.map(async (doc) => {
+      const u = doc.data() as any;
+      if (!u.fcmToken || !u.preferredWorkoutTime) return;
+      const [hStr] = u.preferredWorkoutTime.split(":");
+      const userHourLocal = parseInt(hStr, 10);
+      if (Number.isNaN(userHourLocal)) return;
+
+      // Apply user's UTC offset if stored, else assume UTC.
+      const offsetHours = typeof u.tzOffsetHours === "number" ? u.tzOffsetHours : 0;
+      const userHourUtc = ((userHourLocal - offsetHours) + 24) % 24;
+      if (userHourUtc !== targetHourUtc) return;
+
+      if (u.lastReminderDate === today) return;
+
+      try {
+        await messaging.send({
+          token: u.fcmToken,
+          notification: {
+            title: "Training window opens soon",
+            body: `You usually train around ${u.preferredWorkoutTime}. 30 minutes — let's go.`,
+          },
+          data: { type: "workout_reminder" },
+          android: { priority: "high", notification: { channelId: "fitflow_reminders" } },
+        });
+        await doc.ref.update({ lastReminderDate: today });
+
+        await db.collection("notifications").add({
+          userId: doc.id,
+          title: "Training window opens soon",
+          body: `You usually train around ${u.preferredWorkoutTime}.`,
+          type: "reminder",
+          read: false,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Reminder send failed for", doc.id, err);
+      }
+    });
+
+    await Promise.all(tasks);
+  });
+
+// ---------------------------------------------------------------------------
+// Sunday AI weekly recap — runs every Sunday 09:00 UTC, generates a personalized
+// recap and stores it in weekly_recaps/<uid>_<weekId>. The client picks it up.
+// ---------------------------------------------------------------------------
+function isoWeek(d: Date) {
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  const firstThursday = date.getTime();
+  date.setUTCMonth(0, 1);
+  if (date.getUTCDay() !== 4) {
+    date.setUTCMonth(0, 1 + ((4 - date.getUTCDay()) + 7) % 7);
+  }
+  const week = 1 + Math.ceil((firstThursday - date.getTime()) / 604800000);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+export const generateWeeklyRecaps = onSchedule(
+  { schedule: "every sunday 09:00", timeZone: "UTC", secrets: [geminiApiKey] },
+  async () => {
+    const apiKey = geminiApiKey.value() || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("Gemini key missing; skipping weekly recap");
+      return;
+    }
+    const ai = new GoogleGenAI({ apiKey });
+    const weekId = isoWeek(new Date());
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+
+    const usersSnap = await db.collection("users").get();
+    const tasks = usersSnap.docs.map(async (doc) => {
+      const uid = doc.id;
+      const u = doc.data() as any;
+      const existing = await db.doc(`weekly_recaps/${uid}_${weekId}`).get();
+      if (existing.exists) return;
+
+      const [workouts, meals, water, sleep] = await Promise.all([
+        db.collection("workouts").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
+        db.collection("meals").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
+        db.collection("water_logs").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
+        db.collection("sleep_logs").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
+      ]);
+      const stats = {
+        workouts: workouts.size,
+        minutes: workouts.docs.reduce((a, d) => a + (d.data().duration || 0), 0),
+        calories: workouts.docs.reduce((a, d) => a + (d.data().caloriesBurned || 0), 0),
+        consumed: meals.docs.reduce((a, d) => a + (d.data().calories || 0), 0),
+        water: water.docs.reduce((a, d) => a + (d.data().amount || 0), 0),
+        sleepHours: sleep.size ? Math.round((sleep.docs.reduce((a, d) => a + (d.data().hours || 0), 0) / sleep.size) * 10) / 10 : 0,
+      };
+
+      try {
+        const result = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: `You are an elite performance coach writing a friendly weekly recap.
+Goal: ${u.goal || "general fitness"}. This week:
+- ${stats.workouts} workouts, ${stats.minutes} active minutes
+- ${stats.calories} kcal burned, ${stats.consumed} consumed
+- ${stats.water}ml water, ${stats.sleepHours} hours sleep
+- ${u.streak || 0}-day streak
+
+Return ONLY valid JSON:
+{"headline":"<≤8 word title>","highlight":"<1-2 sentence summary>","win":"<1 short positive observation>","focus":"<one thing to focus on next week>","nextStep":"<one specific action they can take Monday>"}
+Tone: warm, direct, like a real human coach. No emojis.`,
+        });
+        const text = (result.text || "{}").replace(/```json|```/g, "").trim();
+        const recap = JSON.parse(text);
+        await db.doc(`weekly_recaps/${uid}_${weekId}`).set({
+          recap, stats, generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        if (u.fcmToken && u.notificationsEnabled) {
+          await admin.messaging().send({
+            token: u.fcmToken,
+            notification: {
+              title: "Your weekly recap is ready",
+              body: recap.headline,
+            },
+            data: { type: "weekly_recap" },
+          });
+        }
+      } catch (err) {
+        console.warn("Recap generation failed for", uid, err);
+      }
+    });
+
+    await Promise.all(tasks);
+  });
