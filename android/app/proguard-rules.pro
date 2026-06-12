@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# @capacitor-firebase/authentication bundles handlers for every provider (Facebook,
+# etc.) but we only enable Google sign-in, so the Facebook SDK isn't on the classpath.
+# R8 otherwise fails shrinking on these missing references — they're dead code for us.
+-dontwarn com.facebook.**
