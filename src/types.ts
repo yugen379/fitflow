@@ -1,3 +1,49 @@
+export type BillingPlan = 'monthly' | 'yearly';
+
+export type SubscriptionStatus =
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'canceled'
+  | 'expired'
+  | 'free';
+
+/**
+ * Macro targets. Free users get `percent` mode (ratios of total calories);
+ * premium users can switch to `grams` mode and lock exact protein/fat/carb grams.
+ */
+export interface MacroTargets {
+  mode: 'percent' | 'grams';
+  /** percent mode — must sum to ~100 */
+  proteinPct?: number;
+  carbsPct?: number;
+  fatsPct?: number;
+  /** grams mode (premium) — exact daily targets */
+  proteinG?: number;
+  carbsG?: number;
+  fatsG?: number;
+}
+
+/** One set of nutrition overrides applied on a given day type. */
+export interface DayTargetValues {
+  calories?: number;
+  carbsG?: number;
+  proteinG?: number;
+}
+
+/**
+ * Goal-by-day scheduling (premium). `enabled` gates the feature; `schedule`
+ * maps weekday index (0=Sun..6=Sat) to a day type so workout days can carry
+ * higher calorie/carb limits than rest days.
+ */
+export interface DayTargets {
+  enabled: boolean;
+  workout: DayTargetValues;
+  rest: DayTargetValues;
+  /** 0..6 -> 'workout' | 'rest'; days not listed fall back to base targets. */
+  schedule: Record<string, 'workout' | 'rest'>;
+}
+
 export interface UserProfile {
   uid: string;
   displayName: string;
@@ -9,6 +55,27 @@ export interface UserProfile {
   healthConditions?: string[];
   dietaryPreferences?: string[];
   subscriptionType: 'free' | 'premium';
+  // --- Billing / subscription (all server-trusted except trialStartedAt which is fixed at signup) ---
+  /** Server timestamp set once at signup; the 6-day cardless trial is measured from this. Immutable. */
+  trialStartedAt?: any;
+  /** Lifecycle for display: trialing | active | past_due | canceled | expired | free. Written by server/webhook. */
+  subscriptionStatus?: SubscriptionStatus;
+  /** Which paid plan the user is on (null until they actually pay). */
+  plan?: BillingPlan | null;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  /** Epoch ms of the current paid period end / renewal date. */
+  currentPeriodEnd?: number;
+  cancelAtPeriodEnd?: boolean;
+  /** Epoch ms when a past_due grace period ends; Pro stays unlocked until then. */
+  graceUntil?: number;
+  subscriptionUpdatedAt?: any;
+  /** localStorage/Firestore guard so the day-5 "trial ending" push only fires once. */
+  trialEndingNotifiedAt?: any;
+  // --- Premium nutrition customization ---
+  macroTargets?: MacroTargets;
+  /** Per-day-type calorie/carb overrides (workout vs rest day scheduling). */
+  dayTargets?: DayTargets;
   streak: number;
   badges: string[];
   points: number;

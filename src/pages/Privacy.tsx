@@ -6,9 +6,9 @@ import { LogoMark } from '../components/Logo';
 // Replace these placeholders with your real legal entity before public launch.
 const COMPANY = 'FitFlow, Inc.';
 const COMPANY_ADDRESS = '[REPLACE WITH REGISTERED BUSINESS ADDRESS]';
-const PRIVACY_EMAIL = 'privacy@fitflow.app';
-const DPO_EMAIL = 'dpo@fitflow.app';
-const LAST_UPDATED = '2026-06-06';
+const PRIVACY_EMAIL = 'fitflow2000@gmail.com';
+const DPO_EMAIL = 'fitflow2000@gmail.com';
+const LAST_UPDATED = '2026-06-15';
 
 export const Privacy: React.FC = () => {
   const navigate = useNavigate();
@@ -141,7 +141,7 @@ export const Privacy: React.FC = () => {
             We use TLS in transit, Firebase server-side encryption at rest,
             scoped Firestore Security Rules, and least-privilege service
             accounts. No system is 100% secure; report any vulnerability to
-            <a href={`mailto:security@${COMPANY.toLowerCase().split(',')[0].replace(/\s+/g, '')}.app`} className="text-accent"> security@fitflow.app</a>.
+            <a href={`mailto:${PRIVACY_EMAIL}`} className="text-accent"> {PRIVACY_EMAIL}</a>.
           </p>
         </Section>
 

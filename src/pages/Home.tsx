@@ -21,6 +21,7 @@ import { AnimatedMesh } from '../components/AnimatedMesh';
 import { celebrateSmall } from '../lib/celebrate';
 import { haptic } from '../lib/haptics';
 import { DailyChallenge } from '../components/DailyChallenge';
+import { TrialBanner } from '../components/TrialBanner';
 import { Sparkles as SparklesIcon } from 'lucide-react';
 
 export const Home: React.FC = () => {
@@ -314,6 +315,8 @@ export const Home: React.FC = () => {
           </span>
         </div>
       </div>
+
+      <TrialBanner />
 
       <AnimatePresence>
         {showNotifs && (

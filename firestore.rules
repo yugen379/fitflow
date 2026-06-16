@@ -21,6 +21,11 @@ service cloud.firestore {
              data.displayName is string &&
              data.photoURL is string &&
              data.subscriptionType in ['free', 'premium'] &&
+             // Trial start is fixed to the server clock at creation -> tamper-proof and immutable.
+             (!('trialStartedAt' in data) || data.trialStartedAt == request.time) &&
+             (!('subscriptionStatus' in data) || data.subscriptionStatus in ['trialing', 'free']) &&
+             (!('macroTargets' in data) || data.macroTargets is map) &&
+             (!('dayTargets' in data) || data.dayTargets is map) &&
              (!('uid' in data) || data.uid == request.auth.uid) &&
              (!('streak' in data) || data.streak is number) &&
              (!('points' in data) || data.points is number) &&
@@ -170,7 +175,12 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().subscriptionType == 'free';
       allow update: if isOwner(userId) && (
-        // Action: Update Profile Info (allows fields added for flagship features)
+        // Action: Update Profile Info (allows fields added for flagship features).
+        // NOTE: billing fields (subscriptionType, subscriptionStatus, trialStartedAt,
+        // plan, stripeCustomerId, stripeSubscriptionId, currentPeriodEnd,
+        // cancelAtPeriodEnd, graceUntil, subscriptionUpdatedAt) are deliberately
+        // NOT in this list — only the Stripe webhook (admin SDK) may write them,
+        // so a client can never grant itself Pro.
         incoming().diff(existing()).affectedKeys().hasOnly([
           'displayName', 'photoURL', 'age', 'weight', 'height', 'goal', 'goalWeight',
           'streak', 'points', 'level', 'badges',
@@ -184,6 +194,8 @@ service cloud.firestore {
           'weightUnit',
           'googleFitConnected', 'googleFitAccessToken', 'googleFitExpiry',
           'healthConnectConnected', 'healthKitConnected', 'lastHealthSync', 'lastHealthSource',
+          // User-owned nutrition preferences (safe for the client to set).
+          'macroTargets', 'dayTargets', 'trialEndingNotifiedAt',
         ])
       );
       allow delete: if isOwner(userId);

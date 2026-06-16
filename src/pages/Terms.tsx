@@ -7,8 +7,8 @@ const COMPANY = 'FitFlow, Inc.';
 const COMPANY_ADDRESS = '[REPLACE WITH REGISTERED BUSINESS ADDRESS]';
 const GOVERNING_LAW = '[REPLACE — e.g. State of Delaware, USA]';
 const ARBITRATION_VENUE = '[REPLACE — e.g. American Arbitration Association]';
-const LEGAL_EMAIL = 'legal@fitflow.app';
-const LAST_UPDATED = '2026-06-06';
+const LEGAL_EMAIL = 'fitflow2000@gmail.com';
+const LAST_UPDATED = '2026-06-15';
 
 export const Terms: React.FC = () => {
   const navigate = useNavigate();
@@ -102,9 +102,9 @@ export const Terms: React.FC = () => {
 
         <Section title="7. Subscriptions and refunds">
           <List items={[
-            'FitFlow Pro is a recurring subscription billed monthly or yearly via Stripe (web) or the platform store (mobile).',
-            'Trials, if offered, convert to a paid subscription unless you cancel before the trial ends.',
-            'Cancel at any time in Settings or your platform store; cancellation takes effect at the end of the current billing period.',
+            'FitFlow Pro is a recurring subscription billed monthly ($17.99) or yearly ($59.88) via Stripe (web) or the platform store (mobile).',
+            'New accounts include a 6-day free trial that requires no credit card and never auto-charges. When the trial ends, your account simply reverts to the free tier unless you choose to subscribe.',
+            'Cancel at any time in Settings or your platform store; cancellation takes effect at the end of the current paid billing period.',
             'Refunds: we generally do not offer prorated refunds. EU/UK users have statutory withdrawal rights as required by law.',
             'Pricing may change with at least 14 days notice for active subscribers.',
           ]} />

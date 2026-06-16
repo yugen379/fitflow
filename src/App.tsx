@@ -30,6 +30,7 @@ const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Pri
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })));
 const Pro = lazy(() => import('./pages/Pro').then(m => ({ default: m.Pro })));
 const Coach = lazy(() => import('./pages/Coach').then(m => ({ default: m.Coach })));
+const NutritionGoals = lazy(() => import('./pages/NutritionGoals').then(m => ({ default: m.NutritionGoals })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, loading } = useAuth();
@@ -223,6 +224,7 @@ export default function App() {
             <Route path="/terms" element={lazyRoute(<Terms />)} />
             <Route path="/pro" element={<ProtectedRoute>{lazyRoute(<Pro />)}</ProtectedRoute>} />
             <Route path="/coach" element={<ProtectedRoute>{lazyRoute(<Coach />)}</ProtectedRoute>} />
+            <Route path="/nutrition-goals" element={<ProtectedRoute>{lazyRoute(<NutritionGoals />)}</ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Sparkles, X, Check, Crown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { isProUnlocked } from '../lib/billing';
 
@@ -24,25 +21,17 @@ const PERKS = [
 
 export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, className }) => {
   const { profile } = useAuth();
-  const { showToast } = useToast();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
-  const [upgrading, setUpgrading] = useState(false);
 
   if (isProUnlocked(profile)) return <>{children}</>;
 
-  const handleUpgrade = async () => {
-    if (!profile?.uid) return;
-    setUpgrading(true);
-    try {
-      await updateDoc(doc(db, 'users', profile.uid), { subscriptionType: 'premium' });
-      showToast('Welcome to FitFlow Pro', 'success');
-      setShowModal(false);
-    } catch {
-      showToast('Upgrade failed. Try again.', 'error');
-    } finally {
-      setUpgrading(false);
-    }
+  // Entitlement (trial + paid) is granted only server-side via the Stripe
+  // webhook — the client never writes billing fields. The gate just routes to
+  // the Pro page where checkout happens.
+  const handleUpgrade = () => {
+    setShowModal(false);
+    navigate('/pro');
   };
 
   return (
@@ -107,23 +96,16 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
 
               <div className="space-y-3 relative">
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="num font-display text-4xl font-bold text-white">$9.99</span>
-                  <span className="text-text-dim text-sm">/ month</span>
+                  <span className="num font-display text-4xl font-bold text-white">$4.99</span>
+                  <span className="text-text-dim text-sm">/ month, billed yearly</span>
                 </div>
-                <button
-                  onClick={handleUpgrade}
-                  disabled={upgrading}
-                  className="btn-3d w-full h-13"
-                >
+                <button onClick={handleUpgrade} className="btn-3d w-full h-13">
                   <Sparkles size={14} />
-                  {upgrading ? 'Processing…' : 'Start 7-day free trial'}
+                  See plans &amp; subscribe
                 </button>
-                <button
-                  onClick={() => { setShowModal(false); navigate('/pro'); }}
-                  className="w-full text-center text-xs text-text-dim hover:text-white transition-colors"
-                >
-                  See all plans →
-                </button>
+                <p className="w-full text-center text-xs text-text-mute">
+                  New accounts get a 6-day free trial — no card needed.
+                </p>
               </div>
             </motion.div>
           </div>

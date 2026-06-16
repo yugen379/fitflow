@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, Globe, Ruler, Bell, Shield, FileText, Download, Trash2,
-  LogOut, ChevronRight, X, Loader2, Mail, Camera, Mic, Check, Sparkles,
+  LogOut, ChevronRight, X, Loader2, Mail, Camera, Mic, Check, Sparkles, Crown,
 } from 'lucide-react';
 import { PermissionsPrompt } from '../components/PermissionsPrompt';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { allFeaturesFree, getEntitlement } from '../lib/billing';
+import { openBillingPortal, isPortalConfigured } from '../services/stripeService';
 import { db, auth, requestNotificationPermission } from '../lib/firebase';
 import {
   doc, updateDoc, deleteDoc, serverTimestamp,
@@ -28,6 +30,27 @@ export const Settings: React.FC = () => {
   const [camStatus, setCamStatus] = useState<'idle' | 'granted' | 'denied' | 'checking'>('idle');
   const [micStatus, setMicStatus] = useState<'idle' | 'granted' | 'denied' | 'checking'>('idle');
   const [permsPromptOpen, setPermsPromptOpen] = useState(false);
+  const [managingBilling, setManagingBilling] = useState(false);
+
+  const ent = getEntitlement(profile);
+  const billingLabel = allFeaturesFree()
+    ? 'FitFlow Pro · free during launch'
+    : ent.source === 'paid'
+      ? `Pro · ${ent.plan === 'yearly' ? 'Yearly' : 'Monthly'}${ent.cancelAtPeriodEnd ? ' · cancels at period end' : ''}`
+      : ent.source === 'trial'
+        ? `Free trial · ${ent.trialDaysLeft} ${ent.trialDaysLeft === 1 ? 'day' : 'days'} left`
+        : ent.status === 'expired'
+          ? 'Trial ended · subscribe to unlock Pro'
+          : 'Free plan';
+
+  const manageBilling = async () => {
+    if (ent.source !== 'paid') { navigate('/pro'); return; }
+    if (!isPortalConfigured()) { showToast('Subscription management is being set up.', 'info'); return; }
+    setManagingBilling(true);
+    const result = await openBillingPortal();
+    setManagingBilling(false);
+    if (!result.ok) showToast(result.reason || 'Could not open billing portal', 'error');
+  };
 
   const testCamera = async () => {
     setCamStatus('checking');
@@ -183,6 +206,26 @@ export const Settings: React.FC = () => {
         </div>
       </header>
 
+      <Section title="Subscription">
+        <button onClick={manageBilling} disabled={managingBilling} className="w-full text-left">
+          <Row icon={Crown} label="FitFlow Pro" sub={billingLabel}>
+            {managingBilling
+              ? <Loader2 size={16} className="text-text-dim animate-spin" />
+              : <span className="text-xs font-semibold text-accent">
+                  {ent.source === 'paid' ? 'Manage' : 'View plans'}
+                </span>}
+          </Row>
+        </button>
+      </Section>
+
+      <Section title="Nutrition">
+        <button onClick={() => navigate('/nutrition-goals')} className="w-full text-left">
+          <Row icon={Ruler} label="Macro targets" sub="Calories, macro split, goal-by-day scheduling">
+            <ChevronRight size={16} className="text-text-dim" />
+          </Row>
+        </button>
+      </Section>
+
       <Section title="Display">
         <Row icon={Ruler} label="Weight units">
           <div className="flex bg-surface rounded-xl p-1 border border-white/[0.06]">
@@ -293,8 +336,8 @@ export const Settings: React.FC = () => {
             <ChevronRight size={16} className="text-text-dim" />
           </Row>
         </button>
-        <a href="mailto:support@fitflow.app" className="block">
-          <Row icon={Mail} label="Contact support" sub="support@fitflow.app">
+        <a href="mailto:fitflow2000@gmail.com" className="block">
+          <Row icon={Mail} label="Contact support" sub="fitflow2000@gmail.com">
             <ChevronRight size={16} className="text-text-dim" />
           </Row>
         </a>

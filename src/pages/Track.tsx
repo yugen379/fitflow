@@ -13,10 +13,13 @@ import { db } from '../lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useToast } from '../hooks/useToast';
+import { useNavigate } from 'react-router-dom';
+import { computeDailyTargets } from '../lib/nutritionTargets';
 
 export const Track: React.FC = () => {
   const { profile } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [aiOpen, setAiOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
@@ -583,7 +586,8 @@ export const Track: React.FC = () => {
   const totalProtein = meals.reduce((a, m) => a + (m.protein || 0), 0);
   const totalCarbs = meals.reduce((a, m) => a + (m.carbs || 0), 0);
   const totalFats = meals.reduce((a, m) => a + (m.fats || 0), 0);
-  const targetCals = profile?.goal === 'fat_loss' ? 1800 : profile?.goal === 'muscle_gain' ? 2800 : 2200;
+  const targets = computeDailyTargets(profile);
+  const targetCals = targets.calories;
 
   return (
     <div className="pb-28 pt-4 px-4 space-y-5">
@@ -628,14 +632,21 @@ export const Track: React.FC = () => {
       <div className="glass p-5 space-y-4">
         <div className="flex justify-between items-baseline">
           <div>
-            <p className="text-xs text-text-dim">Calories</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-text-dim">Calories</p>
+              {targets.dayType !== 'base' && (
+                <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-accent/15 text-accent">
+                  {targets.dayType === 'workout' ? 'Gym day' : 'Rest day'}
+                </span>
+              )}
+            </div>
             <p className="font-display text-3xl font-bold text-white num mt-1">
               {totalCals}<span className="text-base text-text-dim font-medium"> / {targetCals}</span>
             </p>
           </div>
-          <span className="num text-sm text-accent font-semibold">
+          <button onClick={() => navigate('/nutrition-goals')} className="num text-sm text-accent font-semibold flex items-center gap-1">
             {Math.max(targetCals - totalCals, 0)} left
-          </span>
+          </button>
         </div>
         <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
           <div
@@ -644,10 +655,16 @@ export const Track: React.FC = () => {
           />
         </div>
         <div className="grid grid-cols-3 gap-3 pt-2">
-          <Macro label="Protein" value={totalProtein} color="text-accent" />
-          <Macro label="Carbs" value={totalCarbs} color="text-accent-3" />
-          <Macro label="Fats" value={totalFats} color="text-accent-2" />
+          <Macro label="Protein" value={totalProtein} target={targets.proteinG} color="text-accent" />
+          <Macro label="Carbs" value={totalCarbs} target={targets.carbsG} color="text-accent-3" />
+          <Macro label="Fats" value={totalFats} target={targets.fatsG} color="text-accent-2" />
         </div>
+        <button
+          onClick={() => navigate('/nutrition-goals')}
+          className="w-full text-center text-xs text-text-dim hover:text-white transition-colors pt-1"
+        >
+          Adjust macro targets →
+        </button>
       </div>
 
       {/* CTA row */}
@@ -1085,10 +1102,12 @@ const MacroInput: React.FC<{ label: string; value: number; onChange: (n: number)
   </div>
 );
 
-const Macro: React.FC<{ label: string; value: number; color: string }> = ({ label, value, color }) => (
+const Macro: React.FC<{ label: string; value: number; target?: number; color: string }> = ({ label, value, target, color }) => (
   <div>
     <p className="text-xs text-text-dim">{label}</p>
-    <p className={`num text-lg font-semibold mt-0.5 ${color}`}>{value}g</p>
+    <p className={`num text-lg font-semibold mt-0.5 ${color}`}>
+      {value}<span className="text-xs text-text-dim font-medium">{target ? `/${target}g` : 'g'}</span>
+    </p>
   </div>
 );
 

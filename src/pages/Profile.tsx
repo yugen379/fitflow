@@ -19,7 +19,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { useToast } from '../hooks/useToast';
 import { isHealthAvailable, connectAndPersist, DailyHealthMetrics } from '../services/healthService';
 import { Capacitor } from '@capacitor/core';
-import { allFeaturesFree } from '../lib/billing';
+import { allFeaturesFree, getEntitlement } from '../lib/billing';
 
 const ACCENT = '#C6FF3D';
 
@@ -177,7 +177,9 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const isPremium = profile?.subscriptionType === 'premium';
+  const ent = getEntitlement(profile);
+  // Crown badge appears for anyone with active Pro access (trial or paid).
+  const isPremium = ent.isPro;
 
   return (
     <div className="pb-28 pt-4 px-4 space-y-5">
@@ -235,7 +237,7 @@ export const Profile: React.FC = () => {
               AI form check, voice coaching, advanced analytics, unlimited meal plans.
             </p>
             <span className="inline-flex mt-3 px-4 py-2 bg-bg text-white rounded-xl text-sm font-semibold">
-              Start free trial
+              {ent.status === 'expired' ? 'Subscribe to FitFlow Pro' : 'See Pro plans'}
             </span>
           </div>
           <Crown className="absolute right-2 bottom-2 w-28 h-28 text-bg/10" />

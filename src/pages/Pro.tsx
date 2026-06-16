@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Check, Sparkles, Zap, Camera, Heart, TrendingUp, Bell, Crown } from 'lucide-react';
+import { ChevronLeft, Check, Sparkles, Zap, Camera, Heart, TrendingUp, Bell, Crown, Settings as SettingsIcon } from 'lucide-react';
 import { LogoMark } from '../components/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { startCheckout, isStripeConfigured } from '../services/stripeService';
-import { allFeaturesFree } from '../lib/billing';
+import { startCheckout, isStripeConfigured, openBillingPortal, isPortalConfigured } from '../services/stripeService';
+import { allFeaturesFree, getEntitlement, TRIAL_DAYS } from '../lib/billing';
 
 const FEATURES = [
-  { icon: Camera, title: 'Unlimited AI Form Check', sub: 'Live Gemini Vision form scoring on every set' },
+  { icon: Camera, title: 'Meal Scan AI + unlimited Form Check', sub: 'Snap a plate to log it; live Gemini Vision form scoring' },
   { icon: Sparkles, title: 'AI weekly recap & meal plans', sub: 'Personalized coach summary every Sunday' },
   { icon: Heart, title: 'Health Connect & HealthKit', sub: 'Native wearable sync with HR, sleep, exercise' },
-  { icon: TrendingUp, title: 'Advanced analytics', sub: 'Volume trends, muscle balance, plateau detection' },
-  { icon: Bell, title: 'Smart auto-scheduled reminders', sub: 'Learns when you actually train and nudges you' },
+  { icon: TrendingUp, title: 'Macros by the gram + advanced analytics', sub: 'Exact protein/fat/carb targets, plateau detection' },
+  { icon: Bell, title: 'Goal-by-day scheduling + smart reminders', sub: 'Higher carbs on training days, learns when you train' },
   { icon: Zap, title: 'Priority AI', sub: 'Faster Gemini responses, voice coaching during workouts' },
 ];
 
 const PLANS = [
-  { id: 'monthly' as const, label: 'Monthly', price: 9.99, perWhat: '/month', total: '$9.99 billed monthly' },
-  { id: 'yearly' as const, label: 'Yearly', price: 4.99, perWhat: '/month', total: '$59.88 billed yearly · save 50%', badge: 'Best value' },
+  { id: 'monthly' as const, label: 'Monthly', price: '17.99', perWhat: '/month', total: '$17.99 billed monthly' },
+  { id: 'yearly' as const, label: 'Yearly', price: '4.99', perWhat: '/month', total: '$59.88 billed yearly · save 72%', badge: 'Best value' },
 ];
+
+const fmtDate = (ms: number | null) =>
+  ms ? new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
 export const Pro: React.FC = () => {
   const navigate = useNavigate();
@@ -28,10 +31,15 @@ export const Pro: React.FC = () => {
   const { showToast } = useToast();
   const [plan, setPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [starting, setStarting] = useState(false);
-  const billingReady = isStripeConfigured();
-  const allFree = allFeaturesFree();
+  const [managing, setManaging] = useState(false);
 
-  const startTrial = async () => {
+  const allFree = allFeaturesFree();
+  const billingReady = isStripeConfigured();
+  const ent = getEntitlement(profile);
+  const isPaid = ent.isPro && ent.source === 'paid';
+  const isTrialing = ent.isPro && ent.source === 'trial';
+
+  const subscribe = async () => {
     if (allFree) {
       showToast('All features are free right now — enjoy.', 'success');
       navigate('/');
@@ -44,10 +52,38 @@ export const Pro: React.FC = () => {
     setStarting(true);
     const result = await startCheckout(plan);
     setStarting(false);
-    if (!result.ok) {
-      showToast(result.reason || 'Could not start checkout', 'error');
-    }
+    if (!result.ok) showToast(result.reason || 'Could not start checkout', 'error');
   };
+
+  const manage = async () => {
+    if (!isPortalConfigured()) {
+      showToast('Subscription management is being set up — try again shortly.', 'info');
+      return;
+    }
+    setManaging(true);
+    const result = await openBillingPortal();
+    setManaging(false);
+    if (!result.ok) showToast(result.reason || 'Could not open billing portal', 'error');
+  };
+
+  // Headline + subcopy by state
+  const headline = allFree
+    ? <>You have <span className="gradient-text-accent">FitFlow Pro</span></>
+    : isPaid
+      ? <>You're on <span className="gradient-text-accent">FitFlow Pro</span></>
+      : isTrialing
+        ? <><span className="gradient-text-accent">{ent.trialDaysLeft}</span> {ent.trialDaysLeft === 1 ? 'day' : 'days'} left in your trial</>
+        : <>Unlock <span className="gradient-text-accent">FitFlow Pro</span></>;
+
+  const subcopy = allFree
+    ? 'Every Pro feature is unlocked while we’re in launch. No payment, no trial countdown. Train.'
+    : isPaid
+      ? 'Thanks for going Pro. The full AI coach, native wearable sync, and unlimited everything are yours.'
+      : isTrialing
+        ? `You’re on a free ${TRIAL_DAYS}-day trial with everything unlocked — no card needed. Subscribe any time to keep Pro after it ends.`
+        : ent.status === 'expired'
+          ? 'Your free trial has ended. Subscribe to bring back the full AI coach, Meal Scan, and advanced analytics.'
+          : 'The full AI coach. Native wearable sync. Unlimited everything. Built to make every other fitness app obsolete.';
 
   return (
     <div className="pb-28 pt-4 px-5 min-h-screen relative overflow-hidden">
@@ -70,19 +106,35 @@ export const Pro: React.FC = () => {
         >
           <Crown size={28} className="text-bg" />
         </motion.div>
-        <h1 className="font-display text-4xl font-bold text-white tracking-tight leading-[1.05]">
-          {allFree
-            ? <>You have <span className="gradient-text-accent">FitFlow Pro</span></>
-            : <>Unlock <span className="gradient-text-accent">FitFlow Pro</span></>}
-        </h1>
-        <p className="text-text-dim text-base mt-3 max-w-sm leading-relaxed">
-          {allFree
-            ? 'Every Pro feature is unlocked while we’re in launch. No payment, no trial countdown. Train.'
-            : 'The full AI coach. Native wearable sync. Unlimited everything. Built to make every other fitness app obsolete.'}
-        </p>
+        <h1 className="font-display text-4xl font-bold text-white tracking-tight leading-[1.05]">{headline}</h1>
+        <p className="text-text-dim text-base mt-3 max-w-sm leading-relaxed">{subcopy}</p>
       </div>
 
-      {allFree ? (
+      {/* Paid state — manage subscription */}
+      {!allFree && isPaid && (
+        <div className="glass p-4 mb-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shrink-0">
+              <Crown size={16} />
+            </div>
+            <div className="flex-1">
+              <p className="text-eyebrow text-accent">{ent.plan === 'yearly' ? 'Yearly plan' : 'Monthly plan'}</p>
+              <p className="text-white text-sm font-medium mt-0.5">
+                {ent.cancelAtPeriodEnd
+                  ? `Access until ${fmtDate(ent.renewsAt)}`
+                  : ent.renewsAt ? `Renews ${fmtDate(ent.renewsAt)}` : 'Active'}
+              </p>
+            </div>
+          </div>
+          <button onClick={manage} disabled={managing} className="btn-3d w-full h-12 disabled:opacity-60">
+            <SettingsIcon size={14} />
+            {managing ? 'Opening…' : 'Manage subscription'}
+          </button>
+        </div>
+      )}
+
+      {/* Launch giveaway state */}
+      {allFree && (
         <div className="glass p-4 mb-5 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shrink-0">
             <Check size={16} />
@@ -92,7 +144,10 @@ export const Pro: React.FC = () => {
             <p className="text-white text-sm font-medium mt-0.5">All Pro features are free during launch.</p>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Plan picker — shown when not already paid and not in launch mode */}
+      {!allFree && !isPaid && (
         <div className="glass p-2 grid grid-cols-2 gap-2 mb-5">
           {PLANS.map(p => {
             const active = plan === p.id;
@@ -142,25 +197,23 @@ export const Pro: React.FC = () => {
         ))}
       </div>
 
-      <button
-        onClick={startTrial}
-        disabled={starting}
-        className="btn-3d w-full h-14 disabled:opacity-60"
-      >
-        {starting ? 'Opening checkout…' : allFree ? 'Continue training' : 'Start 7-day free trial'}
-      </button>
-      {!allFree && (
-        <p className="text-center text-xs text-text-mute mt-3 leading-relaxed">
-          Free for 7 days, then ${plan === 'yearly' ? '59.88/year' : '9.99/month'}. Cancel anytime in your{' '}
-          {/iPhone|iPad/.test(navigator.userAgent) ? 'App Store' : 'Play Store'} settings.
-        </p>
-      )}
-
-      {!allFree && profile?.subscriptionType === 'premium' && (
-        <div className="mt-6 glass p-4 flex items-center gap-3">
-          <Crown className="text-accent" size={18} />
-          <p className="text-sm text-white">You're already on Pro — thanks for supporting us.</p>
-        </div>
+      {/* Primary CTA */}
+      {allFree ? (
+        <button onClick={() => navigate('/')} className="btn-3d w-full h-14">Continue training</button>
+      ) : isPaid ? null : (
+        <>
+          <button onClick={subscribe} disabled={starting} className="btn-3d w-full h-14 disabled:opacity-60">
+            {starting ? 'Opening checkout…'
+              : isTrialing ? `Subscribe — ${plan === 'yearly' ? '$59.88/yr' : '$17.99/mo'}`
+              : 'Subscribe to FitFlow Pro'}
+          </button>
+          <p className="text-center text-xs text-text-mute mt-3 leading-relaxed">
+            {isTrialing
+              ? `Your trial keeps everything unlocked for ${ent.trialDaysLeft} more ${ent.trialDaysLeft === 1 ? 'day' : 'days'}. `
+              : `${TRIAL_DAYS}-day free trial included with every new account — no card needed. `}
+            Billed {plan === 'yearly' ? '$59.88/year' : '$17.99/month'}. Cancel anytime.
+          </p>
+        </>
       )}
     </div>
   );

@@ -55,6 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               displayName: user.displayName || 'Guest',
               photoURL: user.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.uid,
               subscriptionType: 'free',
+              // Cardless 6-day trial starts the instant the account is created.
+              // trialStartedAt == serverTimestamp() == rules' request.time, which
+              // makes it tamper-proof (the user can never reset or extend it).
+              trialStartedAt: serverTimestamp(),
+              subscriptionStatus: 'trialing',
               streak: 0,
               points: 0,
               level: 1,

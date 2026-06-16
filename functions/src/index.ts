@@ -14,117 +14,207 @@ const db = admin.firestore();
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
 // ---------------------------------------------------------------------------
-// Stripe billing — hosted Checkout + webhook to flip user.subscriptionType
+// Stripe billing — hosted Checkout + Billing Portal + webhook.
+//
+// Secrets live in Secret Manager (set with `firebase functions:secrets:set`):
+//   STRIPE_SECRET_KEY      — sk_live_… / sk_test_…
+//   STRIPE_WEBHOOK_SECRET  — whsec_…  (from the webhook endpoint in Stripe)
+//
+// The 6-day free trial is APP-MANAGED and cardless (see lib/billing.ts), so we
+// do NOT use Stripe's trial_period_days here — checkout charges immediately when
+// the user chooses to subscribe. The webhook is the ONLY writer of billing
+// fields on the user doc (admin SDK bypasses Firestore rules).
 // ---------------------------------------------------------------------------
+const GRACE_DAYS = 3;
+const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
+const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+
 const getStripe = (): Stripe | null => {
-  const key = (functions as any).config().stripe?.secret;
+  const key = stripeSecret.value() || process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   return new Stripe(key, { apiVersion: "2024-12-18.acacia" as any });
 };
 
-export const createCheckoutSession = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  if (req.method === "OPTIONS") {
-    res.set("Access-Control-Allow-Methods", "POST");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.status(204).send("");
+// Map a Stripe subscription onto our user-doc billing fields and persist it.
+const applySubscription = async (stripe: Stripe, sub: Stripe.Subscription) => {
+  const customerId = sub.customer as string;
+  const snap = await db.collection("users")
+    .where("stripeCustomerId", "==", customerId).limit(1).get();
+  if (snap.empty) {
+    console.warn("applySubscription: no user for customer", customerId);
     return;
   }
-  if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+  const ref = snap.docs[0].ref;
 
-  const stripe = getStripe();
-  if (!stripe) { res.status(500).json({ error: "Stripe not configured" }); return; }
+  const item = sub.items?.data?.[0];
+  const interval = item?.price?.recurring?.interval;
+  const plan = (sub.metadata?.plan as string) || (interval === "year" ? "yearly" : "monthly");
+  const periodEndMs = sub.current_period_end ? sub.current_period_end * 1000 : null;
 
-  try {
-    const authHeader = req.headers.authorization || "";
-    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!idToken) { res.status(401).json({ error: "Missing auth token" }); return; }
-    const decoded = await admin.auth().verifyIdToken(idToken);
-    const uid = decoded.uid;
+  // Entitlement decision lives server-side: premium while healthy or within grace.
+  const entitledStatuses = ["active", "trialing"];
+  const isEntitled = entitledStatuses.includes(sub.status);
+  const isPastDue = sub.status === "past_due";
 
-    const { priceId, successUrl, cancelUrl } = req.body || {};
-    if (!priceId) { res.status(400).json({ error: "Missing priceId" }); return; }
-
-    // Reuse the existing Stripe customer if we've seen this uid before
-    const userDoc = await db.doc(`users/${uid}`).get();
-    let customerId = userDoc.data()?.stripeCustomerId as string | undefined;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: decoded.email,
-        metadata: { firebaseUid: uid },
-      });
-      customerId = customer.id;
-      await db.doc(`users/${uid}`).update({ stripeCustomerId: customerId });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { trial_period_days: 7, metadata: { firebaseUid: uid } },
-      allow_promotion_codes: true,
-      success_url: successUrl || "https://fitflow.app/pro?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: cancelUrl || "https://fitflow.app/pro",
-    });
-
-    res.json({ url: session.url, id: session.id });
-  } catch (err: any) {
-    console.error("createCheckoutSession error:", err);
-    res.status(500).json({ error: err?.message || "Checkout failed" });
-  }
-});
-
-export const stripeWebhook = functions.https.onRequest(async (req, res) => {
-  const stripe = getStripe();
-  const webhookSecret = (functions as any).config().stripe?.webhook;
-  if (!stripe || !webhookSecret) { res.status(500).send("Stripe not configured"); return; }
-
-  const sig = req.headers["stripe-signature"] as string;
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent((req as any).rawBody, sig, webhookSecret);
-  } catch (err: any) {
-    console.error("Webhook signature failed:", err?.message);
-    res.status(400).send(`Webhook Error: ${err?.message}`);
-    return;
-  }
-
-  const setSubscription = async (customerId: string, status: "premium" | "free") => {
-    const snap = await db.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
-    if (snap.empty) return;
-    await snap.docs[0].ref.update({
-      subscriptionType: status,
-      subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+  const update: Record<string, any> = {
+    subscriptionType: isEntitled || isPastDue ? "premium" : "free",
+    subscriptionStatus: sub.status,
+    plan,
+    stripeSubscriptionId: sub.id,
+    currentPeriodEnd: periodEndMs,
+    cancelAtPeriodEnd: !!sub.cancel_at_period_end,
+    subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
+  // Past-due keeps Pro for a short dunning grace window, then the next Stripe
+  // event (canceled/unpaid) flips it to free.
+  update.graceUntil = isPastDue ? Date.now() + GRACE_DAYS * 86_400_000 : null;
 
-  try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        if (session.customer && session.subscription) {
-          await setSubscription(session.customer as string, "premium");
-        }
-        break;
-      }
-      case "customer.subscription.updated": {
-        const sub = event.data.object as Stripe.Subscription;
-        const active = ["active", "trialing"].includes(sub.status);
-        await setSubscription(sub.customer as string, active ? "premium" : "free");
-        break;
-      }
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        await setSubscription(sub.customer as string, "free");
-        break;
-      }
+  await ref.set(update, { merge: true });
+};
+
+export const createCheckoutSession = functions.https.onRequest(
+  { secrets: [stripeSecret] },
+  async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+      res.set("Access-Control-Allow-Methods", "POST");
+      res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.status(204).send("");
+      return;
     }
-    res.json({ received: true });
-  } catch (err: any) {
-    console.error("Webhook handler error:", err);
-    res.status(500).send("Internal");
-  }
-});
+    if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+    const stripe = getStripe();
+    if (!stripe) { res.status(500).json({ error: "Stripe not configured" }); return; }
+
+    try {
+      const authHeader = req.headers.authorization || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (!idToken) { res.status(401).json({ error: "Missing auth token" }); return; }
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const uid = decoded.uid;
+
+      const { priceId, plan, successUrl, cancelUrl } = req.body || {};
+      if (!priceId) { res.status(400).json({ error: "Missing priceId" }); return; }
+
+      // Reuse the existing Stripe customer if we've seen this uid before
+      const userDoc = await db.doc(`users/${uid}`).get();
+      let customerId = userDoc.data()?.stripeCustomerId as string | undefined;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: decoded.email,
+          metadata: { firebaseUid: uid },
+        });
+        customerId = customer.id;
+        await db.doc(`users/${uid}`).set({ stripeCustomerId: customerId }, { merge: true });
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        subscription_data: {
+          metadata: { firebaseUid: uid, plan: plan === "yearly" ? "yearly" : "monthly" },
+        },
+        allow_promotion_codes: true,
+        success_url: successUrl || "https://fitflow.com/pro?status=success",
+        cancel_url: cancelUrl || "https://fitflow.com/pro?status=cancelled",
+      });
+
+      res.json({ url: session.url, id: session.id });
+    } catch (err: any) {
+      console.error("createCheckoutSession error:", err);
+      res.status(500).json({ error: err?.message || "Checkout failed" });
+    }
+  });
+
+// Stripe Billing Portal — lets a paying user manage/cancel their subscription.
+export const createPortalSession = functions.https.onRequest(
+  { secrets: [stripeSecret] },
+  async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+      res.set("Access-Control-Allow-Methods", "POST");
+      res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.status(204).send("");
+      return;
+    }
+    if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+    const stripe = getStripe();
+    if (!stripe) { res.status(500).json({ error: "Stripe not configured" }); return; }
+
+    try {
+      const authHeader = req.headers.authorization || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (!idToken) { res.status(401).json({ error: "Missing auth token" }); return; }
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const uid = decoded.uid;
+
+      const userDoc = await db.doc(`users/${uid}`).get();
+      const customerId = userDoc.data()?.stripeCustomerId as string | undefined;
+      if (!customerId) { res.status(400).json({ error: "No billing account yet." }); return; }
+
+      const { returnUrl } = req.body || {};
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: returnUrl || "https://fitflow.com/settings",
+      });
+      res.json({ url: session.url });
+    } catch (err: any) {
+      console.error("createPortalSession error:", err);
+      res.status(500).json({ error: err?.message || "Portal failed" });
+    }
+  });
+
+export const stripeWebhook = functions.https.onRequest(
+  { secrets: [stripeSecret, stripeWebhookSecret] },
+  async (req, res) => {
+    const stripe = getStripe();
+    const webhookSecret = stripeWebhookSecret.value() || process.env.STRIPE_WEBHOOK_SECRET;
+    if (!stripe || !webhookSecret) { res.status(500).send("Stripe not configured"); return; }
+
+    const sig = req.headers["stripe-signature"] as string;
+    let event: Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent((req as any).rawBody, sig, webhookSecret);
+    } catch (err: any) {
+      console.error("Webhook signature failed:", err?.message);
+      res.status(400).send(`Webhook Error: ${err?.message}`);
+      return;
+    }
+
+    try {
+      switch (event.type) {
+        case "checkout.session.completed": {
+          const session = event.data.object as Stripe.Checkout.Session;
+          if (session.subscription) {
+            const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+            await applySubscription(stripe, sub);
+          }
+          break;
+        }
+        case "customer.subscription.created":
+        case "customer.subscription.updated":
+        case "customer.subscription.deleted": {
+          await applySubscription(stripe, event.data.object as Stripe.Subscription);
+          break;
+        }
+        case "invoice.payment_failed": {
+          const invoice = event.data.object as Stripe.Invoice;
+          if ((invoice as any).subscription) {
+            const sub = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
+            await applySubscription(stripe, sub);
+          }
+          break;
+        }
+      }
+      res.json({ received: true });
+    } catch (err: any) {
+      console.error("Webhook handler error:", err);
+      res.status(500).send("Internal");
+    }
+  });
 
 // ---------------------------------------------------------------------------
 // Account deletion — server-side cascade (more robust than client-side)
@@ -561,6 +651,73 @@ Tone: warm, direct, like a real human coach. No emojis.`,
         }
       } catch (err) {
         console.warn("Recap generation failed for", uid, err);
+      }
+    });
+
+    await Promise.all(tasks);
+  });
+
+// ---------------------------------------------------------------------------
+// Trial-ending nudge — runs daily, pushes a conversion reminder to users whose
+// cardless 6-day trial has ~1 day left and who haven't subscribed yet.
+// Idempotency: trialEndingNotifiedAt prevents repeat sends. (Keep TRIAL_DAYS in
+// sync with src/lib/billing.ts.)
+// ---------------------------------------------------------------------------
+const TRIAL_DAYS = 6;
+
+export const sendTrialEndingReminders = onSchedule(
+  { schedule: "every day 16:00", timeZone: "UTC" },
+  async () => {
+    const now = Date.now();
+    const dayMs = 86_400_000;
+
+    const snap = await db
+      .collection("users")
+      .where("notificationsEnabled", "==", true)
+      .get();
+
+    const messaging = admin.messaging();
+
+    const tasks = snap.docs.map(async (doc) => {
+      const u = doc.data() as any;
+      // Skip users who already pay or never started a trial.
+      if (u.subscriptionType === "premium") return;
+      if (u.trialEndingNotifiedAt) return;
+      if (!u.fcmToken) return;
+
+      const startMs = u.trialStartedAt?.toMillis ? u.trialStartedAt.toMillis()
+        : (typeof u.trialStartedAt?._seconds === "number" ? u.trialStartedAt._seconds * 1000 : null);
+      if (startMs == null) return;
+
+      const endMs = startMs + TRIAL_DAYS * dayMs;
+      const msLeft = endMs - now;
+      // Fire only on the final day of the trial (0 < left <= 24h).
+      if (msLeft <= 0 || msLeft > dayMs) return;
+
+      try {
+        await messaging.send({
+          token: u.fcmToken,
+          notification: {
+            title: "Your free trial ends tomorrow",
+            body: "Keep your AI coach, form check & analytics — subscribe to stay Pro.",
+          },
+          data: { type: "trial_ending" },
+          android: { priority: "high", notification: { channelId: "fitflow_reminders" } },
+        });
+        await doc.ref.set(
+          { trialEndingNotifiedAt: admin.firestore.FieldValue.serverTimestamp() },
+          { merge: true },
+        );
+        await db.collection("notifications").add({
+          userId: doc.id,
+          title: "Your free trial ends tomorrow",
+          body: "Subscribe to keep FitFlow Pro.",
+          type: "system",
+          read: false,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Trial-ending reminder failed for", doc.id, err);
       }
     });
 
