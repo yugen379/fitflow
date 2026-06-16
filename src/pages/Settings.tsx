@@ -207,15 +207,24 @@ export const Settings: React.FC = () => {
       </header>
 
       <Section title="Subscription">
-        <button onClick={manageBilling} disabled={managingBilling} className="w-full text-left">
-          <Row icon={Crown} label="FitFlow Pro" sub={billingLabel}>
-            {managingBilling
-              ? <Loader2 size={16} className="text-text-dim animate-spin" />
-              : <span className="text-xs font-semibold text-accent">
-                  {ent.source === 'paid' ? 'Manage' : 'View plans'}
-                </span>}
-          </Row>
-        </button>
+        <Row icon={Crown} label="FitFlow Pro" sub={billingLabel} />
+        {!allFeaturesFree() && (
+          <div className="p-3">
+            <button
+              onClick={manageBilling}
+              disabled={managingBilling}
+              className="btn-3d w-full h-12 disabled:opacity-60"
+            >
+              {managingBilling ? (
+                <><Loader2 size={16} className="animate-spin" /> Opening…</>
+              ) : ent.source === 'paid' ? (
+                <><Crown size={16} /> Manage subscription</>
+              ) : (
+                <><Sparkles size={16} /> Upgrade to Pro</>
+              )}
+            </button>
+          </div>
+        )}
       </Section>
 
       <Section title="Nutrition">
