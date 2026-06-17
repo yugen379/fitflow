@@ -27,7 +27,29 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   reset = () => {
-    window.location.assign('/');
+    // Full reload remounts the tree (clears the error state). assign('/') also
+    // gets a user off whatever sub-route crashed and back to a known-good entry.
+    if (window.location.pathname !== '/') window.location.assign('/');
+    else window.location.reload();
+  };
+
+  // Self-heal: a crash from a stale/half-cached service-worker build would
+  // otherwise loop forever (reload -> same broken assets -> crash). Clearing the
+  // SW + caches forces a clean fetch of the latest deploy on the next load.
+  hardReset = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (typeof caches !== 'undefined') {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch {
+      /* best effort */
+    }
+    window.location.replace('/');
   };
 
   render() {
@@ -37,16 +59,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <LogoMark size={56} />
         <h1 className="font-display text-3xl font-bold text-white mt-8 tracking-tight">Something broke.</h1>
         <p className="text-text-dim text-sm max-w-xs mt-3 leading-relaxed">
-          We hit an unexpected error. Your data is safe. Try going back to the home screen.
+          We hit an unexpected error. Your data is safe. Try reloading — if it keeps happening, tap “Reset &amp; reload”.
         </p>
         {this.state.error?.message && (
           <pre className="text-xs text-text-mute max-w-sm mt-4 px-4 py-3 bg-surface rounded-xl border border-white/[0.06] overflow-auto">
             {this.state.error.message}
           </pre>
         )}
-        <button onClick={this.reset} className="btn-3d mt-8 h-12 px-8">
-          Back to home
-        </button>
+        <div className="flex flex-col gap-2 mt-8 w-full max-w-xs">
+          <button onClick={this.reset} className="btn-3d h-12 px-8">Back to home</button>
+          <button onClick={this.hardReset} className="h-11 px-8 rounded-xl bg-white/[0.05] text-text-dim text-sm font-medium hover:text-white transition-colors">
+            Reset &amp; reload (clear cache)
+          </button>
+        </div>
       </div>
     );
   }

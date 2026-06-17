@@ -37,6 +37,11 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 3000000,
+          // Take over immediately on update and purge stale precaches so a new
+          // deploy can never leave a returning user on a broken half-cached app.
+          skipWaiting: true,
+          clientsClaim: true,
+          cleanupOutdatedCaches: true,
           // Firebase reserves /__/auth/* and /__/firebase/* for OAuth handlers and SDK init.
           // If the service worker serves the SPA shell for these, sign-in redirect breaks.
           navigateFallbackDenylist: [/^\/__\//],

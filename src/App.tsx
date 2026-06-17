@@ -203,6 +203,7 @@ const lazyRoute = (el: React.ReactNode) => (
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <ToastProvider>
       <AuthProvider>
         <Router>
@@ -230,5 +231,6 @@ export default function App() {
         </Router>
       </AuthProvider>
     </ToastProvider>
+    </ErrorBoundary>
   );
 }
