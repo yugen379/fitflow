@@ -105,7 +105,7 @@ jobs:
           EOF
 
       - name: Build signed AAB
-        run: cd android && ./gradlew bundleRelease
+        run: cd android && chmod +x gradlew && ./gradlew bundleRelease
 
       - uses: actions/upload-artifact@v4
         with:
