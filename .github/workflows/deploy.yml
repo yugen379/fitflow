@@ -95,14 +95,21 @@ jobs:
         run: npx cap sync android
 
       - name: Restore signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/fitflow-release.keystore
-          cat > android/keystore.properties << EOF
-          storeFile=app/fitflow-release.keystore
-          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          EOF
+          # Match the working android-apk.yml exactly: keystore at android/ root,
+          # storeFile resolved relative to the app module via '../', single password
+          # for store+key, alias 'fitflow'. (Previous version wrote to android/app
+          # with storeFile=app/... → resolved to android/app/app/... → not found.)
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/fitflow-release.keystore
+          {
+            echo "storeFile=../fitflow-release.keystore"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=fitflow"
+            echo "keyPassword=$ANDROID_KEYSTORE_PASSWORD"
+          } > android/keystore.properties
 
       - name: Build signed AAB
         run: cd android && chmod +x gradlew && ./gradlew bundleRelease
