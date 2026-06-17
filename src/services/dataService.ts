@@ -73,6 +73,9 @@ export const logMeal = async (userId: string, meal: Omit<MealRecord, 'id' | 'tim
       carbs: (meal as any).carbs,
       fats: (meal as any).fats,
     });
+    // Denormalize lastMealAt for the server-side meal-time nudge (engagementUtils):
+    // the function suppresses a nudge once anything's been logged today. Best-effort.
+    try { await updateDoc(doc(db, 'users', userId), { lastMealAt: serverTimestamp() }); } catch { /* best-effort */ }
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', 'meals');

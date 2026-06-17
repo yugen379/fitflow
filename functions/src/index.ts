@@ -723,3 +723,143 @@ export const sendTrialEndingReminders = onSchedule(
 
     await Promise.all(tasks);
   });
+
+// ---------------------------------------------------------------------------
+// Proactive re-engagement nudges — the three highest-leverage retention pushes,
+// in ONE every-30-min scan (cost: a single users read per run). Per user we
+// evaluate all three triggers and send AT MOST ONE push (priority: streak-risk >
+// win-back > meal-nudge) so nobody gets double-pushed in a run.
+//
+// All decision logic mirrors src/services/engagementUtils.ts (proven 100% by
+// `npm run proof:engagement`). KEEP THESE CONSTANTS IN SYNC with that module.
+//   streak-risk: streak >= 2, active yesterday (not today), local hour >= 19
+//   meal-nudge : local hour 12–15, nothing logged today
+//   win-back   : exactly 1/3/7/14/30 days since last active, fired at ~10:00 local
+// Idempotency lives in user-doc fields written here via the admin SDK (which
+// bypasses Firestore rules): streakRiskNotifiedDate, mealNudgeDate, winbackLastTier.
+// The client resets winbackLastTier to 0 on every active day (analyticsService).
+// ---------------------------------------------------------------------------
+const ENG = {
+  STREAK_RISK_MIN: 2,
+  STREAK_RISK_HOUR: 19,
+  MEAL_NUDGE_HOUR_START: 12,
+  MEAL_NUDGE_HOUR_END: 15,
+  WINBACK_TIERS: [1, 3, 7, 14, 30] as readonly number[],
+  WINBACK_HOUR: 10, // local hour to send the daily win-back check (once/day/user)
+};
+
+const WINBACK_COPY: Record<number, { title: string; body: string }> = {
+  1: { title: "Pick up where you left off", body: "A 2-minute log keeps your momentum going. You’ve got this." },
+  3: { title: "Your coach misses you", body: "Three days off is fine — jump back in and we’ll adjust your plan." },
+  7: { title: "One week — let’s restart", body: "A fresh week is the perfect reset. Log one thing to get rolling." },
+  14: { title: "Still here for you", body: "Two weeks out. Your data’s exactly where you left it — come finish what you started." },
+  30: { title: "We saved your spot", body: "A month away happens. One tap brings your whole plan back to life." },
+};
+
+// 'YYYY-MM-DD' (UTC fields of a wall-clock-shifted instant) → whole-day ordinal.
+const engDayOrdinal = (key: string): number | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || "");
+  if (!m) return null;
+  return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000);
+};
+
+export const sendEngagementNudges = onSchedule(
+  { schedule: "every 30 minutes", timeZone: "UTC" },
+  async () => {
+    const now = Date.now();
+    const snap = await db
+      .collection("users")
+      .where("notificationsEnabled", "==", true)
+      .get();
+    const messaging = admin.messaging();
+
+    const tasks = snap.docs.map(async (doc) => {
+      const u = doc.data() as any;
+      if (!u.fcmToken) return;
+
+      // User-local wall clock (offsetHours = localHour - utcHour; default UTC).
+      const offsetHours = typeof u.tzOffsetHours === "number" ? u.tzOffsetHours : 0;
+      const localMs = now + offsetHours * 3600_000;
+      const local = new Date(localMs);
+      const hourLocal = local.getUTCHours();
+      const today = local.toISOString().slice(0, 10);
+      const todayOrd = engDayOrdinal(today)!;
+      const startOfTodayMs = Math.floor(localMs / 86400000) * 86400000 - offsetHours * 3600_000;
+
+      const lastActiveDay: string | null = typeof u.lastActiveDay === "string" ? u.lastActiveDay : null;
+      const lastActiveOrd = lastActiveDay ? engDayOrdinal(lastActiveDay) : null;
+      const streak = Number(u.currentStreak) || 0;
+
+      let push: { title: string; body: string; type: string; update: Record<string, any> } | null = null;
+
+      // --- 1. Streak-at-risk (highest priority) ---
+      if (
+        streak >= ENG.STREAK_RISK_MIN &&
+        lastActiveOrd !== null &&
+        todayOrd - lastActiveOrd === 1 &&
+        hourLocal >= ENG.STREAK_RISK_HOUR &&
+        u.streakRiskNotifiedDate !== today
+      ) {
+        push = {
+          title: `🔥 Your ${streak}-day streak ends at midnight`,
+          body: `Don't lose it now — a quick log keeps your ${streak}-day streak alive.`,
+          type: "streak_risk",
+          update: { streakRiskNotifiedDate: today },
+        };
+      }
+
+      // --- 2. Win-back (fired once/day at ~10:00 local) ---
+      if (!push && lastActiveOrd !== null && hourLocal === ENG.WINBACK_HOUR) {
+        const gap = todayOrd - lastActiveOrd;
+        const lastTier = Number(u.winbackLastTier) || 0;
+        if (ENG.WINBACK_TIERS.includes(gap) && gap > lastTier) {
+          const copy = WINBACK_COPY[gap];
+          push = { title: copy.title, body: copy.body, type: "winback", update: { winbackLastTier: gap } };
+        }
+      }
+
+      // --- 3. Meal-time nudge (lowest priority, midday) ---
+      if (
+        !push &&
+        hourLocal >= ENG.MEAL_NUDGE_HOUR_START &&
+        hourLocal < ENG.MEAL_NUDGE_HOUR_END &&
+        u.mealNudgeDate !== today
+      ) {
+        const lastMealMs = u.lastMealAt?.toMillis ? u.lastMealAt.toMillis()
+          : (typeof u.lastMealAt?._seconds === "number" ? u.lastMealAt._seconds * 1000 : null);
+        const loggedToday = lastMealMs != null && lastMealMs >= startOfTodayMs;
+        if (!loggedToday) {
+          push = {
+            title: "Haven't logged today?",
+            body: "Capture a meal in 2 taps — scan a barcode or just describe it.",
+            type: "meal_nudge",
+            update: { mealNudgeDate: today },
+          };
+        }
+      }
+
+      if (!push) return;
+
+      try {
+        await messaging.send({
+          token: u.fcmToken,
+          notification: { title: push.title, body: push.body },
+          data: { type: push.type },
+          android: { priority: "high", notification: { channelId: "fitflow_reminders" } },
+        });
+        await doc.ref.set(push.update, { merge: true });
+        await db.collection("notifications").add({
+          userId: doc.id,
+          title: push.title,
+          body: push.body,
+          type: "reminder",
+          read: false,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Engagement nudge failed for", doc.id, push.type, err);
+      }
+    });
+
+    await Promise.all(tasks);
+  });

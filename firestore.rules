@@ -35,6 +35,9 @@ service cloud.firestore {
              (!('dietaryPreferences' in data) || data.dietaryPreferences is list) &&
              (!('fcmToken' in data) || data.fcmToken is string) &&
              (!('notificationsEnabled' in data) || data.notificationsEnabled is bool) &&
+             (!('lastActiveDay' in data) || data.lastActiveDay is string) &&
+             (!('currentStreak' in data) || data.currentStreak is number) &&
+             (!('winbackLastTier' in data) || data.winbackLastTier is number) &&
              (!('latestBodyFat' in data) || data.latestBodyFat is number) &&
              (!('latestMuscleMass' in data) || data.latestMuscleMass is number) &&
              (!('activeChallenges' in data) || data.activeChallenges is list) &&
@@ -125,6 +128,14 @@ service cloud.firestore {
              (data.timestamp is timestamp || data.timestamp == request.time);
     }
 
+    // A streak-freeze marker — same shape as an activity-day marker (#5).
+    function isValidStreakFreeze(data) {
+      return data.keys().hasAll(['userId', 'day', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.day is string && data.day.size() <= 10 &&
+             (data.timestamp is timestamp || data.timestamp == request.time);
+    }
+
     function isValidMeal(data) {
       return data.keys().hasAll(['userId', 'name', 'calories', 'timestamp']) &&
              data.userId == request.auth.uid &&
@@ -186,6 +197,11 @@ service cloud.firestore {
           'streak', 'points', 'level', 'badges',
           'healthConditions', 'dietaryPreferences',
           'fcmToken', 'notificationsEnabled', 'lastReminderDate',
+          // Denormalized engagement fields read by the proactive-nudge functions.
+          // (Server idempotency fields — streakRiskNotifiedDate, mealNudgeDate — are
+          // written only by the admin SDK, which bypasses these rules.)
+          'lastActiveDay', 'currentStreak', 'winbackLastTier', 'lastMealAt',
+          'streakFreezeMonth', 'streakFreezeUsedThisMonth',
           'latestBodyFat', 'latestMuscleMass',
           'activeChallenges', 'updatedAt',
           'voiceCoachingEnabled', 'voiceSpeed',
@@ -338,6 +354,16 @@ service cloud.firestore {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create, update: if isVerified() && docId.matches('^' + request.auth.uid + '_.*$') && isValidActivityDay(incoming());
       allow delete: if isOwner(existing().userId);
+    }
+
+    // Streak-freeze markers (#5) — one doc per protected day, id <uid>_<YYYY-MM-DD>.
+    // Owner-scoped; no deletes (a spent freeze is permanent). The monthly free
+    // allowance is enforced client-side + bounded by the streakFreezeUsedThisMonth
+    // counter on the user doc (a user can at most over-grant their OWN streak).
+    match /streak_freezes/{docId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update: if isVerified() && docId.matches('^' + request.auth.uid + '_.*$') && isValidStreakFreeze(incoming());
     }
 
     // Weekly AI Recaps — id format: <uid>_<weekId>, client reads, only server writes

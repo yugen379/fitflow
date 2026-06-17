@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.1.2",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -15,6 +15,8 @@
     "proof:quickadd": "tsx scripts/quickadd-proof.mjs",
     "proof:catalog": "tsx scripts/catalog-proof.mjs",
     "proof:retention": "tsx scripts/retention-proof.mjs",
+    "proof:engagement": "tsx scripts/engagement-proof.mjs",
+    "proof:seed": "tsx scripts/seed-proof.mjs",
     "proof:subscription": "tsx scripts/subscription-proof.mjs",
     "proof:scanner": "node scripts/gen-barcode-y4m.mjs && python scripts/scanner_cam_test.py"
   },

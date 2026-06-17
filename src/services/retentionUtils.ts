@@ -103,3 +103,45 @@ export const computeRetention = (
     d30,
   };
 };
+
+// Re-export the ordinal helper for freeze math (kept private above for encapsulation).
+const toOrd = dayOrdinal;
+
+/**
+ * Current streak that survives across "freeze" days (Feature 5 — streak freeze).
+ * A freeze day BRIDGES a gap so the run isn't reset, but does NOT add to the count
+ * (mirrors how Duolingo's streak freeze preserves the number without inflating it).
+ *
+ * With an empty freezeDays list this returns EXACTLY computeRetention().currentStreak,
+ * so it's a safe drop-in. Pure + total — never throws.
+ */
+export const streakWithFreezes = (
+  activeDays: string[],
+  freezeDays: string[],
+  todayDay: string,
+): number => {
+  const todayOrd = toOrd(todayDay) ?? Math.floor(Date.now() / 86400000);
+  const active = new Set<number>();
+  for (const k of Array.isArray(activeDays) ? activeDays : []) {
+    const o = toOrd(k);
+    if (o !== null) active.add(o);
+  }
+  const freeze = new Set<number>();
+  for (const k of Array.isArray(freezeDays) ? freezeDays : []) {
+    const o = toOrd(k);
+    if (o !== null && !active.has(o)) freeze.add(o);
+  }
+  const covered = (o: number) => active.has(o) || freeze.has(o);
+
+  // Anchor at today if covered, else yesterday (grace), else the streak is gone.
+  const anchor = covered(todayOrd) ? todayOrd : covered(todayOrd - 1) ? todayOrd - 1 : null;
+  if (anchor === null) return 0;
+
+  let count = 0;
+  let cur = anchor;
+  while (covered(cur)) {
+    if (active.has(cur)) count++; // freeze days bridge but don't increment
+    cur--;
+  }
+  return count;
+};

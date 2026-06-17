@@ -4,7 +4,7 @@
 // retention must be exact for known inputs and coherent for random ones. No
 // Firestore here, so this is a fully deterministic 100% proof.
 
-const { dayKey, computeRetention } = await import('../src/services/retentionUtils.ts');
+const { dayKey, computeRetention, streakWithFreezes } = await import('../src/services/retentionUtils.ts');
 
 const C = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', x: '\x1b[0m' };
 const PASS = `${C.g}PASS${C.x}`, FAIL = `${C.r}FAIL${C.x}`;
@@ -90,6 +90,32 @@ for (let i = 0; i < 1000; i++) {
 }
 check('fuzz · 1,000 random sets never throw', fuzzThrew === 0, `${fuzzThrew} threw`);
 check('fuzz · 1,000 stats coherent', fuzzBad === 0, `${fuzzBad} incoherent`);
+
+// --- Streak freeze (Feature 5) — bridges gaps without inflating the count ---
+console.log(`\n${C.b}Streak freeze${C.x}`);
+// No freezes → must EXACTLY equal computeRetention().currentStreak (safe drop-in).
+let mismatch = 0;
+for (let i = 0; i < 500; i++) {
+  const n = Math.floor(Math.random() * 20);
+  const days = Array.from({ length: n }, () => back(Math.floor(Math.random() * 30)));
+  const a = computeRetention(back(40), days, TODAY).currentStreak;
+  const b = streakWithFreezes(days, [], TODAY);
+  if (a !== b) mismatch++;
+}
+check('no-freeze parity with computeRetention (500 random)', mismatch === 0, `${mismatch} mismatched`);
+
+check('freeze bridges a missed day: active D-2,today + freeze D-1 → streak 2',
+  streakWithFreezes([back(2), back(0)], [back(1)], TODAY) === 2);
+check('freeze day itself does NOT inflate the count',
+  streakWithFreezes([back(2), back(1), back(0)], [back(3)], TODAY) === 3);
+check('freeze today preserves yesterday-anchored streak',
+  streakWithFreezes([back(2), back(1)], [back(0)], TODAY) === 2);
+check('freeze cannot resurrect an already-dead streak (gap of 2, no freeze)',
+  streakWithFreezes([back(3), back(2)], [], TODAY) === 0);
+check('two freezes bridge two separate gaps',
+  streakWithFreezes([back(4), back(2), back(0)], [back(3), back(1)], TODAY) === 3);
+check('freeze math never throws on garbage',
+  (() => { try { streakWithFreezes('x', null, 'y'); return true; } catch { return false; } })());
 
 console.log(`\n${C.b}── Summary ──${C.x}`);
 console.log(`  Assertions: ${fail === 0 ? C.g : C.r}${pass}/${pass + fail}${C.x}`);

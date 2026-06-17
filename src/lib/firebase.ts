@@ -15,8 +15,12 @@ import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging
 import firebaseConfig from '../../firebase-applet-config.json';
 import { isSupported } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';
+import { initAppCheck } from './appCheck';
 
 const app = initializeApp(firebaseConfig);
+// App Check ("Google protect") — must init right after the app, before other
+// services. Inert until a reCAPTCHA site key is configured (see lib/appCheck.ts).
+initAppCheck(app);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
