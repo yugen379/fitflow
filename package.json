@@ -21,6 +21,7 @@
     "proof:scanner": "node scripts/gen-barcode-y4m.mjs && python scripts/scanner_cam_test.py"
   },
   "dependencies": {
+    "@capacitor-firebase/app-check": "^8.3.0",
     "@capacitor-firebase/authentication": "^8.3.0",
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^8.3.1",

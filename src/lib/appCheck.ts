@@ -1,48 +1,69 @@
 // Firebase App Check — "Google protect" for the backend.
 //
 // App Check attests that traffic hitting Firestore, Cloud Functions, and the
-// Gemini proxy comes from YOUR genuine app (via Google reCAPTCHA v3 on web), not a
-// scraper, bot, or someone replaying your API keys. It's the same abuse shield the
-// big fitness apps run — it stops freeloaders draining your Gemini quota and
-// poisoning the shared food_catalog at scale.
+// Gemini proxy comes from YOUR genuine app — not a scraper, bot, or someone
+// replaying your public API keys.
 //
-// SAFETY-FIRST ROLLOUT (why this is env-gated and defaults to OFF):
-//   1. Ship this code (no behavior change until a site key is present).
-//   2. Register a reCAPTCHA v3 site key in Firebase Console → App Check, set
-//      VITE_RECAPTCHA_V3_SITE_KEY, redeploy. Clients now SEND attestation tokens.
-//   3. Watch the App Check "requests" dashboard until verified traffic is ~100%.
-//   4. ONLY THEN flip enforcement on per-service in the console.
-// Enforcing before step 3 would lock out real users — hence the staged gate.
+// Two providers, picked by platform:
+//   • Web / PWA  → reCAPTCHA v3 (env-gated by VITE_RECAPTCHA_V3_SITE_KEY).
+//   • Android/iOS app → Play Integrity / App Attest via @capacitor-firebase/app-check.
 //
-// Native (Capacitor/Android): the JS reCAPTCHA provider can't attest inside a
-// WebView, so we skip App Check on native here. Add the Play Integrity provider via
-// a native plugin before enforcing App Check on Functions/Firestore for the APK.
+// CRITICAL ARCHITECTURE NOTE: this app does its data I/O with the Firebase JS SDK
+// running INSIDE the Capacitor WebView (see firebase.ts), not the native SDK. So on
+// native we still call initializeAppCheck() on the JS app, but with a CustomProvider
+// that fetches the token from the NATIVE plugin (Play Integrity). That way the
+// WebView's Firestore/Functions requests carry a real device-attested token. Using
+// only the native provider would leave those JS-SDK requests unattested.
+//
+// SAFETY: never throws, and on web is inert until a site key is set. Enable
+// enforcement per service in the console only after verified traffic is high — see
+// APPCHECK.md. Android needs the Play Integrity API enabled + the app's SHA-256 +
+// the Play Integrity provider registered in App Check before enforcement helps.
 
 import type { FirebaseApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check';
 import { Capacitor } from '@capacitor/core';
 
 let initialized = false;
 
-/**
- * Initialize App Check as early as possible (right after initializeApp, before
- * Firestore/Auth are used). No-ops safely when no site key is configured or on
- * native, and never throws — protection must never become a point of failure.
- */
-export const initAppCheck = (app: FirebaseApp): void => {
+const HOUR_MS = 60 * 60 * 1000;
+
+export const initAppCheck = async (app: FirebaseApp): Promise<void> => {
   if (initialized) return;
   try {
-    if (Capacitor?.isNativePlatform?.()) return; // see header note (native uses Play Integrity)
-    const siteKey = (import.meta as any).env?.VITE_RECAPTCHA_V3_SITE_KEY;
-    if (!siteKey) return; // not configured yet → ship inert, enable later
+    // --- Native (APK): Play Integrity on Android, App Attest/DeviceCheck on iOS ---
+    if (Capacitor?.isNativePlatform?.()) {
+      const { FirebaseAppCheck } = await import('@capacitor-firebase/app-check');
+      const debugToken = (import.meta as any).env?.VITE_APPCHECK_DEBUG_TOKEN;
+      // Initialize the NATIVE App Check provider (Play Integrity by default on
+      // Android). debugToken is for emulators / unsigned dev builds only.
+      await FirebaseAppCheck.initialize({
+        isTokenAutoRefreshEnabled: true,
+        ...(debugToken ? { debugToken } : {}),
+      });
+      // Bridge the native token into the JS SDK so WebView Firestore/Functions
+      // requests are attested with the same Play-Integrity-backed token.
+      initializeAppCheck(app, {
+        isTokenAutoRefreshEnabled: true,
+        provider: new CustomProvider({
+          getToken: async () => {
+            const { token, expireTimeMillis } = await FirebaseAppCheck.getToken();
+            return { token, expireTimeMillis: expireTimeMillis ?? Date.now() + HOUR_MS };
+          },
+        }),
+      });
+      initialized = true;
+      return;
+    }
 
-    // Debug token lets a dev/CI machine pass App Check without a real reCAPTCHA
-    // (register the printed token in Console → App Check → Manage debug tokens).
+    // --- Web / PWA: reCAPTCHA v3 ---
+    const siteKey = (import.meta as any).env?.VITE_RECAPTCHA_V3_SITE_KEY;
+    if (!siteKey) return; // not configured → ship inert, enable later
+
     const debugToken = (import.meta as any).env?.VITE_APPCHECK_DEBUG_TOKEN;
     if (debugToken && typeof self !== 'undefined') {
       (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
     }
-
     initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(siteKey),
       isTokenAutoRefreshEnabled: true,
