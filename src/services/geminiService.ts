@@ -31,6 +31,64 @@ const isRetryable = (e: any): boolean => {
   return /RESOURCE_EXHAUSTED|quota|rate|unavailable|overloaded|deadline|timeout|network|fetch/i.test(msg);
 };
 
+// Per-call ceiling so one hung model can't stall the whole request (a real 162s
+// stall was seen against an overloaded endpoint). A timeout reads as retryable,
+// so the cascade simply moves on to the next model.
+const CALL_TIMEOUT_MS = 20000;
+const withTimeout = <T>(p: Promise<T>, ms = CALL_TIMEOUT_MS): Promise<T> =>
+  Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+
+// Exponential backoff with jitter between full cascade sweeps: base·2^attempt +
+// up to 250ms random, so many clients don't re-hit the quota in lockstep.
+const backoff = (attempt: number, baseMs: number): Promise<void> =>
+  new Promise(r => setTimeout(r, baseMs * 2 ** attempt + Math.floor(Math.random() * 250)));
+
+// ---------------------------------------------------------------------------
+// Process-local TTL + LRU cache. Identical AI requests (re-logging "banana", an
+// unchanged recipe, the same daily inputs) return the prior answer instead of
+// spending another quota-limited call. No Firebase — keeps the proof harnesses
+// self-contained — and clears on reload. Only "real" answers are cached (see
+// each caller's `accept`), so a transient fallback never gets pinned.
+// ---------------------------------------------------------------------------
+const CACHE_MAX = 200;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const aiCache = new Map<string, { value: any; expires: number }>();
+
+const cacheGet = (key: string): any | undefined => {
+  const hit = aiCache.get(key);
+  if (!hit) return undefined;
+  if (Date.now() > hit.expires) { aiCache.delete(key); return undefined; }
+  aiCache.delete(key); aiCache.set(key, hit); // LRU touch
+  return hit.value;
+};
+
+const cacheSet = (key: string, value: any, ttlMs: number): void => {
+  if (value == null) return;
+  if (aiCache.size >= CACHE_MAX) {
+    const oldest = aiCache.keys().next().value;
+    if (oldest !== undefined) aiCache.delete(oldest);
+  }
+  aiCache.set(key, { value, expires: Date.now() + ttlMs });
+};
+
+// Memoize an async producer under a stable key. On a miss the producer runs and
+// the result is cached only if `accept` approves it.
+const memoize = async <T>(
+  key: string,
+  ttlMs: number,
+  produce: () => Promise<T>,
+  accept: (v: T) => boolean = () => true,
+): Promise<T> => {
+  const cached = cacheGet(key);
+  if (cached !== undefined) return cached as T;
+  const value = await produce();
+  if (accept(value)) cacheSet(key, value, ttlMs);
+  return value;
+};
+
 const safeJsonParse = (text: string, fallback: any = {}) => {
   try {
     const clean = text.replace(/```json|```/g, "").trim();
@@ -42,13 +100,22 @@ const safeJsonParse = (text: string, fallback: any = {}) => {
 
 const callProxy = async (action: string, payload: any) => {
   if (!PROXY_URL) throw new Error('Gemini proxy not configured');
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, payload }),
-  });
-  if (!res.ok) throw new Error(`Gemini proxy returned ${res.status}`);
-  return res.json();
+  // Abort a hung proxy call so it can't block the UI indefinitely; the caller's
+  // try/catch then degrades to the structured fallback.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 25000);
+  try {
+    const res = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, payload }),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(`Gemini proxy returned ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 // One pass over the model cascade. Returns trimmed text, or null if every model
@@ -58,7 +125,7 @@ const generateOnce = async (contents: any): Promise<string | null> => {
   if (!ai) return null;
   for (const model of MODELS) {
     try {
-      const resp = await ai.models.generateContent({ model, contents });
+      const resp = await withTimeout(ai.models.generateContent({ model, contents }));
       const text = (resp.text || '').trim();
       if (text) return text;
       // Empty completion — try the next model.
@@ -70,15 +137,28 @@ const generateOnce = async (contents: any): Promise<string | null> => {
   return null;
 };
 
+// Cascade sweep with exponential-backoff retries. When every model in one sweep
+// is momentarily exhausted/overloaded, wait and sweep again (the quota buckets
+// refill quickly) before giving the caller a null to degrade on.
+const generate = async (contents: any, retries = 2, baseMs = 500): Promise<string | null> => {
+  if (!ai) return null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const text = await generateOnce(contents);
+    if (text) return text;
+    if (attempt < retries) await backoff(attempt, baseMs);
+  }
+  return null;
+};
+
 const direct = async (contents: any, fallback: any = '{}') => {
-  const text = await generateOnce(contents);
+  const text = await generate(contents);
   // Quota exhaustion, rate limits, network blips — always degrade to the
   // structured fallback so the UI never sees a thrown error toast.
   return text ? safeJsonParse(text, fallback) : fallback;
 };
 
 const directRaw = async (contents: any, fallbackText = '') => {
-  const text = await generateOnce(contents);
+  const text = await generate(contents);
   return text || fallbackText;
 };
 
@@ -87,13 +167,13 @@ const directRaw = async (contents: any, fallbackText = '') => {
 // up to a canned reply. Accepts only answers that clear a minimum-substance bar.
 const directRawRetry = async (
   contents: any,
-  { retries = 1, minChars = 12, backoffMs = 600 }: { retries?: number; minChars?: number; backoffMs?: number } = {},
+  { retries = 2, minChars = 12, backoffMs = 500 }: { retries?: number; minChars?: number; backoffMs?: number } = {},
 ): Promise<string | null> => {
   if (!ai) return null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const text = await generateOnce(contents);
     if (text && text.length >= minChars) return text;
-    if (attempt < retries) await new Promise(r => setTimeout(r, backoffMs * (attempt + 1)));
+    if (attempt < retries) await backoff(attempt, backoffMs);
   }
   return null;
 };
@@ -120,7 +200,13 @@ const usdaFallback = async (description: string) => {
   return null;
 };
 
-export const estimateCalories = async (description: string) => {
+export const estimateCalories = async (description: string) =>
+  // Cache by normalized text: re-logging the same food never re-spends a call.
+  // Only cache real hits (calories > 0) so a transient zero isn't pinned.
+  memoize(`cal:${description.trim().toLowerCase()}`, DAY_MS, () =>
+    estimateCaloriesUncached(description), (r) => !!r && r.calories > 0);
+
+const estimateCaloriesUncached = async (description: string) => {
   const zero = { name: description, calories: 0, protein: 0, carbs: 0, fats: 0 };
 
   // 1) Local curated database — instant hit for common foods like "bowl of oatmeal",
@@ -391,7 +477,12 @@ Return ONLY a valid JSON array of 7 objects:
   );
 };
 
-export const getRecipe = async (mealName: string) => {
+export const getRecipe = async (mealName: string) =>
+  // A recipe for a given dish is stable — cache it (only when we got a real one).
+  memoize(`recipe:${mealName.trim().toLowerCase()}`, DAY_MS, () =>
+    getRecipeUncached(mealName), (r) => !!r);
+
+const getRecipeUncached = async (mealName: string) => {
   const fallback = null;
   if (useProxy) {
     try { return await callProxy('getRecipe', { mealName }); }
@@ -732,7 +823,13 @@ Return ONLY valid JSON, same shape: {"headline":string,"subtitle":string,"nudges
 // ---------------------------------------------------------------------------
 export type { QuickAddResult, QuickAddItem } from "./quickAddUtils";
 
-export const parseQuickAdd = async (text: string): Promise<QuickAddResult> => {
+export const parseQuickAdd = async (text: string): Promise<QuickAddResult> =>
+  // Same phrase → same parse. Cache only successful parses (items found) so an
+  // empty result is never pinned and the user can retry into a real answer.
+  memoize(`quickadd:${text.trim().toLowerCase()}`, DAY_MS, () =>
+    parseQuickAddUncached(text), (r) => r.items.length > 0);
+
+const parseQuickAddUncached = async (text: string): Promise<QuickAddResult> => {
   const phrases = splitPhrases(text);
   if (phrases.length === 0) return buildResult([], undefined);
 
