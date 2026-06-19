@@ -15,8 +15,8 @@ android {
         applicationId "com.fitflow.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.2.0"
+        versionCode 6
+        versionName "1.2.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -37,8 +37,13 @@ android {
             if (hasKeystore) {
                 signingConfig signingConfigs.release
             }
-            minifyEnabled true
-            shrinkResources true
+            // Minification is OFF for the v1.2.x test-track builds. R8 was stripping
+            // the reflection-loaded RevenueCat/Capacitor plugin classes (added after
+            // v1.0.0), which crashed the app on launch ("won't open"). proguard-rules.pro
+            // now has the correct keep rules, so this can be flipped back to `true`
+            // once a minified build is verified opening on a real device.
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {

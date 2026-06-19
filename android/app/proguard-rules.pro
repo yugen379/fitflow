@@ -24,3 +24,36 @@
 # etc.) but we only enable Google sign-in, so the Facebook SDK isn't on the classpath.
 # R8 otherwise fails shrinking on these missing references — they're dead code for us.
 -dontwarn com.facebook.**
+
+# ---------------------------------------------------------------------------
+# Capacitor + native plugins are loaded by REFLECTION at launch (plugin
+# registration in BridgeActivity). If R8 renames/removes these classes the app
+# crashes the instant it opens. Keep the bridge, every Plugin subclass, and the
+# annotated method targets. (Root cause of "release APK installs but won't open".)
+# ---------------------------------------------------------------------------
+-keep public class * extends com.getcapacitor.Plugin
+-keep @com.getcapacitor.annotation.CapacitorPlugin public class * { *; }
+-keepclassmembers class * {
+    @com.getcapacitor.PluginMethod public <methods>;
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
+    @com.getcapacitor.annotation.ActivityCallback <methods>;
+}
+-keep class com.getcapacitor.** { *; }
+-keep class com.capacitorjs.** { *; }
+-keep class io.capawesome.** { *; }
+
+# The WebView JS bridge calls these by name from JavaScript.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# RevenueCat / Google Play Billing (added after v1.0.0 — the regression that
+# broke launch once minification was on, because it had no keep rule).
+-keep class com.revenuecat.purchases.** { *; }
+-dontwarn com.revenuecat.purchases.**
+
+# Firebase + Google Play services (auth, FCM, sign-in).
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
