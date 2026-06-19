@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Check, Sparkles, Zap, Camera, Heart, TrendingUp, Bell, Crown, Settings as SettingsIcon } from 'lucide-react';
@@ -6,6 +6,11 @@ import { LogoMark } from '../components/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { startCheckout, isStripeConfigured, openBillingPortal, isPortalConfigured } from '../services/stripeService';
+import { isNativeApp } from '../lib/firebase';
+import {
+  isPlayBillingConfigured, configurePlayBilling, startPlayPurchase,
+  restorePlayPurchases, openPlaySubscriptions,
+} from '../services/playBillingService';
 import { allFeaturesFree, getEntitlement, TRIAL_DAYS } from '../lib/billing';
 
 const FEATURES = [
@@ -32,12 +37,20 @@ export const Pro: React.FC = () => {
   const [plan, setPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [starting, setStarting] = useState(false);
   const [managing, setManaging] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
+  // Android sells Pro through Google Play Billing (Play policy); web uses Stripe.
+  const native = isNativeApp();
   const allFree = allFeaturesFree();
-  const billingReady = isStripeConfigured();
+  const billingReady = native ? isPlayBillingConfigured() : isStripeConfigured();
   const ent = getEntitlement(profile);
   const isPaid = ent.isPro && ent.source === 'paid';
   const isTrialing = ent.isPro && ent.source === 'trial';
+
+  // Configure RevenueCat up front on Android so the purchase sheet opens instantly.
+  useEffect(() => {
+    if (native && profile?.uid) configurePlayBilling(profile.uid);
+  }, [native, profile?.uid]);
 
   const subscribe = async () => {
     if (allFree) {
@@ -50,12 +63,36 @@ export const Pro: React.FC = () => {
       return;
     }
     setStarting(true);
+    if (native) {
+      const result = await startPlayPurchase(profile!.uid, plan);
+      setStarting(false);
+      if (result.ok) {
+        showToast('Purchase complete — unlocking Pro…', 'success');
+        // The RevenueCat webhook flips subscriptionType server-side; the profile
+        // listener picks it up within a moment.
+      } else if (result.reason !== 'cancelled') {
+        showToast(result.reason || 'Purchase failed', 'error');
+      }
+      return;
+    }
     const result = await startCheckout(plan);
     setStarting(false);
     if (!result.ok) showToast(result.reason || 'Could not start checkout', 'error');
   };
 
+  const restore = async () => {
+    setRestoring(true);
+    const result = await restorePlayPurchases(profile!.uid);
+    setRestoring(false);
+    showToast(
+      result.ok ? (result.pro ? 'Purchases restored — Pro is active.' : 'No previous purchase found.')
+        : (result.reason || 'Could not restore'),
+      result.ok && result.pro ? 'success' : 'info',
+    );
+  };
+
   const manage = async () => {
+    if (native) { await openPlaySubscriptions(); return; }
     if (!isPortalConfigured()) {
       showToast('Subscription management is being set up — try again shortly.', 'info');
       return;
@@ -213,6 +250,15 @@ export const Pro: React.FC = () => {
               : `${TRIAL_DAYS}-day free trial included with every new account — no card needed. `}
             Billed {plan === 'yearly' ? '$59.88/year' : '$17.99/month'}. Cancel anytime.
           </p>
+          {native && (
+            <button
+              onClick={restore}
+              disabled={restoring}
+              className="block mx-auto mt-3 text-xs text-text-dim hover:text-white underline underline-offset-2 disabled:opacity-50"
+            >
+              {restoring ? 'Restoring…' : 'Restore purchases'}
+            </button>
+          )}
         </>
       )}
     </div>

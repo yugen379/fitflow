@@ -29,6 +29,12 @@ const GRACE_DAYS = 3;
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 
+// Shared secret RevenueCat sends in the Authorization header of its webhook (set
+// it in the RevenueCat dashboard → project → Webhooks, and here via
+// `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH`). Guards the endpoint
+// so only RevenueCat can grant entitlement.
+const revenueCatAuth = defineSecret("REVENUECAT_WEBHOOK_AUTH");
+
 const getStripe = (): Stripe | null => {
   const key = stripeSecret.value() || process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
@@ -862,4 +868,88 @@ export const sendEngagementNudges = onSchedule(
     });
 
     await Promise.all(tasks);
+  });
+
+// ---------------------------------------------------------------------------
+// RevenueCat webhook — Android in-app purchases (Google Play Billing).
+//
+// Web sells Pro via Stripe (the only writer of billing fields from that side);
+// Android sells via Play Billing through RevenueCat, and THIS function is the only
+// writer for that side. It maps a RevenueCat event onto the SAME user-doc fields
+// applySubscription() writes (subscriptionType / subscriptionStatus / plan /
+// currentPeriodEnd / cancelAtPeriodEnd / graceUntil), so lib/billing.ts treats a
+// Play subscriber and a Stripe subscriber identically. The RevenueCat appUserID is
+// the Firebase uid, so event.app_user_id IS the user doc id.
+//
+// Idempotent + safe: an unknown/duplicate event simply 200s without changing state.
+// ---------------------------------------------------------------------------
+export const revenueCatWebhook = functions.https.onRequest(
+  { secrets: [revenueCatAuth] },
+  async (req, res) => {
+    if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+    // Verify the shared secret RevenueCat sends in the Authorization header.
+    // FAIL CLOSED: if no secret is configured, reject everything — never run as an
+    // open endpoint that can grant entitlement.
+    const expected = revenueCatAuth.value() || process.env.REVENUECAT_WEBHOOK_AUTH;
+    if (!expected || req.headers.authorization !== expected) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
+    try {
+      const event = req.body?.event;
+      const uid: string | undefined = event?.app_user_id;
+      if (!event || !uid) { res.status(200).send("ignored: no event/app_user_id"); return; }
+
+      const type: string = event.type || "";
+      const expirationMs: number | null =
+        typeof event.expiration_at_ms === "number" ? event.expiration_at_ms : null;
+      const productId: string = event.product_id || "";
+      const plan = /year|annual|yr/i.test(productId) ? "yearly" : "monthly";
+      const now = Date.now();
+
+      const update: Record<string, any> = {
+        plan,
+        currentPeriodEnd: expirationMs,
+        billingSource: "play",
+        rcEventType: type,
+        subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      // Entitlement decision (mirrors the Stripe path: premium while healthy or in grace).
+      const ACTIVE = ["INITIAL_PURCHASE", "RENEWAL", "UNCANCELLATION", "PRODUCT_CHANGE",
+        "NON_RENEWING_PURCHASE", "SUBSCRIPTION_EXTENDED", "TEMPORARY_ENTITLEMENT_GRANT"];
+      if (type === "EXPIRATION" || (expirationMs !== null && expirationMs < now && type !== "BILLING_ISSUE")) {
+        update.subscriptionType = "free";
+        update.subscriptionStatus = "expired";
+        update.cancelAtPeriodEnd = false;
+        update.graceUntil = null;
+      } else if (type === "CANCELLATION") {
+        // Cancelled but still entitled until the period ends.
+        update.subscriptionType = "premium";
+        update.subscriptionStatus = "canceled";
+        update.cancelAtPeriodEnd = true;
+        update.graceUntil = null;
+      } else if (type === "BILLING_ISSUE") {
+        update.subscriptionType = "premium";
+        update.subscriptionStatus = "past_due";
+        update.graceUntil = now + GRACE_DAYS * 86_400_000;
+      } else if (ACTIVE.includes(type)) {
+        update.subscriptionType = "premium";
+        update.subscriptionStatus = "active";
+        update.cancelAtPeriodEnd = false;
+        update.graceUntil = null;
+      } else {
+        // TRANSFER, SUBSCRIPTION_PAUSED, TEST, etc. — acknowledge without changing entitlement.
+        res.status(200).send("ignored: " + type);
+        return;
+      }
+
+      await db.doc(`users/${uid}`).set(update, { merge: true });
+      res.status(200).send("ok");
+    } catch (err) {
+      console.error("revenueCatWebhook error", err);
+      res.status(500).send("error");
+    }
   });

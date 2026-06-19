@@ -81,7 +81,53 @@ Google Play requires **Google Play Billing** for in-app digital subscriptions �
 Stripe checkout inside the Android app is a policy risk. Current state:
 
 - Android users get the **full 6-day cardless trial** (best UX, instant access).
-- Paid checkout currently opens Stripe in an external browser.
-- The clean, compliant path for the Play build is **Google Play Billing / RevenueCat**
-  (separate task — needs Play Console product setup + a real-device test). Billing is
-  already behind a thin service layer so this slots in without touching entitlement logic.
+
+---
+
+# Android in-app purchases — Google Play Billing via RevenueCat
+
+Web sells Pro through **Stripe**; the Android APK sells through **Google Play Billing**
+(Play policy requires it for digital subscriptions). RevenueCat wraps Play Billing and
+verifies receipts; its webhook writes the **same** user-doc entitlement fields the Stripe
+webhook writes, so `lib/billing.ts` treats a Play subscriber and a Stripe subscriber
+identically. **The code is done** — `playBillingService.ts`, the branched `Pro.tsx`
+(native → Play, web → Stripe), and the `revenueCatWebhook` function. Only the account
+setup + config values below remain, and it must be **tested on a real device / Play track**.
+
+## What you must set up (accounts + console — can't be scripted)
+
+1. **Google Play Console** (one-time $25): create the app `com.fitflow.app`, then under
+   **Monetize → Subscriptions** create two subscription products:
+   - `fitflow_pro_monthly` — $17.99 / month
+   - `fitflow_pro_yearly` — $59.88 / year
+   (Product IDs can differ; RevenueCat maps them, so naming is flexible.)
+2. **Play Developer API service account**: Play Console → Setup → API access → create/link
+   a Google Cloud service account with the **androidpublisher** role, download its JSON.
+   RevenueCat needs this to verify Play purchases.
+3. **RevenueCat** (free under $2.5k/mo): create a project → add the **Play** app
+   (package `com.fitflow.app`) → upload that service-account JSON. Then:
+   - Create an **Entitlement** with identifier **`pro`**.
+   - Create **Products** pointing at the two Play subscription IDs, attach them to the
+     `pro` entitlement.
+   - Create an **Offering** (the default `current`) with a **Monthly** and an **Annual**
+     package mapped to those products.
+4. **Keys + secret:**
+   - Copy the RevenueCat **Android public SDK key** (`goog_...`) →
+     set `VITE_REVENUECAT_ANDROID_KEY` (env + CI secret), rebuild the APK.
+   - Pick any strong string as the webhook auth header, then:
+     `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH` (paste the same string).
+   - RevenueCat → project → **Webhooks** → URL = the deployed `revenueCatWebhook` function
+     URL, **Authorization header** = that same string.
+
+## How it behaves
+- **Entitlement is server-trusted.** Only the RevenueCat webhook (admin SDK) grants Pro on
+  Android; the client never writes billing fields (Firestore rules enforce this).
+- **Renewals / cancels / refunds / billing issues** all flow through the webhook and map to
+  `premium`/`free` + `cancelAtPeriodEnd` + a 3-day `graceUntil` on billing issues — same as Stripe.
+- **Restore purchases** is wired (Play requirement) on the Pro page in the app.
+- **Manage subscription** on Android deep-links to the Play subscriptions screen.
+
+## Testing (before going live)
+RevenueCat/Play purchases can only be truly tested on a **real device** with the app on a
+Play **internal-testing** track and your tester account added as a **license tester**
+(Play Console → Setup → License testing). Sandbox purchases won't charge real money.
