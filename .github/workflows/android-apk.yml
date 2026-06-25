@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK + AAB
 
 # Builds an installable debug APK in the cloud — no local Android SDK needed.
 # Trigger it from the GitHub "Actions" tab (Run workflow), or it runs on pushes to main.
@@ -95,14 +95,16 @@ jobs:
             echo "::warning::No ANDROID_KEYSTORE_BASE64 secret → falling back to a DEBUG APK. Native Google sign-in will NOT work in it (ephemeral signing key)."
           fi
 
-      - name: Build APK
+      - name: Build APK (+ AAB for Play when signed)
         id: build
         run: |
           cd android
           chmod +x gradlew
           if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
-            ./gradlew assembleRelease --no-daemon --stacktrace
+            # AAB is what Google Play requires; APK stays for direct sideload testing.
+            ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
             echo "apk=android/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_OUTPUT"
+            echo "aab=android/app/build/outputs/bundle/release/app-release.aab" >> "$GITHUB_OUTPUT"
           else
             ./gradlew assembleDebug --no-daemon --stacktrace
             echo "apk=android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_OUTPUT"
@@ -116,15 +118,30 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # --- Permanent Release (only when a vX.Y.Z tag is pushed) ---
-      - name: Rename APK for the release
-        if: startsWith(github.ref, 'refs/tags/')
-        run: cp "${{ steps.build.outputs.apk }}" "fitflow-${{ github.ref_name }}.apk"
+      - name: Upload AAB artifact for Play (signed builds only)
+        if: steps.keystore.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitflow-aab
+          path: ${{ steps.build.outputs.aab }}
+          if-no-files-found: error
+          retention-days: 30
 
-      - name: Publish APK to GitHub Release
+      # --- Permanent Release (only when a vX.Y.Z tag is pushed) ---
+      - name: Rename artifacts for the release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cp "${{ steps.build.outputs.apk }}" "fitflow-${{ github.ref_name }}.apk"
+          if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+            cp "${{ steps.build.outputs.aab }}" "fitflow-${{ github.ref_name }}.aab"
+          fi
+
+      - name: Publish artifacts to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: fitflow-${{ github.ref_name }}.apk
-          fail_on_unmatched_files: true
+          files: |
+            fitflow-${{ github.ref_name }}.apk
+            fitflow-${{ github.ref_name }}.aab
+          fail_on_unmatched_files: false
           generate_release_notes: true
