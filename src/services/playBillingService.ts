@@ -16,8 +16,8 @@ import type { Plan } from './stripeService';
 const RC_ANDROID_KEY = (import.meta as any).env?.VITE_REVENUECAT_ANDROID_KEY as string | undefined;
 // The entitlement identifier configured in the RevenueCat dashboard.
 const ENTITLEMENT_ID = 'pro';
-// com.fitflow.app — used only to deep-link the Play "manage subscription" screen.
-const ANDROID_PACKAGE = 'com.fitflow.app';
+// com.fitflow.fitness — used only to deep-link the Play "manage subscription" screen.
+const ANDROID_PACKAGE = 'com.fitflow.fitness';
 
 let configured = false;
 let configuredUid: string | null = null;

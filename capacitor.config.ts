@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.fitflow.app',
+  appId: 'com.fitflow.fitness',
   appName: 'FitFlow',
   webDir: 'dist',
   android: {
