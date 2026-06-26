@@ -44,7 +44,8 @@ export default defineConfig(({mode}) => {
           cleanupOutdatedCaches: true,
           // Firebase reserves /__/auth/* and /__/firebase/* for OAuth handlers and SDK init.
           // If the service worker serves the SPA shell for these, sign-in redirect breaks.
-          navigateFallbackDenylist: [/^\/__\//],
+          // /delete-account is a static HTML page (Play data-deletion URL) — never serve the SPA shell for it.
+          navigateFallbackDenylist: [/^\/__\//, /^\/delete-account$/],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
