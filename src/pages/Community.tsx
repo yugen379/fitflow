@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, Trophy } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, Trophy, Flag, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { likePost } from '../services/dataService';
+import { likePost, blockUser, reportContent } from '../services/dataService';
 import { Post } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { query, collection, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -11,6 +11,7 @@ import { Logo } from '../components/Logo';
 import { CreatePostModal } from '../components/CreatePostModal';
 import { EditPostModal } from '../components/EditPostModal';
 import { CommentModal } from '../components/CommentModal';
+import { ReportModal } from '../components/ReportModal';
 import { Avatar } from '../components/Avatar';
 import { useToast } from '../hooks/useToast';
 import { haptic } from '../lib/haptics';
@@ -25,11 +26,13 @@ export const Community: React.FC = () => {
   const [commentingPost, setCommentingPost] = useState<Post | null>(null);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'Feed' | 'Ranks'>('Feed');
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+  const [reportTarget, setReportTarget] = useState<Post | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50));
     const uQ = query(collection(db, 'users'), orderBy('points', 'desc'), limit(10));
-    
+
     const unsubPosts = onSnapshot(q, (snap) => {
       setPosts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post)));
       setLoading(false);
@@ -45,9 +48,43 @@ export const Community: React.FC = () => {
     };
   }, []);
 
+  // Subscribe to the people this user has blocked, so their content disappears.
+  useEffect(() => {
+    if (!user) { setBlockedIds(new Set()); return; }
+    const unsub = onSnapshot(collection(db, `users/${user.uid}/blocks`), (snap) => {
+      setBlockedIds(new Set(snap.docs.map(d => d.id)));
+    });
+    return () => unsub();
+  }, [user]);
+
+  const visiblePosts = useMemo(
+    () => posts.filter(p => !blockedIds.has(p.userId)),
+    [posts, blockedIds],
+  );
+
   const handleLike = async (postId: string) => {
     if (!user) return;
     await likePost(postId, user.uid);
+  };
+
+  const handleBlock = async (post: Post) => {
+    if (!user) return;
+    if (!window.confirm(`Block ${post.username}? You won't see their posts or comments anymore.`)) return;
+    haptic('medium');
+    await blockUser(user.uid, post.userId);
+    showToast(`Blocked ${post.username}`, 'success');
+  };
+
+  const handleSubmitReport = async (reason: string) => {
+    if (!user || !reportTarget?.id) return;
+    await reportContent({
+      reporterId: user.uid,
+      targetType: 'post',
+      targetId: reportTarget.id,
+      reportedUserId: reportTarget.userId,
+      reason,
+    });
+    showToast('Report submitted. Thank you.', 'success');
   };
 
   const handleShare = async (post: Post) => {
@@ -110,8 +147,8 @@ export const Community: React.FC = () => {
               <div className="flex justify-center p-10">
                 <div className="w-8 h-8 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
               </div>
-            ) : posts.length > 0 ? (
-              posts.map((post) => (
+            ) : visiblePosts.length > 0 ? (
+              visiblePosts.map((post) => (
                 <PostCard
                   key={post.id}
                   post={post}
@@ -119,6 +156,8 @@ export const Community: React.FC = () => {
                   onEdit={() => setEditingPost(post)}
                   onComment={() => setCommentingPost(post)}
                   onShare={() => handleShare(post)}
+                  onReport={() => setReportTarget(post)}
+                  onBlock={() => handleBlock(post)}
                   isOwnPost={user?.uid === post.userId}
                 />
               ))
@@ -178,10 +217,16 @@ export const Community: React.FC = () => {
         onClose={() => setEditingPost(null)} 
         post={editingPost} 
       />
-      <CommentModal 
+      <CommentModal
         isOpen={!!commentingPost}
         onClose={() => setCommentingPost(null)}
         post={commentingPost}
+      />
+      <ReportModal
+        isOpen={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        onSubmit={handleSubmitReport}
+        targetLabel={reportTarget ? `${reportTarget.username}'s post` : undefined}
       />
     </div>
   );
@@ -193,9 +238,24 @@ const PostCard: React.FC<{
   onEdit: () => void,
   onComment: () => void,
   onShare: () => void,
+  onReport: () => void,
+  onBlock: () => void,
   isOwnPost: boolean
-}> = ({ post, onLike, onEdit, onComment, onShare, isOwnPost }) => (
-  <motion.div 
+}> = ({ post, onLike, onEdit, onComment, onShare, onReport, onBlock, isOwnPost }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [menuOpen]);
+
+  return (
+  <motion.div
     initial={{ opacity: 0, y: 10 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
@@ -215,11 +275,31 @@ const PostCard: React.FC<{
           </span>
         </div>
       </div>
-      {isOwnPost && (
-        <button onClick={onEdit} className="w-9 h-9 rounded-xl text-text-dim hover:text-white transition-colors flex items-center justify-center" aria-label="More">
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={() => isOwnPost ? onEdit() : setMenuOpen(o => !o)}
+          className="w-9 h-9 rounded-xl text-text-dim hover:text-white transition-colors flex items-center justify-center"
+          aria-label="More options"
+        >
           <MoreHorizontal size={18} />
         </button>
-      )}
+        {!isOwnPost && menuOpen && (
+          <div className="absolute right-0 top-10 z-20 w-44 bg-surface-2 border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden py-1">
+            <button
+              onClick={() => { setMenuOpen(false); onReport(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white hover:bg-white/[0.05] transition-colors"
+            >
+              <Flag size={15} className="text-accent-2" /> Report post
+            </button>
+            <button
+              onClick={() => { setMenuOpen(false); onBlock(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white hover:bg-white/[0.05] transition-colors"
+            >
+              <Ban size={15} className="text-accent-2" /> Block {post.username}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
 
     {post.mediaUrl && (
@@ -252,4 +332,5 @@ const PostCard: React.FC<{
       </div>
     </div>
   </motion.div>
-);
+  );
+};

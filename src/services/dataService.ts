@@ -217,6 +217,52 @@ export const getComments = async (postId: string) => {
   }
 };
 
+// --- Community safety: report content & block users (Google Play UGC policy) ---
+
+export const reportContent = async (params: {
+  reporterId: string;
+  targetType: 'post' | 'comment' | 'user';
+  targetId: string;
+  reportedUserId: string;
+  reason: string;
+  postId?: string;
+}) => {
+  try {
+    const data: any = {
+      reporterId: params.reporterId,
+      targetType: params.targetType,
+      targetId: params.targetId,
+      reportedUserId: params.reportedUserId,
+      reason: params.reason,
+      createdAt: serverTimestamp(),
+    };
+    if (params.postId !== undefined) data.postId = params.postId;
+    await addDoc(collection(db, 'reports'), data);
+  } catch (error) {
+    handleFirestoreError(error, 'create', 'reports');
+  }
+};
+
+export const blockUser = async (userId: string, blockedUserId: string) => {
+  try {
+    if (!userId || !blockedUserId || userId === blockedUserId) return;
+    await setDoc(doc(db, `users/${userId}/blocks`, blockedUserId), {
+      blockedUserId,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, 'create', `users/${userId}/blocks`);
+  }
+};
+
+export const unblockUser = async (userId: string, blockedUserId: string) => {
+  try {
+    await deleteDoc(doc(db, `users/${userId}/blocks`, blockedUserId));
+  } catch (error) {
+    handleFirestoreError(error, 'delete', `users/${userId}/blocks/${blockedUserId}`);
+  }
+};
+
 export const getDailySummary = async (userId: string) => {
   try {
     const today = new Date();

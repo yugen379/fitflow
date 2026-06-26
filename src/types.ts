@@ -258,6 +258,19 @@ export interface Comment {
   createdAt: any;
 }
 
+export type ReportTargetType = 'post' | 'comment' | 'user';
+
+export interface Report {
+  id?: string;
+  reporterId: string;
+  targetType: ReportTargetType;
+  targetId: string;
+  reportedUserId: string;
+  postId?: string;
+  reason: string;
+  createdAt: any;
+}
+
 export interface DailySummary {
   caloriesConsumed: number;
   caloriesBurned: number;

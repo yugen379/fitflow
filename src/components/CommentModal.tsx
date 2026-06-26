@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Loader2, MessageCircle } from 'lucide-react';
+import { X, Send, Loader2, MessageCircle, Flag, Ban } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
-import { addComment } from '../services/dataService';
+import { addComment, reportContent, blockUser } from '../services/dataService';
 import { query, collection, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Post } from '../types';
 import { Avatar } from './Avatar';
+import { ReportModal } from './ReportModal';
+import { useToast } from '../hooks/useToast';
 
 export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post: Post | null }> = ({ isOpen, onClose, post }) => {
   const { user, profile } = useAuth();
+  const { showToast } = useToast();
   const [content, setContent] = useState('');
   const [comments, setComments] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+  const [reportComment, setReportComment] = useState<any | null>(null);
 
   useEffect(() => {
     if (!post?.id || !isOpen) return;
@@ -28,6 +33,34 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
     });
     return () => unsubscribe();
   }, [post?.id, isOpen]);
+
+  useEffect(() => {
+    if (!user || !isOpen) return;
+    const unsub = onSnapshot(collection(db, `users/${user.uid}/blocks`), (snap) => {
+      setBlockedIds(new Set(snap.docs.map(d => d.id)));
+    });
+    return () => unsub();
+  }, [user, isOpen]);
+
+  const handleReportComment = async (reason: string) => {
+    if (!user || !post?.id || !reportComment) return;
+    await reportContent({
+      reporterId: user.uid,
+      targetType: 'comment',
+      targetId: reportComment.id,
+      reportedUserId: reportComment.userId,
+      postId: post.id,
+      reason,
+    });
+    showToast('Report submitted. Thank you.', 'success');
+  };
+
+  const handleBlockFromComment = async (comment: any) => {
+    if (!user) return;
+    if (!window.confirm(`Block ${comment.username}? You won't see their posts or comments anymore.`)) return;
+    await blockUser(user.uid, comment.userId);
+    showToast(`Blocked ${comment.username}`, 'success');
+  };
 
   const handleSubmit = async () => {
     if (!user || !profile || !post?.id || !content.trim()) return;
@@ -67,9 +100,9 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
             <div className="flex items-center justify-center h-full">
               <div className="w-8 h-8 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
             </div>
-          ) : comments.length > 0 ? (
-            comments.map((comment) => (
-              <div key={comment.id} className="flex gap-3">
+          ) : comments.filter(c => !blockedIds.has(c.userId)).length > 0 ? (
+            comments.filter(c => !blockedIds.has(c.userId)).map((comment) => (
+              <div key={comment.id} className="flex gap-3 group">
                 <Avatar src={comment.userPhoto} name={comment.username} size={32} />
                 <div className="flex-1 space-y-1 min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
@@ -80,6 +113,26 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
                   </div>
                   <p className="text-sm text-white/85 leading-relaxed break-words">{comment.content}</p>
                 </div>
+                {comment.userId !== user?.uid && (
+                  <div className="flex items-start gap-1 opacity-60">
+                    <button
+                      onClick={() => setReportComment(comment)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-text-mute hover:text-accent-2 transition-colors"
+                      aria-label="Report comment"
+                      title="Report"
+                    >
+                      <Flag size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleBlockFromComment(comment)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-text-mute hover:text-accent-2 transition-colors"
+                      aria-label="Block user"
+                      title="Block"
+                    >
+                      <Ban size={13} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -113,6 +166,13 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
           </div>
         </div>
       </motion.div>
+
+      <ReportModal
+        isOpen={!!reportComment}
+        onClose={() => setReportComment(null)}
+        onSubmit={handleReportComment}
+        targetLabel={reportComment ? `${reportComment.username}'s comment` : undefined}
+      />
     </div>
   );
 };

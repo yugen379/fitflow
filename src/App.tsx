@@ -27,6 +27,7 @@ const MealPlan = lazy(() => import('./pages/MealPlan').then(m => ({ default: m.M
 const Challenges = lazy(() => import('./pages/Challenges').then(m => ({ default: m.Challenges })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })));
+const DeleteAccount = lazy(() => import('./pages/DeleteAccount').then(m => ({ default: m.DeleteAccount })));
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })));
 const Pro = lazy(() => import('./pages/Pro').then(m => ({ default: m.Pro })));
 const Coach = lazy(() => import('./pages/Coach').then(m => ({ default: m.Coach })));
@@ -222,6 +223,7 @@ export default function App() {
             <Route path="/challenges" element={<ProtectedRoute>{lazyRoute(<Challenges />)}</ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute>{lazyRoute(<Settings />)}</ProtectedRoute>} />
             <Route path="/privacy" element={lazyRoute(<Privacy />)} />
+            <Route path="/delete-account" element={lazyRoute(<DeleteAccount />)} />
             <Route path="/terms" element={lazyRoute(<Terms />)} />
             <Route path="/pro" element={<ProtectedRoute>{lazyRoute(<Pro />)}</ProtectedRoute>} />
             <Route path="/coach" element={<ProtectedRoute>{lazyRoute(<Coach />)}</ProtectedRoute>} />
