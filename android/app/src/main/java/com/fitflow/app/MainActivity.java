@@ -1,4 +1,4 @@
-package com.Fitflow.app;
+package com.fitflow.app;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
