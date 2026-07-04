@@ -120,12 +120,15 @@ jobs:
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
 
-      - name: Upload to Play Console internal track
+      - name: Upload to Play Console closed-testing (alpha) track
         if: ${{ env.PLAY_SA != '' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ env.PLAY_SA }}
-          packageName: com.fitflow.app
+          # Play package is com.fitflow.fitness (com.fitflow.app was taken on Play).
+          packageName: com.fitflow.fitness
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: internal
+          # The 12-testers x 14-days production gate counts the CLOSED track (alpha),
+          # not internal testing.
+          track: alpha
           status: completed
