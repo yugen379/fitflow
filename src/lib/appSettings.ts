@@ -7,6 +7,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 // falls back to the guided steps instead.
 interface AppSettingsPlugin {
   openCameraSettings(): Promise<void>;
+  openUrl(options: { url: string }): Promise<void>;
 }
 
 const AppSettings = registerPlugin<AppSettingsPlugin>('AppSettings');
@@ -19,6 +20,21 @@ export const openAppSettings = async (): Promise<boolean> => {
   if (!Capacitor.isNativePlatform()) return false;
   try {
     await AppSettings.openCameraSettings();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Hand a URL to the OS (ACTION_VIEW) so it opens in the matching installed app
+ * — YouTube app for youtube.com, Play Store for play.google.com — or the
+ * default browser. Returns false on web or if no app can handle it.
+ */
+export const openUrlInSystem = async (url: string): Promise<boolean> => {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    await AppSettings.openUrl({ url });
     return true;
   } catch {
     return false;

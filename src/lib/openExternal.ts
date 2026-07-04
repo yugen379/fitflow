@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { openUrlInSystem } from './appSettings';
 
 let browserModule: any = null;
 
@@ -14,20 +15,22 @@ const getBrowser = async () => {
 };
 
 /**
- * Opens a URL externally. On native (Capacitor) this hands the URL to the system,
- * so YouTube links open in the YouTube app if installed. On the web it opens
- * a new tab with safe rel attributes.
+ * Opens a URL externally. On native (Capacitor) the URL goes to the OS first
+ * (ACTION_VIEW), so YouTube links open in the YouTube app and Play links in the
+ * Play Store; if no app claims it, we fall back to an in-app Custom Tab, then
+ * to window.open. On the web it opens a new tab with safe rel attributes.
  */
 export const openExternal = async (url: string) => {
   if (Capacitor.isNativePlatform()) {
-    const browser = await getBrowser();
-    if (browser) {
-      try {
+    if (await openUrlInSystem(url)) return;
+    try {
+      const browser = await getBrowser();
+      if (browser) {
         await browser.open({ url, presentationStyle: 'fullscreen' });
         return;
-      } catch {
-        // fall through
       }
+    } catch (err) {
+      console.warn('[openExternal] Browser.open failed, falling back to window.open', err);
     }
   }
   window.open(url, '_blank', 'noopener,noreferrer');

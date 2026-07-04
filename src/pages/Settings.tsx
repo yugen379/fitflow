@@ -10,7 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { allFeaturesFree, getEntitlement } from '../lib/billing';
 import { openBillingPortal, isPortalConfigured } from '../services/stripeService';
-import { db, auth, requestNotificationPermission } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
+import { requestPushPermission, isNativeApp, micSupported } from '../lib/pushPermission';
 import {
   doc, updateDoc, deleteDoc, serverTimestamp,
   collection, query, where, getDocs, writeBatch,
@@ -84,7 +85,7 @@ export const Settings: React.FC = () => {
 
   const toggleNotifications = async () => {
     if (!profile?.uid) return;
-    // Already enabled → can't un-grant browser permission, so disable in-app only.
+    // Already enabled → can't un-grant the OS/browser permission, so disable in-app only.
     if (profile.notificationsEnabled) {
       try {
         await updateDoc(doc(db, 'users', profile.uid), { notificationsEnabled: false, updatedAt: serverTimestamp() });
@@ -92,18 +93,15 @@ export const Settings: React.FC = () => {
       } catch { showToast('Failed to save', 'error'); }
       return;
     }
-    // Not enabled → request browser permission and persist FCM token.
-    if (typeof Notification === 'undefined') {
-      showToast('Notifications not supported in this browser', 'info');
-      return;
-    }
-    if (Notification.permission === 'denied') {
-      showToast('Allow notifications in your browser settings, then try again.', 'info');
-      return;
-    }
-    const token = await requestNotificationPermission(profile.uid);
-    if (token) showToast('Push notifications enabled');
-    else showToast('Notifications not enabled', 'info');
+    // Not enabled → OS prompt on Android, browser prompt on web; saves the FCM token.
+    const r = await requestPushPermission(profile.uid);
+    if (r === 'granted') showToast('Push notifications enabled');
+    else showToast(
+      isNativeApp()
+        ? 'Blocked — allow notifications in Settings → Apps → FitFlow, then try again.'
+        : 'Allow notifications in your browser settings, then try again.',
+      'info',
+    );
   };
 
   const setUnit = async (u: 'kg' | 'lbs') => {
@@ -276,7 +274,9 @@ export const Settings: React.FC = () => {
 
       <Section title="Device permissions">
         <button onClick={() => setPermsPromptOpen(true)} className="w-full text-left">
-          <Row icon={Sparkles} label="Allow everything" sub="One tap to grant camera, mic, and notifications in sequence">
+          <Row icon={Sparkles} label="Allow everything" sub={micSupported()
+            ? 'One tap to grant camera, mic, and notifications in sequence'
+            : 'One tap to grant camera and notifications in sequence'}>
             <span className="text-xs font-semibold text-accent">Open</span>
           </Row>
         </button>
@@ -296,6 +296,7 @@ export const Settings: React.FC = () => {
               : <span className="text-xs font-semibold text-accent">{camStatus === 'denied' ? 'Retry' : 'Allow'}</span>}
           </Row>
         </button>
+        {micSupported() && (
         <button onClick={testMic} className="w-full text-left">
           <Row
             icon={Mic}
@@ -312,6 +313,7 @@ export const Settings: React.FC = () => {
               : <span className="text-xs font-semibold text-accent">{micStatus === 'denied' ? 'Retry' : 'Allow'}</span>}
           </Row>
         </button>
+        )}
       </Section>
 
       <Section title="Your data">

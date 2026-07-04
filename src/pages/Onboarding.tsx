@@ -7,6 +7,7 @@ import { Weight, Ruler, Calendar, Target, ChevronRight, HeartPulse, Salad, Camer
 import { LogoMark } from '../components/Logo';
 import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
+import { requestPushPermission, micSupported } from '../lib/pushPermission';
 
 type Goal = 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic_performance';
 
@@ -70,20 +71,16 @@ export const Onboarding: React.FC = () => {
     }
   };
   const requestNotif = async () => {
-    if (typeof Notification === 'undefined') { setNotifPerm('denied'); return; }
     setNotifPerm('requesting');
-    try {
-      const r = await Notification.requestPermission();
-      setNotifPerm(r === 'granted' ? 'granted' : 'denied');
-    } catch {
-      setNotifPerm('denied');
-    }
+    setNotifPerm(await requestPushPermission(user?.uid));
   };
+  // Mic is web-only: the Android WebView has no Web Speech API for the Coach.
+  const withMic = micSupported();
   const allowEverything = async () => {
     if (allRunning) return;
     setAllRunning(true);
     if (camPerm !== 'granted') await requestCamera();
-    if (micPerm !== 'granted') await requestMic();
+    if (withMic && micPerm !== 'granted') await requestMic();
     if (notifPerm !== 'granted') await requestNotif();
     setAllRunning(false);
   };
@@ -252,7 +249,9 @@ export const Onboarding: React.FC = () => {
             </Step>
           )}
           {step === 8 && (
-            <Step key="8" icon={<Sparkles size={20} />} eyebrow="One tap" title="Unlock the full FitFlow" subtitle="Allow camera, mic, and notifications in one go. Your browser will pop a prompt for each — tap Allow.">
+            <Step key="8" icon={<Sparkles size={20} />} eyebrow="One tap" title="Unlock the full FitFlow" subtitle={withMic
+              ? 'Allow camera, mic, and notifications in one go. Your browser will pop a prompt for each — tap Allow.'
+              : 'Allow camera and notifications in one go. Android will pop a prompt for each — tap Allow.'}>
               <div className="space-y-3 mt-2">
                 <button
                   onClick={allowEverything}
@@ -273,13 +272,15 @@ export const Onboarding: React.FC = () => {
                   state={camPerm}
                   onRequest={requestCamera}
                 />
-                <PermRow
-                  icon={<Mic size={18} />}
-                  title="Microphone"
-                  desc="Voice questions to the AI Coach, hands-free logging"
-                  state={micPerm}
-                  onRequest={requestMic}
-                />
+                {withMic && (
+                  <PermRow
+                    icon={<Mic size={18} />}
+                    title="Microphone"
+                    desc="Voice questions to the AI Coach, hands-free logging"
+                    state={micPerm}
+                    onRequest={requestMic}
+                  />
+                )}
                 <PermRow
                   icon={<Bell size={18} />}
                   title="Notifications"
@@ -297,9 +298,11 @@ export const Onboarding: React.FC = () => {
                   </div>
                   <Check size={16} className="text-accent mt-1" />
                 </div>
-                {(camPerm === 'denied' || micPerm === 'denied' || notifPerm === 'denied') && (
+                {(camPerm === 'denied' || (withMic && micPerm === 'denied') || notifPerm === 'denied') && (
                   <p className="text-xs text-accent-3 leading-snug px-1">
-                    Denied one by accident? Tap the site lock icon in the address bar, set the permission to Allow, then reload.
+                    {withMic
+                      ? 'Denied one by accident? Tap the site lock icon in the address bar, set the permission to Allow, then reload.'
+                      : 'Denied one by accident? Open system Settings → Apps → FitFlow to allow it, or continue — you can enable it later in Settings.'}
                   </p>
                 )}
                 <p className="text-xs text-text-mute text-center pt-1">All optional — you can skip and start training right away.</p>

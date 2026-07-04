@@ -5,6 +5,7 @@ import { BottomNav } from './components/BottomNav';
 import { Onboarding } from './pages/Onboarding';
 import { Logo } from './components/Logo';
 import { requestNotificationPermission, onMessageListener } from './lib/firebase';
+import { isNativeApp } from './lib/pushPermission';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
 import { motion } from 'motion/react';
 import { useToast } from './hooks/useToast';
@@ -59,10 +60,26 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }, [user, profile]);
 
   React.useEffect(() => {
+    // Web: FCM foreground messages arrive via the messaging SDK.
     const unsubscribeMessage = onMessageListener((payload: any) => {
       showToast(`${payload?.notification?.title}: ${payload?.notification?.body}`, 'info');
     });
-    return () => { if (unsubscribeMessage) unsubscribeMessage(); };
+    // Native: FCM only auto-displays when backgrounded — surface foreground
+    // pushes as the same in-app toast the web shows.
+    let nativeHandle: { remove(): Promise<void> } | undefined;
+    if (isNativeApp()) {
+      import('@capacitor/push-notifications')
+        .then(({ PushNotifications }) =>
+          PushNotifications.addListener('pushNotificationReceived', n => {
+            const text = [n.title, n.body].filter(Boolean).join(': ');
+            if (text) showToast(text, 'info');
+          }).then(h => { nativeHandle = h; }))
+        .catch(() => { /* plugin missing on this platform — fine */ });
+    }
+    return () => {
+      if (unsubscribeMessage) unsubscribeMessage();
+      nativeHandle?.remove().catch(() => {});
+    };
   }, [showToast]);
   
   if (loading) {

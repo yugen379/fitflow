@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Mic, Bell, Check, X, Sparkles, Loader2 } from 'lucide-react';
 import { LogoMark } from './Logo';
-import { requestNotificationPermission } from '../lib/firebase';
+import { requestPushPermission, isNativeApp, micSupported } from '../lib/pushPermission';
+import { openAppSettings } from '../lib/appSettings';
 
 type PermState = 'idle' | 'granted' | 'denied' | 'requesting';
 
@@ -102,21 +103,18 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
     }
   };
   const requestNotif = async (): Promise<PermState> => {
-    if (typeof Notification === 'undefined') { setNotif('denied'); return 'denied'; }
     setNotif('requesting');
-    try {
-      const r = await Notification.requestPermission();
-      const ok = r === 'granted';
-      setNotif(ok ? 'granted' : 'denied');
-      if (ok && uid) { try { await requestNotificationPermission(uid); } catch { /* non-fatal */ } }
-      return ok ? 'granted' : 'denied';
-    } catch (err: any) {
-      const msg = reportError('Notifications', err);
-      if (msg) setDenyReason(prev => prev || msg);
-      setNotif('denied');
-      return 'denied';
+    const r = await requestPushPermission(uid);
+    setNotif(r);
+    if (r === 'denied' && isNativeApp()) {
+      setDenyReason(prev => prev || 'Notifications blocked. Open system Settings → Apps → FitFlow → Notifications → Allow.');
     }
+    return r;
   };
+
+  // In the native app the WebView has no Web Speech API, so the mic can't do
+  // anything useful — prompt only for camera + notifications there.
+  const withMic = micSupported();
 
   const allowEverything = async () => {
     if (running) return;
@@ -125,9 +123,9 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
 
     // Detect a hard-block (user previously denied at site-settings level) so we
     // can show the recovery path immediately rather than firing a request that
-    // silently rejects.
+    // silently rejects. Web-only — native uses OS prompts that we can re-fire.
     try {
-      if ((navigator as any).permissions?.query) {
+      if (!isNativeApp() && (navigator as any).permissions?.query) {
         const [camState, micState] = await Promise.all([
           (navigator as any).permissions.query({ name: 'camera' }).catch(() => null),
           (navigator as any).permissions.query({ name: 'microphone' }).catch(() => null),
@@ -138,13 +136,19 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
       }
     } catch { /* permissions API is best-effort */ }
 
-    const both = (cam === 'granted' && mic === 'granted')
-      ? { cam: 'granted' as PermState, mic: 'granted' as PermState }
-      : await requestCameraAndMic();
+    let both: { cam: PermState; mic: PermState };
+    if (withMic) {
+      both = (cam === 'granted' && mic === 'granted')
+        ? { cam: 'granted', mic: 'granted' }
+        : await requestCameraAndMic();
+    } else {
+      both = { cam: cam === 'granted' ? 'granted' : await requestCameraOnly(), mic };
+    }
     const n = notif === 'granted' ? 'granted' : await requestNotif();
     setRunning(false);
     onComplete?.({ camera: both.cam, mic: both.mic, notifications: n });
-    if (both.cam === 'granted' && both.mic === 'granted' && n === 'granted') {
+    const micOk = !withMic || both.mic === 'granted';
+    if (both.cam === 'granted' && micOk && n === 'granted') {
       setTimeout(() => onClose(), 900);
     }
   };
@@ -185,13 +189,17 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
                 Unlock the full FitFlow.
               </h2>
               <p className="text-text-dim text-sm leading-relaxed">
-                Allow camera, mic, and notifications in one go — your browser will pop a prompt for each.
+                {withMic
+                  ? 'Allow camera, mic, and notifications in one go — your browser will pop a prompt for each.'
+                  : 'Allow camera and notifications in one go — Android will pop a prompt for each.'}
               </p>
             </div>
 
             <div className="space-y-2">
               <PermLine icon={<Camera size={16} />} label="Camera" sub="Barcode scanner, meal photos, AI form check" state={cam} />
-              <PermLine icon={<Mic size={16} />} label="Microphone" sub="Voice questions to AI Coach, hands-free logging" state={mic} />
+              {withMic && (
+                <PermLine icon={<Mic size={16} />} label="Microphone" sub="Voice questions to AI Coach, hands-free logging" state={mic} />
+              )}
               <PermLine icon={<Bell size={16} />} label="Notifications" sub="Smart workout reminders, weekly recap" state={notif} />
             </div>
 
@@ -217,10 +225,19 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
               )}
             </div>
 
-            {(cam === 'denied' || mic === 'denied' || notif === 'denied') && (
-              <p className="text-xs text-accent-3 leading-snug">
-                {denyReason || "Denied one by accident? Tap the site lock icon in your browser's address bar, set the permission to Allow, then reload."}
-              </p>
+            {(cam === 'denied' || (withMic && mic === 'denied') || notif === 'denied') && (
+              <div className="space-y-2">
+                <p className="text-xs text-accent-3 leading-snug">
+                  {denyReason || (isNativeApp()
+                    ? 'Denied one by accident? Fix it in one tap:'
+                    : "Denied one by accident? Tap the site lock icon in your browser's address bar, set the permission to Allow, then reload.")}
+                </p>
+                {isNativeApp() && (
+                  <button onClick={() => openAppSettings()} className="btn-ghost w-full h-10 text-xs">
+                    Open FitFlow system settings
+                  </button>
+                )}
+              </div>
             )}
           </motion.div>
         </div>

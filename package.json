@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.4",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -27,6 +27,7 @@
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
     "@capacitor/haptics": "^8.0.2",
+    "@capacitor/push-notifications": "^8.1.1",
     "@google/genai": "^1.50.1",
     "@revenuecat/purchases-capacitor": "^13.2.0",
     "@sentry/react": "^10.56.0",
