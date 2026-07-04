@@ -40,3 +40,4 @@ scripts/.tmp/
 .idea/
 .vscode/
 *.iml
+.revenuecat-webhook-auth.txt
