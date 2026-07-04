@@ -31,6 +31,13 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
+    // Dark app → light system-bar icons. The insets themselves are handled
+    // natively: with viewport-fit=cover removed (index.html), Capacitor's
+    // SystemBars pads the WebView by the real bar sizes, so no screen can sit
+    // underneath the status/navigation bars on Android 15+ edge-to-edge.
+    SystemBars: {
+      style: 'DARK',
+    },
   },
 };
 

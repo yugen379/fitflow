@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <!-- No viewport-fit=cover: in the Android app, Capacitor's SystemBars then pads
+         the WebView by the real system-bar sizes (Android 15+ forces edge-to-edge and
+         env(safe-area-inset-*) is NOT reliable in WebViews — the white nav bar was
+         covering the bottom dock). Browsers/PWA handle safe areas themselves. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#06070A" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

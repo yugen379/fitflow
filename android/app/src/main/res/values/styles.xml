@@ -13,6 +13,11 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- FitFlow ink. Shows in the status/navigation-bar strips now that the
+             WebView is inset-padded on Android 15+ edge-to-edge (SystemBars also
+             paints the decor with windowBackground). Keeps the frame dark instead
+             of the DayNight default white. -->
+        <item name="android:windowBackground">#FF06070A</item>
     </style>
 
 
