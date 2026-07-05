@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db, completeRedirectSignIn, friendlyAuthError } from '../lib/firebase';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { UserProfile } from '../types';
 import { identify } from '../lib/telemetry';
 
@@ -48,8 +48,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const tzOffsetHours = -new Date().getTimezoneOffset() / 60;
         const tzId = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-        getDoc(userRef).then(async (docSnap) => {
-          if (!docSnap.exists()) {
+        // Subscribe FIRST: with the persistent Firestore cache the profile
+        // paints instantly from disk and the server update follows — the old
+        // flow blocked this listener behind a full getDoc network round-trip
+        // (the long "Loading your training data" wait on cold starts).
+        let ensuredOnce = false;
+        unsubscribeProfile = onSnapshot(userRef, (snapshot) => {
+          const fromCache = snapshot.metadata.fromCache;
+          if (snapshot.exists()) {
+            const data = snapshot.data() as any;
+            setProfile({ uid: user.uid, ...data } as UserProfile);
+            identify(user.uid, {
+              email: user.email || undefined,
+              displayName: data.displayName,
+              subscriptionType: data.subscriptionType,
+            });
+            setLoading(false);
+            if (!ensuredOnce) {
+              ensuredOnce = true;
+              // Keep timezone in sync (cheap; server reminders need this)
+              if (data.tzOffsetHours !== tzOffsetHours || data.tzId !== tzId) {
+                updateDoc(userRef, { tzOffsetHours, tzId }).catch(() => {});
+              }
+            }
+          } else if (!fromCache && !ensuredOnce) {
+            // The SERVER confirmed there is no profile → first sign-in ever.
+            // (A cache-only miss must not create: the real doc may exist.)
+            ensuredOnce = true;
             const initialProfile: UserProfile = {
               uid: user.uid,
               displayName: user.displayName || 'Guest',
@@ -66,32 +91,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               badges: [],
               createdAt: serverTimestamp(),
             };
-            await setDoc(userRef, { ...initialProfile, tzOffsetHours, tzId } as any);
-          } else {
-            // Keep timezone in sync (cheap; server reminders need this)
-            const existing: any = docSnap.data();
-            if (existing.tzOffsetHours !== tzOffsetHours || existing.tzId !== tzId) {
-              updateDoc(userRef, { tzOffsetHours, tzId }).catch(() => {});
-            }
-          }
-
-          unsubscribeProfile = onSnapshot(userRef, (snapshot) => {
-            if (snapshot.exists()) {
-              const data = snapshot.data() as any;
-              setProfile({ uid: user.uid, ...data } as UserProfile);
-              identify(user.uid, {
-                email: user.email || undefined,
-                displayName: data.displayName,
-                subscriptionType: data.subscriptionType,
-              });
+            // The snapshot listener fires again once this lands.
+            setDoc(userRef, { ...initialProfile, tzOffsetHours, tzId } as any).catch(err => {
+              console.error('Initial profile create error:', err);
               setLoading(false);
-            }
-          }, (error) => {
-            console.error('Profile sync error:', error);
-            setLoading(false);
-          });
-        }).catch(err => {
-          console.error('Initial profile fetch error:', err);
+            });
+          }
+        }, (error) => {
+          console.error('Profile sync error:', error);
           setLoading(false);
         });
       } else {

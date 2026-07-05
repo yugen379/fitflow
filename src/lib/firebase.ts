@@ -10,7 +10,10 @@ import {
   browserLocalPersistence,
   setPersistence,
 } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, getDocFromServer, updateDoc, serverTimestamp,
+} from 'firebase/firestore';
 import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { isSupported } from 'firebase/messaging';
@@ -22,7 +25,13 @@ const app = initializeApp(firebaseConfig);
 // services. Inert until a reCAPTCHA site key is configured (see lib/appCheck.ts).
 initAppCheck(app);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Persistent (IndexedDB) cache: profile/meals/workouts render instantly from
+// disk on reopen and sync in the background — the app stays usable offline and
+// cold starts stop waiting on the network. Multi-tab manager keeps the PWA
+// safe when open in more than one tab; falls back gracefully where unsupported.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+}, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
 // Persist auth across reloads (required for redirect flow on mobile)
