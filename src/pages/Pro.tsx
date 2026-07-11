@@ -39,10 +39,14 @@ export const Pro: React.FC = () => {
   const [managing, setManaging] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
-  // Android sells Pro through Google Play Billing (Play policy); web uses Stripe.
+  // Android sells Pro through Google Play Billing once RevenueCat is wired up
+  // (required for Play Store distribution). Until then the APK ships via GitHub
+  // Releases, so it falls back to Stripe Checkout in the external browser.
+  // Web always uses Stripe.
   const native = isNativeApp();
   const allFree = allFeaturesFree();
-  const billingReady = native ? isPlayBillingConfigured() : isStripeConfigured();
+  const playReady = native && isPlayBillingConfigured();
+  const billingReady = playReady || isStripeConfigured();
   const ent = getEntitlement(profile);
   const isPaid = ent.isPro && ent.source === 'paid';
   const isTrialing = ent.isPro && ent.source === 'trial';
@@ -63,7 +67,7 @@ export const Pro: React.FC = () => {
       return;
     }
     setStarting(true);
-    if (native) {
+    if (playReady) {
       const result = await startPlayPurchase(profile!.uid, plan);
       setStarting(false);
       if (result.ok) {
@@ -92,7 +96,7 @@ export const Pro: React.FC = () => {
   };
 
   const manage = async () => {
-    if (native) { await openPlaySubscriptions(); return; }
+    if (playReady) { await openPlaySubscriptions(); return; }
     if (!isPortalConfigured()) {
       showToast('Subscription management is being set up — try again shortly.', 'info');
       return;
@@ -250,7 +254,7 @@ export const Pro: React.FC = () => {
               : `${TRIAL_DAYS}-day free trial included with every new account — no card needed. `}
             Billed {plan === 'yearly' ? '$59.88/year' : '$17.99/month'}. Cancel anytime.
           </p>
-          {native && (
+          {playReady && (
             <button
               onClick={restore}
               disabled={restoring}

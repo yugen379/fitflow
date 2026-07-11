@@ -1,5 +1,11 @@
-import { auth } from '../lib/firebase';
+import { auth, isNativeApp } from '../lib/firebase';
 import { openExternal } from '../lib/openExternal';
+
+// Inside the Capacitor app window.location.origin is https://localhost — a dead
+// page for the external browser Stripe redirects to after payment. Send it to the
+// hosted web app instead; the entitlement reaches the app via the webhook anyway.
+const WEB_ORIGIN = 'https://gen-lang-client-0893216108.web.app';
+const returnOrigin = () => (isNativeApp() ? WEB_ORIGIN : window.location.origin);
 
 const CHECKOUT_URL = (import.meta as any).env?.VITE_STRIPE_CHECKOUT_URL as string | undefined;
 const PORTAL_URL = (import.meta as any).env?.VITE_STRIPE_PORTAL_URL as string | undefined;
@@ -25,8 +31,8 @@ export const startCheckout = async (plan: Plan): Promise<{ ok: boolean; reason?:
   if (!user) return { ok: false, reason: 'Please sign in first.' };
   const idToken = await user.getIdToken();
 
-  const successUrl = `${window.location.origin}/pro?status=success`;
-  const cancelUrl = `${window.location.origin}/pro?status=cancelled`;
+  const successUrl = `${returnOrigin()}/pro?status=success`;
+  const cancelUrl = `${returnOrigin()}/pro?status=cancelled`;
 
   let res: Response;
   try {
@@ -57,7 +63,7 @@ export const openBillingPortal = async (): Promise<{ ok: boolean; reason?: strin
   const user = auth.currentUser;
   if (!user) return { ok: false, reason: 'Please sign in first.' };
   const idToken = await user.getIdToken();
-  const returnUrl = `${window.location.origin}/settings`;
+  const returnUrl = `${returnOrigin()}/settings`;
 
   let res: Response;
   try {
