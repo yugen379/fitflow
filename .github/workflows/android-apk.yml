@@ -48,6 +48,17 @@ jobs:
           if [ -n "$VITE_USDA_API_KEY" ]; then echo "VITE_USDA_API_KEY=$VITE_USDA_API_KEY" >> .env; fi
 
       - name: Build web assets
+        env:
+          # Billing must be baked into the APK's web bundle — without these the
+          # Pro page shows "Billing is being configured" forever (the v1.2.4 bug).
+          VITE_STRIPE_CHECKOUT_URL: ${{ secrets.VITE_STRIPE_CHECKOUT_URL }}
+          VITE_STRIPE_PORTAL_URL: ${{ secrets.VITE_STRIPE_PORTAL_URL }}
+          VITE_STRIPE_PRICE_MONTHLY: ${{ secrets.VITE_STRIPE_PRICE_MONTHLY }}
+          VITE_STRIPE_PRICE_YEARLY: ${{ secrets.VITE_STRIPE_PRICE_YEARLY }}
+          VITE_ALL_FEATURES_FREE: ${{ secrets.VITE_ALL_FEATURES_FREE }}
+          # Unset today → Stripe fallback. Add the goog_ secret once RevenueCat is
+          # wired and native Subscribe switches to Google Play Billing automatically.
+          VITE_REVENUECAT_ANDROID_KEY: ${{ secrets.VITE_REVENUECAT_ANDROID_KEY }}
         run: npm run build
 
       - name: Write google-services.json from secret (optional — enables push)
