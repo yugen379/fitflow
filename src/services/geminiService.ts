@@ -35,6 +35,12 @@ const isRetryable = (e: any): boolean => {
 // stall was seen against an overloaded endpoint). A timeout reads as retryable,
 // so the cascade simply moves on to the next model.
 const CALL_TIMEOUT_MS = 20000;
+
+// Gemini 2.5-family models "think" before answering by default — seconds of
+// extra latency the app's short structured tasks don't need. Budget 0 turns it
+// off; a model that rejects the flag reads as a hard error and ends the sweep,
+// but every model in MODELS is 2.5-family and accepts it.
+const GEN_CONFIG = { thinkingConfig: { thinkingBudget: 0 } };
 const withTimeout = <T>(p: Promise<T>, ms = CALL_TIMEOUT_MS): Promise<T> =>
   Promise.race([
     p,
@@ -125,7 +131,7 @@ const generateOnce = async (contents: any): Promise<string | null> => {
   if (!ai) return null;
   for (const model of MODELS) {
     try {
-      const resp = await withTimeout(ai.models.generateContent({ model, contents }));
+      const resp = await withTimeout(ai.models.generateContent({ model, contents, config: GEN_CONFIG }));
       const text = (resp.text || '').trim();
       if (text) return text;
       // Empty completion — try the next model.

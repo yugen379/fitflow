@@ -8,8 +8,9 @@ import {
 import { PermissionsPrompt } from '../components/PermissionsPrompt';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { allFeaturesFree, getEntitlement } from '../lib/billing';
+import { allFeaturesFree, getEntitlement, isPlayStoreBuild } from '../lib/billing';
 import { openBillingPortal, isPortalConfigured } from '../services/stripeService';
+import { purchaseUiAllowed } from '../services/playBillingService';
 import { db, auth } from '../lib/firebase';
 import { requestPushPermission, isNativeApp, micSupported } from '../lib/pushPermission';
 import {
@@ -46,7 +47,15 @@ export const Settings: React.FC = () => {
 
   const manageBilling = async () => {
     if (ent.source !== 'paid') { navigate('/pro'); return; }
-    if (!isPortalConfigured()) { showToast('Subscription management is being set up.', 'info'); return; }
+    if (!isPortalConfigured()) {
+      showToast(
+        isPlayStoreBuild()
+          ? 'Manage your subscription from the FitFlow web app.'
+          : 'Subscription management is being set up.',
+        'info',
+      );
+      return;
+    }
     setManagingBilling(true);
     const result = await openBillingPortal();
     setManagingBilling(false);
@@ -217,8 +226,10 @@ export const Settings: React.FC = () => {
                 <><Loader2 size={16} className="animate-spin" /> Opening…</>
               ) : ent.source === 'paid' ? (
                 <><Crown size={16} /> Manage subscription</>
-              ) : (
+              ) : purchaseUiAllowed() ? (
                 <><Sparkles size={16} /> Upgrade to Pro</>
+              ) : (
+                <><Sparkles size={16} /> About FitFlow Pro</>
               )}
             </button>
           </div>

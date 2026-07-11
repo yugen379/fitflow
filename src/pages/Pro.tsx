@@ -9,7 +9,7 @@ import { startCheckout, isStripeConfigured, openBillingPortal, isPortalConfigure
 import { isNativeApp } from '../lib/firebase';
 import {
   isPlayBillingConfigured, configurePlayBilling, startPlayPurchase,
-  restorePlayPurchases, openPlaySubscriptions,
+  restorePlayPurchases, openPlaySubscriptions, purchaseUiAllowed,
 } from '../services/playBillingService';
 import { allFeaturesFree, getEntitlement, TRIAL_DAYS } from '../lib/billing';
 
@@ -40,13 +40,16 @@ export const Pro: React.FC = () => {
   const [restoring, setRestoring] = useState(false);
 
   // Android sells Pro through Google Play Billing once RevenueCat is wired up
-  // (required for Play Store distribution). Until then the APK ships via GitHub
-  // Releases, so it falls back to Stripe Checkout in the external browser.
-  // Web always uses Stripe.
+  // (required for Play Store distribution). Until then the sideloaded GitHub
+  // APK falls back to Stripe Checkout in the external browser, while the Play
+  // Store build (VITE_PLAY_STORE_BUILD) shows no purchase UI at all — Play
+  // policy forbids external checkout. Web always uses Stripe.
   const native = isNativeApp();
   const allFree = allFeaturesFree();
   const playReady = native && isPlayBillingConfigured();
-  const billingReady = playReady || isStripeConfigured();
+  // Hide plans/pricing/CTA entirely when the only path would be external checkout.
+  const showPurchaseUi = purchaseUiAllowed();
+  const billingReady = playReady || (showPurchaseUi && isStripeConfigured());
   const ent = getEntitlement(profile);
   const isPaid = ent.isPro && ent.source === 'paid';
   const isTrialing = ent.isPro && ent.source === 'trial';
@@ -121,9 +124,9 @@ export const Pro: React.FC = () => {
     : isPaid
       ? 'Thanks for going Pro. The full AI coach, native wearable sync, and unlimited everything are yours.'
       : isTrialing
-        ? `You’re on a free ${TRIAL_DAYS}-day trial with everything unlocked — no card needed. Subscribe any time to keep Pro after it ends.`
+        ? `You’re on a free ${TRIAL_DAYS}-day trial with everything unlocked — no card needed.${showPurchaseUi ? ' Subscribe any time to keep Pro after it ends.' : ''}`
         : ent.status === 'expired'
-          ? 'Your free trial has ended. Subscribe to bring back the full AI coach, Meal Scan, and advanced analytics.'
+          ? `Your free trial has ended.${showPurchaseUi ? ' Subscribe to bring back the full AI coach, Meal Scan, and advanced analytics.' : ''}`
           : 'The full AI coach. Native wearable sync. Unlimited everything. Built to make every other fitness app obsolete.';
 
   return (
@@ -167,10 +170,14 @@ export const Pro: React.FC = () => {
               </p>
             </div>
           </div>
-          <button onClick={manage} disabled={managing} className="btn-3d w-full h-12 disabled:opacity-60">
-            <SettingsIcon size={14} />
-            {managing ? 'Opening…' : 'Manage subscription'}
-          </button>
+          {showPurchaseUi ? (
+            <button onClick={manage} disabled={managing} className="btn-3d w-full h-12 disabled:opacity-60">
+              <SettingsIcon size={14} />
+              {managing ? 'Opening…' : 'Manage subscription'}
+            </button>
+          ) : (
+            <p className="text-xs text-text-dim">Manage your subscription from the FitFlow web app.</p>
+          )}
         </div>
       )}
 
@@ -187,8 +194,8 @@ export const Pro: React.FC = () => {
         </div>
       )}
 
-      {/* Plan picker — shown when not already paid and not in launch mode */}
-      {!allFree && !isPaid && (
+      {/* Plan picker — shown when not already paid, not in launch mode, and purchasable */}
+      {!allFree && !isPaid && showPurchaseUi && (
         <div className="glass p-2 grid grid-cols-2 gap-2 mb-5">
           {PLANS.map(p => {
             const active = plan === p.id;
@@ -241,7 +248,13 @@ export const Pro: React.FC = () => {
       {/* Primary CTA */}
       {allFree ? (
         <button onClick={() => navigate('/')} className="btn-3d w-full h-14">Continue training</button>
-      ) : isPaid ? null : (
+      ) : isPaid ? null : !showPurchaseUi ? (
+        <p className="text-center text-xs text-text-mute leading-relaxed">
+          {isTrialing
+            ? `Your trial keeps everything unlocked for ${ent.trialDaysLeft} more ${ent.trialDaysLeft === 1 ? 'day' : 'days'}.`
+            : 'Pro subscriptions aren’t available in this app yet.'}
+        </p>
+      ) : (
         <>
           <button onClick={subscribe} disabled={starting} className="btn-3d w-full h-14 disabled:opacity-60">
             {starting ? 'Opening checkout…'

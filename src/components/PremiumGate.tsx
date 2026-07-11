@@ -4,6 +4,7 @@ import { Lock, Sparkles, X, Check, Crown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { isProUnlocked } from '../lib/billing';
+import { purchaseUiAllowed } from '../services/playBillingService';
 
 interface PremiumGateProps {
   feature: string;
@@ -95,13 +96,15 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
               </ul>
 
               <div className="space-y-3 relative">
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className="num font-display text-4xl font-bold text-white">$4.99</span>
-                  <span className="text-text-dim text-sm">/ month, billed yearly</span>
-                </div>
+                {purchaseUiAllowed() && (
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="num font-display text-4xl font-bold text-white">$4.99</span>
+                    <span className="text-text-dim text-sm">/ month, billed yearly</span>
+                  </div>
+                )}
                 <button onClick={handleUpgrade} className="btn-3d w-full h-13">
                   <Sparkles size={14} />
-                  See plans &amp; subscribe
+                  {purchaseUiAllowed() ? <>See plans &amp; subscribe</> : <>See what's included</>}
                 </button>
                 <p className="w-full text-center text-xs text-text-mute">
                   New accounts get a 6-day free trial — no card needed.

@@ -78,9 +78,19 @@ Use a Stripe **test card** (`4242 4242 4242 4242`) end-to-end, then flip keys to
 ## Android / Google Play note
 
 Google Play requires **Google Play Billing** for in-app digital subscriptions —
-Stripe checkout inside the Android app is a policy risk. Current state:
+Stripe checkout inside the Android app is a policy risk. Current state (v1.2.6):
 
 - Android users get the **full 6-day cardless trial** (best UX, instant access).
+- **Two Android artifacts per release** (built by `android-apk.yml` on every tag):
+  - `fitflow-vX.Y.Z.apk` — sideload build (GitHub Releases). Subscribe opens
+    **Stripe Checkout in the external browser** (no Play policy applies outside
+    the store).
+  - `fitflow-vX.Y.Z-play.aab` — **Play Store upload**. Built with
+    `VITE_PLAY_STORE_BUILD=true` and **zero Stripe config baked in**: no
+    purchase UI, no pricing, no external checkout — policy-safe. Trial and all
+    features work; users can subscribe on the web with the same account.
+- Once RevenueCat is wired (below) and `VITE_REVENUECAT_ANDROID_KEY` is set as a
+  GitHub secret, the Play build automatically switches to native Play Billing.
 
 ---
 

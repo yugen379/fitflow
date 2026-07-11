@@ -11,6 +11,7 @@
 // `appUserID` is the Firebase uid, so the webhook can map a purchase back to the user.
 
 import { Capacitor } from '@capacitor/core';
+import { isPlayStoreBuild } from '../lib/billing';
 import type { Plan } from './stripeService';
 
 const RC_ANDROID_KEY = (import.meta as any).env?.VITE_REVENUECAT_ANDROID_KEY as string | undefined;
@@ -25,6 +26,14 @@ let configuredUid: string | null = null;
 /** True only inside the Android app with a RevenueCat key configured. */
 export const isPlayBillingConfigured = (): boolean =>
   !!(Capacitor?.isNativePlatform?.() && RC_ANDROID_KEY);
+
+/**
+ * Whether this build may show purchase UI (pricing, plans, checkout entry
+ * points). False only in a Play Store build without Play Billing configured —
+ * there the sole path would be external checkout, which Play policy forbids.
+ */
+export const purchaseUiAllowed = (): boolean =>
+  isPlayBillingConfigured() || !(Capacitor?.isNativePlatform?.() && isPlayStoreBuild());
 
 const loadRC = () => import('@revenuecat/purchases-capacitor');
 

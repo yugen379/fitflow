@@ -76,14 +76,11 @@ jobs:
       - name: Install
         run: npm ci --legacy-peer-deps
 
-      - name: Build web
+      - name: Build web (Play-safe — no external checkout, Play payments policy)
         env:
           VITE_GEMINI_PROXY_URL: ${{ secrets.VITE_GEMINI_PROXY_URL }}
-          VITE_STRIPE_CHECKOUT_URL: ${{ secrets.VITE_STRIPE_CHECKOUT_URL }}
-          VITE_STRIPE_PORTAL_URL: ${{ secrets.VITE_STRIPE_PORTAL_URL }}
-          VITE_STRIPE_PRICE_MONTHLY: ${{ secrets.VITE_STRIPE_PRICE_MONTHLY }}
-          VITE_STRIPE_PRICE_YEARLY: ${{ secrets.VITE_STRIPE_PRICE_YEARLY }}
           VITE_ALL_FEATURES_FREE: ${{ secrets.VITE_ALL_FEATURES_FREE }}
+          VITE_PLAY_STORE_BUILD: 'true'
           VITE_REVENUECAT_ANDROID_KEY: ${{ secrets.VITE_REVENUECAT_ANDROID_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}

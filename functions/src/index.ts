@@ -284,7 +284,11 @@ const safeJsonParse = (text: string, fallback: any) => {
 const cascadeOnce = async (ai: GoogleGenAI, contents: any): Promise<string | null> => {
   for (const model of GEMINI_MODELS) {
     try {
-      const resp = await ai.models.generateContent({ model, contents });
+      // thinkingBudget 0 skips the 2.5-family "thinking" pass — the proxy's
+      // short structured tasks don't need it and it costs seconds of latency.
+      const resp = await ai.models.generateContent({
+        model, contents, config: { thinkingConfig: { thinkingBudget: 0 } },
+      });
       const text = (resp.text || "").trim();
       if (text) return text;
     } catch (e: any) {

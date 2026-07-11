@@ -20,6 +20,7 @@ import { useToast } from '../hooks/useToast';
 import { isHealthAvailable, connectAndPersist, DailyHealthMetrics } from '../services/healthService';
 import { Capacitor } from '@capacitor/core';
 import { allFeaturesFree, getEntitlement } from '../lib/billing';
+import { purchaseUiAllowed } from '../services/playBillingService';
 
 const ACCENT = '#C6FF3D';
 
@@ -237,7 +238,8 @@ export const Profile: React.FC = () => {
               AI form check, voice coaching, advanced analytics, unlimited meal plans.
             </p>
             <span className="inline-flex mt-3 px-4 py-2 bg-bg text-white rounded-xl text-sm font-semibold">
-              {ent.status === 'expired' ? 'Subscribe to FitFlow Pro' : 'See Pro plans'}
+              {!purchaseUiAllowed() ? 'About FitFlow Pro'
+                : ent.status === 'expired' ? 'Subscribe to FitFlow Pro' : 'See Pro plans'}
             </span>
           </div>
           <Crown className="absolute right-2 bottom-2 w-28 h-28 text-bg/10" />

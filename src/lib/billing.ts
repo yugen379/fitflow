@@ -153,6 +153,16 @@ export const computeEntitlement = (
 export const allFeaturesFree = (): boolean =>
   ((import.meta as any).env?.VITE_ALL_FEATURES_FREE ?? 'false') === 'true';
 
+/**
+ * True in builds destined for the Google Play Store. Play policy forbids
+ * steering users to external checkout from a store-distributed app, so when
+ * this is set and Play Billing (RevenueCat) is not configured, the app shows
+ * NO purchase UI at all — the trial still works, and the same account can
+ * subscribe on the web. The sideloaded GitHub-Release APK never sets this.
+ */
+export const isPlayStoreBuild = (): boolean =>
+  ((import.meta as any).env?.VITE_PLAY_STORE_BUILD ?? 'false') === 'true';
+
 /** Full entitlement for the current profile, evaluated against the wall clock. */
 export const getEntitlement = (profile?: UserProfile | null): Entitlement =>
   computeEntitlement(profile, Date.now(), allFeaturesFree());

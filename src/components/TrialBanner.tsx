@@ -4,6 +4,7 @@ import { Crown, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { allFeaturesFree, getEntitlement } from '../lib/billing';
+import { purchaseUiAllowed } from '../services/playBillingService';
 
 /**
  * Compact trial-status banner. Renders only when there's something to nudge:
@@ -48,7 +49,8 @@ export const TrialBanner: React.FC<{ className?: string }> = ({ className }) => 
               : `${ent.trialDaysLeft} days left in your free trial`}
         </p>
         <p className="text-text-dim text-xs mt-0.5">
-          {isExpired ? 'Subscribe to bring Pro back.' : 'Tap to subscribe and keep Pro.'}
+          {!purchaseUiAllowed() ? 'See what Pro includes.'
+            : isExpired ? 'Subscribe to bring Pro back.' : 'Tap to subscribe and keep Pro.'}
         </p>
       </div>
       <span className="text-eyebrow text-accent shrink-0">Pro →</span>
