@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Zap, Bell, X, WifiOff, Volume2, Calendar } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { checkAndAwardBadge } from '../services/badgeService';
-import { fetchTodayHealth } from '../services/healthService';
+import { useTodayActivity } from '../hooks/useTodayActivity';
 import { scheduleReminders, getDaysSinceLastWorkout } from '../services/notificationService';
 import { CoachBriefingCard } from '../components/CoachBriefingCard';
 import { recordActiveDay } from '../services/analyticsService';
@@ -34,9 +34,13 @@ export const Home: React.FC = () => {
   const [permsOpen, setPermsOpen] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [googleFitStats, setGoogleFitStats] = useState<any>(null);
   const [daysSinceWorkout, setDaysSinceWorkout] = useState<number | null>(null);
   const navigate = useNavigate();
+  // Steps / distance / calories from Health Connect — auto-refreshes on app
+  // resume and on an interval; the OS counts steps in the background for us.
+  const { metrics: activity, status: activityStatus, connect: connectActivity } = useTodayActivity(
+    profile?.uid, (profile as any)?.height,
+  );
 
   useEffect(() => {
     if (!profile?.uid) return;
@@ -81,15 +85,6 @@ export const Home: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  useEffect(() => {
-    if (!profile?.uid) return;
-    const hcConnected = (profile as any)?.healthConnectConnected || (profile as any)?.healthKitConnected;
-    if (!hcConnected) return;
-    fetchTodayHealth()
-      .then(stats => { if (stats.source !== 'none') setGoogleFitStats(stats); })
-      .catch(err => console.warn('Health Connect fetch failed', err));
-  }, [profile?.uid, (profile as any)?.healthConnectConnected, (profile as any)?.healthKitConnected]);
 
   useEffect(() => {
     if (!profile?.uid) return;
@@ -403,18 +398,45 @@ export const Home: React.FC = () => {
       </motion.div>
 
       <div className="grid grid-cols-2 gap-3">
-        {googleFitStats ? (
+        {activityStatus === 'connected' && activity ? (
           <div className="col-span-2 glass p-5 flex items-center justify-around">
             <div className="text-center">
               <p className="text-eyebrow text-text-dim">Steps</p>
-              <p className="num font-display text-2xl font-bold text-white mt-1">{googleFitStats.steps.toLocaleString()}</p>
+              <p className="num font-display text-2xl font-bold text-white mt-1">
+                <AnimatedNumber value={activity.steps} />
+              </p>
             </div>
             <div className="w-px h-10 bg-white/[0.06]" />
             <div className="text-center">
-              <p className="text-eyebrow text-text-dim">Active</p>
-              <p className="num font-display text-2xl font-bold text-white mt-1">{googleFitStats.activeMinutes}<span className="text-sm text-text-dim font-medium">m</span></p>
+              <p className="text-eyebrow text-text-dim">Distance</p>
+              <p className="num font-display text-2xl font-bold text-white mt-1">
+                {activity.distanceKm.toFixed(activity.distanceKm >= 10 ? 1 : 2)}
+                <span className="text-sm text-text-dim font-medium ml-0.5">km</span>
+              </p>
+            </div>
+            <div className="w-px h-10 bg-white/[0.06]" />
+            <div className="text-center">
+              <p className="text-eyebrow text-text-dim">Burned</p>
+              <p className="num font-display text-2xl font-bold text-white mt-1">
+                <AnimatedNumber value={activity.caloriesBurned} />
+                <span className="text-sm text-text-dim font-medium ml-0.5">kcal</span>
+              </p>
             </div>
           </div>
+        ) : activityStatus === 'disconnected' ? (
+          <button
+            onClick={() => void connectActivity()}
+            className="col-span-2 glass p-4 flex items-center gap-3 text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-accent/12 border border-accent/25 flex items-center justify-center text-accent shrink-0">
+              <Zap size={16} />
+            </div>
+            <div className="flex-1">
+              <p className="text-white text-sm font-medium">Track steps, distance &amp; calories automatically</p>
+              <p className="text-xs text-text-dim mt-0.5">Connect Health Connect — updates in the background, no logging needed.</p>
+            </div>
+            <span className="text-eyebrow text-accent shrink-0">Connect →</span>
+          </button>
         ) : null}
         <motion.button
           whileTap={{ scale: 0.97 }}

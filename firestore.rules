@@ -218,8 +218,14 @@ service cloud.firestore {
           'preferredWorkoutTime', 'preferredWorkoutTimeSource',
           'tzOffsetHours', 'tzId',
           'weightUnit',
-          'googleFitConnected', 'googleFitAccessToken', 'googleFitExpiry',
+          // googleFitAccessToken/googleFitExpiry were removed: user docs are
+          // readable by other signed-in users (leaderboards), so OAuth tokens
+          // must never be written here. The token now lives in localStorage.
+          'googleFitConnected',
           'healthConnectConnected', 'healthKitConnected', 'lastHealthSync', 'lastHealthSource',
+          // Device-activity snapshot (steps/distance/calories) mirrored by the
+          // background health sync so server-side coaching can read it.
+          'todayActivity',
           // User-owned nutrition preferences (safe for the client to set).
           'macroTargets', 'dayTargets', 'trialEndingNotifiedAt',
         ])

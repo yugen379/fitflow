@@ -19,6 +19,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { isSupported } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { initAppCheck } from './appCheck';
+import { setGeminiAuthTokenSupplier } from '../services/geminiService';
 
 const app = initializeApp(firebaseConfig);
 // App Check ("Google protect") — must init right after the app, before other
@@ -33,6 +34,10 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 }, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
+
+// The Gemini proxy rejects anonymous calls; hand it a fresh ID token per
+// request. getIdToken() serves a cached token and only refreshes near expiry.
+setGeminiAuthTokenSupplier(async () => auth.currentUser ? auth.currentUser.getIdToken() : null);
 
 // Persist auth across reloads (required for redirect flow on mobile)
 setPersistence(auth, browserLocalPersistence).catch(e =>

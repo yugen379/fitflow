@@ -104,8 +104,17 @@ const safeJsonParse = (text: string, fallback: any = {}) => {
   }
 };
 
+// The proxy requires a signed-in user (it verifies a Firebase ID token). The
+// host app injects a token supplier at boot (src/lib/firebase.ts); this module
+// itself stays firebase-free so the proof harnesses keep working, and they call
+// Gemini directly with a local key rather than through the proxy.
+type AuthTokenSupplier = () => Promise<string | null>;
+let getAuthToken: AuthTokenSupplier | null = null;
+export const setGeminiAuthTokenSupplier = (fn: AuthTokenSupplier): void => { getAuthToken = fn; };
+
 const callProxy = async (action: string, payload: any) => {
   if (!PROXY_URL) throw new Error('Gemini proxy not configured');
+  const token = getAuthToken ? await getAuthToken().catch(() => null) : null;
   // Abort a hung proxy call so it can't block the UI indefinitely; the caller's
   // try/catch then degrades to the structured fallback.
   const ctrl = new AbortController();
@@ -113,7 +122,10 @@ const callProxy = async (action: string, payload: any) => {
   try {
     const res = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ action, payload }),
       signal: ctrl.signal,
     });

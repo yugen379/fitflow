@@ -320,7 +320,7 @@ export const geminiProxy = functions.https.onRequest(
   res.set("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") {
     res.set("Access-Control-Allow-Methods", "POST");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.status(204).send("");
     return;
   }
@@ -328,6 +328,20 @@ export const geminiProxy = functions.https.onRequest(
     res.status(405).send("Method Not Allowed");
     return;
   }
+
+  // Auth: only signed-in FitFlow users may spend Gemini quota. The client
+  // attaches its Firebase ID token (see setGeminiAuthTokenSupplier in
+  // src/services/geminiService.ts); anonymous internet traffic gets 401.
+  try {
+    const authHeader = String(req.headers.authorization || "");
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!idToken) { res.status(401).json({ error: "Missing auth token" }); return; }
+    await admin.auth().verifyIdToken(idToken);
+  } catch {
+    res.status(401).json({ error: "Invalid auth token" });
+    return;
+  }
+
   try {
     const apiKey = geminiApiKey.value() || process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("Gemini API key is not configured in Firebase");

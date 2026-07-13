@@ -83,8 +83,8 @@ export interface UserProfile {
   createdAt: any;
   updatedAt?: any;
   googleFitConnected?: boolean;
-  googleFitAccessToken?: string;
-  googleFitExpiry?: number;
+  // (googleFitAccessToken/googleFitExpiry removed — OAuth tokens never touch
+  // Firestore; the device keeps its own token in localStorage.)
   preferredWorkoutTime?: string; // e.g., "08:00"
   fcmToken?: string;
   notificationsEnabled?: boolean;

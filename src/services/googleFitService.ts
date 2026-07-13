@@ -57,12 +57,30 @@ const waitForGis = (timeoutMs = 4000): Promise<GisAccountsOauth2 | null> =>
     }, 100);
   });
 
+// The OAuth token stays ON THIS DEVICE. User docs are readable by any signed-in
+// user (leaderboards need that), so a token persisted to Firestore would be
+// readable by other users — only the connected flag goes to the profile.
+const TOKEN_STORAGE_KEY = 'fitflow.googleFit.token';
+
+export const getStoredGoogleFitToken = (): string | null => {
+  try {
+    const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!raw) return null;
+    const { token, expiry } = JSON.parse(raw);
+    if (!token || Date.now() >= expiry) return null;
+    return token;
+  } catch {
+    return null;
+  }
+};
+
 const persistToken = async (uid: string, accessToken: string, expiresInSec: number) => {
   const expiryTime = Date.now() + expiresInSec * 1000;
+  try {
+    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ token: accessToken, expiry: expiryTime }));
+  } catch { /* storage full/blocked — connection still works this session */ }
   await updateDoc(doc(db, 'users', uid), {
     googleFitConnected: true,
-    googleFitAccessToken: accessToken,
-    googleFitExpiry: expiryTime,
   });
 };
 
