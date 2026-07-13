@@ -252,7 +252,7 @@ export const Pro: React.FC = () => {
         <p className="text-center text-xs text-text-mute leading-relaxed">
           {isTrialing
             ? `Your trial keeps everything unlocked for ${ent.trialDaysLeft} more ${ent.trialDaysLeft === 1 ? 'day' : 'days'}.`
-            : 'Pro subscriptions aren’t available in this app yet.'}
+            : 'Subscriptions are coming to Google Play soon — your progress and data are all set for when they arrive.'}
         </p>
       ) : (
         <>
