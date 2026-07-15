@@ -56,6 +56,62 @@ export const configurePlayBilling = async (uid: string): Promise<void> => {
   }
 };
 
+export interface StorePlanPrice {
+  /** Localized, store-formatted price, e.g. "RM 253.00" / "$59.88". */
+  priceString: string;
+  price: number;
+  currency: string;
+  /** For yearly plans: the localized per-month equivalent (price / 12). */
+  perMonthString?: string;
+}
+
+/**
+ * Real, localized plan prices straight from Google Play — what the purchase
+ * sheet will actually charge. Returns null off-Android / before configuration,
+ * so callers fall back to the USD display prices. Never throws.
+ */
+export const getPlayPlanPrices = async (
+  uid: string,
+): Promise<{ monthly?: StorePlanPrice; yearly?: StorePlanPrice } | null> => {
+  if (!isPlayBillingConfigured() || !uid) return null;
+  try {
+    await configurePlayBilling(uid);
+    const { Purchases, PACKAGE_TYPE } = await loadRC();
+    const offerings = await Purchases.getOfferings();
+    const offering = offerings.current;
+    if (!offering?.availablePackages?.length) return null;
+
+    const pick = (type: any, re: RegExp) =>
+      offering.availablePackages.find((p) => p.packageType === type) ||
+      offering.availablePackages.find((p) => re.test(p.identifier));
+
+    const toPrice = (pkg: any, perMonthDivisor = 1): StorePlanPrice | undefined => {
+      const prod = pkg?.product;
+      if (!prod?.priceString) return undefined;
+      const out: StorePlanPrice = {
+        priceString: prod.priceString,
+        price: Number(prod.price) || 0,
+        currency: prod.currencyCode || '',
+      };
+      if (perMonthDivisor > 1 && out.price > 0 && out.currency) {
+        try {
+          out.perMonthString = new Intl.NumberFormat(undefined, {
+            style: 'currency', currency: out.currency,
+          }).format(out.price / perMonthDivisor);
+        } catch { /* unknown currency code — skip the equivalence line */ }
+      }
+      return out;
+    };
+
+    return {
+      monthly: toPrice(pick(PACKAGE_TYPE.MONTHLY, /month/i)),
+      yearly: toPrice(pick(PACKAGE_TYPE.ANNUAL, /annual|year/i), 12),
+    };
+  } catch {
+    return null;
+  }
+};
+
 const hasPro = (customerInfo: any): boolean => {
   const active = customerInfo?.entitlements?.active || {};
   // Prefer the named entitlement, but treat ANY active entitlement as Pro so a

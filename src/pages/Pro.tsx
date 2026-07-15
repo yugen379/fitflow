@@ -10,6 +10,7 @@ import { isNativeApp } from '../lib/firebase';
 import {
   isPlayBillingConfigured, configurePlayBilling, startPlayPurchase,
   restorePlayPurchases, openPlaySubscriptions, purchaseUiAllowed,
+  getPlayPlanPrices, StorePlanPrice,
 } from '../services/playBillingService';
 import { allFeaturesFree, getEntitlement, TRIAL_DAYS } from '../lib/billing';
 
@@ -23,8 +24,8 @@ const FEATURES = [
 ];
 
 const PLANS = [
-  { id: 'monthly' as const, label: 'Monthly', price: '17.99', perWhat: '/month', total: '$17.99 billed monthly' },
-  { id: 'yearly' as const, label: 'Yearly', price: '4.99', perWhat: '/month', total: '$59.88 billed yearly · save 72%', badge: 'Best value' },
+  { id: 'monthly' as const, label: 'Monthly' },
+  { id: 'yearly' as const, label: 'Yearly', badge: 'Best value' },
 ];
 
 const fmtDate = (ms: number | null) =>
@@ -38,6 +39,9 @@ export const Pro: React.FC = () => {
   const [starting, setStarting] = useState(false);
   const [managing, setManaging] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  // Live, localized prices from Google Play (what the purchase sheet charges).
+  // Null on web / until loaded — the USD Stripe prices are the fallback.
+  const [storePrices, setStorePrices] = useState<{ monthly?: StorePlanPrice; yearly?: StorePlanPrice } | null>(null);
 
   // Android sells Pro through Google Play Billing once RevenueCat is wired up
   // (required for Play Store distribution). Until then the sideloaded GitHub
@@ -54,10 +58,28 @@ export const Pro: React.FC = () => {
   const isPaid = ent.isPro && ent.source === 'paid';
   const isTrialing = ent.isPro && ent.source === 'trial';
 
-  // Configure RevenueCat up front on Android so the purchase sheet opens instantly.
+  // Configure RevenueCat up front on Android so the purchase sheet opens
+  // instantly, and pull the real Play prices so the cards show exactly what
+  // the sheet will charge (right period, right currency).
   useEffect(() => {
-    if (native && profile?.uid) configurePlayBilling(profile.uid);
+    if (!native || !profile?.uid) return;
+    configurePlayBilling(profile.uid);
+    getPlayPlanPrices(profile.uid).then(p => { if (p) setStorePrices(p); });
   }, [native, profile?.uid]);
+
+  // Per-card display: Play prices when available, USD Stripe prices otherwise.
+  // Yearly leads with the YEARLY total (the sheet charges that), per-month as a footnote.
+  const priceFor = (id: 'monthly' | 'yearly') => {
+    if (id === 'monthly') {
+      const p = storePrices?.monthly?.priceString ?? '$17.99';
+      return { big: p, suffix: '/month', sub: `${p} billed monthly` };
+    }
+    const sp = storePrices?.yearly;
+    const perMo = sp?.perMonthString ?? '$4.99';
+    const m = storePrices?.monthly?.price;
+    const save = m && sp?.price ? Math.max(0, Math.round((1 - sp.price / 12 / m) * 100)) : 72;
+    return { big: sp?.priceString ?? '$59.88', suffix: '/year', sub: `≈ ${perMo}/mo · save ${save}%` };
+  };
 
   const subscribe = async () => {
     if (allFree) {
@@ -199,6 +221,7 @@ export const Pro: React.FC = () => {
         <div className="glass p-2 grid grid-cols-2 gap-2 mb-5">
           {PLANS.map(p => {
             const active = plan === p.id;
+            const d = priceFor(p.id);
             return (
               <button
                 key={p.id}
@@ -211,11 +234,11 @@ export const Pro: React.FC = () => {
                   </span>
                 )}
                 <p className={`text-xs font-medium ${active ? 'text-accent' : 'text-text-dim'}`}>{p.label}</p>
-                <p className="num font-display text-3xl font-bold text-white mt-1 leading-none">
-                  ${p.price}
-                  <span className="text-sm text-text-dim font-medium ml-1">{p.perWhat}</span>
+                <p className="num font-display text-2xl font-bold text-white mt-1 leading-none">
+                  {d.big}
+                  <span className="text-sm text-text-dim font-medium ml-1">{d.suffix}</span>
                 </p>
-                <p className="text-xs text-text-dim mt-2">{p.total}</p>
+                <p className="text-xs text-text-dim mt-2">{d.sub}</p>
               </button>
             );
           })}
@@ -258,14 +281,14 @@ export const Pro: React.FC = () => {
         <>
           <button onClick={subscribe} disabled={starting} className="btn-3d w-full h-14 disabled:opacity-60">
             {starting ? 'Opening checkout…'
-              : isTrialing ? `Subscribe — ${plan === 'yearly' ? '$59.88/yr' : '$17.99/mo'}`
+              : isTrialing ? `Subscribe — ${priceFor(plan).big}${plan === 'yearly' ? '/yr' : '/mo'}`
               : 'Subscribe to FitFlow Pro'}
           </button>
           <p className="text-center text-xs text-text-mute mt-3 leading-relaxed">
             {isTrialing
               ? `Your trial keeps everything unlocked for ${ent.trialDaysLeft} more ${ent.trialDaysLeft === 1 ? 'day' : 'days'}. `
               : `${TRIAL_DAYS}-day free trial included with every new account — no card needed. `}
-            Billed {plan === 'yearly' ? '$59.88/year' : '$17.99/month'}. Cancel anytime.
+            Billed {priceFor(plan).big}{plan === 'yearly' ? '/year' : '/month'}. Cancel anytime.
           </p>
           {playReady && (
             <button
