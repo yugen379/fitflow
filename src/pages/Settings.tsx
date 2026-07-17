@@ -38,7 +38,7 @@ export const Settings: React.FC = () => {
   const billingLabel = allFeaturesFree()
     ? 'FitFlow Pro · free during launch'
     : ent.source === 'paid'
-      ? `Pro · ${ent.plan === 'yearly' ? 'Yearly' : 'Monthly'}${ent.cancelAtPeriodEnd ? ' · cancels at period end' : ''}`
+      ? `Subscribed · ${ent.plan === 'yearly' ? 'Yearly' : 'Monthly'} plan${ent.cancelAtPeriodEnd ? ' · cancels at period end' : ''}`
       : ent.source === 'trial'
         ? `Free trial · ${ent.trialDaysLeft} ${ent.trialDaysLeft === 1 ? 'day' : 'days'} left`
         : ent.status === 'expired'

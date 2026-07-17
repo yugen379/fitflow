@@ -23,9 +23,14 @@ const FEATURES = [
   { icon: Zap, title: 'Priority AI', sub: 'Faster Gemini responses, voice coaching during workouts' },
 ];
 
+// USD fallbacks shown until live store prices load. Keep in sync with the
+// server-enforced Stripe prices (STRIPE_PRICE_BY_PLAN in functions/src/index.ts).
+const USD_MONTHLY = 4.99;
+const USD_YEARLY = 60.10;
+
 const PLANS = [
   { id: 'monthly' as const, label: 'Monthly' },
-  { id: 'yearly' as const, label: 'Yearly', badge: 'Best value' },
+  { id: 'yearly' as const, label: 'Yearly' },
 ];
 
 const fmtDate = (ms: number | null) =>
@@ -35,7 +40,7 @@ export const Pro: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { showToast } = useToast();
-  const [plan, setPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [plan, setPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [starting, setStarting] = useState(false);
   const [managing, setManaging] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -69,16 +74,24 @@ export const Pro: React.FC = () => {
 
   // Per-card display: Play prices when available, USD Stripe prices otherwise.
   // Yearly leads with the YEARLY total (the sheet charges that), per-month as a footnote.
+  const monthlyUsd = storePrices?.monthly?.price || USD_MONTHLY;
+  const yearlyUsd = storePrices?.yearly?.price || USD_YEARLY;
+  // Honest math only: the save line and "Best value" badge appear ONLY when the
+  // yearly plan really is cheaper per month than paying monthly.
+  const yearlySavePct = Math.round((1 - yearlyUsd / 12 / monthlyUsd) * 100);
+
   const priceFor = (id: 'monthly' | 'yearly') => {
     if (id === 'monthly') {
-      const p = storePrices?.monthly?.priceString ?? '$17.99';
+      const p = storePrices?.monthly?.priceString ?? `$${USD_MONTHLY.toFixed(2)}`;
       return { big: p, suffix: '/month', sub: `${p} billed monthly` };
     }
     const sp = storePrices?.yearly;
-    const perMo = sp?.perMonthString ?? '$4.99';
-    const m = storePrices?.monthly?.price;
-    const save = m && sp?.price ? Math.max(0, Math.round((1 - sp.price / 12 / m) * 100)) : 72;
-    return { big: sp?.priceString ?? '$59.88', suffix: '/year', sub: `≈ ${perMo}/mo · save ${save}%` };
+    const perMo = sp?.perMonthString ?? `$${(USD_YEARLY / 12).toFixed(2)}`;
+    return {
+      big: sp?.priceString ?? `$${USD_YEARLY.toFixed(2)}`,
+      suffix: '/year',
+      sub: `≈ ${perMo}/mo${yearlySavePct > 0 ? ` · save ${yearlySavePct}%` : ' · one payment a year'}`,
+    };
   };
 
   const subscribe = async () => {
@@ -191,6 +204,9 @@ export const Pro: React.FC = () => {
                   : ent.renewsAt ? `Renews ${fmtDate(ent.renewsAt)}` : 'Active'}
               </p>
             </div>
+            <span className="flex items-center gap-1 bg-accent/15 border border-accent/30 text-accent text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full shrink-0">
+              <Check size={10} /> Subscribed
+            </span>
           </div>
           {showPurchaseUi ? (
             <button onClick={manage} disabled={managing} className="btn-3d w-full h-12 disabled:opacity-60">
@@ -222,21 +238,22 @@ export const Pro: React.FC = () => {
           {PLANS.map(p => {
             const active = plan === p.id;
             const d = priceFor(p.id);
+            const badge = p.id === 'yearly' && yearlySavePct > 0 ? 'Best value' : null;
             return (
               <button
                 key={p.id}
                 onClick={() => setPlan(p.id)}
-                className={`relative p-4 rounded-2xl text-left transition-all ${active ? 'bg-accent/15 border border-accent/40' : 'bg-transparent border border-transparent'}`}
+                className={`relative p-4 rounded-2xl text-left transition-all overflow-hidden ${active ? 'bg-accent/15 border border-accent/40' : 'bg-transparent border border-transparent'}`}
               >
-                {p.badge && (
+                {badge && (
                   <span className="absolute -top-2 right-3 bg-accent text-bg text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    {p.badge}
+                    {badge}
                   </span>
                 )}
                 <p className={`text-xs font-medium ${active ? 'text-accent' : 'text-text-dim'}`}>{p.label}</p>
-                <p className="num font-display text-2xl font-bold text-white mt-1 leading-none">
-                  {d.big}
-                  <span className="text-sm text-text-dim font-medium ml-1">{d.suffix}</span>
+                <p className="num font-display text-2xl font-bold text-white mt-1 leading-none flex items-baseline flex-wrap gap-x-1">
+                  <span>{d.big}</span>
+                  <span className="text-sm text-text-dim font-medium">{d.suffix}</span>
                 </p>
                 <p className="text-xs text-text-dim mt-2">{d.sub}</p>
               </button>

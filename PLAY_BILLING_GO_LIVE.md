@@ -21,8 +21,8 @@ The remaining steps are all dashboard clicks that only the account owner can do:
    never set one up, create it (required before Play can sell anything).
 2. **Create the two subscriptions**: Play Console → FitFlow → Monetize →
    Products → Subscriptions → Create:
-   - ID `fitflow_pro_monthly` — base plan `monthly-autorenew`, price **$17.99/month**
-   - ID `fitflow_pro_yearly` — base plan `yearly-autorenew`, price **$59.88/year**
+   - ID `fitflow_pro_monthly` — base plan `monthly-autorenew`, price **$4.99/month**
+   - ID `fitflow_pro_yearly` — base plan `yearly-autorenew`, price **$60.10/year**
    - Activate both base plans.
 
 ## 2. RevenueCat (~10 min, free account)

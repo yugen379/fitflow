@@ -63,7 +63,7 @@ Put those into `.env.local` as `VITE_GEMINI_PROXY_URL` and `VITE_STRIPE_CHECKOUT
 2. **Products → Add product** → "FitFlow Pro"
 3. Create two prices:
    - Recurring · $9.99 / month → copy the `price_xxx` ID
-   - Recurring · $59.88 / year → copy the `price_xxx` ID
+   - Recurring · $60.10 / year → copy the `price_xxx` ID
 4. Paste them into `.env.local` as `VITE_STRIPE_PRICE_MONTHLY` and `VITE_STRIPE_PRICE_YEARLY`
 5. **Developers → API keys** → copy the **Secret key** (test mode `sk_test_...`)
 6. Configure Stripe Cloud Function:

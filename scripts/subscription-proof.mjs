@@ -147,6 +147,45 @@ for (let i = 0; i < 2000; i++) {
 check('fuzz · 2,000 random profiles never throw', threw === 0, `${threw} threw`);
 check('fuzz · 2,000 outputs valid', bad === 0, `${bad} invalid`);
 
+// ---------------------------------------------------------------------------
+// Pricing + billing-security consistency — the price a user SEES (Pro.tsx
+// fallbacks, Terms) must equal the price the SERVER charges (STRIPE_PRICE_BY_PLAN),
+// and the checkout hardening must stay in place. These read the real sources so
+// a drifting edit in any one file fails the gate.
+// ---------------------------------------------------------------------------
+console.log(`\n${C.b}Pricing & checkout-security consistency${C.x}`);
+const { readFileSync } = await import('node:fs');
+const fnSrc = readFileSync('functions/src/index.ts', 'utf8');
+const proSrc = readFileSync('src/pages/Pro.tsx', 'utf8');
+const termsSrc = readFileSync('src/pages/Terms.tsx', 'utf8');
+const gateSrc = readFileSync('src/components/PremiumGate.tsx', 'utf8');
+const rulesSrc = readFileSync('firestore.rules', 'utf8');
+const envSrc = readFileSync('.env', 'utf8');
+
+const fnMonthly = /monthly:\s*"(price_[A-Za-z0-9]+)"/.exec(fnSrc)?.[1];
+const fnYearly = /yearly:\s*"(price_[A-Za-z0-9]+)"/.exec(fnSrc)?.[1];
+check('server maps plans to Stripe prices (allowlist exists)', !!fnMonthly && !!fnYearly && fnMonthly !== fnYearly);
+check('server ignores client-sent priceId (no "Missing priceId" path)', !fnSrc.includes('Missing priceId'));
+check('checkout redirect URLs are origin-validated', fnSrc.includes('safeUrl(successUrl') && fnSrc.includes('safeUrl(returnUrl'));
+check('.env legacy price ids match the server allowlist',
+  envSrc.includes(`VITE_STRIPE_PRICE_MONTHLY=${fnMonthly}`) && envSrc.includes(`VITE_STRIPE_PRICE_YEARLY=${fnYearly}`));
+
+const uiMonthly = /USD_MONTHLY = ([\d.]+)/.exec(proSrc)?.[1];
+const uiYearly = /USD_YEARLY = ([\d.]+)/.exec(proSrc)?.[1];
+check('paywall fallback prices are $4.99/mo and $60.10/yr', uiMonthly === '4.99' && uiYearly === '60.10');
+check('server comments carry the same amounts', fnSrc.includes('$4.99 / month') && fnSrc.includes('$60.10 / year'));
+check('Terms shows the same prices', termsSrc.includes('($4.99)') && termsSrc.includes('($60.10)'));
+check('PremiumGate shows the monthly price', gateSrc.includes('$4.99'));
+check('no stale hard-coded savings claim', !proSrc.includes('72') || !/save \$?72/.test(proSrc));
+const savePct = Math.round((1 - Number(uiYearly) / 12 / Number(uiMonthly)) * 100);
+check('save badge only when yearly is truly cheaper (honest math)',
+  proSrc.includes('yearlySavePct > 0') && (savePct > 0) === false, `computed save=${savePct}%`);
+
+check('geminiProxy is rate-limited per uid', fnSrc.includes('rateLimited(callerUid)'));
+check('prompt inputs are length-clamped', fnSrc.includes('clip(payload.message, 2000)'));
+check('rules: notifications only for self', rulesSrc.includes('data.userId == request.auth.uid') && rulesSrc.includes('isValidNotification'));
+check('rules: like/comment counters bounded to ±1', rulesSrc.includes("existing().likesCount + 1"));
+
 console.log(`\n${C.b}── Summary ──${C.x}`);
 console.log(`  Assertions: ${fail === 0 ? C.g : C.r}${pass}/${pass + fail}${C.x}`);
 const green = fail === 0;

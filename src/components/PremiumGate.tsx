@@ -99,7 +99,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
                 {purchaseUiAllowed() && (
                   <div className="flex items-baseline justify-center gap-1">
                     <span className="num font-display text-4xl font-bold text-white">$4.99</span>
-                    <span className="text-text-dim text-sm">/ month, billed yearly</span>
+                    <span className="text-text-dim text-sm">/ month · cancel anytime</span>
                   </div>
                 )}
                 <button onClick={handleUpgrade} className="btn-3d w-full h-13">

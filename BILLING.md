@@ -9,7 +9,7 @@ and a few config values remain — and those are the values you said you'd give 
 - **6-day free trial, no card.** Starts automatically the moment a user signs up
   (`trialStartedAt` is written with the server clock and is immutable). When it
   ends, the account quietly drops to the free tier — it **never auto-charges**.
-- **Paid plans.** Monthly **$17.99**, Yearly **$59.88** ($4.99/mo). The user only
+- **Paid plans.** Monthly **$4.99**, Yearly **$60.10** ($5.01/mo). The user only
   enters a card if/when they choose to subscribe, via Stripe Checkout.
 - **Entitlement is server-trusted.** The Stripe webhook is the only thing that can
   grant Pro; the client can never write billing fields (enforced by Firestore rules).
@@ -20,8 +20,8 @@ and a few config values remain — and those are the values you said you'd give 
 
 1. A **Stripe account** (test mode is fine to start).
 2. Create one **Product** "FitFlow Pro" with **two recurring Prices**:
-   - Monthly — **$17.99 / month** → copy the `price_…` id
-   - Yearly — **$59.88 / year** → copy the `price_…` id
+   - Monthly — **$4.99 / month** → copy the `price_…` id
+   - Yearly — **$60.10 / year** → copy the `price_…` id
 3. From Stripe → Developers → **API keys**: the **Secret key** (`sk_test_…` / `sk_live_…`).
 4. After the webhook endpoint is deployed (step below), the **Webhook signing
    secret** (`whsec_…`).
@@ -57,8 +57,8 @@ Then copy that endpoint's signing secret into `STRIPE_WEBHOOK_SECRET` (above).
 ```env
 VITE_STRIPE_CHECKOUT_URL=https://us-central1-<projectId>.cloudfunctions.net/createCheckoutSession
 VITE_STRIPE_PORTAL_URL=https://us-central1-<projectId>.cloudfunctions.net/createPortalSession
-VITE_STRIPE_PRICE_MONTHLY=price_xxx   # the $17.99/mo price id
-VITE_STRIPE_PRICE_YEARLY=price_yyy    # the $59.88/yr price id
+VITE_STRIPE_PRICE_MONTHLY=price_xxx   # the $4.99/mo price id
+VITE_STRIPE_PRICE_YEARLY=price_yyy    # the $60.10/yr price id
 VITE_ALL_FEATURES_FREE=false          # paywall + trial ON (set true to give everything away)
 ```
 
@@ -108,8 +108,8 @@ setup + config values below remain, and it must be **tested on a real device / P
 
 1. **Google Play Console** (one-time $25): create the app `com.fitflow.app`, then under
    **Monetize → Subscriptions** create two subscription products:
-   - `fitflow_pro_monthly` — $17.99 / month
-   - `fitflow_pro_yearly` — $59.88 / year
+   - `fitflow_pro_monthly` — $4.99 / month
+   - `fitflow_pro_yearly` — $60.10 / year
    (Product IDs can differ; RevenueCat maps them, so naming is flexible.)
 2. **Play Developer API service account**: Play Console → Setup → API access → create/link
    a Google Cloud service account with the **androidpublisher** role, download its JSON.

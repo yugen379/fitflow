@@ -103,10 +103,13 @@ service cloud.firestore {
     }
 
     function isValidNotification(data) {
+      // Clients may only create notifications for THEMSELVES — server pushes
+      // (reminders, nudges) come through the admin SDK, which bypasses rules.
+      // Without the uid check any signed-in user could spam another user's inbox.
       return data.keys().hasAll(['userId', 'title', 'body', 'timestamp']) &&
-             data.userId is string &&
-             data.title is string &&
-             data.body is string &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() <= 200 &&
+             data.body is string && data.body.size() <= 1000 &&
              data.timestamp is timestamp;
     }
 
@@ -272,9 +275,21 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow list: if isSignedIn();
       allow create: if isVerified() && isValidId(postId) && isValidPost(incoming());
-      allow update: if (isOwner(existing().userId) && isValidPost(incoming()) && 
-                       incoming().diff(existing()).affectedKeys().hasOnly(['mediaUrl', 'content'])) ||
-                    (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'commentsCount'])); // Allow counters to change
+      // Owners may edit their own content; anyone signed-in may bump the like /
+      // comment counters, but only by ±1 per write — a counter can no longer be
+      // set to an arbitrary number by a hostile client.
+      allow update: if (isOwner(existing().userId) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['mediaUrl', 'content']) &&
+                       (!('content' in incoming()) || (incoming().content is string && incoming().content.size() <= 5000)) &&
+                       (!('mediaUrl' in incoming()) || incoming().mediaUrl is string)) ||
+                    (isSignedIn() &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'commentsCount']) &&
+                       incoming().likesCount is int &&
+                       incoming().likesCount >= existing().likesCount - 1 &&
+                       incoming().likesCount <= existing().likesCount + 1 &&
+                       incoming().commentsCount is int &&
+                       incoming().commentsCount >= existing().commentsCount - 1 &&
+                       incoming().commentsCount <= existing().commentsCount + 1);
       allow delete: if isOwner(existing().userId);
 
       // Comments Subcollection

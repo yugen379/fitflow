@@ -9,10 +9,12 @@ const returnOrigin = () => (isNativeApp() ? WEB_ORIGIN : window.location.origin)
 
 const CHECKOUT_URL = (import.meta as any).env?.VITE_STRIPE_CHECKOUT_URL as string | undefined;
 const PORTAL_URL = (import.meta as any).env?.VITE_STRIPE_PORTAL_URL as string | undefined;
+// Legacy: still sent for older deployed functions, but the server now resolves
+// the price from the plan name and ignores this — prices live server-side only.
 const MONTHLY_PRICE = (import.meta as any).env?.VITE_STRIPE_PRICE_MONTHLY as string | undefined;
 const YEARLY_PRICE = (import.meta as any).env?.VITE_STRIPE_PRICE_YEARLY as string | undefined;
 
-export const isStripeConfigured = () => !!(CHECKOUT_URL && (MONTHLY_PRICE || YEARLY_PRICE));
+export const isStripeConfigured = () => !!CHECKOUT_URL;
 export const isPortalConfigured = () => !!PORTAL_URL;
 
 export type Plan = 'monthly' | 'yearly';
@@ -25,7 +27,6 @@ export type Plan = 'monthly' | 'yearly';
 export const startCheckout = async (plan: Plan): Promise<{ ok: boolean; reason?: string }> => {
   if (!CHECKOUT_URL) return { ok: false, reason: 'Billing is not configured yet.' };
   const priceId = plan === 'monthly' ? MONTHLY_PRICE : YEARLY_PRICE;
-  if (!priceId) return { ok: false, reason: 'Selected plan is not configured.' };
 
   const user = auth.currentUser;
   if (!user) return { ok: false, reason: 'Please sign in first.' };

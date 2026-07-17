@@ -77,8 +77,8 @@ FITFLOW PRO
 Start with a 6-day free trial — no card required. When it ends, your account
 quietly drops to the free tier. It never auto-charges.
 Upgrade any time:
-• Monthly — $17.99
-• Yearly — $59.88 ($4.99/mo)
+• Monthly — $4.99
+• Yearly — $60.10 ($5.01/mo)
 Pro unlocks deeper AI coaching, macro-by-gram targets, goal-by-day planning,
 and more. Subscriptions are billed through Google Play and can be managed or
 canceled in your Play account settings.

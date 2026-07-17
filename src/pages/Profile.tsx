@@ -246,6 +246,23 @@ export const Profile: React.FC = () => {
         </motion.button>
       )}
 
+      {/* Subscribed confirmation — entitlement lives on the account (user doc),
+          so signing in with the same Google account anywhere shows this. */}
+      {!allFeaturesFree() && ent.source === 'paid' && (
+        <button onClick={() => navigate('/pro')} className="w-full glass p-4 flex items-center gap-3 text-left">
+          <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shrink-0">
+            <Crown size={16} />
+          </div>
+          <div className="flex-1">
+            <p className="text-eyebrow text-accent">FitFlow Pro</p>
+            <p className="text-white text-sm font-medium mt-0.5">
+              Subscribed · {ent.plan === 'yearly' ? 'Yearly' : 'Monthly'} plan
+            </p>
+          </div>
+          <span className="text-xs text-text-dim">Manage</span>
+        </button>
+      )}
+
       {/* Weight chart */}
       <div className="glass p-5 space-y-4">
         <div className="flex justify-between items-end">

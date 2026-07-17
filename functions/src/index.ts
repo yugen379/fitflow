@@ -29,6 +29,26 @@ const GRACE_DAYS = 3;
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 
+// Server-authoritative prices. The client only ever names a plan; the price id
+// is resolved HERE, so a tampered request can never start checkout at an
+// arbitrary price. Keep the amounts in sync with the display fallbacks in
+// src/pages/Pro.tsx and the docs in BILLING.md.
+const STRIPE_PRICE_BY_PLAN: Record<"monthly" | "yearly", string> = {
+  monthly: "price_1Tu4a8CPnUsfeV9QUlYGWG7j", // $4.99 / month
+  yearly: "price_1Tu4a9CPnUsfeV9QaheBo4Ls", // $60.10 / year
+};
+
+// Post-checkout redirects may only land on origins we own (or localhost dev).
+// Anything else falls back to the hosted web app, closing the open-redirect
+// hole where a crafted request bounces a paying user to an attacker's site.
+const WEB_APP_ORIGIN = "https://gen-lang-client-0893216108.web.app";
+const ALLOWED_REDIRECT = new RegExp(
+  "^https://(gen-lang-client-0893216108\\.(web\\.app|firebaseapp\\.com)|localhost(:\\d+)?)(/|$)|" +
+  "^http://localhost(:\\d+)?(/|$)",
+);
+const safeUrl = (url: unknown, fallbackPath: string): string =>
+  typeof url === "string" && ALLOWED_REDIRECT.test(url) ? url : `${WEB_APP_ORIGIN}${fallbackPath}`;
+
 // Shared secret RevenueCat sends in the Authorization header of its webhook (set
 // it in the RevenueCat dashboard → project → Webhooks, and here via
 // `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH`). Guards the endpoint
@@ -100,8 +120,11 @@ export const createCheckoutSession = functions.https.onRequest(
       const decoded = await admin.auth().verifyIdToken(idToken);
       const uid = decoded.uid;
 
-      const { priceId, plan, successUrl, cancelUrl } = req.body || {};
-      if (!priceId) { res.status(400).json({ error: "Missing priceId" }); return; }
+      // SECURITY: the client's priceId is deliberately ignored — the plan name
+      // maps to a server-side price so nobody can checkout at a price we didn't set.
+      const { plan, successUrl, cancelUrl } = req.body || {};
+      const planKey: "monthly" | "yearly" = plan === "yearly" ? "yearly" : "monthly";
+      const priceId = STRIPE_PRICE_BY_PLAN[planKey];
 
       // Reuse the existing Stripe customer if we've seen this uid before
       const userDoc = await db.doc(`users/${uid}`).get();
@@ -120,11 +143,11 @@ export const createCheckoutSession = functions.https.onRequest(
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
         subscription_data: {
-          metadata: { firebaseUid: uid, plan: plan === "yearly" ? "yearly" : "monthly" },
+          metadata: { firebaseUid: uid, plan: planKey },
         },
         allow_promotion_codes: true,
-        success_url: successUrl || "https://fitflow.com/pro?status=success",
-        cancel_url: cancelUrl || "https://fitflow.com/pro?status=cancelled",
+        success_url: safeUrl(successUrl, "/pro?status=success"),
+        cancel_url: safeUrl(cancelUrl, "/pro?status=cancelled"),
       });
 
       res.json({ url: session.url, id: session.id });
@@ -164,7 +187,7 @@ export const createPortalSession = functions.https.onRequest(
       const { returnUrl } = req.body || {};
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: returnUrl || "https://fitflow.com/settings",
+        return_url: safeUrl(returnUrl, "/settings"),
       });
       res.json({ url: session.url });
     } catch (err: any) {
@@ -228,19 +251,36 @@ export const stripeWebhook = functions.https.onRequest(
 export const deleteAccount = functions.https.onCall(async (data: any, context: any) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign in required");
   const uid = context.auth.uid;
+
+  // Firestore batches cap at 500 writes — chunk so heavy users don't crash the cascade.
+  const deleteDocs = async (refs: admin.firestore.DocumentReference[]) => {
+    for (let i = 0; i < refs.length; i += 450) {
+      const batch = db.batch();
+      refs.slice(i, i + 450).forEach((r) => batch.delete(r));
+      await batch.commit();
+    }
+  };
+
   const collections = [
     "meals", "workouts", "water_logs", "sleep_logs", "wellness_logs",
     "weight_history", "body_metrics", "activity_routes", "notifications",
-    "posts", "comments",
+    "posts", "comments", "activity_days", "streak_freezes",
   ];
   for (const c of collections) {
     const snap = await db.collection(c).where("userId", "==", uid).get();
-    if (snap.empty) continue;
-    const batch = db.batch();
-    snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
+    if (!snap.empty) await deleteDocs(snap.docs.map((d) => d.ref));
   }
-  await db.doc(`users/${uid}`).delete().catch(() => {});
+
+  // Docs keyed by uid rather than a userId field: meal plan + weekly recaps.
+  await db.doc(`meal_plans/${uid}`).delete().catch(() => {});
+  const recaps = await db.collection("weekly_recaps")
+    .where(admin.firestore.FieldPath.documentId(), ">=", `${uid}_`)
+    .where(admin.firestore.FieldPath.documentId(), "<", `${uid}_`)
+    .get();
+  if (!recaps.empty) await deleteDocs(recaps.docs.map((d) => d.ref));
+
+  // recursiveDelete removes the user doc AND its subcollections (progression, blocks…).
+  await db.recursiveDelete(db.doc(`users/${uid}`)).catch(() => {});
   await admin.auth().deleteUser(uid).catch(() => {});
   return { deleted: true };
 });
@@ -262,6 +302,26 @@ const GEMINI_MODELS = [
   "gemini-2.5-flash-lite",
   "gemini-flash-lite-latest",
 ];
+
+// Per-uid sliding-window rate limit. In-memory, so it's per-instance rather
+// than global — but each instance still caps a hot loop or scripted abuse hard,
+// with zero Firestore reads. 120/min comfortably clears live form-check framing.
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 120;
+const rateBuckets = new Map<string, number[]>();
+const rateLimited = (uid: string): boolean => {
+  const now = Date.now();
+  const hits = (rateBuckets.get(uid) || []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (hits.length >= RATE_LIMIT_MAX) { rateBuckets.set(uid, hits); return true; }
+  hits.push(now);
+  if (rateBuckets.size > 10_000) rateBuckets.clear(); // memory ceiling
+  rateBuckets.set(uid, hits);
+  return false;
+};
+
+// Clamp client-supplied strings before they reach a prompt: bounds Gemini token
+// spend and keeps a hostile client from stuffing megabytes into the template.
+const clip = (v: unknown, max: number): string => String(v ?? "").slice(0, max);
 
 const isRetryable = (e: any): boolean => {
   const s = Number(e?.status ?? e?.code);
@@ -332,13 +392,18 @@ export const geminiProxy = functions.https.onRequest(
   // Auth: only signed-in FitFlow users may spend Gemini quota. The client
   // attaches its Firebase ID token (see setGeminiAuthTokenSupplier in
   // src/services/geminiService.ts); anonymous internet traffic gets 401.
+  let callerUid: string;
   try {
     const authHeader = String(req.headers.authorization || "");
     const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!idToken) { res.status(401).json({ error: "Missing auth token" }); return; }
-    await admin.auth().verifyIdToken(idToken);
+    callerUid = (await admin.auth().verifyIdToken(idToken)).uid;
   } catch {
     res.status(401).json({ error: "Invalid auth token" });
+    return;
+  }
+  if (rateLimited(callerUid)) {
+    res.status(429).json({ error: "Too many requests — slow down." });
     return;
   }
 
@@ -366,8 +431,8 @@ export const geminiProxy = functions.https.onRequest(
         const out = await json(
           `Analyze this food and return ONLY valid JSON.
 Format: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number}
-Food: "${payload.description}"`,
-          { name: payload.description, calories: 0, protein: 0, carbs: 0, fats: 0 },
+Food: "${clip(payload.description, 500)}"`,
+          { name: clip(payload.description, 100), calories: 0, protein: 0, carbs: 0, fats: 0 },
         );
         res.json(out);
         return;
@@ -397,7 +462,7 @@ If you genuinely cannot determine any nutrition, return {"calories": 0}.`),
       }
 
       case "analyzeFormFrame": {
-        const exercise = payload.exerciseName;
+        const exercise = clip(payload.exerciseName, 100);
         const out = await json(
           vision(payload.base64Image, payload.mimeType, `You are an elite strength coach. Analyze ONLY this exact frame for ${exercise} form.
 Return ONLY valid JSON, no markdown:
@@ -410,9 +475,10 @@ If no person visible, return rating 0 status "fix" cue "Step into frame so I can
       }
 
       case "generateWorkoutPlan": {
-        const ctx = payload.userHistory?.length ? JSON.stringify(payload.userHistory.slice(-3)) : "Starting fresh.";
+        const ctx = payload.userHistory?.length
+          ? clip(JSON.stringify(payload.userHistory.slice(-3)), 2000) : "Starting fresh.";
         const out = await json(
-          `Generate a workout for goal: ${payload.userGoals}. Context: ${ctx}.
+          `Generate a workout for goal: ${clip(payload.userGoals, 300)}. Context: ${ctx}.
 Return ONLY valid JSON: {"title": string, "description": string, "type": string,
 "exercises": [{"id": string, "name": string}]}`,
           { title: "", description: "", type: "", exercises: [] },
@@ -423,7 +489,7 @@ Return ONLY valid JSON: {"title": string, "description": string, "type": string,
 
       case "generateMealPlan": {
         const out = await json(
-          `Generate a 7-day meal plan. Preferences: ${payload.dietaryPreferences}. Target: ${payload.kCalTarget} kcal/day.
+          `Generate a 7-day meal plan. Preferences: ${clip(payload.dietaryPreferences, 300)}. Target: ${Number(payload.kCalTarget) || 2000} kcal/day.
 Return ONLY a valid JSON array of 7 objects:
 [{"day": string, "breakfast": string, "lunch": string, "dinner": string, "snack": string, "calories": number}]`,
           [],
@@ -434,7 +500,7 @@ Return ONLY a valid JSON array of 7 objects:
 
       case "getRecipe": {
         const out = await json(
-          `Healthy recipe for "${payload.mealName}". Return ONLY valid JSON:
+          `Healthy recipe for "${clip(payload.mealName, 200)}". Return ONLY valid JSON:
 {"ingredients": string[], "instructions": string[], "prepTime": string, "protein": number, "carbs": number, "fats": number}`,
           null,
         );
@@ -444,7 +510,7 @@ Return ONLY a valid JSON array of 7 objects:
 
       case "swapMeal": {
         const out = await json(
-          `Suggest ONE alternative meal that replaces "${payload.original}". Reason: ${payload.reason}. Preferences: ${payload.dietaryPreferences}. Do NOT return "${payload.original}" — return a different dish.
+          `Suggest ONE alternative meal that replaces "${clip(payload.original, 200)}". Reason: ${clip(payload.reason, 300)}. Preferences: ${clip(payload.dietaryPreferences, 300)}. Do NOT return "${clip(payload.original, 200)}" — return a different dish.
 Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number, "why": string}`,
           {},
         );
@@ -455,7 +521,7 @@ Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, 
       case "dailyChallenge": {
         const p = payload.profile || {};
         const out = await json(
-          `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${p.goal || "general fitness"}" and a ${p.streak || 0}-day streak.
+          `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${clip(p.goal, 100) || "general fitness"}" and a ${Number(p.streak) || 0}-day streak.
 Pick something they can finish in a single day. Vary the category.
 Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
           { title: "Move 30 minutes", description: "Any sustained movement — walk, lift, ride.", target: 30, unit: "minutes", category: "movement" },
@@ -468,7 +534,7 @@ Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sente
         const text = await cascadeText(
           ai,
           `You are an elite fitness AI. Give ONE sharp, motivational insight (max 20 words) based on:
-Calories today: ${payload.calories}, Water: ${payload.water}ml, Workouts: ${payload.workouts}, Streak: ${payload.streak} days.
+Calories today: ${Number(payload.calories) || 0}, Water: ${Number(payload.water) || 0}ml, Workouts: ${Number(payload.workouts) || 0}, Streak: ${Number(payload.streak) || 0} days.
 Return ONLY plain text, no JSON.`,
         );
         res.json({ text: (text || "").replace(/[*_`#]/g, "").trim() });
@@ -477,15 +543,15 @@ Return ONLY plain text, no JSON.`,
 
       case "askCoach": {
         const profile = payload.profile || {};
-        const history: { role: string; text: string }[] = payload.history || [];
-        const transcript = history.slice(-8).map((m) => `${m.role === "user" ? "User" : "Coach"}: ${m.text}`).join("\n");
+        const history: { role: string; text: string }[] = Array.isArray(payload.history) ? payload.history : [];
+        const transcript = history.slice(-8).map((m) => `${m.role === "user" ? "User" : "Coach"}: ${clip(m.text, 400)}`).join("\n");
         const text = await cascadeText(
           ai,
           `You are FitFlow Coach — an expert in strength training, nutrition, recovery, and behavior change.
-The user's goal is ${profile.goal || "general fitness"}. Weight: ${profile.weight || "n/a"}kg. Age: ${profile.age || "n/a"}.
+The user's goal is ${clip(profile.goal, 100) || "general fitness"}. Weight: ${Number(profile.weight) || "n/a"}kg. Age: ${Number(profile.age) || "n/a"}.
 Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
 
-${transcript ? "Conversation so far:\n" + transcript + "\n\n" : ""}User: ${payload.message}
+${transcript ? "Conversation so far:\n" + transcript + "\n\n" : ""}User: ${clip(payload.message, 2000)}
 Coach:`,
           { retries: 1, minChars: 15 },
         );
@@ -499,11 +565,11 @@ Coach:`,
       case "generateWeeklyRecap": {
         const out = await json(
           `You are an elite performance coach writing a friendly weekly recap.
-Goal: ${payload.goal || "general fitness"}. This week:
-- ${payload.workouts} workouts, ${payload.workoutMinutes} active minutes
-- ${payload.caloriesBurned} kcal burned, ${payload.caloriesConsumed} consumed
-- ${payload.waterMl}ml water, ${payload.sleepHours} hours sleep
-- ${payload.streak}-day streak${payload.topExercise ? `, top exercise: ${payload.topExercise}` : ""}
+Goal: ${clip(payload.goal, 100) || "general fitness"}. This week:
+- ${Number(payload.workouts) || 0} workouts, ${Number(payload.workoutMinutes) || 0} active minutes
+- ${Number(payload.caloriesBurned) || 0} kcal burned, ${Number(payload.caloriesConsumed) || 0} consumed
+- ${Number(payload.waterMl) || 0}ml water, ${Number(payload.sleepHours) || 0} hours sleep
+- ${Number(payload.streak) || 0}-day streak${payload.topExercise ? `, top exercise: ${clip(payload.topExercise, 100)}` : ""}
 
 Return ONLY valid JSON, no markdown:
 {"headline":"<≤8 word title>","highlight":"<1-2 sentence summary in plain English, sentence case>","win":"<1 short positive observation>","focus":"<one thing to focus on next week, plain language>","nextStep":"<one specific action they can take Monday>"}

@@ -102,7 +102,7 @@ export const Terms: React.FC = () => {
 
         <Section title="7. Subscriptions and refunds">
           <List items={[
-            'FitFlow Pro is a recurring subscription billed monthly ($17.99) or yearly ($59.88) via Stripe (web) or the platform store (mobile).',
+            'FitFlow Pro is a recurring subscription billed monthly ($4.99) or yearly ($60.10) via Stripe (web) or the platform store (mobile).',
             'New accounts include a 6-day free trial that requires no credit card and never auto-charges. When the trial ends, your account simply reverts to the free tier unless you choose to subscribe.',
             'Cancel at any time in Settings or your platform store; cancellation takes effect at the end of the current paid billing period.',
             'Refunds: we generally do not offer prorated refunds. EU/UK users have statutory withdrawal rights as required by law.',
