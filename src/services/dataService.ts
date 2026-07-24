@@ -3,6 +3,8 @@ import { db, handleFirestoreError } from '../lib/firebase';
 import { MealRecord, WorkoutRecord, Post, UserProfile } from '../types';
 import { addToOfflineQueue } from './offlineService';
 import { saveToCatalog } from './foodCatalogService';
+import { awardXp } from './xpService';
+import { XP_AWARDS } from './missionUtils';
 
 export const checkAndUpdateStreak = async (userId: string) => {
   try {
@@ -65,6 +67,9 @@ export const logMeal = async (userId: string, meal: Omit<MealRecord, 'id' | 'tim
       timestamp: serverTimestamp(),
     });
     try { await checkAndUpdateStreak(userId); } catch { /* streak is best-effort */ }
+    // XP only on the confirmed write — the offline-queued path earns it on replay.
+    // Fire-and-forget: the XP bar reacts via the profile snapshot, not this call.
+    void awardXp(userId, XP_AWARDS.meal);
     // Grow the shared food catalog (#3) — best-effort, never blocks the log.
     saveToCatalog({
       name: (meal as any).name,
@@ -97,6 +102,9 @@ export const logWorkout = async (userId: string, workout: Omit<WorkoutRecord, 'i
       timestamp: serverTimestamp(),
     });
     try { await checkAndUpdateStreak(userId); } catch { /* streak is best-effort */ }
+    // XP only on the confirmed write — the offline-queued path earns it on replay.
+    // Fire-and-forget: the XP bar reacts via the profile snapshot, not this call.
+    void awardXp(userId, XP_AWARDS.workout);
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', 'workouts');

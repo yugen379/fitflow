@@ -14,6 +14,7 @@ import { cn } from '../lib/utils';
 import { logWeight } from '../services/dataService';
 import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { ALL_BADGES } from '../services/badgeService';
+import { computeLevel } from '../services/missionUtils';
 import { db } from '../lib/firebase';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '../hooks/useToast';
@@ -205,7 +206,7 @@ export const Profile: React.FC = () => {
             </h1>
             <p className="text-sm text-text-dim mt-0.5">{goalLabel(profile?.goal)}</p>
             <div className="flex items-center gap-3 mt-2 text-xs">
-              <span className="text-accent font-semibold num">Lv <AnimatedNumber value={profile?.level || 1} duration={600} /></span>
+              <span className="text-accent font-semibold num">Lv <AnimatedNumber value={computeLevel(profile?.points).level} duration={600} /></span>
               <span className="text-text-dim num"><AnimatedNumber value={profile?.points || 0} duration={1200} /> XP</span>
               <span className="text-text-dim num">🔥 <AnimatedNumber value={profile?.streak || 0} duration={800} /></span>
             </div>

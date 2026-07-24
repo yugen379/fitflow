@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { motion, AnimatePresence } from 'motion/react';
-import { ProgressRing } from '../components/ProgressRing';
 import { query, collection, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, limit, orderBy } from 'firebase/firestore';
 import { db, auth, handleFirestoreError } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +21,9 @@ import { celebrateSmall } from '../lib/celebrate';
 import { haptic } from '../lib/haptics';
 import { DailyChallenge } from '../components/DailyChallenge';
 import { TrialBanner } from '../components/TrialBanner';
+import { TodayMission } from '../components/TodayMission';
+import { XPBar } from '../components/XPBar';
+import { buildMission, MissionTask } from '../services/missionUtils';
 import { Sparkles as SparklesIcon } from 'lucide-react';
 
 export const Home: React.FC = () => {
@@ -234,8 +236,23 @@ export const Home: React.FC = () => {
     return () => unsub();
   }, [profile?.uid, profile?.goal]);
 
-  const targetCalories = profile?.goal === 'fat_loss' ? 1800 : profile?.goal === 'muscle_gain' ? 2800 : 2200;
-  const progress = summary ? Math.min(Math.round((summary.caloriesConsumed / targetCalories) * 100), 100) : 0;
+  // Today's Mission — the deterministic "what should I do RIGHT NOW?" engine.
+  const mission = buildMission({
+    hour: new Date().getHours(),
+    goal: profile?.goal,
+    weightKg: profile?.weight,
+    caloriesConsumed: summary?.caloriesConsumed || 0,
+    mealsLogged: summary?.mealCount || 0,
+    workoutsToday: summary?.workoutCount || 0,
+    steps: activityStatus === 'connected' && activity ? activity.steps : null,
+    streak: profile?.streak || 0,
+  });
+
+  // Widget → DIRECT action: rows deep-link straight into the doing, never a menu.
+  const onMissionAction = (task: MissionTask) => {
+    if (task.action.kind === 'steps-connect') { void connectActivity(); return; }
+    navigate(task.action.route);
+  };
 
   return (
     <div className="pb-24 pt-4 px-4 space-y-6 bg-bg overflow-x-hidden relative">
@@ -277,10 +294,6 @@ export const Home: React.FC = () => {
         </motion.div>
 
         <div className="flex items-center gap-2">
-          <div className="hidden sm:flex flex-col items-end mr-1">
-            <span className="num text-xs text-accent font-semibold leading-none">{profile?.streak || 0}🔥</span>
-            <span className="text-[9px] text-text-dim uppercase tracking-wider leading-none mt-1">streak</span>
-          </div>
           <motion.button
             whileTap={{ scale: 0.94 }}
             onClick={() => setShowNotifs(true)}
@@ -295,21 +308,7 @@ export const Home: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex items-center justify-between -mt-2 mb-1">
-        <div className="flex-1 flex items-center gap-2">
-          <div className="flex-1 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${(profile?.points || 0) % 100}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-accent-soft via-accent to-accent-bright rounded-full"
-            />
-          </div>
-          <span className="num text-[10px] text-text-dim font-medium whitespace-nowrap">
-            Lv {profile?.level || 1} · {(profile?.points || 0) % 100}/100
-          </span>
-        </div>
-      </div>
+      <XPBar points={profile?.points} streak={profile?.streak} />
 
       <TrialBanner />
 
@@ -347,55 +346,14 @@ export const Home: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="glass h-44 p-5 flex justify-between items-center relative overflow-hidden"
-      >
-        <div className="absolute -top-12 -right-12 w-32 h-32 bg-accent/8 blur-3xl rounded-full" />
-        {loading ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-sm text-text-dim pulse-soft">Loading your day…</span>
-          </div>
-        ) : (
-          <>
-            <div className="relative w-28 h-28 shrink-0">
-              <ProgressRing progress={progress} size={112} strokeWidth={10} color="var(--accent)" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-display num text-3xl font-bold text-white leading-none">{progress}<span className="text-base text-text-dim">%</span></span>
-                <span className="text-[10px] text-accent font-semibold uppercase tracking-wider mt-1">of goal</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 ml-4 flex-1">
-              <div>
-                <p className="text-eyebrow text-text-dim">Calories in</p>
-                <p className="num font-display text-2xl font-bold text-white leading-none">
-                  <AnimatedNumber value={summary?.caloriesConsumed || 0} />
-                  <span className="text-sm text-text-dim font-medium ml-1">kcal</span>
-                </p>
-              </div>
-              <div className="h-px bg-white/[0.06]" />
-              <div className="flex gap-4">
-                <div>
-                  <p className="text-eyebrow text-text-dim">Burned</p>
-                  <p className="num text-base font-semibold text-white">
-                    <AnimatedNumber value={summary?.caloriesBurned || 0} />
-                  </p>
-                </div>
-                <div className="w-px bg-white/[0.06]" />
-                <div>
-                  <p className="text-eyebrow text-text-dim">Active</p>
-                  <p className="num text-base font-semibold text-white">
-                    <AnimatedNumber value={summary?.workoutMinutes || 0} />m
-                  </p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </motion.div>
+      <TodayMission
+        mission={mission}
+        loading={loading}
+        uid={profile?.uid}
+        caloriesBurned={summary?.caloriesBurned || 0}
+        activeMinutes={summary?.workoutMinutes || 0}
+        onAction={onMissionAction}
+      />
 
       <div className="grid grid-cols-2 gap-3">
         {activityStatus === 'connected' && activity ? (

@@ -1,5 +1,6 @@
 import { db } from '../lib/firebase';
 import { collection, doc, updateDoc, arrayUnion, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { computeLevel } from './missionUtils';
 
 export interface Badge {
   id: string;
@@ -61,9 +62,11 @@ export async function checkAndAwardBadge(userId: string, badgeId: string): Promi
     const badge = ALL_BADGES.find(b => b.id === badgeId);
     if (!badge) return null;
 
+    const newPoints = (profile.points || 0) + 150;
     await updateDoc(userRef, {
       badges: arrayUnion(badgeId),
-      points: (profile.points || 0) + 150,
+      points: newPoints,
+      level: computeLevel(newPoints).level,
     });
 
     await addDoc(collection(db, 'notifications'), {

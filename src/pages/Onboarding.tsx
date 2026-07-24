@@ -8,6 +8,7 @@ import { LogoMark } from '../components/Logo';
 import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { requestPushPermission, micSupported } from '../lib/pushPermission';
+import { computeLevel } from '../services/missionUtils';
 
 type Goal = 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic_performance';
 
@@ -103,7 +104,9 @@ export const Onboarding: React.FC = () => {
       healthConditions: formData.healthConditions.length > 0 ? formData.healthConditions : ['None'],
       dietaryPreferences: formData.dietaryPreferences.length > 0 ? formData.dietaryPreferences : ['None'],
       points: 100,
-      level: 1,
+      // 100 starter XP = Level 2 on the shared curve (see missionUtils) — the
+      // classic instant early win. Kept in sync via computeLevel, not hardcoded math.
+      level: computeLevel(100).level,
       badges: ['pioneer'],
       updatedAt: serverTimestamp(),
     };
