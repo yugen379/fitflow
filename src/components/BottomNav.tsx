@@ -4,6 +4,7 @@ import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { Home, Utensils, Dumbbell, User, Play, ChefHat, Trophy, ChevronUp } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
+import { prefetchPathHandlers } from '../lib/prefetch';
 
 const navItems = [
   { id: 'home', label: 'Home', icon: Home, path: '/' },
@@ -62,6 +63,9 @@ export const BottomNav: React.FC = () => {
                   to={item.path}
                   end={item.path === '/'}
                   onClick={() => haptic('selection')}
+                  // Warm the destination's chunk the moment a finger lands on
+                  // the tab, so the navigation itself resolves from cache.
+                  {...prefetchPathHandlers(item.path)}
                   className="flex-1 min-w-0"
                 >
                   {({ isActive }) => (

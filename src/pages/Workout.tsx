@@ -17,6 +17,7 @@ import { analyzeProgression, updateProgression } from '../services/progressionSe
 import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { ProgressionLog } from '../types';
+import { prefetchHandlers } from '../lib/prefetch';
 
 const WORKOUT_TYPES = [
   { id: 'strength', name: 'Strength', icon: Dumbbell, hint: 'Lift heavy' },
@@ -277,6 +278,9 @@ export const Workout: React.FC = () => {
         type="button"
         whileTap={{ scale: 0.98 }}
         onClick={() => { haptic('light'); navigate('/lab'); }}
+        // The Lab pulls in three.js, so its chunk is never fetched on a hunch —
+        // only once a pointer actually lands on this card.
+        {...prefetchHandlers('lab')}
         className="glass w-full p-5 flex items-center gap-4 text-left relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-accent-3/[0.05] to-accent/[0.04] pointer-events-none" />

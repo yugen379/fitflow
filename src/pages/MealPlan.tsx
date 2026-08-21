@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { generateMealPlan, getRecipe, swapMeal } from '../services/geminiService';
 import { useToast } from '../hooks/useToast';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { haptic } from '../lib/haptics';

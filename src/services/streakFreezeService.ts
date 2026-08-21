@@ -9,7 +9,7 @@
 // All operations are best-effort and never throw.
 
 import { collection, doc, getDocs, query, where, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { dayKey } from './retentionUtils';
 import { isProUnlocked } from '../lib/billing';
 import type { UserProfile } from '../types';

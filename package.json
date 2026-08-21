@@ -15,6 +15,8 @@
     "proof:mission": "tsx scripts/mission-proof.mjs",
     "proof:biomechanics": "tsx scripts/biomechanics-proof.mjs",
     "proof:viewport": "node scripts/viewport-proof.mjs",
+    "proof:perf": "node scripts/perf-proof.mjs",
+    "perf": "node scripts/perf-probe.mjs",
     "proof:quickadd": "tsx scripts/quickadd-proof.mjs",
     "proof:catalog": "tsx scripts/catalog-proof.mjs",
     "proof:retention": "tsx scripts/retention-proof.mjs",

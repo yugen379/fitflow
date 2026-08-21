@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 
 interface LogoProps {
   className?: string;
@@ -66,14 +65,9 @@ export const Logo: React.FC<LogoProps> = ({ className = '', showText = true, siz
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-        className="relative shrink-0"
-      >
+      <div className="ff-pop relative shrink-0">
         <LogoMark size={s.box} mono={variant === 'mono'} />
-      </motion.div>
+      </div>
 
       {showText && (
         <span

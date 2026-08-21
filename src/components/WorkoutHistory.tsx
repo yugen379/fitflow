@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dumbbell, Zap, Bike, Waves, Activity, Clock, Flame, ChevronDown } from 'lucide-react';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 

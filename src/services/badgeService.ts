@@ -1,4 +1,4 @@
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { collection, doc, updateDoc, arrayUnion, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { computeLevel } from './missionUtils';
 

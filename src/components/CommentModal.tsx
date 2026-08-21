@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { addComment, reportContent, blockUser } from '../services/dataService';
 import { query, collection, orderBy, onSnapshot, limit } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { Post } from '../types';
 import { Avatar } from './Avatar';
 import { ReportModal } from './ReportModal';

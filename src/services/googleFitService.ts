@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, GOOGLE_OAUTH_CLIENT_ID } from '../lib/firebase';
+import { GOOGLE_OAUTH_CLIENT_ID } from '../lib/firebase';
+import { db } from '../lib/firestore';
 
 // Use the existing project's OAuth Web Client (already used by Firebase Auth,
 // so the Cloud project is consistent and the consent screen is shared).

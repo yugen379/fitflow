@@ -285,3 +285,71 @@
     .ff-scrubber::-webkit-slider-thumb { transition: none; }
   }
 }
+
+@layer utilities {
+  /* ── Boot-path entrance animations ───────────────────────────────────────
+     The loading screen and the signed-out hero are the first things a cold
+     start paints, and they used to be the only reason the animation library
+     sat on the critical path — ~42 kB gzipped to fade in five elements. These
+     keyframes do the same job for nothing, so the library now loads with the
+     screens that genuinely need layout animations. */
+  @keyframes ff-rise {
+    from { opacity: 0; transform: translate3d(0, 12px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  .ff-rise {
+    opacity: 0;
+    animation: ff-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  .ff-rise-lg {
+    opacity: 0;
+    animation: ff-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    transform: translate3d(0, 20px, 0);
+  }
+  .ff-d1 { animation-delay: 100ms; }
+  .ff-d2 { animation-delay: 200ms; }
+  .ff-d3 { animation-delay: 300ms; }
+  .ff-d4 { animation-delay: 450ms; }
+
+  @keyframes ff-fade-dim {
+    from { opacity: 0; }
+    to   { opacity: 0.7; }
+  }
+  .ff-fade-dim {
+    opacity: 0;
+    animation: ff-fade-dim 400ms ease-out 400ms forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ff-rise, .ff-rise-lg, .ff-fade-dim {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    .ff-fade-dim { opacity: 0.7; }
+  }
+}
+
+@layer utilities {
+  @keyframes ff-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .ff-fade-in {
+    opacity: 0;
+    animation: ff-fade-in 320ms ease-out 100ms forwards;
+  }
+
+  @keyframes ff-pop {
+    from { opacity: 0; transform: scale(0.9); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .ff-pop {
+    opacity: 0;
+    animation: ff-pop 420ms cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ff-fade-in, .ff-pop { animation: none; opacity: 1; transform: none; }
+  }
+}

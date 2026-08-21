@@ -11,7 +11,8 @@ import { useToast } from '../hooks/useToast';
 import { allFeaturesFree, getEntitlement, isPlayStoreBuild } from '../lib/billing';
 import { openBillingPortal, isPortalConfigured } from '../services/stripeService';
 import { purchaseUiAllowed } from '../services/playBillingService';
-import { db, auth } from '../lib/firebase';
+import { auth } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { requestPushPermission, isNativeApp, micSupported } from '../lib/pushPermission';
 import {
   doc, updateDoc, deleteDoc, serverTimestamp,

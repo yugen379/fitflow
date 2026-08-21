@@ -11,7 +11,7 @@ import { logWorkout } from '../services/dataService';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 
 const CATEGORIES = ['All', 'Strength', 'Cardio', 'HIIT', 'Yoga', 'Flexibility', 'Recovery'];
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];

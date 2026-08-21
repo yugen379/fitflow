@@ -1,7 +1,7 @@
 import {
   addDoc, collection, serverTimestamp, query, where, getDocs, orderBy, limit, doc, updateDoc,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { AppNotification } from '../types';
 
 const SHOWN_KEY = (uid: string, kind: string) => `ff_notif_${kind}_${uid}`;

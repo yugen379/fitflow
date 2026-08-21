@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { PremiumGate } from '../components/PremiumGate';
 import exerciseLibrary from '../data/exerciseLibrary.json';
 import { StreakHeatmap } from '../components/StreakHeatmap';

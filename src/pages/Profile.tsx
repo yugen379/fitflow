@@ -15,7 +15,7 @@ import { logWeight } from '../services/dataService';
 import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { ALL_BADGES } from '../services/badgeService';
 import { computeLevel } from '../services/missionUtils';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '../hooks/useToast';
 import { isHealthAvailable, connectAndPersist, DailyHealthMetrics } from '../services/healthService';

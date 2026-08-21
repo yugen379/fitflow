@@ -1,17 +1,19 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import { BottomNav } from './components/BottomNav';
-import { Onboarding } from './pages/Onboarding';
 import { Logo } from './components/Logo';
 import { requestNotificationPermission, onMessageListener } from './lib/firebase';
 import { isNativeApp } from './lib/pushPermission';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
-import { motion } from 'motion/react';
 import { useToast } from './hooks/useToast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PageSkeleton } from './components/PageSkeleton';
 import { initTelemetry, identify } from './lib/telemetry';
+import { warmLikelyRoutes } from './lib/prefetch';
+// The bottom nav is the only other eager consumer of the animation library and
+// it never renders on the signed-out first paint, so it loads a beat later
+// rather than holding up the hero.
+const BottomNav = lazy(() => import('./components/BottomNav').then(m => ({ default: m.BottomNav })));
 
 initTelemetry();
 
@@ -33,6 +35,9 @@ const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms }
 const Pro = lazy(() => import('./pages/Pro').then(m => ({ default: m.Pro })));
 const Coach = lazy(() => import('./pages/Coach').then(m => ({ default: m.Coach })));
 const NutritionGoals = lazy(() => import('./pages/NutritionGoals').then(m => ({ default: m.NutritionGoals })));
+// Onboarding renders only for a profile that is still incomplete, so it has no
+// business sitting on the boot path for the millions of loads where it is not shown.
+const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
 // The Lab pulls in three.js, so it stays in its own chunk and is only fetched
 // when an athlete actually opens the 3D view.
 const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
@@ -40,6 +45,14 @@ const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, loading } = useAuth();
   const { showToast } = useToast();
+
+  // Warm the bottom-nav destinations once the app is up. Deliberately after
+  // auth resolves: before that the user may still be looking at a spinner, and
+  // speculative chunks must never compete with the screen they are waiting for.
+  React.useEffect(() => {
+    if (!user || loading) return;
+    warmLikelyRoutes();
+  }, [user, loading]);
 
   React.useEffect(() => {
     // Only request push permission if the browser hasn't already decided AND we haven't asked this session.
@@ -88,19 +101,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (loading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-bg">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-          className="w-10 h-10 border-2 border-white/10 border-t-accent rounded-full mb-6"
-        />
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
-          transition={{ delay: 0.4 }}
-          className="text-xs text-text-dim font-medium"
-        >
-          Loading your training data
-        </motion.p>
+        <div className="w-10 h-10 border-2 border-white/10 border-t-accent rounded-full mb-6 animate-spin" />
+        <p className="text-xs text-text-dim font-medium ff-fade-dim">Loading your training data</p>
       </div>
     );
   }
@@ -118,13 +120,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     !hasArray((profile as any)?.healthConditions);
 
   if (isProfileIncomplete && window.location.pathname !== '/onboarding') {
-    return <Onboarding />;
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <Onboarding />
+      </Suspense>
+    );
   }
   
   return (
     <div className="min-h-screen bg-bg text-white font-sans max-w-md mx-auto relative overflow-x-hidden">
       {children}
-      {!isProfileIncomplete && <BottomNav />}
+      {!isProfileIncomplete && (
+        <Suspense fallback={null}>
+          <BottomNav />
+        </Suspense>
+      )}
     </div>
   );
 };
@@ -146,40 +156,21 @@ const LoginView: React.FC = () => {
       <div className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-accent-3/6 blur-[140px] rounded-full pointer-events-none" />
 
       <div className="flex-1 flex flex-col items-center justify-center text-center max-w-sm mx-auto w-full relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
-        >
+        <div className="ff-rise">
           <Logo size="xl" showText={false} />
-        </motion.div>
+        </div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-          className="font-display text-5xl font-extrabold text-white mt-8 tracking-tight leading-[0.95]"
-        >
+        <h1 className="ff-rise ff-d1 font-display text-5xl font-extrabold text-white mt-8 tracking-tight leading-[0.95]">
           Train smarter.<br/>
           <span className="gradient-text-accent">Move farther.</span>
-        </motion.h1>
+        </h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-text-dim text-base font-medium mt-5 max-w-[320px] leading-relaxed"
-        >
+        <p className="ff-rise ff-d2 text-text-dim text-base font-medium mt-5 max-w-[320px] leading-relaxed">
           AI workouts, nutrition, recovery and community.
           One app, built to replace the rest.
-        </motion.p>
+        </p>
 
-        <motion.ul
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="mt-10 grid grid-cols-2 gap-2 text-left w-full max-w-[320px]"
-        >
+        <ul className="ff-rise ff-d3 mt-10 grid grid-cols-2 gap-2 text-left w-full max-w-[320px]">
           {[
             'AI coach',
             'Food scan',
@@ -191,15 +182,10 @@ const LoginView: React.FC = () => {
               {f}
             </li>
           ))}
-        </motion.ul>
+        </ul>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45, duration: 0.6 }}
-        className="w-full max-w-sm mx-auto pb-12 relative z-10"
-      >
+      <div className="ff-rise-lg ff-d4 w-full max-w-sm mx-auto pb-12 relative z-10">
         <GoogleSignInButton
           onError={(msg) => showToast(msg, 'error')}
         />
@@ -209,7 +195,7 @@ const LoginView: React.FC = () => {
           and{' '}
           <a href="/privacy" className="text-text-dim hover:text-accent underline-offset-2 hover:underline">Privacy Policy</a>.
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 };
@@ -234,7 +220,7 @@ export default function App() {
             <Route path="/workout" element={<ProtectedRoute>{lazyRoute(<Workout />)}</ProtectedRoute>} />
             <Route path="/community" element={<ProtectedRoute>{lazyRoute(<Community />)}</ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute>{lazyRoute(<Profile />)}</ProtectedRoute>} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<ProtectedRoute>{lazyRoute(<Onboarding />)}</ProtectedRoute>} />
             <Route path="/wellness" element={<ProtectedRoute>{lazyRoute(<Wellness />)}</ProtectedRoute>} />
             <Route path="/explore" element={<ProtectedRoute>{lazyRoute(<Explore />)}</ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute>{lazyRoute(<Library />)}</ProtectedRoute>} />

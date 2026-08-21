@@ -4,6 +4,44 @@ import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/**
+ * The package a module belongs to, e.g. "recharts" or "@sentry/react".
+ *
+ * Substring matching on raw ids is how `id.includes('react/')` silently
+ * swallowed the entire Sentry SDK — "@sentry/react/" contains "react/" — and
+ * pinned ~165 kB gzipped of never-executed code to the critical path. Matching
+ * on a real package boundary makes that impossible.
+ */
+const packageOf = (id: string): string => {
+  const match = id.split('\\').join('/').match(/node_modules\/(?:\.pnpm\/)?((?:@[^/]+\/)?[^/]+)/);
+  return match ? match[1] : '';
+};
+
+/** Small libraries both our code and a vendor bundle pull in. */
+const SHARED_RUNTIME = new Set([
+  'react',
+  'scheduler',
+  'react-is',
+  'use-sync-external-store',
+  'clsx',
+  'tailwind-merge',
+  'tiny-invariant',
+  'object-assign',
+]);
+
+const REDUX = new Set(['@reduxjs/toolkit', 'react-redux', 'redux', 'redux-thunk', 'reselect', 'immer']);
+
+const CHARTS = new Set([
+  'recharts',
+  'victory-vendor',
+  'decimal.js-light',
+  'internmap',
+  'react-smooth',
+  'es-toolkit',
+  'eventemitter3',
+  'fast-equals',
+]);
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
@@ -88,32 +126,52 @@ export default defineConfig(({mode}) => {
         output: {
           manualChunks: (id) => {
             if (!id.includes('node_modules')) return;
-            // three.js only ever arrives through the lazily-loaded Lab route, so
-            // giving it its own chunk keeps it cacheable across Lab updates.
-            if (id.includes('node_modules/three/')) return 'three';
-            // Redux sits on the critical path (the Provider is at the app root),
-            // so it gets a named chunk rather than being folded into a page.
-            if (
-              id.includes('@reduxjs/toolkit') ||
-              id.includes('react-redux') ||
-              id.includes('node_modules/redux') ||
-              id.includes('reselect') ||
-              id.includes('node_modules/immer')
-            ) {
-              return 'redux';
-            }
-            if (id.includes('firebase/firestore')) return 'firebase-firestore';
-            if (id.includes('firebase/auth')) return 'firebase-auth';
-            if (id.includes('firebase/messaging')) return 'firebase-messaging';
-            if (id.includes('firebase/app') || id.includes('@firebase')) return 'firebase-core';
-            if (id.includes('recharts') || id.includes('victory-vendor') || id.includes('d3-')) return 'charts';
-            if (id.includes('motion')) return 'motion';
-            if (id.includes('react-router')) return 'router';
-            if (id.includes('lucide-react')) return 'icons';
-            if (id.includes('html5-qrcode')) return 'qrcode';
-            if (id.includes('@google/genai')) return 'gemini';
-            if (id.includes('react-dom')) return 'react-dom';
-            if (id.includes('react/') || id.includes('react-is')) return 'react';
+            const name = packageOf(id);
+            if (!name) return;
+
+            // Tiny utilities shared between our own code and a heavyweight
+            // vendor library. Left unassigned, Rollup is free to file `clsx`
+            // (500 bytes) inside the recharts chunk — and then the entry has to
+            // download 377 kB of charting to call cn(). Pinning them next to
+            // React keeps that class of accident impossible.
+            if (SHARED_RUNTIME.has(name)) return 'react';
+
+            // Loaded only through a dynamic import in lib/telemetry.ts, and only
+            // when a DSN is configured. It must never be merged into a chunk the
+            // entry statically imports.
+            if (name.startsWith('@sentry')) return 'sentry';
+            if (name === 'posthog-js') return 'posthog';
+
+            if (name === 'three') return 'three';
+            if (REDUX.has(name)) return 'redux';
+
+            // Capacitor's runtime is shared by every plugin. Unassigned, Rollup
+            // filed it inside whichever plugin chunk it happened to pick, which
+            // then had to be fetched eagerly to boot at all.
+            if (name === '@capacitor/core') return 'capacitor';
+
+            // Match the umbrella `firebase` package by SUBPATH, never by
+            // substring: 'firebase/app-check' is also a substring of
+            // '@capacitor-firebase/app-check'.
+            const firebasePath = name === 'firebase' ? id.split('/firebase/')[1] ?? '' : '';
+            if (name === '@firebase/firestore' || firebasePath.startsWith('firestore')) return 'firebase-firestore';
+            if (name === '@firebase/auth' || firebasePath.startsWith('auth')) return 'firebase-auth';
+            if (name === '@firebase/messaging' || firebasePath.startsWith('messaging')) return 'firebase-messaging';
+            if (name === '@firebase/app-check' || firebasePath.startsWith('app-check')) return 'firebase-appcheck';
+            if (name === 'firebase' || name.startsWith('@firebase')) return 'firebase-core';
+
+            if (CHARTS.has(name) || name.startsWith('d3-')) return 'charts';
+            if (name === 'motion' || name === 'framer-motion' || name.startsWith('motion-')) return 'motion';
+            if (name === 'react-router' || name === 'react-router-dom') return 'router';
+            if (name === 'lucide-react') return 'icons';
+            if (name === 'html5-qrcode') return 'qrcode';
+            if (name === '@google/genai') return 'gemini';
+            if (name === 'react-dom') return 'react-dom';
+            if (name === 'react') return 'react';
+
+            // Everything else is left to Rollup, which is the right default for
+            // long-tail dependencies.
+            return undefined;
           },
         },
       },

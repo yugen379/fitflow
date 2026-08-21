@@ -21,8 +21,18 @@
 // the Play Integrity provider registered in App Check before enforcement helps.
 
 import type { FirebaseApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check';
 import { Capacitor } from '@capacitor/core';
+
+// firebase/app-check is ~57 kB and, on web, does nothing at all until a
+// reCAPTCHA site key is configured. Importing it statically put that cost on
+// every cold start, attested or not; it is now fetched only on the paths that
+// genuinely use it.
+type AppCheckModule = typeof import('firebase/app-check');
+let appCheckModule: Promise<AppCheckModule> | null = null;
+const loadAppCheck = (): Promise<AppCheckModule> => {
+  if (!appCheckModule) appCheckModule = import('firebase/app-check');
+  return appCheckModule;
+};
 
 let initialized = false;
 
@@ -43,6 +53,7 @@ export const initAppCheck = async (app: FirebaseApp): Promise<void> => {
       });
       // Bridge the native token into the JS SDK so WebView Firestore/Functions
       // requests are attested with the same Play-Integrity-backed token.
+      const { initializeAppCheck, CustomProvider } = await loadAppCheck();
       initializeAppCheck(app, {
         isTokenAutoRefreshEnabled: true,
         provider: new CustomProvider({
@@ -64,6 +75,9 @@ export const initAppCheck = async (app: FirebaseApp): Promise<void> => {
     if (debugToken && typeof self !== 'undefined') {
       (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
     }
+    // Loaded only now, after the site-key check — an unconfigured web build
+    // never downloads the SDK at all.
+    const { initializeAppCheck, ReCaptchaV3Provider } = await loadAppCheck();
     initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(siteKey),
       isTokenAutoRefreshEnabled: true,

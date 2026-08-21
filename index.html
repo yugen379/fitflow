@@ -37,11 +37,113 @@
     <link rel="apple-touch-icon" href="/logo.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Fonts must never block first paint. A plain <link rel="stylesheet"> to a
+         third-party origin holds the render tree hostage to someone else's DNS +
+         TLS + response time; on a cold mobile connection that alone was costing
+         us most of a second before a single pixel appeared. Loading it as a
+         print stylesheet and flipping to `all` on load makes it non-blocking,
+         and font-display:swap (already in the URL) covers the swap-in. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap"
+      media="print"
+      onload="this.media='all'; this.onload=null;"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap"
+      />
+    </noscript>
+    <!-- Google Identity Services is loaded on demand by GoogleSignInButton, not
+         here: it is ~80 kB plus a third-party connection that only the signed-out
+         login screen ever needs.
+
+         The connection is still warmed up front. Fetching on demand means the
+         request starts only once auth has resolved, and without this the sign-in
+         button paid for a cold DNS + TLS handshake at exactly that moment —
+         which handed back a chunk of what deferring the script won. preconnect
+         costs a socket, not 80 kB. -->
+    <link rel="preconnect" href="https://accounts.google.com" crossorigin />
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
     <title>FitFlow — Train smarter. Move farther.</title>
   </head>
   <body>
+    <!-- Instant shell.
+         Everything below is inline HTML + inline CSS, so first paint happens on
+         the very first response and never waits for React, Firebase or fonts to
+         download and parse. main.tsx removes it once the app has mounted. -->
+    <style>
+      #ff-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: #06070a;
+        background-image:
+          radial-gradient(circle at 10% 0%, rgba(198, 255, 61, 0.06) 0%, transparent 45%),
+          radial-gradient(circle at 100% 100%, rgba(125, 211, 252, 0.04) 0%, transparent 45%);
+        z-index: 9999;
+        /* System stack only — a webfont here would defeat the point. */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        transition: opacity 220ms ease-out;
+      }
+      #ff-splash[data-leaving="true"] { opacity: 0; }
+      #ff-splash h1 {
+        margin: 0;
+        color: #fff;
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+      #ff-splash p {
+        margin: 0;
+        color: #8b92a3;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      #ff-splash .ff-bar {
+        width: 128px;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+      #ff-splash .ff-bar i {
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: 999px;
+        background: #c6ff3d;
+        animation: ff-slide 1.1s ease-in-out infinite;
+      }
+      @keyframes ff-slide {
+        0%   { transform: translateX(-100%); }
+        100% { transform: translateX(320%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #ff-splash .ff-bar i { animation: none; width: 100%; }
+        #ff-splash { transition: none; }
+      }
+    </style>
+    <div id="ff-splash" role="status" aria-live="polite">
+      <svg width="52" height="52" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <rect width="48" height="48" rx="13" fill="#C6FF3D" />
+        <path
+          d="M12 30c4-10 8-10 12 0s8 10 12 0"
+          stroke="#06070A"
+          stroke-width="4.5"
+          stroke-linecap="round"
+          fill="none"
+        />
+      </svg>
+      <h1>FitFlow</h1>
+      <p>Train smarter. Move farther.</p>
+      <span class="ff-bar" aria-hidden="true"><i></i></span>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

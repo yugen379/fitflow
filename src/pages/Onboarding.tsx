@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { doc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Weight, Ruler, Calendar, Target, ChevronRight, HeartPulse, Salad, Camera, Mic, Bell, Check, X as XIcon, Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';

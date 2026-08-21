@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { ProgressionLog } from '../types';
 
 interface ProgressionRecord extends ProgressionLog {

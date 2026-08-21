@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, db, completeRedirectSignIn, friendlyAuthError } from '../lib/firebase';
-import { doc, setDoc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { auth, completeRedirectSignIn, friendlyAuthError } from '../lib/firebase';
 import { UserProfile } from '../types';
 import { identify } from '../lib/telemetry';
 
@@ -33,17 +32,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
+    let disposed = false;
+    // Bumped on every auth event. An await inside the callback means a slow
+    // Firestore chunk could otherwise let a listener for a previous user attach
+    // after the next sign-in has already been handled.
+    let generation = 0;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      
+      const myGeneration = ++generation;
+
       // Cleanup previous profile listener if it exists
       if (unsubscribeProfile) {
         unsubscribeProfile();
         unsubscribeProfile = undefined;
       }
 
-      if (user) {
+      if (!user) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      void (async () => {
+        // Firestore is ~80 kB gzipped and is worthless until we know there IS a
+        // user, so it is fetched here rather than imported at module scope. For
+        // anyone with a persisted session it has already been warmed in parallel
+        // since the first frame (see warmDataLayer in lib/prefetch.ts), so this
+        // await is normally already resolved.
+        let db: import('firebase/firestore').Firestore;
+        let fs: typeof import('firebase/firestore');
+        try {
+          const [firestoreModule, sdk] = await Promise.all([
+            import('../lib/firestore'),
+            import('firebase/firestore'),
+          ]);
+          db = firestoreModule.db;
+          fs = sdk;
+        } catch (error) {
+          console.error('Firestore unavailable:', error);
+          setLoading(false);
+          return;
+        }
+
+        if (disposed || myGeneration !== generation) return;
+
+        const { doc, setDoc, updateDoc, serverTimestamp, onSnapshot } = fs;
         const userRef = doc(db, 'users', user.uid);
         const tzOffsetHours = -new Date().getTimezoneOffset() / 60;
         const tzId = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -101,13 +135,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Profile sync error:', error);
           setLoading(false);
         });
-      } else {
-        setProfile(null);
-        setLoading(false);
-      }
+
+        // The effect may have been torn down while the import was in flight.
+        if (disposed || myGeneration !== generation) {
+          unsubscribeProfile();
+          unsubscribeProfile = undefined;
+        }
+      })();
     });
 
     return () => {
+      disposed = true;
       unsubscribeAuth();
       if (unsubscribeProfile) unsubscribeProfile();
     };

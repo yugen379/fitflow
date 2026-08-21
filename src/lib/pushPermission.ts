@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db, requestNotificationPermission } from './firebase';
+import { requestNotificationPermission } from './firebase';
 
 export type PushPermResult = 'granted' | 'denied';
 
@@ -16,6 +15,13 @@ export const micSupported = (): boolean =>
 
 const saveToken = async (uid: string, token: string) => {
   try {
+    // App.tsx imports isNativeApp() from this module at boot, so Firestore is
+    // pulled in on demand here rather than statically — otherwise a helper that
+    // only reports the platform would put ~80 kB on the critical path.
+    const [{ db }, { doc, updateDoc, serverTimestamp }] = await Promise.all([
+      import('./firestore'),
+      import('firebase/firestore'),
+    ]);
     await updateDoc(doc(db, 'users', uid), {
       fcmToken: token,
       notificationsEnabled: true,

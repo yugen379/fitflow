@@ -1,5 +1,6 @@
 import { collection, addDoc, query, where, getDocs, orderBy, limit, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError } from '../lib/firebase';
+import { handleFirestoreError } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { MealRecord, WorkoutRecord, Post, UserProfile } from '../types';
 import { addToOfflineQueue } from './offlineService';
 import { saveToCatalog } from './foodCatalogService';

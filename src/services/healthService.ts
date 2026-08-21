@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 
 export interface DailyHealthMetrics {
   steps: number;

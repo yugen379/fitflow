@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { Play, Square, Map as MapIcon, ChevronLeft, Footprints, Activity, Bike } from 'lucide-react';

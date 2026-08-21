@@ -6,7 +6,7 @@ import { likePost, blockUser, reportContent } from '../services/dataService';
 import { Post } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { query, collection, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { Logo } from '../components/Logo';
 import { CreatePostModal } from '../components/CreatePostModal';
 import { EditPostModal } from '../components/EditPostModal';

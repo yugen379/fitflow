@@ -6,7 +6,7 @@
 // never a dependency. Pure key/validation logic lives in foodCatalogUtils.ts.
 
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { catalogKey, normalizeCatalogFood, CatalogFood } from './foodCatalogUtils';
 
 /** Instant lookup by food name. Returns null on miss, malformed name, or error. */

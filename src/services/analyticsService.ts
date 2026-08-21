@@ -6,7 +6,7 @@
 // gracefully and never throws.
 
 import { collection, doc, setDoc, getDocs, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { dayKey, computeRetention, streakWithFreezes, RetentionStats } from './retentionUtils';
 import { getFreezeDays } from './streakFreezeService';
 

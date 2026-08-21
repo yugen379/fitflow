@@ -108,13 +108,19 @@ const safeJsonParse = (text: string, fallback: any = {}) => {
 // host app injects a token supplier at boot (src/lib/firebase.ts); this module
 // itself stays firebase-free so the proof harnesses keep working, and they call
 // Gemini directly with a local key rather than through the proxy.
-type AuthTokenSupplier = () => Promise<string | null>;
-let getAuthToken: AuthTokenSupplier | null = null;
-export const setGeminiAuthTokenSupplier = (fn: AuthTokenSupplier): void => { getAuthToken = fn; };
+// The supplier lives in lib/authToken.ts, which imports nothing at all — so this
+// module stays firebase-free for the proof harnesses AND firebase.ts no longer
+// has to import this module (and with it the whole Gemini SDK) just to register
+// a callback during boot.
+import { getAuthToken, setAuthTokenSupplier } from '../lib/authToken';
+import type { AuthTokenSupplier } from '../lib/authToken';
+
+/** @deprecated Prefer setAuthTokenSupplier from lib/authToken. */
+export const setGeminiAuthTokenSupplier = (fn: AuthTokenSupplier): void => setAuthTokenSupplier(fn);
 
 const callProxy = async (action: string, payload: any) => {
   if (!PROXY_URL) throw new Error('Gemini proxy not configured');
-  const token = getAuthToken ? await getAuthToken().catch(() => null) : null;
+  const token = await getAuthToken();
   // Abort a hung proxy call so it can't block the UI indefinitely; the caller's
   // try/catch then degrades to the structured fallback.
   const ctrl = new AbortController();

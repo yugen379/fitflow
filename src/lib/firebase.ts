@@ -10,34 +10,39 @@ import {
   browserLocalPersistence,
   setPersistence,
 } from 'firebase/auth';
-import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, getDocFromServer, updateDoc, serverTimestamp,
-} from 'firebase/firestore';
-import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
+import type { Messaging } from 'firebase/messaging';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { isSupported } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { initAppCheck } from './appCheck';
-import { setGeminiAuthTokenSupplier } from '../services/geminiService';
+import { setAuthTokenSupplier } from './authToken';
 
-const app = initializeApp(firebaseConfig);
+// firebase/messaging is ~25 kB and is only ever needed once the user is signed
+// in and has agreed to notifications. Importing it at module scope also ran
+// isSupported() during boot, which does real work on the main thread before
+// anything has painted.
+type MessagingModule = typeof import('firebase/messaging');
+let messagingModule: Promise<MessagingModule> | null = null;
+const loadMessaging = (): Promise<MessagingModule> => {
+  if (!messagingModule) messagingModule = import('firebase/messaging');
+  return messagingModule;
+};
+
+export const app = initializeApp(firebaseConfig);
+export { firebaseConfig };
 // App Check ("Google protect") — must init right after the app, before other
 // services. Inert until a reCAPTCHA site key is configured (see lib/appCheck.ts).
 initAppCheck(app);
 export const auth = getAuth(app);
-// Persistent (IndexedDB) cache: profile/meals/workouts render instantly from
-// disk on reopen and sync in the background — the app stays usable offline and
-// cold starts stop waiting on the network. Multi-tab manager keeps the PWA
-// safe when open in more than one tab; falls back gracefully where unsupported.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-}, firebaseConfig.firestoreDatabaseId);
+// `db` now lives in ./firestore so that importing auth does not drag ~80 kB of
+// Firestore onto the boot path. This module must never import it statically.
 export const googleProvider = new GoogleAuthProvider();
 
 // The Gemini proxy rejects anonymous calls; hand it a fresh ID token per
 // request. getIdToken() serves a cached token and only refreshes near expiry.
-setGeminiAuthTokenSupplier(async () => auth.currentUser ? auth.currentUser.getIdToken() : null);
+// Written into a 20-line registry rather than handed straight to
+// geminiService, which statically imports @google/genai — that one edge dragged
+// the whole Gemini SDK onto the boot path.
+setAuthTokenSupplier(async () => (auth.currentUser ? auth.currentUser.getIdToken() : null));
 
 // Persist auth across reloads (required for redirect flow on mobile)
 setPersistence(auth, browserLocalPersistence).catch(e =>
@@ -45,23 +50,49 @@ setPersistence(auth, browserLocalPersistence).catch(e =>
 );
 
 let messaging: Messaging | null = null;
-isSupported().then(supported => {
-  if (supported) {
-    messaging = getMessaging(app);
+let messagingReady: Promise<Messaging | null> | null = null;
+
+/**
+ * Resolve the Messaging instance, loading the SDK on first use. Returns null
+ * where push is unsupported, which every caller already handles.
+ */
+const getMessagingInstance = async (): Promise<Messaging | null> => {
+  if (messaging) return messaging;
+  if (!messagingReady) {
+    messagingReady = (async () => {
+      try {
+        const mod = await loadMessaging();
+        if (!(await mod.isSupported())) return null;
+        messaging = mod.getMessaging(app);
+        return messaging;
+      } catch (e) {
+        console.warn('Messaging unavailable:', e);
+        return null;
+      }
+    })();
   }
-});
+  return messagingReady;
+};
 
 export const requestNotificationPermission = async (userId: string) => {
   try {
-    if (!messaging) return;
-    
+    const instance = await getMessagingInstance();
+    if (!instance) return;
+
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      const token = await getToken(messaging, {
+      const { getToken } = await loadMessaging();
+      const token = await getToken(instance, {
         vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
       });
-      
+
       if (token) {
+        // Loaded on demand: this only ever runs for a signed-in user who has
+        // just granted notification permission.
+        const [{ db }, { doc, updateDoc, serverTimestamp }] = await Promise.all([
+          import('./firestore'),
+          import('firebase/firestore'),
+        ]);
         await updateDoc(doc(db, 'users', userId), {
           fcmToken: token,
           notificationsEnabled: true,
@@ -76,11 +107,30 @@ export const requestNotificationPermission = async (userId: string) => {
   return null;
 };
 
+/**
+ * Foreground push listener.
+ *
+ * Kept synchronous so callers can treat it like any other subscribe: the SDK is
+ * fetched in the background and the real listener attaches when it lands. The
+ * returned function unsubscribes, and also cancels a still-in-flight attach so
+ * an unmounted component never gets a late callback.
+ */
 export const onMessageListener = (callback: (payload: any) => void) => {
-  if (!messaging) return null;
-  return onMessage(messaging!, (payload) => {
-    callback(payload);
-  });
+  let cancelled = false;
+  let detach: (() => void) | null = null;
+
+  void (async () => {
+    const instance = await getMessagingInstance();
+    if (cancelled || !instance) return;
+    const { onMessage } = await loadMessaging();
+    if (cancelled) return;
+    detach = onMessage(instance, (payload) => callback(payload));
+  })();
+
+  return () => {
+    cancelled = true;
+    if (detach) detach();
+  };
 };
 
 const isMobile = () =>
@@ -226,14 +276,8 @@ export const handleFirestoreError = (error: any, operationType: FirestoreErrorIn
   return null;
 };
 
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error: any) {
-    if (error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
-    }
-  }
-}
-
-testConnection();
+// A boot-time `getDocFromServer(doc(db, 'test', 'connection'))` used to run
+// here. It fired a Firestore round trip on every single cold start purely to
+// log a hint on failure, and it was one of the two reasons Firestore could not
+// leave the boot path. Removed: it provided no behaviour, and the real data
+// paths already report connectivity problems through handleFirestoreError.

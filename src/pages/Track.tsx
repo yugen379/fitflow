@@ -9,7 +9,7 @@ import { searchFood, lookupBarcode } from '../services/foodService';
 import { lookupCatalog } from '../services/foodCatalogService';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { MealRecord } from '../types';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { collection, query, where, orderBy, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useToast } from '../hooks/useToast';

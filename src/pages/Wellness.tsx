@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Moon, Smile, Zap, Plus, ChevronLeft, Award } from 'lucide-react';

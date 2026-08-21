@@ -7,6 +7,7 @@ import {
   isNativeApp,
   friendlyAuthError,
 } from '../lib/firebase';
+import { ensureGsiScript } from '../lib/gsi';
 
 const GoogleGlyph = () => (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -52,6 +53,7 @@ declare global {
 const waitForGsi = (timeoutMs = 8000): Promise<boolean> =>
   new Promise(resolve => {
     if (window.google?.accounts?.id) return resolve(true);
+    ensureGsiScript();
     const start = Date.now();
     const t = setInterval(() => {
       if (window.google?.accounts?.id) {

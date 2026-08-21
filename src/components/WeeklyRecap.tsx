@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, ArrowRight, Volume2, TrendingUp, Trophy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import {
   collection, query, where, getDocs, orderBy, doc, setDoc, getDoc,
 } from 'firebase/firestore';

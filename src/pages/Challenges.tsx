@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
 import { collection, query, orderBy, limit, doc, updateDoc, arrayUnion, onSnapshot, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firestore';
 import { Avatar } from '../components/Avatar';
 
 interface ChallengeDef {
