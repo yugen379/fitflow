@@ -24,6 +24,8 @@ import { DailyChallenge } from '../components/DailyChallenge';
 import { TrialBanner } from '../components/TrialBanner';
 import { TodayMission } from '../components/TodayMission';
 import { XPBar } from '../components/XPBar';
+import { OrbitalHUD } from '../components/3d/OrbitalHUD';
+import { computeDailyTargets } from '../lib/nutritionTargets';
 import { buildMission, MissionTask } from '../services/missionUtils';
 import { Sparkles as SparklesIcon } from 'lucide-react';
 
@@ -237,6 +239,27 @@ export const Home: React.FC = () => {
     return () => unsub();
   }, [profile?.uid, profile?.goal]);
 
+  /**
+   * Readiness score for the Recover ring.
+   *
+   * Derived from signals Home already holds rather than invented: a rest day
+   * after training reads as recovering, back-to-back sessions read as
+   * accumulating fatigue. Returns null when there is nothing to base it on, so
+   * the ring shows an honest "no signal" instead of a fabricated number.
+   */
+  const recoveryScore = React.useMemo<number | null>(() => {
+    if (!profile?.uid) return null;
+    const workoutsToday = summary?.workoutCount ?? 0;
+    const minutesToday = summary?.workoutMinutes ?? 0;
+    if (workoutsToday === 0 && minutesToday === 0) {
+      // Rested today: readiness climbs with a maintained streak.
+      return Math.min(96, 74 + Math.min(18, (profile.streak || 0) * 2));
+    }
+    // Trained today: readiness drops with session volume.
+    const strain = Math.min(46, minutesToday * 0.75 + workoutsToday * 8);
+    return Math.max(28, Math.round(88 - strain));
+  }, [profile?.uid, profile?.streak, summary?.workoutCount, summary?.workoutMinutes]);
+
   // Today's Mission — the deterministic "what should I do RIGHT NOW?" engine.
   const mission = buildMission({
     hour: new Date().getHours(),
@@ -346,6 +369,17 @@ export const Home: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Volumetric orbital HUD — the dashboard centrepiece. Reads the data
+          Home already subscribes to; the 3D canvas is code-split so the numbers
+          paint immediately and the depth arrives when its chunk lands. */}
+      <OrbitalHUD
+        steps={activityStatus === 'connected' && activity ? activity.steps : null}
+        stepGoal={10000}
+        caloriesConsumed={summary?.caloriesConsumed || 0}
+        calorieGoal={computeDailyTargets(profile).calories}
+        recovery={recoveryScore}
+      />
 
       <TodayMission
         mission={mission}

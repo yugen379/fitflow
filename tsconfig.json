@@ -10,6 +10,11 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
+    // Turned on after installing @types/react revealed the project had been
+    // compiling React as `any`. It immediately caught three real bugs
+    // (an overwritten dock handler, two loose promise/array types) and the tree
+    // is clean under it — so it stays on to keep catching them.
+    "strictNullChecks": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",

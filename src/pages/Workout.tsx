@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Play, Plus, Dumbbell, Bike, Waves, Zap, Sparkles, Loader2, ArrowRight,
-  TrendingUp, Trophy, CheckCircle2, Volume2, VolumeX, X, Timer, Camera, Share2, Check, Boxes,
+  TrendingUp, Trophy, CheckCircle2, Volume2, VolumeX, X, Timer, Camera, Share2, Check, Boxes, Flame,
 } from 'lucide-react';
 import { FormCheck, FormCheckSummary } from '../components/FormCheck';
 import { AnimatedNumber } from '../components/AnimatedNumber';
@@ -18,6 +18,7 @@ import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { ProgressionLog } from '../types';
 import { prefetchHandlers } from '../lib/prefetch';
+import { AnatomyViewer } from '../components/3d/AnatomyViewer';
 
 const WORKOUT_TYPES = [
   { id: 'strength', name: 'Strength', icon: Dumbbell, hint: 'Lift heavy' },
@@ -388,6 +389,39 @@ export const Workout: React.FC = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                  {/* Live muscle activation. Reuses the biomechanics engine, so
+                      the heatmap is driven by the same solved joint angles the
+                      Lab uses rather than a decorative loop. */}
+                  <div className="h-52 rounded-[28px] overflow-hidden glass-spatial relative">
+                    <AnatomyViewer exerciseId={stack[curIdx]?.id} showAngles={false} />
+                    <div className="absolute top-3 left-4 pointer-events-none">
+                      <p className="text-eyebrow text-accent-3">Muscle activation</p>
+                    </div>
+                    <div className="absolute top-3 right-4 inline-flex items-center gap-1.5 pointer-events-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent-2 breathing-glow" />
+                      <span className="text-[10px] uppercase tracking-[0.14em] text-white/70 font-semibold">Live</span>
+                    </div>
+                  </div>
+
+                  {/* Progressive overload — amber, because it is a distinct
+                      signal from "on plan": the load actually went up. */}
+                  {progression && progression.trend === 'up' && (
+                    <div
+                      className="p-3.5 rounded-2xl flex items-center gap-3 border"
+                      style={{
+                        background: 'rgba(255,184,0,0.08)',
+                        borderColor: 'rgba(255,184,0,0.28)',
+                        boxShadow: '0 0 30px -10px rgba(255,184,0,0.6)',
+                      }}
+                    >
+                      <Flame size={17} className="text-accent-4 shrink-0" aria-hidden="true" />
+                      <p className="text-sm text-white font-medium">
+                        Progressive overload —{' '}
+                        <span className="num font-semibold text-accent-4">+2.5kg</span> vs your last session
+                      </p>
+                    </div>
+                  )}
+
                   {progression && (
                     <div className="p-4 rounded-2xl ai-gradient-box flex items-center gap-3">
                       <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-bg shrink-0">

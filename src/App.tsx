@@ -7,13 +7,13 @@ import { isNativeApp } from './lib/pushPermission';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
 import { useToast } from './hooks/useToast';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { PageSkeleton } from './components/PageSkeleton';
 import { initTelemetry, identify } from './lib/telemetry';
 import { warmLikelyRoutes } from './lib/prefetch';
+import { LiquidSkeleton, ParticleField, SpatialPageTransition } from './components/layout/SpatialPageTransition';
 // The bottom nav is the only other eager consumer of the animation library and
 // it never renders on the signed-out first paint, so it loads a beat later
 // rather than holding up the hero.
-const BottomNav = lazy(() => import('./components/BottomNav').then(m => ({ default: m.BottomNav })));
+const FloatingDock = lazy(() => import('./components/layout/FloatingDock').then(m => ({ default: m.FloatingDock })));
 
 initTelemetry();
 
@@ -121,18 +121,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (isProfileIncomplete && window.location.pathname !== '/onboarding') {
     return (
-      <Suspense fallback={<PageSkeleton />}>
+      <Suspense fallback={<LiquidSkeleton />}>
         <Onboarding />
       </Suspense>
     );
   }
   
   return (
-    <div className="min-h-screen bg-bg text-white font-sans max-w-md mx-auto relative overflow-x-hidden">
-      {children}
+    <div className="min-h-dvh bg-bg text-white font-sans max-w-md mx-auto relative overflow-x-hidden">
+      {/* Deliberately OUTSIDE the transition: the atmosphere is continuous
+          across routes, so the screen is never actually blank between them. */}
+      <ParticleField />
+      <SpatialPageTransition>{children}</SpatialPageTransition>
       {!isProfileIncomplete && (
         <Suspense fallback={null}>
-          <BottomNav />
+          <FloatingDock />
         </Suspense>
       )}
     </div>
@@ -204,7 +207,9 @@ import { ToastProvider } from './hooks/useToast';
 
 const lazyRoute = (el: React.ReactNode) => (
   <ErrorBoundary>
-    <Suspense fallback={<PageSkeleton />}>{el}</Suspense>
+    {/* A flowing shimmer shaped like the page, so the swap to real content
+        reads as a fill rather than a second flash of blank. */}
+    <Suspense fallback={<LiquidSkeleton />}>{el}</Suspense>
   </ErrorBoundary>
 );
 

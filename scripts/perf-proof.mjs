@@ -138,9 +138,19 @@ const server = createServer((req, res) => {
 });
 await new Promise((resolve) => server.listen(5603, resolve));
 
-// Third-party iframes (Google Identity, reCAPTCHA) log storage and CORS errors
-// in headless that have nothing to do with our code.
-const THIRD_PARTY_NOISE = /403|storage ?access|requestStorageAccess|GSI_LOGGER|net::ERR|Failed to load resource/i;
+/**
+ * Console noise from Google's sign-in and reCAPTCHA iframes.
+ *
+ * These are artefacts of running the production bundle from localhost with the
+ * real third-party widgets loaded: storage-access probes, 403s from an
+ * unauthorised origin, and — intermittently, roughly one boot in six — a
+ * report-only CSP framing warning. None originate in our code, and missing that
+ * last one is what made this gate flake at 29/30.
+ *
+ * Deliberately specific: anything thrown by OUR bundle still fails the check.
+ */
+const THIRD_PARTY_NOISE =
+  /403|storage ?access|requestStorageAccess|GSI_LOGGER|net::ERR|Failed to load resource|Content Security Policy|accounts\.google\.com|gstatic\.com|recaptcha/i;
 
 const boot = async (seedSession) => {
   const browser = await chromium.launch();

@@ -80,6 +80,13 @@ export interface UserProfile {
   badges: string[];
   points: number;
   level: number;
+  /**
+   * Challenge ids the user has joined. Written by Challenges.tsx via
+   * arrayUnion and read back to build the "My challenges" tab. It was missing
+   * from this interface, which only stayed invisible because the project had no
+   * React types installed and `profile` was silently `any`.
+   */
+  activeChallenges?: string[];
   createdAt: any;
   updatedAt?: any;
   googleFitConnected?: boolean;

@@ -15,6 +15,7 @@ import { barPosition, readJointAngles, solvePose } from '../src/biomechanics/rig
 import { QUALITY_PROFILES } from '../src/biomechanics/viewportSlice';
 import { MUSCLE_COUNT } from '../src/biomechanics/types';
 import type { SceneFrame } from '../src/biomechanics/avatarScene';
+import type { Vec3 } from '../src/biomechanics/types';
 
 interface HarnessResult {
   ok: boolean;
@@ -62,8 +63,8 @@ const run = async () => {
       for (const clipId of clipIds) {
         const clip = getClip(clipId)!;
         // Bar path upload happens once per clip, exactly as the component does.
-        const path = [];
-        const framing = [];
+        const path: Vec3[] = [];
+        const framing: Vec3[] = [];
         for (let i = 0; i <= 48; i++) {
           const { pose } = sampleClip(clip, i / 48, activation);
           const skeleton = solvePose(pose, {

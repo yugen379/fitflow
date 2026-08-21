@@ -9,6 +9,7 @@ import {
   AreaChart, Area,
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
+import { StreakMonument } from '../components/3d/StreakMonument';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { PremiumGate } from '../components/PremiumGate';
@@ -126,6 +127,11 @@ export const Analytics: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-5">
+          {/* Streak monument — the crystal gains facets and the sparks
+              intensify with the streak, so a long run visibly outweighs a
+              short one instead of being the same asset with a bigger number. */}
+          <StreakMonument streak={profile?.streak ?? 0} bestStreak={profile?.streak ?? 0} />
+
           {/* Stat row */}
           <div className="grid grid-cols-3 gap-3">
             <Stat3D icon={<Zap size={14} className="text-accent"/>}  label="Sessions" value={String(totalWorkouts)} />

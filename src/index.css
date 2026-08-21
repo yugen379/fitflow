@@ -1,46 +1,81 @@
 @import "tailwindcss";
 
+/* ── Spatial palette ───────────────────────────────────────────────────────
+   The token NAMES are unchanged on purpose. Twenty screens and a hundred
+   components already reference --color-accent / --color-bg / .glass, so
+   re-pointing the values here restyles the entire app in one place instead of
+   touching every call site. The new semantic names below are aliases, so both
+   vocabularies resolve and nothing has to be migrated in a big bang.
+
+   Wide-gamut: the P3 values in @supports below are what a modern phone
+   actually displays; the hex fallbacks keep sRGB screens correct. */
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: "Bricolage Grotesque", "Inter", sans-serif;
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 
-  --color-bg: #06070A;
-  --color-surface: #0E1014;
-  --color-surface-2: #15181E;
+  /* Void canvas */
+  --color-bg: #04060A;
+  --color-surface: #070A12;
+  --color-surface-2: #0E1422;
 
-  --color-accent: #C6FF3D;
-  --color-accent-soft: #9CFF1F;
-  --color-accent-bright: #E7FF8C;
+  /* Kinetic energy — workouts, active state, primary CTA */
+  --color-accent: #CCFF00;
+  --color-accent-soft: #D4FF00;
+  --color-accent-bright: #E8FF7A;
 
-  --color-accent-2: #FF6B6B;
-  --color-accent-3: #7DD3FC;
+  /* Biometric strain — alerts, recovery debt, fat macro */
+  --color-accent-2: #FF3366;
+  /* Fluid vitality — hydration, carbs, sleep */
+  --color-accent-3: #00F5FF;
+  /* Nutritional fuel — protein, energy */
+  --color-accent-4: #FFB800;
 
-  --color-text: #FFFFFF;
-  --color-text-dim: #8B92A3;
-  --color-text-mute: #4B5260;
+  --color-text: #F8FAFC;
+  --color-text-dim: #8B95A8;
+  --color-text-mute: #4B5568;
 
-  --color-glass: rgba(20, 24, 30, 0.55);
-  --color-glass-border: rgba(255, 255, 255, 0.06);
+  /* Liquid spatial glass */
+  --color-glass: rgba(14, 20, 34, 0.68);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+
+  /* Semantic aliases for the spatial system */
+  --color-laser-lime: #CCFF00;
+  --color-cyber-aqua: #00F5FF;
+  --color-infrared-coral: #FF3366;
+  --color-solar-amber: #FFB800;
 
   /* legacy alias so old references resolve */
-  --color-accent-alt: #FF6B6B;
+  --color-accent-alt: #FF3366;
 }
 
 @layer base {
   :root {
     color-scheme: dark;
-    --bg: #06070A;
-    --surface: #0E1014;
-    --surface-2: #15181E;
-    --accent: #C6FF3D;
-    --accent-2: #FF6B6B;
-    --accent-3: #7DD3FC;
-    --accent-alt: #FF6B6B;
-    --text: #FFFFFF;
-    --text-dim: #8B92A3;
-    --color-border-tertiary: rgba(255,255,255,0.06);
+    --bg: #04060A;
+    --surface: #070A12;
+    --surface-2: #0E1422;
+    --accent: #CCFF00;
+    --accent-2: #FF3366;
+    --accent-3: #00F5FF;
+    --accent-4: #FFB800;
+    --accent-alt: #FF3366;
+    --text: #F8FAFC;
+    --text-dim: #8B95A8;
+    --glass-surface: rgba(14, 20, 34, 0.68);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --color-border-tertiary: rgba(255,255,255,0.08);
     --color-background-secondary: rgba(255,255,255,0.04);
+  }
+
+  /* Wide-gamut displays get the real thing; sRGB keeps the hex above. */
+  @supports (color: color(display-p3 1 1 1)) {
+    :root {
+      --accent: color(display-p3 0.8 1 0);
+      --accent-3: color(display-p3 0 0.96 1);
+      --accent-2: color(display-p3 1 0.2 0.4);
+      --accent-4: color(display-p3 1 0.72 0);
+    }
   }
   html, body {
     background-color: var(--bg);
@@ -53,9 +88,16 @@
   }
   body {
     background-image:
-      radial-gradient(circle at 10% 0%, rgba(198,255,61,0.06) 0%, transparent 45%),
-      radial-gradient(circle at 100% 100%, rgba(125,211,252,0.04) 0%, transparent 45%);
+      radial-gradient(circle at 10% 0%, rgba(204,255,0,0.055) 0%, transparent 45%),
+      radial-gradient(circle at 100% 100%, rgba(0,245,255,0.04) 0%, transparent 45%);
     background-attachment: fixed;
+    overflow-x: hidden;
+  }
+
+  /* Neon selection */
+  ::selection {
+    background: var(--accent);
+    color: #04060A;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
@@ -351,5 +393,207 @@
 
   @media (prefers-reduced-motion: reduce) {
     .ff-fade-in, .ff-pop { animation: none; opacity: 1; transform: none; }
+  }
+}
+
+@layer components {
+  /* ══════════════════════════════════════════════════════════════════════
+     SPATIAL SYSTEM
+     Volumetric glass, color-dodge glow, and liquid motion primitives.
+     Everything here is GPU-cheap: transform/opacity/filter only, no layout.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* ── Liquid spatial glass ─────────────────────────────────────────────
+     Deeper and glossier than .glass — the inset highlight along the top
+     edge is what reads as a thick pane rather than a flat translucent box. */
+  .glass-spatial {
+    background: var(--glass-surface);
+    backdrop-filter: blur(28px) saturate(150%);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    border: 1px solid var(--border-subtle);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.75),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    border-radius: 28px;
+  }
+
+  /* ── Marcelo-style dual-layer color-dodge glow ────────────────────────
+     Two stacked light sources: a wide ambient bloom and a tight core.
+     color-dodge is what makes the lime read as *emitting* light rather than
+     being painted on — it drives the backdrop toward white where they meet.
+     Both layers are pointer-events:none so they never eat a tap. */
+  .btn-laser-glow {
+    position: relative;
+    isolation: isolate;
+    border-radius: 9999px;
+    padding: 1.5px;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.4) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(204, 255, 0, 0.5) 100%
+    );
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-laser-glow::before {
+    content: '';
+    position: absolute;
+    inset: -14px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, var(--accent) 12%, transparent 68%);
+    filter: blur(20px);
+    mix-blend-mode: color-dodge;
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: -1;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+  }
+  .btn-laser-glow::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, var(--accent) 8%, transparent 72%);
+    filter: blur(7px);
+    mix-blend-mode: color-dodge;
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .btn-laser-glow:active { transform: scale(0.975); }
+  @media (hover: hover) {
+    .btn-laser-glow:hover::before { opacity: 0.85; filter: blur(26px); }
+  }
+
+  /* Aqua and coral variants for non-primary energy. */
+  .btn-laser-glow.glow-aqua::before,
+  .btn-laser-glow.glow-aqua::after { background: radial-gradient(circle, var(--accent-3) 10%, transparent 70%); }
+  .btn-laser-glow.glow-coral::before,
+  .btn-laser-glow.glow-coral::after { background: radial-gradient(circle, var(--accent-2) 10%, transparent 70%); }
+
+  /* ── Water ripple ─────────────────────────────────────────────────────
+     Spawned per tap by components/ui/WaterRipple.tsx and removed on
+     animationend, so no node ever accumulates. */
+  @keyframes ff-water-ripple {
+    0%   { transform: scale(0);   opacity: 0.65; }
+    100% { transform: scale(3.5); opacity: 0; }
+  }
+  .ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(204, 255, 0, 0.42) 0%, rgba(204, 255, 0, 0.12) 45%, transparent 70%);
+    animation: ff-water-ripple 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  .ripple-effect[data-tone='aqua']  { background: radial-gradient(circle, rgba(0, 245, 255, 0.42) 0%, rgba(0, 245, 255, 0.12) 45%, transparent 70%); }
+  .ripple-effect[data-tone='coral'] { background: radial-gradient(circle, rgba(255, 51, 102, 0.42) 0%, rgba(255, 51, 102, 0.12) 45%, transparent 70%); }
+  .ripple-effect[data-tone='amber'] { background: radial-gradient(circle, rgba(255, 184, 0, 0.42) 0%, rgba(255, 184, 0, 0.12) 45%, transparent 70%); }
+
+  /* ── Liquid wave shimmer ──────────────────────────────────────────────
+     Replaces the flat grey skeleton box. A travelling highlight plus a slow
+     vertical drift reads as fluid under glass rather than a loading bar. */
+  @keyframes ff-liquid-sweep {
+    0%   { transform: translateX(-120%) skewX(-12deg); }
+    100% { transform: translateX(220%)  skewX(-12deg); }
+  }
+  .liquid-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.035);
+    border-radius: 20px;
+  }
+  .liquid-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgba(204, 255, 0, 0.05) 35%,
+      rgba(255, 255, 255, 0.09) 50%,
+      rgba(0, 245, 255, 0.05) 65%,
+      transparent 100%
+    );
+    animation: ff-liquid-sweep 1.9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
+  /* ── Undulating meniscus for liquid-fill gauges ───────────────────────
+     Two offset waves at different speeds; the interference between them is
+     what stops it looking like a single sine loop. */
+  @keyframes ff-meniscus {
+    0%   { transform: translateX(0)     translateZ(0); }
+    100% { transform: translateX(-50%)  translateZ(0); }
+  }
+  .liquid-wave {
+    animation: ff-meniscus 3.2s linear infinite;
+    will-change: transform;
+  }
+  .liquid-wave-slow { animation-duration: 5.1s; }
+
+  /* ── Breathing glow, for "live"/active surfaces ───────────────────────── */
+  @keyframes ff-breathe {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(204,255,0,0.18), 0 0 28px -6px rgba(204,255,0,0.35); }
+    50%      { box-shadow: 0 0 0 1px rgba(204,255,0,0.34), 0 0 46px -4px rgba(204,255,0,0.55); }
+  }
+  .breathing-glow { animation: ff-breathe 3.4s ease-in-out infinite; }
+
+  /* ── Spatial depth on press, without touching layout ─────────────────── */
+  .spatial-press {
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform-style: preserve-3d;
+  }
+  .spatial-press:active { transform: scale(0.97) translateZ(-8px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ripple-effect,
+    .liquid-skeleton::after,
+    .liquid-wave,
+    .breathing-glow { animation: none; }
+    .liquid-skeleton::after { opacity: 0.35; }
+    .btn-laser-glow, .spatial-press { transition: none; }
+  }
+}
+
+@layer utilities {
+  /* Volumetric dust drift for the persistent particle field. Pure transform,
+     so the always-on atmosphere costs the compositor and nothing else. */
+  @keyframes ff-drift {
+    0%   { transform: translate3d(0, 0, 0) scale(1);      opacity: 0.25; }
+    50%  { transform: translate3d(6px, -22px, 0) scale(1.3); opacity: 0.75; }
+    100% { transform: translate3d(0, -44px, 0) scale(1);  opacity: 0; }
+  }
+  .ff-drift {
+    animation-name: ff-drift;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+    animation-iteration-count: infinite;
+    will-change: transform, opacity;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ff-drift { animation: none; opacity: 0.3; }
+  }
+}
+
+@layer utilities {
+  /* Spatial route entrance. The outgoing screen is gone the instant React
+     swaps the key; the incoming one rises through depth over the persistent
+     particle field, so there is never a blank frame to cover. Transform and
+     opacity only — the compositor handles this without a layout pass. */
+  @keyframes ff-spatial-enter {
+    from {
+      opacity: 0;
+      transform: perspective(1400px) translate3d(0, 14px, 0) scale(0.94) rotateX(4deg);
+    }
+    to {
+      opacity: 1;
+      transform: perspective(1400px) translate3d(0, 0, 0) scale(1) rotateX(0deg);
+    }
+  }
+  .spatial-enter {
+    animation: ff-spatial-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spatial-enter { animation: none; }
   }
 }

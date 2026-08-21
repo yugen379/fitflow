@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { askCoach, CoachChatMessage } from '../services/geminiService';
 import { haptic } from '../lib/haptics';
-import { LogoMark } from '../components/Logo';
 import { useToast } from '../hooks/useToast';
+import { AIEntityOrb } from '../components/3d/AIEntityOrb';
+import type { EntityState } from '../components/3d/AIEntityOrb';
 
 const STORAGE_KEY = (uid: string) => `ff_coach_chat_${uid}`;
 
@@ -26,6 +27,19 @@ export const Coach: React.FC = () => {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [listening, setListening] = useState(false);
+
+  /**
+   * Conversation state for the 3D entity. `responding` is inferred from the
+   * newest message being the assistant's while nothing is in flight — the point
+   * where the reply has landed and is being read.
+   */
+  const entityState: EntityState = listening
+    ? 'listening'
+    : thinking
+      ? 'thinking'
+      : messages.length > 0 && messages[messages.length - 1]?.role === 'coach'
+        ? 'responding'
+        : 'idle';
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recRef = useRef<any>(null);
@@ -146,12 +160,12 @@ export const Coach: React.FC = () => {
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 relative z-10">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center text-center gap-5 pt-8">
-            <motion.div
-              animate={{ rotate: [0, 6, -6, 0] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <LogoMark size={48} />
-            </motion.div>
+            {/* The entity, not a logo: shape and particle density track the
+                conversation state, so "listening" and "thinking" are legible
+                without a label. */}
+            <div className="w-40 mx-auto -mb-2">
+              <AIEntityOrb state={entityState} />
+            </div>
             <div>
               <h2 className="font-display text-2xl font-bold text-white tracking-tight">
                 Your coach is on standby.

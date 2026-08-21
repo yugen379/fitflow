@@ -15,6 +15,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { computeDailyTargets } from '../lib/nutritionTargets';
+import { MacroMatrix } from '../components/3d/MacroMatrix';
 
 export const Track: React.FC = () => {
   const { profile } = useAuth();
@@ -145,7 +146,9 @@ export const Track: React.FC = () => {
         return await startWith({} as MediaTrackConstraints);
       };
 
-      startPromise = startOnce().catch((err: any) => {
+      // The catch returns early on some branches, which widened this to
+      // Promise<void | null>; the handler is fire-and-forget either way.
+      startPromise = startOnce().then(() => undefined).catch((err: any) => {
         const name = (err && (err.name || err.message || err.toString())) || 'Unknown';
         console.warn('[barcode] camera start failed:', name, err);
         if (/NotAllowed|Permission|SecurityError/i.test(name)) {
@@ -595,6 +598,19 @@ export const Track: React.FC = () => {
         <p className="text-eyebrow text-accent">Nutrition</p>
         <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">Today's intake</h1>
       </div>
+
+      {/* Fuel gauge + macro orbitals, over what has actually been logged today.
+          The 3D spheres are code-split; the numbers paint immediately. */}
+      <MacroMatrix
+        caloriesConsumed={totalCals}
+        calorieTarget={targetCals}
+        proteinG={totalProtein}
+        proteinTargetG={targets.proteinG}
+        carbsG={totalCarbs}
+        carbsTargetG={targets.carbsG}
+        fatsG={totalFats}
+        fatsTargetG={targets.fatsG}
+      />
 
       {/* Search */}
       <div className="relative">
