@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Play, Plus, Dumbbell, Bike, Waves, Zap, Sparkles, Loader2, ArrowRight,
-  TrendingUp, Trophy, CheckCircle2, Volume2, VolumeX, X, Timer, Camera, Share2, Check,
+  TrendingUp, Trophy, CheckCircle2, Volume2, VolumeX, X, Timer, Camera, Share2, Check, Boxes,
 } from 'lucide-react';
 import { FormCheck, FormCheckSummary } from '../components/FormCheck';
 import { AnimatedNumber } from '../components/AnimatedNumber';
@@ -271,6 +271,27 @@ export const Workout: React.FC = () => {
           </motion.button>
         ))}
       </div>
+
+      {/* Biomechanics Lab entry — 3D form work, separate from the live session. */}
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.98 }}
+        onClick={() => { haptic('light'); navigate('/lab'); }}
+        className="glass w-full p-5 flex items-center gap-4 text-left relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-3/[0.05] to-accent/[0.04] pointer-events-none" />
+        <div className="w-11 h-11 rounded-xl bg-accent-3/12 border border-accent-3/25 flex items-center justify-center shrink-0 relative z-10">
+          <Boxes size={20} className="text-accent-3" />
+        </div>
+        <div className="flex-1 relative z-10">
+          <p className="text-eyebrow text-accent-3">New</p>
+          <p className="text-white font-semibold text-base mt-0.5">Biomechanics Lab</p>
+          <p className="text-xs text-text-dim mt-0.5 leading-relaxed">
+            Rotate a 3D model of the lift, scrub every phase, see which muscles take the load.
+          </p>
+        </div>
+        <ArrowRight size={18} className="text-text-mute shrink-0 relative z-10" />
+      </motion.button>
 
       {/* AI plan */}
       <div className="glass p-5 space-y-4 relative overflow-hidden">

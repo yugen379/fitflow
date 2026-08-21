@@ -229,3 +229,59 @@
   }
   .pulse-soft { animation: pulse-soft 2.5s ease-in-out infinite; }
 }
+
+@layer components {
+  /* ── Biomechanics timeline scrubber ──────────────────────────────────────
+     A native range input keeps keyboard and screen-reader support; only the
+     track and thumb are restyled. The input stays 44px tall for the touch
+     target while the visible track is thin, so the hit area is generous
+     without the control looking heavy. */
+  .ff-scrubber {
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: pan-y;
+  }
+  .ff-scrubber::-webkit-slider-runnable-track {
+    height: 100%;
+    background: transparent;
+  }
+  .ff-scrubber::-moz-range-track {
+    height: 100%;
+    background: transparent;
+  }
+  .ff-scrubber::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 3px solid var(--accent);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 0 0 6px rgba(198, 255, 61, 0.12);
+    cursor: grab;
+    transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .ff-scrubber::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 3px solid var(--accent);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 0 0 6px rgba(198, 255, 61, 0.12);
+    cursor: grab;
+  }
+  .ff-scrubber:active::-webkit-slider-thumb {
+    transform: scale(1.14);
+    cursor: grabbing;
+  }
+  .ff-scrubber:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 4px rgba(198, 255, 61, 0.45);
+  }
+  .ff-scrubber:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 4px rgba(198, 255, 61, 0.45);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ff-scrubber::-webkit-slider-thumb { transition: none; }
+  }
+}

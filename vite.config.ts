@@ -66,12 +66,16 @@ export default defineConfig(({mode}) => {
       })
     ],
     define: {
-      // SECURITY: only inline the raw Gemini key for local dev (direct SDK calls).
-      // When VITE_GEMINI_PROXY_URL is set (production), the client routes every
-      // call through the Cloud Function, so the key must NEVER reach the bundle.
-      'process.env.GEMINI_API_KEY': JSON.stringify(
-        env.VITE_GEMINI_PROXY_URL ? '' : env.GEMINI_API_KEY,
-      ),
+      // SECURITY: the client bundle NEVER carries a Gemini key — under any mode
+      // or env combination. Every AI call routes through the geminiProxy Cloud
+      // Function (VITE_GEMINI_PROXY_URL); without a proxy URL the app degrades
+      // to its deterministic fallbacks. The old conditional here inlined the raw
+      // key whenever the proxy URL was absent at build time, which is exactly
+      // how it leaked into the v1.4.0 APK/AAB. The only legitimate consumers of
+      // a raw GEMINI_API_KEY are the Node proof harnesses, which read the real
+      // process.env at runtime — this define never touches those.
+      // `npm run build` also runs scripts/scan-bundle-secrets.mjs as a hard gate.
+      'process.env.GEMINI_API_KEY': JSON.stringify(''),
     },
     resolve: {
       alias: {
@@ -84,6 +88,20 @@ export default defineConfig(({mode}) => {
         output: {
           manualChunks: (id) => {
             if (!id.includes('node_modules')) return;
+            // three.js only ever arrives through the lazily-loaded Lab route, so
+            // giving it its own chunk keeps it cacheable across Lab updates.
+            if (id.includes('node_modules/three/')) return 'three';
+            // Redux sits on the critical path (the Provider is at the app root),
+            // so it gets a named chunk rather than being folded into a page.
+            if (
+              id.includes('@reduxjs/toolkit') ||
+              id.includes('react-redux') ||
+              id.includes('node_modules/redux') ||
+              id.includes('reselect') ||
+              id.includes('node_modules/immer')
+            ) {
+              return 'redux';
+            }
             if (id.includes('firebase/firestore')) return 'firebase-firestore';
             if (id.includes('firebase/auth')) return 'firebase-auth';
             if (id.includes('firebase/messaging')) return 'firebase-messaging';

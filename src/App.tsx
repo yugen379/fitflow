@@ -33,6 +33,9 @@ const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms }
 const Pro = lazy(() => import('./pages/Pro').then(m => ({ default: m.Pro })));
 const Coach = lazy(() => import('./pages/Coach').then(m => ({ default: m.Coach })));
 const NutritionGoals = lazy(() => import('./pages/NutritionGoals').then(m => ({ default: m.NutritionGoals })));
+// The Lab pulls in three.js, so it stays in its own chunk and is only fetched
+// when an athlete actually opens the 3D view.
+const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, loading } = useAuth();
@@ -245,6 +248,7 @@ export default function App() {
             <Route path="/pro" element={<ProtectedRoute>{lazyRoute(<Pro />)}</ProtectedRoute>} />
             <Route path="/coach" element={<ProtectedRoute>{lazyRoute(<Coach />)}</ProtectedRoute>} />
             <Route path="/nutrition-goals" element={<ProtectedRoute>{lazyRoute(<NutritionGoals />)}</ProtectedRoute>} />
+            <Route path="/lab" element={<ProtectedRoute>{lazyRoute(<Lab />)}</ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
