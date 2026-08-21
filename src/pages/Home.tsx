@@ -5,7 +5,7 @@ import { query, collection, where, onSnapshot, addDoc, serverTimestamp, updateDo
 import { auth, handleFirestoreError } from '../lib/firebase';
 import { db } from '../lib/firestore';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Bell, X, WifiOff, Volume2, Calendar } from 'lucide-react';
+import { Zap, WifiOff, Volume2, Calendar } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { useTodayActivity } from '../hooks/useTodayActivity';
@@ -25,6 +25,9 @@ import { TrialBanner } from '../components/TrialBanner';
 import { TodayMission } from '../components/TodayMission';
 import { XPBar } from '../components/XPBar';
 import { OrbitalHUD } from '../components/3d/OrbitalHUD';
+import { StepHubWidget } from '../components/StepHubWidget';
+import { NotificationCenter } from '../components/ui/NotificationCenter';
+import { useSteps } from '../hooks/useSteps';
 import { computeDailyTargets } from '../lib/nutritionTargets';
 import { buildMission, MissionTask } from '../services/missionUtils';
 import { Sparkles as SparklesIcon } from 'lucide-react';
@@ -37,7 +40,6 @@ export const Home: React.FC = () => {
   const [sleep, setSleep] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [permsOpen, setPermsOpen] = useState(false);
-  const [showNotifs, setShowNotifs] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [daysSinceWorkout, setDaysSinceWorkout] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -260,6 +262,14 @@ export const Home: React.FC = () => {
     return Math.max(28, Math.round(88 - strain));
   }, [profile?.uid, profile?.streak, summary?.workoutCount, summary?.workoutMinutes]);
 
+  const nutritionTargets = computeDailyTargets(profile);
+
+  // One step number for the page: Health Connect wins when connected, the
+  // device sensor fills in for PWA users who have no wearable at all.
+  const liveSteps = useSteps({
+    deviceSteps: activityStatus === 'connected' && activity ? activity.steps : null,
+  });
+
   // Today's Mission — the deterministic "what should I do RIGHT NOW?" engine.
   const mission = buildMission({
     hour: new Date().getHours(),
@@ -318,68 +328,28 @@ export const Home: React.FC = () => {
         </motion.div>
 
         <div className="flex items-center gap-2">
-          <motion.button
-            whileTap={{ scale: 0.94 }}
-            onClick={() => setShowNotifs(true)}
-            className="relative w-11 h-11 flex items-center justify-center glass rounded-2xl text-white transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            {notifications.length > 0 && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-accent rounded-full ring-2 ring-bg" />
-            )}
-          </motion.button>
+          {/* One bell. Derived nudges first, the Firestore inbox underneath. */}
+          <NotificationCenter
+            context={{
+              name: profile?.displayName?.split(' ')[0],
+              hour: new Date().getHours(),
+              steps: liveSteps.steps,
+              stepGoal: 10000,
+              caloriesConsumed: summary?.caloriesConsumed || 0,
+              calorieTarget: nutritionTargets.calories,
+              proteinG: summary?.proteinG || 0,
+              proteinTargetG: nutritionTargets.proteinG,
+              recovery: recoveryScore,
+              workoutsToday: summary?.workoutCount || 0,
+            }}
+            history={notifications}
+          />
         </div>
       </header>
 
       <XPBar points={profile?.points} streak={profile?.streak} />
 
       <TrialBanner />
-
-      <AnimatePresence>
-        {showNotifs && (
-          <motion.div 
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[100] bg-bg/95 backdrop-blur-3xl px-6 py-12 overflow-y-auto"
-          >
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="font-display text-3xl font-bold text-white tracking-tight">Notifications</h2>
-              <button onClick={() => setShowNotifs(false)} className="w-11 h-11 glass rounded-2xl flex items-center justify-center text-white active:scale-95 transition-transform" aria-label="Close"><X size={22} /></button>
-            </div>
-            <div className="space-y-3">
-              {notifications.length > 0 ? notifications.map(n => (
-                <div key={n.id} className="glass p-5 space-y-2 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
-                  <div className="flex justify-between items-start gap-2">
-                    <h4 className="font-semibold text-white text-sm">{n.title}</h4>
-                    <span className="text-[10px] text-text-dim font-medium whitespace-nowrap">{n.timestamp?.toDate ? n.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}</span>
-                  </div>
-                  <p className="text-white/70 text-sm leading-relaxed">{n.body}</p>
-                </div>
-              )) : (
-                <div className="text-center py-24 opacity-50 flex flex-col items-center">
-                  <Zap size={40} className="mb-3 text-text-dim" />
-                  <p className="text-sm text-text-dim">You're all caught up.</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Volumetric orbital HUD — the dashboard centrepiece. Reads the data
-          Home already subscribes to; the 3D canvas is code-split so the numbers
-          paint immediately and the depth arrives when its chunk lands. */}
-      <OrbitalHUD
-        steps={activityStatus === 'connected' && activity ? activity.steps : null}
-        stepGoal={10000}
-        caloriesConsumed={summary?.caloriesConsumed || 0}
-        calorieGoal={computeDailyTargets(profile).calories}
-        recovery={recoveryScore}
-      />
 
       <TodayMission
         mission={mission}

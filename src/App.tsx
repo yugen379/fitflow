@@ -41,6 +41,8 @@ const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default:
 // The Lab pulls in three.js, so it stays in its own chunk and is only fetched
 // when an athlete actually opens the 3D view.
 const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
+const Steps = lazy(() => import('./pages/Steps').then(m => ({ default: m.Steps })));
+const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, loading } = useAuth();
@@ -240,6 +242,8 @@ export default function App() {
             <Route path="/coach" element={<ProtectedRoute>{lazyRoute(<Coach />)}</ProtectedRoute>} />
             <Route path="/nutrition-goals" element={<ProtectedRoute>{lazyRoute(<NutritionGoals />)}</ProtectedRoute>} />
             <Route path="/lab" element={<ProtectedRoute>{lazyRoute(<Lab />)}</ProtectedRoute>} />
+            <Route path="/steps" element={<ProtectedRoute>{lazyRoute(<Steps />)}</ProtectedRoute>} />
+            <Route path="/achievements" element={<ProtectedRoute>{lazyRoute(<Achievements />)}</ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

@@ -41,6 +41,8 @@ export type RouteKey =
   | 'pro'
   | 'nutritionGoals'
   | 'onboarding'
+  | 'steps'
+  | 'achievements'
   | 'lab';
 
 type Loader = () => Promise<unknown>;
@@ -62,6 +64,8 @@ const loaders: Record<RouteKey, Loader> = {
   pro: () => import('../pages/Pro'),
   nutritionGoals: () => import('../pages/NutritionGoals'),
   onboarding: () => import('../pages/Onboarding'),
+  steps: () => import('../pages/Steps'),
+  achievements: () => import('../pages/Achievements'),
   lab: () => import('../pages/Lab'),
 };
 
@@ -83,6 +87,8 @@ const BY_PATH: Readonly<Record<string, RouteKey>> = {
   '/pro': 'pro',
   '/nutrition-goals': 'nutritionGoals',
   '/onboarding': 'onboarding',
+  '/steps': 'steps',
+  '/achievements': 'achievements',
   '/lab': 'lab',
 };
 
@@ -92,7 +98,7 @@ const BY_PATH: Readonly<Record<string, RouteKey>> = {
  *
  * `lab` is deliberately absent: three.js is far too heavy to fetch on spec.
  */
-const SPECULATIVE: RouteKey[] = ['home', 'track', 'workout', 'library', 'profile'];
+const SPECULATIVE: RouteKey[] = ['home', 'steps', 'track', 'workout', 'profile'];
 
 const started = new Set<RouteKey>();
 

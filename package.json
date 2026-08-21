@@ -16,6 +16,7 @@
     "proof:biomechanics": "tsx scripts/biomechanics-proof.mjs",
     "proof:viewport": "node scripts/viewport-proof.mjs",
     "proof:perf": "node scripts/perf-proof.mjs",
+    "proof:steps": "tsx scripts/steps-proof.mjs",
     "perf": "node scripts/perf-probe.mjs",
     "proof:quickadd": "tsx scripts/quickadd-proof.mjs",
     "proof:catalog": "tsx scripts/catalog-proof.mjs",

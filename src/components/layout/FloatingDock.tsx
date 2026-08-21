@@ -20,7 +20,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ChefHat, ChevronUp, Dumbbell, Home, Play, Trophy, User, Utensils } from 'lucide-react';
+import { ChefHat, ChevronUp, Dumbbell, Footprints, Home, Sparkles, Trophy, User, Utensils } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 import { haptic } from '../../lib/haptics';
@@ -30,11 +30,11 @@ import { spawnRipple } from '../ui/WaterRipple';
 
 const navItems = [
   { id: 'home', label: 'Home', icon: Home, path: '/' },
-  { id: 'library', label: 'Library', icon: Play, path: '/library' },
-  { id: 'track', label: 'Track', icon: Utensils, path: '/track' },
+  { id: 'steps', label: 'Steps', icon: Footprints, path: '/steps' },
+  { id: 'track', label: 'Fuel', icon: Utensils, path: '/track' },
   { id: 'workout', label: 'Train', icon: Dumbbell, path: '/workout' },
-  { id: 'kitchen', label: 'Meals', icon: ChefHat, path: '/meal-plan' },
-  { id: 'arena', label: 'Compete', icon: Trophy, path: '/challenges' },
+  { id: 'coach', label: 'Coach', icon: Sparkles, path: '/coach' },
+  { id: 'awards', label: 'Awards', icon: Trophy, path: '/achievements' },
   { id: 'profile', label: 'You', icon: User, path: '/profile' },
 ];
 
