@@ -8,6 +8,7 @@ import { isNativeApp } from './lib/pushPermission';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
 import { useToast } from './hooks/useToast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { WifiOff } from 'lucide-react';
 import { LoadingBar } from './components/LoadingBar';
 import { initTelemetry, identify } from './lib/telemetry';
 import { warmLikelyRoutes } from './lib/prefetch';
@@ -46,8 +47,19 @@ const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
 const Steps = lazy(() => import('./pages/Steps').then(m => ({ default: m.Steps })));
 const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })));
 
+/** Sign out without dragging the auth module onto the boot path. */
+const signOutOfApp = async () => {
+  try {
+    const { auth } = await import('./lib/firebase');
+    await auth.signOut();
+  } catch {
+    // Nothing better to offer; a reload will re-run the auth flow.
+    location.reload();
+  }
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileUnreachable, retryProfile } = useAuth();
   const { showToast } = useToast();
 
   // Warm the bottom-nav destinations once the app is up. Deliberately after
@@ -110,6 +122,39 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   
   if (!user) {
     return <LoginView />;
+  }
+
+  // Signed in, but the profile never arrived.
+  //
+  // This must NOT fall through to the "incomplete profile" check below: that
+  // would send an existing user into Onboarding and invite them to overwrite an
+  // account we simply could not read. Say what actually happened and offer the
+  // two things that genuinely help — try again, or sign out.
+  if (profileUnreachable && !profile) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-bg px-8 text-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-accent-2/12 border border-accent-2/25 flex items-center justify-center text-accent-2">
+          <WifiOff size={22} />
+        </div>
+        <h1 className="font-display text-xl font-bold text-white">Can&rsquo;t reach your data</h1>
+        <p className="text-sm text-text-dim leading-relaxed max-w-xs">
+          You&rsquo;re signed in, but FitFlow couldn&rsquo;t load your profile. This is almost always a
+          connection problem rather than anything wrong with your account.
+        </p>
+        <button
+          onClick={retryProfile}
+          className="btn-3d h-12 px-8 mt-2"
+        >
+          Try again
+        </button>
+        <button
+          onClick={() => { void signOutOfApp(); }}
+          className="text-xs text-text-mute underline underline-offset-4 mt-1"
+        >
+          Sign out
+        </button>
+      </div>
+    );
   }
 
   // A profile counts as "ready" once core measurements + goal are set. healthConditions
