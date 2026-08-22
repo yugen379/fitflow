@@ -122,10 +122,26 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
     setTilt({ x: 0, y: 0 });
   };
 
-  const open = (event: React.PointerEvent<HTMLDivElement>) => {
+  /**
+   * Guards against activating twice.
+   *
+   * The card opens on `pointerdown` so the ripple starts under the finger
+   * rather than a frame later — but pointerdown is followed by a real `click`,
+   * and that click has to be handled too (see below). Without this, an ordinary
+   * tap would navigate twice.
+   */
+  const activatedAt = useRef(0);
+
+  const open = (clientX?: number, clientY?: number, target?: HTMLElement) => {
+    const now = Date.now();
+    if (now - activatedAt.current < 700) return;
+    activatedAt.current = now;
+
     void haptic('medium');
     prefetchRoute('steps');
-    spawnRipple(event.currentTarget, event.clientX, event.clientY, 'lime');
+    if (target && clientX !== undefined && clientY !== undefined) {
+      spawnRipple(target, clientX, clientY, 'lime');
+    }
     navigate('/steps');
   };
 
@@ -141,7 +157,14 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
       role="button"
       tabIndex={0}
       aria-label={`Steps today: ${Math.round(steps)} of ${goal}. Open step analytics.`}
-      onPointerDown={open}
+      onPointerDown={(event) => open(event.clientX, event.clientY, event.currentTarget)}
+      // ALSO on click, not only pointerdown. Screen readers activate a
+      // role="button" by dispatching a synthetic click — no pointer events at
+      // all — so a pointerdown-only handler is unreachable with TalkBack or
+      // VoiceOver. Verified: a synthetic click() did nothing before this.
+      // `open` de-dupes, so a normal tap (pointerdown then click) still
+      // navigates exactly once.
+      onClick={(event) => open(event.clientX, event.clientY, event.currentTarget)}
       onPointerMove={(event) => track(event.clientX, event.clientY)}
       onPointerLeave={release}
       onPointerUp={release}
@@ -149,8 +172,7 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          void haptic('medium');
-          navigate('/steps');
+          open();
         }
       }}
       onPointerEnter={() => prefetchRoute('steps')}
