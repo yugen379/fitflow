@@ -3,9 +3,9 @@ import { useAuth } from '../hooks/useAuth';
 import { motion, AnimatePresence } from 'motion/react';
 import { query, collection, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, limit, orderBy } from 'firebase/firestore';
 import { auth, handleFirestoreError } from '../lib/firebase';
-import { db } from '../lib/firestore';
+import { db, safeUnsubscribe } from '../lib/firestore';
 import { useNavigate } from 'react-router-dom';
-import { Zap, WifiOff, Volume2, Calendar } from 'lucide-react';
+import { Zap, WifiOff, Volume2, Calendar, HeartPulse } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { useTodayActivity } from '../hooks/useTodayActivity';
@@ -27,10 +27,14 @@ import { XPBar } from '../components/XPBar';
 import { OrbitalHUD } from '../components/3d/OrbitalHUD';
 import { StepHubWidget } from '../components/StepHubWidget';
 import { NotificationCenter } from '../components/ui/NotificationCenter';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { useSteps } from '../hooks/useSteps';
 import { computeDailyTargets } from '../lib/nutritionTargets';
 import { buildMission, MissionTask } from '../services/missionUtils';
 import { Sparkles as SparklesIcon } from 'lucide-react';
+
+/** Daily step goal. Matches the target the /steps page and the nudge engine use. */
+const STEP_GOAL = 10000;
 
 export const Home: React.FC = () => {
   const { profile } = useAuth();
@@ -238,7 +242,7 @@ export const Home: React.FC = () => {
       (snap) => setCommunityCount(snap.size),
       () => setCommunityCount(null),
     );
-    return () => unsub();
+    return () => safeUnsubscribe(unsub);
   }, [profile?.uid, profile?.goal]);
 
   /**
@@ -268,6 +272,9 @@ export const Home: React.FC = () => {
   // device sensor fills in for PWA users who have no wearable at all.
   const liveSteps = useSteps({
     deviceSteps: activityStatus === 'connected' && activity ? activity.steps : null,
+    uid: profile?.uid,
+    weightKg: profile?.weight,
+    heightCm: profile?.height,
   });
 
   // Today's Mission — the deterministic "what should I do RIGHT NOW?" engine.
@@ -328,6 +335,8 @@ export const Home: React.FC = () => {
         </motion.div>
 
         <div className="flex items-center gap-2">
+          {/* Sits beside the bell, as the two persistent header controls. */}
+          <ThemeToggle />
           {/* One bell. Derived nudges first, the Firestore inbox underneath. */}
           <NotificationCenter
             context={{
@@ -361,44 +370,58 @@ export const Home: React.FC = () => {
       />
 
       <div className="grid grid-cols-2 gap-3">
-        {activityStatus === 'connected' && activity ? (
-          <div className="col-span-2 glass p-5 flex items-center justify-around">
-            <div className="text-center">
-              <p className="text-eyebrow text-text-dim">Steps</p>
-              <p className="num font-display text-2xl font-bold text-white mt-1">
-                <AnimatedNumber value={activity.steps} />
-              </p>
-            </div>
-            <div className="w-px h-10 bg-white/[0.06]" />
-            <div className="text-center">
-              <p className="text-eyebrow text-text-dim">Distance</p>
-              <p className="num font-display text-2xl font-bold text-white mt-1">
-                {activity.distanceKm.toFixed(activity.distanceKm >= 10 ? 1 : 2)}
-                <span className="text-sm text-text-dim font-medium ml-0.5">km</span>
-              </p>
-            </div>
-            <div className="w-px h-10 bg-white/[0.06]" />
-            <div className="text-center">
-              <p className="text-eyebrow text-text-dim">Burned</p>
-              <p className="num font-display text-2xl font-bold text-white mt-1">
-                <AnimatedNumber value={activity.caloriesBurned} />
-                <span className="text-sm text-text-dim font-medium ml-0.5">kcal</span>
-              </p>
-            </div>
-          </div>
-        ) : activityStatus === 'disconnected' ? (
+        {/* One step widget, always. Which tier is feeding it (Health Connect,
+            the hardware counter, or the accelerometer) is resolved inside
+            useSteps and surfaced on the detail page — the dashboard just shows
+            the number. */}
+        <StepHubWidget
+          className="col-span-2"
+          steps={liveSteps.steps}
+          goal={STEP_GOAL}
+          distanceKm={liveSteps.distanceKm}
+          calories={liveSteps.calories}
+          activeMs={liveSteps.activeMs}
+          needsPermission={liveSteps.needsPermission}
+          permissionDenied={liveSteps.permissionDenied}
+          onEnable={() => void liveSteps.requestPermission()}
+        />
+
+        {/* FitFlow counts in the background itself, with its own foreground
+            service — so this is the prompt that matters, and it is shown
+            whenever background counting is available but not switched on. */}
+        {liveSteps.background?.sensorAvailable && !liveSteps.countsInBackground ? (
           <button
-            onClick={() => void connectActivity()}
+            onClick={() => void liveSteps.enableBackgroundCounting()}
             className="col-span-2 glass p-4 flex items-center gap-3 text-left"
           >
             <div className="w-10 h-10 rounded-xl bg-accent/12 border border-accent/25 flex items-center justify-center text-accent shrink-0">
               <Zap size={16} />
             </div>
             <div className="flex-1">
-              <p className="text-white text-sm font-medium">Track steps, distance &amp; calories automatically</p>
-              <p className="text-xs text-text-dim mt-0.5">Connect Health Connect — updates in the background, no logging needed.</p>
+              <p className="text-white text-sm font-medium">Count steps even when FitFlow is closed</p>
+              <p className="text-xs text-text-dim mt-0.5">
+                Uses your phone&rsquo;s own step sensor. No wearable, no Google account, no Health Connect.
+              </p>
             </div>
-            <span className="text-eyebrow text-accent shrink-0">Connect →</span>
+            <span className="text-eyebrow text-accent shrink-0">Turn on →</span>
+          </button>
+        ) : null}
+
+        {/* Health Connect is now strictly optional — a bonus source for people
+            who already keep data there or wear a watch that writes to it. */}
+        {activityStatus === 'disconnected' ? (
+          <button
+            onClick={() => void connectActivity()}
+            className="col-span-2 glass p-4 flex items-center gap-3 text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-accent-3/12 border border-accent-3/25 flex items-center justify-center text-accent-3 shrink-0">
+              <HeartPulse size={16} />
+            </div>
+            <div className="flex-1">
+              <p className="text-white text-sm font-medium">Also pull in Health Connect</p>
+              <p className="text-xs text-text-dim mt-0.5">Optional — folds in steps your watch or other apps recorded.</p>
+            </div>
+            <span className="text-eyebrow text-accent-3 shrink-0">Connect →</span>
           </button>
         ) : null}
         <motion.button

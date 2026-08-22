@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ThemeProvider } from './hooks/useTheme';
 import { Logo } from './components/Logo';
 import { requestNotificationPermission, onMessageListener } from './lib/firebase';
 import { isNativeApp } from './lib/pushPermission';
@@ -130,7 +131,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   return (
-    <div className="min-h-dvh bg-bg text-white font-sans max-w-md mx-auto relative overflow-x-hidden">
+    <div className="min-h-dvh bg-bg text-text font-sans max-w-md mx-auto relative overflow-x-hidden">
       {/* Deliberately OUTSIDE the transition: the atmosphere is continuous
           across routes, so the screen is never actually blank between them. */}
       <ParticleField />
@@ -218,6 +219,7 @@ const lazyRoute = (el: React.ReactNode) => (
 export default function App() {
   return (
     <ErrorBoundary>
+    <ThemeProvider>
     <ToastProvider>
       <AuthProvider>
         <Router>
@@ -249,6 +251,7 @@ export default function App() {
         </Router>
       </AuthProvider>
     </ToastProvider>
+    </ThemeProvider>
     </ErrorBoundary>
   );
 }

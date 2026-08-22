@@ -37,14 +37,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Firestore chunk could otherwise let a listener for a previous user attach
     // after the next sign-in has already been handled.
     let generation = 0;
+    // Bound once the Firestore chunk lands; until then a plain guarded call.
+    let safeUnsubscribe = (fn?: (() => void) | null) => {
+      try { fn?.(); } catch { /* nothing to salvage */ }
+    };
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
       const myGeneration = ++generation;
 
-      // Cleanup previous profile listener if it exists
+      // Cleanup previous profile listener if it exists. Guarded: the Firestore
+      // SDK can throw out of unsubscribe() when its queue is mid-teardown, and
+      // an auth callback is the last place that should be able to take down the
+      // whole app. See safeUnsubscribe in lib/firestore.
       if (unsubscribeProfile) {
-        unsubscribeProfile();
+        safeUnsubscribe(unsubscribeProfile);
         unsubscribeProfile = undefined;
       }
 
@@ -68,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             import('firebase/firestore'),
           ]);
           db = firestoreModule.db;
+          safeUnsubscribe = firestoreModule.safeUnsubscribe;
           fs = sdk;
         } catch (error) {
           console.error('Firestore unavailable:', error);
@@ -147,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       disposed = true;
       unsubscribeAuth();
-      if (unsubscribeProfile) unsubscribeProfile();
+      safeUnsubscribe(unsubscribeProfile);
     };
   }, []);
 

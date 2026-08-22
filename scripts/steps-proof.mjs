@@ -13,8 +13,23 @@
 //            copy quotes the real numbers, and that ordering is by urgency.
 //   Part D — FUZZ: 4,000 hostile snapshots — zero throws, zero NaN, zero
 //            impossible output.
+//   Part E — FORMULAS: the weight/height-personalised distance and calorie
+//            maths, and that the explanation strings quote the same numbers the
+//            code actually computed.
+//   Part F — SYNC POLICY: the monotonic-write rule behind the Firestore
+//            step_days mirror, and the session-delta clamp that stops a native
+//            pedometer restart from wiping the day.
+//   Part G — THEME: the light/dark/system resolution rule.
+//   Part H — BACKGROUND COUNTER: the cumulative-sensor arithmetic the native
+//            foreground service runs on (mirrored from StepStore.java) — the
+//            reboot discontinuity, the app-closed recovery, and day rollover.
+//            These are the rules that decide whether a user's day is correct
+//            and they are close to untestable by hand: proving the reboot case
+//            on a device means rebooting it mid-walk.
 //
-// Firebase-free, like the other harnesses.
+// Firebase-free, like the other harnesses. That is why the sync POLICY lives in
+// `services/stepSyncPolicy.ts` (pure) while the Firestore calls live in
+// `services/stepSyncService.ts` (deliberately not imported here).
 
 const {
   KM_PER_STEP, KCAL_PER_STEP, snapshotFrom, formatActiveTime, kmToMiles, localDateKey,
@@ -26,6 +41,22 @@ const {
 } = await import('../src/lib/achievements.ts');
 
 const { buildNudges } = await import('../src/components/ui/NotificationCenter.tsx');
+
+const {
+  DEFAULT_STRIDE_M, KCAL_PER_STEP: KCAL_REF, REFERENCE_WEIGHT_KG, STRIDE_TO_HEIGHT_RATIO,
+  caloriesFor, distanceKmFor, explainCalories, explainDistance, kcalPerStepFor,
+  speedKmhFor, strideMetresFor,
+} = await import('../src/lib/stepFormulas.ts');
+
+const {
+  WRITE_THROTTLE_MS, mergeDayCount, mergeHistory, sessionDelta, shouldWrite,
+} = await import('../src/services/stepSyncPolicy.ts');
+
+const { resolveTheme } = await import('../src/hooks/useTheme.tsx');
+
+const {
+  MAX_PLAUSIBLE_DELTA, applyRawReading, emptyCounterState, rawReadingDelta, rollDay,
+} = await import('../src/services/backgroundStepPolicy.ts');
 
 const C = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', c: '\x1b[36m', x: '\x1b[0m' };
 const PASS = `${C.g}PASS${C.x}`;
@@ -370,7 +401,333 @@ console.log(`\n${C.b}${C.c}Part D — fuzz${C.x}\n`);
   check('2,000 hostile nudge contexts: no NaN ever reaches the copy', bad === 0, `${bad} violations`);
 }
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
+// --- Part E: personalised formulas -------------------------------------------
+console.log(`\n${C.b}${C.c}Part E — distance & calorie formulas${C.x}\n`);
+
+{
+  // Stride
+  check('no height falls back to the default stride', strideMetresFor(undefined) === DEFAULT_STRIDE_M);
+  check('stride is height x 0.414',
+    Math.abs(strideMetresFor(180) - (180 * STRIDE_TO_HEIGHT_RATIO) / 100) < 1e-9,
+    `${strideMetresFor(180).toFixed(3)} m`);
+  check('a 180 cm adult strides ~0.75 m', Math.abs(strideMetresFor(180) - 0.745) < 0.01);
+  check('a taller person covers more ground per step', strideMetresFor(195) > strideMetresFor(160));
+  check('an impossible height is ignored, not trusted', strideMetresFor(4) === DEFAULT_STRIDE_M);
+  check('a giant height is ignored too', strideMetresFor(900) === DEFAULT_STRIDE_M);
+  check('NaN height falls back', strideMetresFor(NaN) === DEFAULT_STRIDE_M);
+
+  // Distance
+  check('distance = steps x stride',
+    Math.abs(distanceKmFor(10000, 180) - (10000 * strideMetresFor(180)) / 1000) < 1e-9);
+  check('10,000 steps at 180 cm is ~7.5 km', Math.abs(distanceKmFor(10000, 180) - 7.45) < 0.05,
+    `${distanceKmFor(10000, 180).toFixed(2)} km`);
+  check('negative steps cover no ground', distanceKmFor(-500, 180) === 0);
+  check('NaN steps cover no ground', distanceKmFor(NaN, 180) === 0);
+
+  // Calories
+  check(`the reference rate is quoted for ${REFERENCE_WEIGHT_KG} kg`,
+    Math.abs(kcalPerStepFor(REFERENCE_WEIGHT_KG) - KCAL_REF) < 1e-9);
+  check('no weight falls back to the reference rate', kcalPerStepFor(undefined) === KCAL_REF);
+  check('a heavier person burns more per step', kcalPerStepFor(95) > kcalPerStepFor(60));
+  check('calories scale linearly with weight',
+    Math.abs(kcalPerStepFor(140) - 2 * kcalPerStepFor(70)) < 1e-9);
+  check('a 55 kg adult burns ~0.031 kcal/step', Math.abs(kcalPerStepFor(55) - 0.0314) < 0.001,
+    `${kcalPerStepFor(55).toFixed(4)}`);
+  check('10,000 steps at 85 kg is ~486 kcal', Math.abs(caloriesFor(10000, 85) - 485.7) < 1,
+    `${caloriesFor(10000, 85).toFixed(1)}`);
+  check('an impossible weight is ignored', kcalPerStepFor(2) === KCAL_REF);
+  check('negative steps burn nothing', caloriesFor(-1, 80) === 0);
+
+  // The default path must not have moved: the app already shipped on these.
+  check('the unpersonalised numbers are unchanged',
+    Math.abs(distanceKmFor(8240) - 6.4272) < 1e-6 && Math.abs(caloriesFor(8240) - 329.6) < 1e-6,
+    `${distanceKmFor(8240).toFixed(4)} km / ${caloriesFor(8240).toFixed(1)} kcal`);
+
+  // Speed
+  check('speed derives from cadence and stride',
+    Math.abs(speedKmhFor(110, 180) - (110 * strideMetresFor(180) * 60) / 1000) < 1e-9,
+    `${speedKmhFor(110, 180).toFixed(2)} km/h`);
+  check('a normal walking cadence is ~4.9 km/h', Math.abs(speedKmhFor(110, 180) - 4.92) < 0.1);
+  check('zero cadence is zero speed', speedKmhFor(0, 180) === 0);
+  check('negative cadence is zero speed', speedKmhFor(-40, 180) === 0);
+}
+
+{
+  // The explanation must quote the number the code produced — a disclosure
+  // panel that drifts from the maths is worse than no disclosure at all.
+  const body = { heightCm: 174, weightKg: 63 };
+  const dist = explainDistance(9120, body);
+  const cal = explainCalories(9120, body);
+
+  check('the distance explanation is flagged personalised', dist.personalised === true);
+  check('the calorie explanation is flagged personalised', cal.personalised === true);
+  check('the distance explanation quotes the computed km',
+    dist.substituted.includes(distanceKmFor(9120, 174).toFixed(2)), dist.substituted);
+  check('the calorie explanation quotes the computed kcal',
+    cal.substituted.includes(String(Math.round(caloriesFor(9120, 63)))), cal.substituted);
+  check('the distance explanation states the stride rule', dist.formula.includes('0.414'));
+  check('the calorie explanation states the MET rule', cal.formula.includes('MET'));
+  check('calories are declared active-only, not total burn',
+    cal.assumption.toLowerCase().includes('resting'), cal.assumption);
+
+  const generic = { heightCm: null, weightKg: null };
+  check('with no body data the distance reads as a default',
+    explainDistance(9120, generic).personalised === false);
+  check('with no body data the calories read as a default',
+    explainCalories(9120, generic).personalised === false);
+  check('a missing height is called out, with the fix',
+    explainDistance(9120, generic).assumption.includes('Add your height'));
+  check('a missing weight is called out, with the fix',
+    explainCalories(9120, generic).assumption.includes('Add your weight'));
+
+  check('no explanation ever renders NaN', [
+    explainDistance(NaN, {}), explainCalories(NaN, {}),
+    explainDistance(9120, { heightCm: NaN }), explainCalories(9120, { weightKg: Infinity }),
+  ].every((e) => !`${e.formula}${e.substituted}${e.assumption}`.includes('NaN')));
+}
+
+// --- Part F: sync policy ------------------------------------------------------
+console.log(`\n${C.b}${C.c}Part F — Firestore sync policy${C.x}\n`);
+
+{
+  const now = 1800000000000;
+
+  check('a first real count writes',
+    shouldWrite({ steps: 1200, lastWrittenSteps: 0, lastWriteAt: 0, now }) === true);
+  check('zero steps never write',
+    shouldWrite({ steps: 0, lastWrittenSteps: 0, lastWriteAt: 0, now }) === false);
+  check('an unchanged count does not write again',
+    shouldWrite({ steps: 1200, lastWrittenSteps: 1200, lastWriteAt: 0, now }) === false);
+  check('a LOWER count never writes — a day cannot walk backwards',
+    shouldWrite({ steps: 900, lastWrittenSteps: 1200, lastWriteAt: 0, now }) === false);
+  check('a higher count inside the throttle window waits',
+    shouldWrite({ steps: 1400, lastWrittenSteps: 1200, lastWriteAt: now - 5000, now }) === false);
+  check('a higher count past the throttle window writes',
+    shouldWrite({ steps: 1400, lastWrittenSteps: 1200, lastWriteAt: now - WRITE_THROTTLE_MS - 1, now }) === true);
+  check('force bypasses the throttle but not the monotonic rule',
+    shouldWrite({ steps: 1400, lastWrittenSteps: 1200, lastWriteAt: now, now, force: true }) === true &&
+    shouldWrite({ steps: 900, lastWrittenSteps: 1200, lastWriteAt: now, now, force: true }) === false);
+  check('a hostile step count cannot force a write',
+    shouldWrite({ steps: NaN, lastWrittenSteps: 0, lastWriteAt: 0, now }) === false &&
+    shouldWrite({ steps: -50, lastWrittenSteps: 0, lastWriteAt: 0, now }) === false);
+}
+
+{
+  check('two devices merge to the higher count', mergeDayCount(4200, 7100) === 7100);
+  check('merging is order-independent',
+    mergeDayCount(4200, 7100) === mergeDayCount(7100, 4200));
+  check('a fresh install adopts the server count', mergeDayCount(0, 9300) === 9300);
+  check('an offline server does not zero the local count', mergeDayCount(9300, 0) === 9300);
+  check('garbage on either side is ignored',
+    mergeDayCount(NaN, 500) === 500 && mergeDayCount(500, undefined) === 500);
+
+  const merged = mergeHistory(
+    { '2026-08-20': 8000, '2026-08-21': 3000 },
+    { '2026-08-21': 9000, '2026-08-19': 12000 },
+  );
+  check('history merge keeps the higher of each overlapping day', merged['2026-08-21'] === 9000);
+  check('history merge keeps local-only days', merged['2026-08-20'] === 8000);
+  check('history merge ADDS server-only days — a fresh install has no local history',
+    merged['2026-08-19'] === 12000);
+  check('history merge never invents a day', Object.keys(merged).length === 3);
+}
+
+{
+  // The native plugin restarts its session counter from zero on every start.
+  // This clamp is the only thing standing between that and a wiped day.
+  check('a normal reading yields the increment', sessionDelta(140, 100) === 40);
+  check('the first reading of a session counts in full', sessionDelta(25, 0) === 25);
+  check('a session restart contributes nothing, not a negative', sessionDelta(0, 5400) === 0);
+  check('a mid-walk restart cannot claw back real steps', sessionDelta(12, 5400) === 0);
+  check('a repeated reading adds nothing', sessionDelta(300, 300) === 0);
+  check('a garbage reading adds nothing',
+    sessionDelta(NaN, 100) === 0 && sessionDelta(-5, 100) === 0 && sessionDelta(undefined, 100) === 0);
+
+  // A day of readings with two app restarts in the middle must total exactly
+  // the steps actually taken — never fewer, never double-counted.
+  let total = 0;
+  let previous = 0;
+  for (const reading of [30, 90, 210, 400, 0, 55, 130, 260, 0, 40, 95]) {
+    total += sessionDelta(reading, previous);
+    previous = reading;
+  }
+  check('two restarts mid-day lose nothing and duplicate nothing', total === 400 + 260 + 95,
+    `${total} vs ${400 + 260 + 95}`);
+}
+
+// --- Part G: theme resolution -------------------------------------------------
+console.log(`\n${C.b}${C.c}Part G — theme resolution${C.x}\n`);
+
+{
+  check('an explicit light choice pins light, whatever the OS says',
+    resolveTheme('light', true) === 'light' && resolveTheme('light', false) === 'light');
+  check('an explicit dark choice pins dark, whatever the OS says',
+    resolveTheme('dark', false) === 'dark' && resolveTheme('dark', true) === 'dark');
+  check('system follows a dark OS', resolveTheme('system', true) === 'dark');
+  check('system follows a light OS', resolveTheme('system', false) === 'light');
+  check('every choice resolves to exactly light or dark',
+    ['light', 'dark', 'system'].every((choice) =>
+      [true, false].every((os) => ['light', 'dark'].includes(resolveTheme(choice, os)))));
+  check('the toggle cycle visits all three states and returns to the start',
+    (() => {
+      const next = (c) => (c === 'light' ? 'dark' : c === 'dark' ? 'system' : 'light');
+      const seen = new Set();
+      let current = 'system';
+      for (let i = 0; i < 3; i++) { current = next(current); seen.add(current); }
+      return seen.size === 3 && current === 'system';
+    })());
+}
+
+// --- Part H: background counter arithmetic ------------------------------------
+console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
+
+{
+  // The first reading can only establish a baseline. Claiming it as steps would
+  // hand every user a few thousand free steps on first launch, because the
+  // sensor reports steps since BOOT, not since install.
+  const fresh = emptyCounterState();
+  check('the first ever reading claims nothing', rawReadingDelta(53000, fresh) === 0);
+  const seeded = applyRawReading(53000, fresh);
+  check('the first reading establishes the baseline',
+    seeded.hasBaseline === true && seeded.lastRaw === 53000 && seeded.stepsToday === 0);
+
+  // The normal path.
+  check('a later reading yields the difference', rawReadingDelta(53420, seeded) === 420);
+  const walked = applyRawReading(53420, seeded);
+  check('the difference lands on today', walked.stepsToday === 420);
+
+  // THE POINT OF THE WHOLE FEATURE: the hardware kept counting while the app
+  // was dead, so the first reading after a restart carries all of it.
+  const afterHoursClosed = applyRawReading(59420, walked);
+  check('steps taken while the app was CLOSED are recovered in full',
+    afterHoursClosed.stepsToday === 420 + 6000, `${afterHoursClosed.stepsToday}`);
+
+  // Reboot: the counter resets to zero, so a LOWER reading is a restart and the
+  // value is itself the steps since boot. Treating it as a difference would
+  // produce a huge negative and wipe the day.
+  check('a reboot is detected as a lower reading, not as negative steps',
+    rawReadingDelta(80, afterHoursClosed) === 80);
+  const afterReboot = applyRawReading(80, afterHoursClosed);
+  check('a reboot ADDS the post-boot steps rather than erasing the day',
+    afterReboot.stepsToday === 420 + 6000 + 80, `${afterReboot.stepsToday}`);
+  check('a reboot rebases the raw counter', afterReboot.lastRaw === 80);
+  check('counting continues normally after a reboot',
+    applyRawReading(300, afterReboot).stepsToday === 420 + 6000 + 80 + 220);
+
+  // Garbage in.
+  check('a negative reading changes nothing',
+    applyRawReading(-5, walked).stepsToday === walked.stepsToday);
+  check('a NaN reading changes nothing',
+    applyRawReading(NaN, walked).stepsToday === walked.stepsToday);
+  check('an undefined reading changes nothing',
+    applyRawReading(undefined, walked).stepsToday === walked.stepsToday);
+  check('a repeated reading adds nothing', rawReadingDelta(53420, walked) === 0);
+  check('an implausible jump is rejected, not banked',
+    rawReadingDelta(53420 + MAX_PLAUSIBLE_DELTA + 1, walked) === 0);
+  check('a jump just inside the plausible bound is kept',
+    rawReadingDelta(53420 + MAX_PLAUSIBLE_DELTA, walked) === MAX_PLAUSIBLE_DELTA);
+}
+
+{
+  // Day rollover. The raw baseline must survive it: the hardware counter knows
+  // nothing about midnight, and resetting it would make the first reading after
+  // midnight look like a reboot and gift the user a full day of steps.
+  const end = { stepsToday: 9120, lastRaw: 74000, hasBaseline: true };
+  const { state, archived } = rollDay(end, '2026-08-21', '2026-08-22');
+
+  check('a new day starts at zero', state.stepsToday === 0);
+  check('the finished day is archived with its real total',
+    archived !== null && archived.day === '2026-08-21' && archived.steps === 9120);
+  check('the raw sensor baseline SURVIVES midnight', state.lastRaw === 74000);
+  check('the baseline flag survives midnight', state.hasBaseline === true);
+  check('the first reading after midnight is a normal difference, not a reboot',
+    rawReadingDelta(74310, state) === 310);
+  check('the same day does not roll', rollDay(end, '2026-08-22', '2026-08-22').archived === null);
+  check('an empty finished day is not archived',
+    rollDay({ stepsToday: 0, lastRaw: 74000, hasBaseline: true }, '2026-08-21', '2026-08-22')
+      .archived === null);
+}
+
+{
+  // A full week, driven as the sensor would actually drive it: the app closed
+  // for long stretches, one reboot, and two midnights. The total must equal the
+  // steps genuinely taken — nothing lost, nothing double-counted.
+  let state = emptyCounterState();
+  let day = '2026-08-20';
+  const archive = {};
+
+  // Baseline established at 40,000 steps since boot.
+  state = applyRawReading(40000, state);
+
+  const timeline = [
+    { raw: 43000, day: '2026-08-20' }, //  3,000 walked
+    { raw: 46500, day: '2026-08-20' }, //  3,500 while app closed
+    { raw: 48000, day: '2026-08-21' }, //  1,500 lands on the 21st
+    { raw: 52000, day: '2026-08-21' }, //  4,000
+    { raw: 150, day: '2026-08-21' },   //    150 after a reboot
+    { raw: 900, day: '2026-08-22' },   //    750 lands on the 22nd
+  ];
+
+  for (const tick of timeline) {
+    const rolled = rollDay(state, day, tick.day);
+    if (rolled.archived) archive[rolled.archived.day] = rolled.archived.steps;
+    state = rolled.state;
+    day = tick.day;
+    state = applyRawReading(tick.raw, state);
+  }
+
+  check('day 1 totals the steps actually walked', archive['2026-08-20'] === 6500,
+    `${archive['2026-08-20']}`);
+  check('day 2 survives a reboot mid-day', archive['2026-08-21'] === 1500 + 4000 + 150,
+    `${archive['2026-08-21']}`);
+  check('day 3 continues cleanly from the post-reboot baseline', state.stepsToday === 750,
+    `${state.stepsToday}`);
+  check('a week of closures, a reboot and two midnights lose nothing',
+    archive['2026-08-20'] + archive['2026-08-21'] + state.stepsToday === 6500 + 5650 + 750);
+}
+
+{
+  // Fuzz: hostile readings must never produce a negative day, a NaN, or a
+  // count that goes backwards. A step total that decreases is the one thing a
+  // user would notice instantly and never trust again.
+  let seed = 20260822;
+  const rnd = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+
+  let state = applyRawReading(1000, emptyCounterState());
+  let previous = state.stepsToday;
+  let violations = 0;
+  let throws = 0;
+
+  for (let i = 0; i < 4000; i++) {
+    const roll = rnd();
+    const raw =
+      roll < 0.1 ? -Math.floor(rnd() * 1000)
+      : roll < 0.2 ? NaN
+      : roll < 0.25 ? Infinity
+      : roll < 0.3 ? undefined
+      : roll < 0.4 ? Math.floor(rnd() * 50)
+      : state.lastRaw + Math.floor(rnd() * 500);
+    try {
+      state = applyRawReading(raw, state);
+      if (!Number.isFinite(state.stepsToday)) { violations++; break; }
+      if (state.stepsToday < 0) { violations++; break; }
+      if (state.stepsToday < previous) { violations++; break; }
+      previous = state.stepsToday;
+    } catch (error) {
+      throws++;
+      if (throws <= 3) console.log(`  ${FAIL} counter fuzz #${i} threw: ${error.message}`);
+    }
+  }
+
+  check('4,000 hostile sensor readings: zero throws', throws === 0, `${throws}`);
+  check('4,000 hostile sensor readings: the day never goes backwards or NaN',
+    violations === 0, `${violations} violations`);
+}
+
+// --- Summary -----------------------------------------------------------------
 const total = passCount + failCount;
 console.log(`\n${C.b}Result: ${passCount}/${total} checks passed${C.x}`);
 if (failCount > 0) { console.log(`${C.r}${C.b}PROOF FAILED${C.x}`); process.exit(1); }

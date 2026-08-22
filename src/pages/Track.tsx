@@ -9,7 +9,7 @@ import { searchFood, lookupBarcode } from '../services/foodService';
 import { lookupCatalog } from '../services/foodCatalogService';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { MealRecord } from '../types';
-import { db } from '../lib/firestore';
+import { db, safeUnsubscribe } from '../lib/firestore';
 import { collection, query, where, orderBy, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useToast } from '../hooks/useToast';
@@ -59,7 +59,7 @@ export const Track: React.FC = () => {
       snap => { setMeals(snap.docs.map(d => ({ id: d.id, ...d.data() } as MealRecord))); setLoading(false); },
       () => setLoading(false),
     );
-    return () => unsub();
+    return () => safeUnsubscribe(unsub);
   }, [profile?.uid]);
 
   useEffect(() => {

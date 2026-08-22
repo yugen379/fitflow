@@ -15,7 +15,7 @@ import { logWeight } from '../services/dataService';
 import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { ALL_BADGES } from '../services/badgeService';
 import { computeLevel } from '../services/missionUtils';
-import { db } from '../lib/firestore';
+import { db, safeUnsubscribe } from '../lib/firestore';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '../hooks/useToast';
 import { isHealthAvailable, connectAndPersist, DailyHealthMetrics } from '../services/healthService';
@@ -99,7 +99,7 @@ export const Profile: React.FC = () => {
       // silent rather than nagging the customer with a red toast.
       console.warn('weight_history snapshot error:', err?.code || err?.message);
     });
-    return () => unsubscribe();
+    return () => safeUnsubscribe(unsubscribe);
   }, [profile?.uid]);
 
   const handleLogWeight = async () => {
@@ -228,12 +228,15 @@ export const Profile: React.FC = () => {
           onClick={() => navigate('/pro')}
           className="w-full rounded-2xl p-5 relative overflow-hidden text-left"
           style={{
-            background: 'linear-gradient(135deg, #C6FF3D 0%, #9CFF1F 100%)',
-            boxShadow: '0 14px 40px -10px rgba(198,255,61,0.5)',
+            // Tokenised, not hard-coded: the label on top uses `text-bg`, which
+            // flips to near-white in light mode. A fixed bright-volt gradient
+            // therefore became white-on-volt and was unreadable.
+            background: 'var(--gradient-accent-banner)',
+            boxShadow: 'var(--shadow-accent-banner)',
           }}
         >
           <div className="relative z-10">
-            <span className="text-eyebrow text-bg/80">FitFlow Pro</span>
+            <span className="text-eyebrow text-bg">FitFlow Pro</span>
             <h3 className="font-display text-xl font-bold text-bg mt-1">Unlock the full coach.</h3>
             <p className="text-bg/80 text-sm mt-1 max-w-[80%]">
               AI form check, voice coaching, advanced analytics, unlimited meal plans.

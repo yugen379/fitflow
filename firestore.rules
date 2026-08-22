@@ -131,6 +131,22 @@ service cloud.firestore {
              (data.timestamp is timestamp || data.timestamp == request.time);
     }
 
+    // A day of steps — one doc per user per day, id <uid>_<YYYY-MM-DD>.
+    // `steps` is required and must be a non-negative number; the monotonic
+    // guard lives on the update rule below, not here, because a create has no
+    // existing doc to compare against.
+    function isValidStepDay(data) {
+      return data.keys().hasAll(['userId', 'day', 'steps']) &&
+             data.userId == request.auth.uid &&
+             data.day is string && data.day.size() <= 10 &&
+             data.steps is number && data.steps >= 0 && data.steps <= 200000 &&
+             (!('distanceKm' in data) || (data.distanceKm is number && data.distanceKm >= 0)) &&
+             (!('calories' in data) || (data.calories is number && data.calories >= 0)) &&
+             (!('activeMs' in data) || (data.activeMs is number && data.activeMs >= 0)) &&
+             (!('source' in data) || (data.source is string && data.source.size() <= 32)) &&
+             (data.updatedAt is timestamp || data.updatedAt == request.time);
+    }
+
     // A streak-freeze marker — same shape as an activity-day marker (#5).
     function isValidStreakFreeze(data) {
       return data.keys().hasAll(['userId', 'day', 'timestamp']) &&
@@ -408,6 +424,26 @@ service cloud.firestore {
       allow get: if isOwner(resource.data.userId);
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create, update: if isVerified() && docId.matches('^' + request.auth.uid + '_.*$') && isValidStreakFreeze(incoming());
+    }
+
+    // Step days — one doc per user per day, id <uid>_<YYYY-MM-DD>.
+    //
+    // Writes are MONOTONIC: an update may only raise the count. Two devices, or
+    // a reinstall with an empty local store, can both hold a "today" total, and
+    // whichever wrote last would otherwise erase real steps. The client applies
+    // the same max() in stepSyncService; this is the half that a buggy or
+    // hostile client cannot skip. No deletes: a walked day is a fact.
+    match /step_days/{docId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() &&
+                    docId == request.auth.uid + '_' + incoming().day &&
+                    isValidStepDay(incoming());
+      allow update: if isOwner(existing().userId) &&
+                    isValidStepDay(incoming()) &&
+                    incoming().day == existing().day &&
+                    incoming().steps >= existing().steps;
+      allow delete: if false;
     }
 
     // Weekly AI Recaps — id format: <uid>_<weekId>, client reads, only server writes

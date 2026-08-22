@@ -3,9 +3,12 @@ import { searchFood, searchLocalFoods } from "./foodService";
 import { buildBriefing, applyPolish, CoachContext, CoachBriefing } from "./coachBriefing";
 import { splitPhrases, buildResult, normalizeItem, QuickAddResult, QuickAddItem } from "./quickAddUtils";
 
-// Production sends every Gemini call through a Cloud Function proxy so the API
-// key never ships in the client bundle. When VITE_GEMINI_PROXY_URL is unset
-// (development), we fall back to calling the SDK directly with a local key.
+// Every client build sends every Gemini call through the geminiProxy Cloud
+// Function — the API key never ships in the bundle (vite.config.ts inlines ''
+// for process.env.GEMINI_API_KEY unconditionally). The direct-SDK path below
+// exists ONLY for the Node proof harnesses (tsx), where process.env is the real
+// environment and no proxy URL is configured. In a browser build LOCAL_KEY is
+// statically '' → undefined, so `ai` is always null there.
 const PROXY_URL = (import.meta as any).env?.VITE_GEMINI_PROXY_URL as string | undefined;
 const LOCAL_KEY = (process.env.GEMINI_API_KEY as string | undefined) || undefined;
 const useProxy = !!PROXY_URL;

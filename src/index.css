@@ -33,7 +33,11 @@
 
   --color-text: #F8FAFC;
   --color-text-dim: #8B95A8;
-  --color-text-mute: #4B5568;
+  /* #4B5568 measured 2.45:1 against the composited glass surface — well under
+     AA, and this token labels every small-caps caption in the app ("DISTANCE",
+     "BURNED", "Less"/"More"). #727D91 clears 4.5:1 while staying clearly dimmer
+     than --color-text-dim, so the type hierarchy is unchanged. */
+  --color-text-mute: #727D91;
 
   /* Liquid spatial glass */
   --color-glass: rgba(14, 20, 34, 0.68);
@@ -50,7 +54,11 @@
 }
 
 @layer base {
-  :root {
+  /* Dark stays the default for anything that never gets a data-theme (an old
+     cached index.html, or JS disabled), which is the palette this app shipped
+     with. `useTheme` stamps data-theme on <html> before first paint. */
+  :root,
+  :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #04060A;
     --surface: #070A12;
@@ -64,13 +72,17 @@
     --text-dim: #8B95A8;
     --glass-surface: rgba(14, 20, 34, 0.68);
     --border-subtle: rgba(255, 255, 255, 0.08);
+    /* Vivid accent banner. Text on top is `text-bg`, so the fill has to move
+       with the theme or the pair stops contrasting. */
+    --gradient-accent-banner: linear-gradient(135deg, #C6FF3D 0%, #9CFF1F 100%);
+    --shadow-accent-banner: 0 14px 40px -10px rgba(198, 255, 61, 0.5);
     --color-border-tertiary: rgba(255,255,255,0.08);
     --color-background-secondary: rgba(255,255,255,0.04);
   }
 
   /* Wide-gamut displays get the real thing; sRGB keeps the hex above. */
   @supports (color: color(display-p3 1 1 1)) {
-    :root {
+    :root:not([data-theme="light"]) {
       --accent: color(display-p3 0.8 1 0);
       --accent-3: color(display-p3 0 0.96 1);
       --accent-2: color(display-p3 1 0.2 0.4);
@@ -596,4 +608,231 @@
   @media (prefers-reduced-motion: reduce) {
     .spatial-enter { animation: none; }
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LIGHT THEME
+   ══════════════════════════════════════════════════════════════════════════
+
+   Activated by `data-theme="light"` on <html>, written by `useTheme.tsx` and
+   by the pre-paint boot script in index.html.
+
+   Two mechanisms, in this order:
+
+   1. TOKENS. Re-pointing the `@theme` custom properties restyles everything
+      built on the design system — `bg-bg`, `text-text-dim`, `border-glass-border`,
+      `.glass`, `.glass-spatial` and the rest all resolve through them, so they
+      flip for free. This is where the bulk of the app is handled.
+
+   2. HARD-CODED UTILITY RESCUE. The app predates any theme system and leans on
+      literal colours: 367 `text-white`, 132 `bg-white/[0.0x]` and 104
+      `border-white/[0.0x]` across the screens. Those compile to literal rgba
+      and cannot follow a token, so they are remapped below. White-at-low-alpha
+      on a dark ground is a subtle LIFT; the light-mode equivalent is
+      ink-at-low-alpha, a subtle RECESS — so white maps to ink, not to white.
+
+      These rules sit outside `@layer` deliberately: Tailwind's utilities are
+      layered, and unlayered rules beat layered ones regardless of source order,
+      which is the only way an override reliably wins against a utility class.
+
+   ACCENT. Volt green (#CCFF00) is a 1.1:1 contrast disaster on white, so the
+   light palette uses a deepened #5E7A00. That clears 4.9:1 as text on the light
+   background, and still clears the 3:1 large-text bar under the dark label
+   colour that `bg-accent` buttons use. The brand reads as the same green; it is
+   just taken down to where it is legible. */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Canvas */
+  --color-bg: #F4F6FB;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #EEF1F7;
+
+  /* Brand, deepened for contrast on a light ground */
+  --color-accent: #5E7A00;
+  --color-accent-soft: #6B8A00;
+  --color-accent-bright: #4C6300;
+  --color-accent-2: #C81E48;
+  --color-accent-3: #00778C;
+  --color-accent-4: #8F6400;
+
+  --color-text: #0B1220;
+  --color-text-dim: #4A5567;
+  /* #7C879A measured 3.63:1 on the light canvas — under AA for the small
+     uppercase labels this token is used for. #626E80 clears 4.5:1. */
+  --color-text-mute: #626E80;
+
+  --color-glass: rgba(255, 255, 255, 0.78);
+  --color-glass-border: rgba(11, 18, 32, 0.10);
+
+  --color-laser-lime: #5E7A00;
+  --color-cyber-aqua: #00778C;
+  --color-infrared-coral: #C81E48;
+  --color-solar-amber: #8F6400;
+  --color-accent-alt: #C81E48;
+
+  /* The non-prefixed aliases the base layer and the .glass classes read. */
+  --bg: #F4F6FB;
+  --surface: #FFFFFF;
+  --surface-2: #EEF1F7;
+  --accent: #5E7A00;
+  --accent-2: #C81E48;
+  --accent-3: #00778C;
+  --accent-4: #8F6400;
+  --accent-alt: #C81E48;
+  --text: #0B1220;
+  --text-dim: #4A5567;
+  --glass-surface: rgba(255, 255, 255, 0.78);
+  --border-subtle: rgba(11, 18, 32, 0.10);
+  /* Deepened so the near-white `text-bg` label on top stays readable. */
+  --gradient-accent-banner: linear-gradient(135deg, #5E7A00 0%, #47600A 100%);
+  --shadow-accent-banner: 0 12px 30px -12px rgba(94, 122, 0, 0.45);
+  --color-border-tertiary: rgba(11, 18, 32, 0.10);
+  --color-background-secondary: rgba(11, 18, 32, 0.04);
+}
+
+/* Base canvas. `body` had `color: white` hard-coded, which no token could reach. */
+:root[data-theme="light"] body {
+  color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 10% 0%, rgba(94, 122, 0, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(0, 119, 140, 0.06) 0%, transparent 45%);
+}
+
+:root[data-theme="light"] ::selection {
+  background: var(--accent);
+  color: #FFFFFF;
+}
+
+/* Glass panes. The dark set leans on a heavy black drop shadow and a white
+   inset highlight to read as a raised pane; on a light ground that inverts —
+   a soft, tighter shadow and no blown-out highlight. */
+:root[data-theme="light"] :where(.glass, .glass-3d, .glass-card, .stat-card-3d) {
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.9) inset,
+    0 10px 30px -18px rgba(11, 18, 32, 0.35);
+}
+
+:root[data-theme="light"] .glass-spatial {
+  box-shadow:
+    0 14px 40px -20px rgba(11, 18, 32, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* ── Hard-coded utility rescue ─────────────────────────────────────────── */
+
+:root[data-theme="light"] :where(.text-white) {
+  color: var(--text);
+}
+
+/* `text-white/70` and friends: dimmed body copy, not pure text. */
+:root[data-theme="light"] :where([class*="text-white/"]) {
+  color: var(--text-dim);
+}
+
+/* Subtle surface fills. One value covers the 0.02–0.08 band the app uses;
+   they were never meant to be individually distinguishable. */
+:root[data-theme="light"] :where([class*="bg-white/"]) {
+  background-color: rgba(11, 18, 32, 0.045);
+}
+
+/* Hover and press still have to move, or every interactive surface in the app
+   goes flat — the blanket override above would otherwise eat both states. */
+:root[data-theme="light"] :where([class*="bg-white/"]):hover {
+  background-color: rgba(11, 18, 32, 0.075);
+}
+:root[data-theme="light"] :where([class*="bg-white/"]):active {
+  background-color: rgba(11, 18, 32, 0.10);
+}
+
+:root[data-theme="light"] :where([class*="border-white/"]) {
+  border-color: rgba(11, 18, 32, 0.10);
+}
+
+/* Scrims over modals: a black veil on a light page is heavier than it needs
+   to be, and the backdrop blur is doing most of the separation anyway. */
+:root[data-theme="light"] :where([class*="bg-black/"]) {
+  background-color: rgba(11, 18, 32, 0.35);
+}
+
+/* Focus ring, which was a volt-on-black glow. */
+:root[data-theme="light"] :where(button, a, [role="button"]):focus-visible {
+  box-shadow: 0 0 0 3px rgba(94, 122, 0, 0.35);
+}
+
+/* The hero gradient is three volt greens tuned for a black ground; on white it
+   drops to roughly 1.2:1 and the headline effectively disappears. Same gesture,
+   taken down into a legible range. */
+:root[data-theme="light"] .gradient-text-accent {
+  background: linear-gradient(135deg, #6E8F00 0%, #55700A 60%, #3F5A00 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Buttons that paint the volt as a FILL with dark ink on top keep working,
+   because --accent is already deepened; but the neon glow around them was
+   tuned for a black ground and reads as smear on white. */
+:root[data-theme="light"] .breathing-glow {
+  animation: none;
+  box-shadow: 0 0 0 1px rgba(94, 122, 0, 0.28);
+}
+
+/* The always-on particle atmosphere is white dust, invisible on a light page
+   and faintly grubby where it overlaps text. */
+:root[data-theme="light"] .ff-drift {
+  background-color: rgba(11, 18, 32, 0.28);
+}
+
+/* ── Light-mode contrast fixes ─────────────────────────────────────────────
+   Found by driving the running app, not by reading the code.
+
+   The dark theme's filled-accent idiom is "near-black label on a bright volt
+   fill". Light mode deepens the fill to #5E7A00 for legibility on white, which
+   silently turns that idiom into dark-on-dark: the Settings "Upgrade to Pro"
+   button rendered as black text on olive. Anything painting a hard-coded dark
+   ink ON the accent has to flip to white here.
+
+   `bg-accent text-bg` (the far more common form, ~20 call sites) already does
+   the right thing on its own, because --color-bg is near-white in light mode.
+   Only the hard-coded literals needed rescuing. */
+
+:root[data-theme="light"] .btn-primary,
+:root[data-theme="light"] .btn-3d {
+  color: #FFFFFF;
+  /* The volt glow was tuned to bloom against black; on white it reads as a
+     dirty smear, so it becomes an ordinary elevation shadow. */
+  box-shadow:
+    0 8px 20px -8px rgba(94, 122, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+:root[data-theme="light"] .btn-primary:hover {
+  box-shadow:
+    0 12px 26px -8px rgba(94, 122, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* `.btn-ghost` hard-codes white text — invisible on a light glass pane. */
+:root[data-theme="light"] .btn-ghost {
+  color: var(--text);
+}
+
+/* The one remaining hard-coded dark-ink literal in the TSX, used for labels
+   that sit directly on an accent fill (`bg-accent text-[#04060A]`). */
+:root[data-theme="light"] :where([class*="text-[#04060A]"]) {
+  color: #FFFFFF;
+}
+
+/* Selection: near-black on deep olive is unreadable. */
+:root[data-theme="light"] ::selection {
+  color: #FFFFFF;
+}
+
+/* Scrubber thumb: a white knob on a white track loses its edge, and the drop
+   shadow was tuned for a black backdrop. */
+:root[data-theme="light"] .ff-scrubber::-webkit-slider-thumb,
+:root[data-theme="light"] .ff-scrubber::-moz-range-thumb {
+  box-shadow: 0 2px 8px rgba(11, 18, 32, 0.28), 0 0 0 6px rgba(94, 122, 0, 0.14);
 }

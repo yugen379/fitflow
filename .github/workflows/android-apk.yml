@@ -5,7 +5,11 @@ name: Build Android APK + AAB
 # Download the APK from the run's "Artifacts" section, then sideload it on your phone.
 #
 # Optional repo Secrets (Settings → Secrets and variables → Actions):
-#   GEMINI_API_KEY        → enables AI features (coach, AI label read, quick-add) in the APK
+#   VITE_GEMINI_PROXY_URL → enables AI features (coach, AI label read, quick-add) in the APK.
+#                           Public geminiProxy Cloud Function URL — the raw GEMINI_API_KEY
+#                           must NEVER be given to this workflow: anything in the web build's
+#                           env can end up inlined in the shipped JS (that's how the key
+#                           leaked into v1.4.0 and earlier APKs).
 #   VITE_USDA_API_KEY     → richer food DB lookups (else the public DEMO_KEY is used)
 #   GOOGLE_SERVICES_JSON  → base64 of android/app/google-services.json → enables push notifications
 # The build works WITHOUT any of these (OFF/USDA scanner + the one-tap settings button still work).
@@ -40,11 +44,12 @@ jobs:
 
       - name: Write .env from secrets (optional — enables AI)
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Proxy URL only — never the raw Gemini key (see header comment).
+          VITE_GEMINI_PROXY_URL: ${{ secrets.VITE_GEMINI_PROXY_URL }}
           VITE_USDA_API_KEY: ${{ secrets.VITE_USDA_API_KEY }}
         run: |
           : > .env
-          if [ -n "$GEMINI_API_KEY" ]; then echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env; echo "AI key: set"; else echo "AI key: not set (AI tier will degrade to OFF/USDA + manual)"; fi
+          if [ -n "$VITE_GEMINI_PROXY_URL" ]; then echo "VITE_GEMINI_PROXY_URL=$VITE_GEMINI_PROXY_URL" >> .env; echo "AI proxy: set"; else echo "AI proxy: not set (AI degrades to deterministic fallbacks)"; fi
           if [ -n "$VITE_USDA_API_KEY" ]; then echo "VITE_USDA_API_KEY=$VITE_USDA_API_KEY" >> .env; fi
 
       - name: Build web assets

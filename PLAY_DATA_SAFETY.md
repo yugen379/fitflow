@@ -107,6 +107,12 @@ that never record, store, or transmit audio.
 
 ## Section 3 — Health Connect (separate but related)
 
+> **Note:** since background counting moved to FitFlow's own foreground service
+> (Section 4), Health Connect is **optional** — a bonus source for users who already keep
+> data there or wear a watch that writes to it. The app works fully without it. The
+> declarations below are still required because the manifest still requests those
+> read permissions.
+
 Because the app reads Health Connect, you must **also**:
 1. In Play Console → **App content → Health apps declaration**, declare each Health
    Connect data type the manifest requests:
@@ -117,6 +123,47 @@ Because the app reads Health Connect, you must **also**:
    for advertising. (Both true.)
 4. The in-app permissions-rationale screen is already wired
    (`HealthConnectPermissionsRationale` activity-alias in the manifest) — Google requires it.
+
+---
+
+## Section 4 — Background step counting (foreground service)
+
+FitFlow counts steps with its own foreground service
+(`android/app/src/main/java/com/fitflow/app/steps/StepCounterService.java`), so it no
+longer depends on Health Connect for background counting. That adds three declarable
+things:
+
+1. **Foreground service type.** The manifest declares
+   `android:foregroundServiceType="health"` with the `FOREGROUND_SERVICE_HEALTH`
+   permission. In Play Console → **App content → Foreground service permissions**, declare:
+   - *Type:* Health.
+   - *Purpose:* "Counting the user's steps with the device's built-in step-counter sensor,
+     so the daily step total stays accurate while the app is closed."
+   - *Why a foreground service is required:* a sensor listener cannot be held from the
+     background under Android's background-execution limits; WorkManager and JobScheduler
+     are scheduled rather than continuous and cannot hold a sensor subscription.
+   - Google requires a **video** demonstrating the feature. Show: turning on background
+     counting, the ongoing notification appearing, closing the app, walking, reopening to a
+     higher count.
+
+2. **`ACTIVITY_RECOGNITION`** is a sensitive runtime permission. Purpose: reading the
+   device's step-counter sensor to count steps. It is also the prerequisite Android
+   requires for a `health` foreground service.
+
+3. **`RECEIVE_BOOT_COMPLETED`.** Purpose: a device reboot resets the hardware step counter
+   to zero, so counting must be restarted promptly or the steps between reboot and the next
+   app launch are lost. The receiver only starts the service if the user had switched
+   background counting on.
+
+**Data Safety impact:** none of this changes the answers in Section 2. Step counts were
+already declared under *Health and fitness → Fitness info*. The steps are collected the
+same way and stored in the same place (on-device, plus the user's own Firestore document).
+
+**Deliberately NOT requested:** `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. That is a flagged
+permission needing its own policy declaration. Instead the app opens the system
+battery-optimisation settings screen (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`), which
+needs no permission and lands the user on the same toggle. If you ever want the one-tap
+dialog instead, you must add that permission AND file the declaration.
 
 ---
 

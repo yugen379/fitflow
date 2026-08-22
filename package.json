@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "vite build && node scripts/scan-bundle-secrets.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
@@ -34,6 +34,7 @@
     "@capacitor/core": "^8.3.1",
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/push-notifications": "^8.1.1",
+    "@capgo/capacitor-pedometer": "^8.0.39",
     "@google/genai": "^1.50.1",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",

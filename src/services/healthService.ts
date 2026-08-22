@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firestore';
+import { caloriesFor, strideMetresFor } from '../lib/stepFormulas';
 
 export interface DailyHealthMetrics {
   steps: number;
@@ -95,9 +96,10 @@ const toKcal = (energy: any): number => {
   }
 };
 
-// Walking stride ≈ 41.4% of height; fall back to a population-average stride.
-const strideMetres = (heightCm?: number): number =>
-  heightCm && heightCm > 100 ? (heightCm * 0.414) / 100 : 0.73;
+// Stride and calorie maths live in lib/stepFormulas.ts. They used to be
+// duplicated here with a 0.73 m fallback while the pedometer used 0.78 m, which
+// meant the same walk read as two different distances on two different screens.
+const strideMetres = (heightCm?: number): number => strideMetresFor(heightCm);
 
 // Follow pagination so a day with many per-source chunks isn't undercounted.
 const readAll = async (plugin: any, type: string, timeRangeFilter: any): Promise<any[]> => {
@@ -113,7 +115,7 @@ const readAll = async (plugin: any, type: string, timeRangeFilter: any): Promise
   return out;
 };
 
-export const fetchTodayHealth = async (heightCm?: number): Promise<DailyHealthMetrics> => {
+export const fetchTodayHealth = async (heightCm?: number, weightKg?: number): Promise<DailyHealthMetrics> => {
   const start = startOfToday();
   const end = new Date();
   const empty: DailyHealthMetrics = { steps: 0, distanceKm: 0, activeMinutes: 0, caloriesBurned: 0, source: 'none' };
@@ -140,7 +142,7 @@ export const fetchTodayHealth = async (heightCm?: number): Promise<DailyHealthMe
     let calories = calRecs.reduce((a: number, r: any) => a + toKcal(r.energy), 0);
     // No calories provider on many phones — estimate from steps (~0.04 kcal/step)
     // so the number is honest-adjacent rather than a flat 0 next to 8,000 steps.
-    if (calories === 0 && steps > 0) calories = steps * 0.04;
+    if (calories === 0 && steps > 0) calories = caloriesFor(steps, weightKg);
 
     const hrSamples = hrRecs
       .flatMap((r: any) => (r.samples || []).map((s: any) => Number(s.beatsPerMinute) || 0))
@@ -183,10 +185,10 @@ let lastPersistDate = '';
  * a compact snapshot onto the user doc (throttled) so the proactive coach and
  * analytics can see device activity. Never prompts, never throws.
  */
-export const syncTodayActivity = async (userId: string, heightCm?: number): Promise<DailyHealthMetrics | null> => {
+export const syncTodayActivity = async (userId: string, heightCm?: number, weightKg?: number): Promise<DailyHealthMetrics | null> => {
   if (!isNative() || !userId) return null;
   if (!(await hasHealthPermissions())) return null;
-  const metrics = await fetchTodayHealth(heightCm);
+  const metrics = await fetchTodayHealth(heightCm, weightKg);
   if (metrics.source === 'none') return null;
 
   const date = todayKey();

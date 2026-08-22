@@ -31,6 +31,33 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- Background step counting.
+             foregroundServiceType="health" is required from Android 14 (the app
+             targets SDK 36) and must match the type passed to startForeground().
+             `health` is the documented type for fitness trackers, it accepts
+             ACTIVITY_RECOGNITION as its prerequisite runtime permission, and —
+             unlike dataSync — it is NOT on Android 15's list of types that may
+             not be started from a BOOT_COMPLETED receiver, which is what lets
+             counting resume after a reboot. -->
+        <service
+            android:name=".steps.StepCounterService"
+            android:exported="false"
+            android:enabled="true"
+            android:foregroundServiceType="health" />
+
+        <!-- Restarts counting after a reboot or an app update, but ONLY if the
+             user switched background counting on. -->
+        <receiver
+            android:name=".steps.BootReceiver"
+            android:exported="true"
+            android:enabled="true"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -46,6 +73,33 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Step counting.
+         ACTIVITY_RECOGNITION gates Sensor.TYPE_STEP_COUNTER, which is what
+         @capgo/capacitor-pedometer reads. The plugin's own manifest declares it
+         too and the merger would pull it in regardless, but it is declared here
+         explicitly so the app's full permission surface is readable in one
+         file — this one is user-visible in the Play listing and needs a Data
+         Safety entry.
+         Runtime request (API 29+) happens on a user gesture; see
+         src/lib/nativePedometer.ts. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <!-- Keeps the step-counter listener alive while FitFlow is closed.
+         FOREGROUND_SERVICE_HEALTH is mandatory on Android 14+ for a service
+         declaring foregroundServiceType="health". -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+
+    <!-- A reboot resets the hardware step counter to zero, so counting has to be
+         restarted promptly or the steps between boot and next app launch are
+         lost for good. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Not required: phones with no step-counter core fall back to the
+         accelerometer tier, so this must never filter the app off the Store. -->
+    <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
 
     <!-- Health Connect read permissions -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />

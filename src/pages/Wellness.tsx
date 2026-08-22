@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firestore';
+import { db, safeUnsubscribe } from '../lib/firestore';
 import { collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Moon, Smile, Zap, Plus, ChevronLeft, Award } from 'lucide-react';
@@ -29,7 +29,7 @@ export const Wellness: React.FC = () => {
     const unsub = onSnapshot(q, (snap) => {
       setHistory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    return () => unsub();
+    return () => safeUnsubscribe(unsub);
   }, [profile?.uid]);
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export const Wellness: React.FC = () => {
       }
       setSleepTrend(trend);
     });
-    return () => unsub();
+    return () => safeUnsubscribe(unsub);
   }, [profile?.uid]);
 
   const logWellness = async () => {

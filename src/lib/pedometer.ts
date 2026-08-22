@@ -41,14 +41,24 @@
 
 import { get, set } from 'idb-keyval';
 
+import {
+  KCAL_PER_STEP,
+  KM_PER_STEP,
+  caloriesFor,
+  distanceKmFor,
+  kmToMiles,
+  speedKmhFor,
+} from './stepFormulas';
+import type { StepBody } from './stepFormulas';
+
+// Re-exported so the dozens of existing call sites that import these from
+// `pedometer` keep working; `stepFormulas` is now the single definition.
+export { KCAL_PER_STEP, KM_PER_STEP, kmToMiles };
+export type { StepBody };
+
 // ---------------------------------------------------------------------------
 // Tunables
 // ---------------------------------------------------------------------------
-
-/** Metres per step — the spec's 0.00078 km, used for distance. */
-export const KM_PER_STEP = 0.00078;
-/** Active kilocalories per step. */
-export const KCAL_PER_STEP = 0.04;
 
 /** Fastest believable human cadence, as a minimum gap between steps. */
 const MIN_STEP_INTERVAL_MS = 250;
@@ -107,20 +117,26 @@ export const localDateKey = (date: Date = new Date()): string => {
   return `${y}-${m}-${d}`;
 };
 
-export const snapshotFrom = (date: string, steps: number, activeMs: number, cadence = 0): StepSnapshot => {
-  const distanceKm = steps * KM_PER_STEP;
-  const strideKm = KM_PER_STEP;
-  return {
-    date,
-    steps,
-    distanceKm,
-    calories: steps * KCAL_PER_STEP,
-    activeMs,
-    cadence,
-    // cadence steps/min × km/step × 60 min/h
-    speedKmh: cadence > 0 ? cadence * strideKm * 60 : 0,
-  };
-};
+/**
+ * Build a snapshot. `body` personalises distance (height) and calories
+ * (weight); omitting it falls back to the documented population defaults, which
+ * is what every pre-existing call site does.
+ */
+export const snapshotFrom = (
+  date: string,
+  steps: number,
+  activeMs: number,
+  cadence = 0,
+  body: StepBody = {},
+): StepSnapshot => ({
+  date,
+  steps,
+  distanceKm: distanceKmFor(steps, body.heightCm),
+  calories: caloriesFor(steps, body.weightKg),
+  activeMs,
+  cadence,
+  speedKmh: speedKmhFor(cadence, body.heightCm),
+});
 
 /** "1h 18m" / "18m" / "0m" */
 export const formatActiveTime = (ms: number): string => {
@@ -130,7 +146,6 @@ export const formatActiveTime = (ms: number): string => {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 };
 
-export const kmToMiles = (km: number): number => km * 0.621371;
 
 // ---------------------------------------------------------------------------
 // Engine
@@ -139,6 +154,10 @@ export const kmToMiles = (km: number): number => km * 0.621371;
 class Pedometer {
   private status: PedometerStatus = 'idle';
   private listeners = new Set<Listener>();
+  /** Height/weight for the formulas. Set once the profile loads. */
+  private body: StepBody = {};
+  /** Called on every flush so a day can be mirrored to Firestore. */
+  private syncHandler: ((snapshot: StepSnapshot) => void) | null = null;
 
   private date = localDateKey();
   private steps = 0;
@@ -166,7 +185,44 @@ class Pedometer {
   }
 
   getSnapshot(): StepSnapshot {
-    return snapshotFrom(this.date, this.steps, this.activeMs, this.currentCadence());
+    return snapshotFrom(this.date, this.steps, this.activeMs, this.currentCadence(), this.body);
+  }
+
+  /**
+   * Personalise the formulas. Re-emits, because the distance and calories on
+   * screen were computed with the old body and are now stale by a real margin
+   * (a 55 kg user was being shown a 70 kg user's calories until this landed).
+   */
+  setBody(body: StepBody): void {
+    const next = { weightKg: body?.weightKg ?? null, heightCm: body?.heightCm ?? null };
+    if (next.weightKg === this.body.weightKg && next.heightCm === this.body.heightCm) return;
+    this.body = next;
+    this.emit();
+  }
+
+  /** Register the Firestore mirror. Called once, from the steps hook. */
+  setSyncHandler(handler: ((snapshot: StepSnapshot) => void) | null): void {
+    this.syncHandler = handler;
+  }
+
+  /**
+   * Fold in a delta from the native hardware counter (tier 2).
+   *
+   * Deltas, not totals: `@capgo/capacitor-pedometer` restarts its own count
+   * from zero on every `startMeasurementUpdates()`, so a total would reset the
+   * user's day on every app resume. See `lib/nativePedometer.ts`.
+   */
+  addSteps(delta: number): void {
+    const n = Number(delta);
+    if (!Number.isFinite(n) || n <= 0) return;
+    this.rollDateIfNeeded();
+    this.steps += Math.round(n);
+    const now = Date.now();
+    this.lastStepAt = now;
+    this.recent.push(now);
+    if (this.recent.length > 240) this.recent.shift();
+    this.emit();
+    this.scheduleSave();
   }
 
   subscribe(listener: Listener): () => void {
@@ -256,12 +312,12 @@ class Pedometer {
   }
 
   /** Read a stored day without starting the sensor. */
-  static async readDay(date: string): Promise<StepSnapshot> {
+  static async readDay(date: string, body: StepBody = {}): Promise<StepSnapshot> {
     try {
       const stored = (await get(STORAGE_PREFIX + date)) as StoredDay | undefined;
-      return snapshotFrom(date, stored?.steps ?? 0, stored?.activeMs ?? 0);
+      return snapshotFrom(date, stored?.steps ?? 0, stored?.activeMs ?? 0, 0, body);
     } catch {
-      return snapshotFrom(date, 0, 0);
+      return snapshotFrom(date, 0, 0, 0, body);
     }
   }
 
@@ -385,6 +441,13 @@ class Pedometer {
     void set(STORAGE_PREFIX + this.date, payload).catch(() => {
       // Storage unavailable — the in-memory count still drives the UI.
     });
+    if (this.syncHandler && this.steps > 0) {
+      try {
+        this.syncHandler(this.getSnapshot());
+      } catch {
+        // A failing mirror must never break local persistence.
+      }
+    }
   }
 }
 

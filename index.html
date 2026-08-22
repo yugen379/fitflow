@@ -67,6 +67,30 @@
     <link rel="preconnect" href="https://accounts.google.com" crossorigin />
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
     <title>FitFlow — Train smarter. Move farther.</title>
+    <!-- Theme, applied BEFORE first paint.
+         This is deliberately a blocking inline script rather than something
+         React does on mount: any later and every cold start flashes the light
+         background at dark-mode users before the app hydrates. The storage key
+         and the resolution rule are mirrored in src/hooks/useTheme.tsx. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('ff-theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.style.colorScheme = theme;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'dark' ? '#04060A' : '#F4F6FB');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- Instant shell.
@@ -92,6 +116,15 @@
         transition: opacity 220ms ease-out;
       }
       #ff-splash[data-leaving="true"] { opacity: 0; }
+      /* The splash is painted before any stylesheet loads, so it needs its own
+         light variant or the flash simply moves from the app into the splash. */
+      html[data-theme="light"] #ff-splash {
+        background: #f4f6fb;
+        background-image:
+          radial-gradient(circle at 10% 0%, rgba(132, 168, 0, 0.10) 0%, transparent 45%),
+          radial-gradient(circle at 100% 100%, rgba(0, 140, 160, 0.07) 0%, transparent 45%);
+      }
+      html[data-theme="light"] #ff-splash h1 { color: #0b1220; }
       #ff-splash h1 {
         margin: 0;
         color: #fff;

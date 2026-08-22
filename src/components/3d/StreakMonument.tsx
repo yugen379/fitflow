@@ -196,7 +196,9 @@ export const StreakMonument: React.FC<StreakMonumentProps> = ({ streak, bestStre
         </div>
 
         <div className="min-w-0">
-          <p className="text-eyebrow" style={{ color: isBest ? GOLD : LIME }}>
+          {/* Tokens, not the raw 3D-scene colours: GOLD/LIME are tuned to glow
+              against a black canvas and drop to ~1.7:1 on a light card. */}
+          <p className="text-eyebrow" style={{ color: isBest ? 'var(--accent-4)' : 'var(--accent)' }}>
             {isBest && streak > 0 ? 'Personal best' : 'Current streak'}
           </p>
           <h2 id="streak-heading" className="font-display text-3xl font-bold text-white tracking-tight mt-0.5 inline-flex items-center gap-2">

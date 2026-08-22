@@ -6,7 +6,7 @@ import { likePost, blockUser, reportContent } from '../services/dataService';
 import { Post } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { query, collection, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firestore';
+import { db, safeUnsubscribe } from '../lib/firestore';
 import { Logo } from '../components/Logo';
 import { CreatePostModal } from '../components/CreatePostModal';
 import { EditPostModal } from '../components/EditPostModal';
@@ -54,7 +54,7 @@ export const Community: React.FC = () => {
     const unsub = onSnapshot(collection(db, `users/${user.uid}/blocks`), (snap) => {
       setBlockedIds(new Set(snap.docs.map(d => d.id)));
     });
-    return () => unsub();
+    return () => safeUnsubscribe(unsub);
   }, [user]);
 
   const visiblePosts = useMemo(

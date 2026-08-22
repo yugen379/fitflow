@@ -32,3 +32,32 @@ export const db = initializeFirestore(
   { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
   firebaseConfig.firestoreDatabaseId,
 );
+
+/**
+ * Tear down an `onSnapshot` listener without ever throwing.
+ *
+ * The Firestore JS SDK can throw `INTERNAL ASSERTION FAILED: Unexpected state`
+ * out of `unsubscribe()` when its async queue is torn down while a watch-stream
+ * change is still in flight — most easily reproduced by unmounting a screen
+ * whose listener has just errored (a permission denial, or going offline), and
+ * made more likely by React StrictMode's deliberate mount/unmount/mount cycle.
+ *
+ * Because that throw happens inside an effect CLEANUP, React treats it as a
+ * render-phase error and unmounts the whole subtree into the nearest error
+ * boundary. In other words, a failure to stop listening takes down the entire
+ * page — which is never the right trade. This was doing exactly that to the
+ * Track screen.
+ *
+ * Detaching a listener has no meaningful failure mode for the user, so
+ * swallowing the error is correct rather than merely convenient: worst case the
+ * SDK has already released it.
+ */
+export const safeUnsubscribe = (unsubscribe?: (() => void) | null): void => {
+  if (typeof unsubscribe !== 'function') return;
+  try {
+    unsubscribe();
+  } catch {
+    // Already torn down, or the SDK's internal queue is in a bad state. Either
+    // way there is nothing left for the caller to do about it.
+  }
+};
