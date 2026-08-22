@@ -298,7 +298,13 @@ export const Home: React.FC = () => {
   return (
     <div className="pb-24 pt-4 px-4 space-y-6 bg-bg overflow-x-hidden relative">
       <AnimatedMesh className="z-0" />
-      <div className="relative z-10 space-y-6">
+      {/* `relative` with NO z-index. A z-index here forms a stacking context,
+          which capped every modal rendered inside this page (the water picker
+          lives in this subtree) at that level — so the FloatingDock at z-[60]
+          and the camera button at z-50 painted over open sheets and swallowed
+          their buttons. Content still sits above AnimatedMesh, which is
+          absolutely positioned earlier in DOM order with an auto z-index. */}
+      <div className="relative space-y-6">
       <AnimatePresence>
         {!isOnline && (
           <motion.div

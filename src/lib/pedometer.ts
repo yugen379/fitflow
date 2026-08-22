@@ -41,6 +41,8 @@
 
 import { get, set } from 'idb-keyval';
 
+import { StepDetector } from './stepDetection';
+
 import {
   KCAL_PER_STEP,
   KM_PER_STEP,
@@ -60,10 +62,19 @@ export type { StepBody };
 // Tunables
 // ---------------------------------------------------------------------------
 
-/** Fastest believable human cadence, as a minimum gap between steps. */
-const MIN_STEP_INTERVAL_MS = 250;
-/** Below this the signal is treated as noise, whatever the adaptive threshold says. */
-const MIN_PEAK_MAGNITUDE = 0.9;
+/**
+ * Peak-to-step decision lives in `stepDetection.ts` — pure, and provable by the
+ * harness, which cannot load this module because of its IndexedDB use.
+ */
+
+/**
+ * Below this the signal is noise, whatever the adaptive threshold says.
+ *
+ * Raised from 0.9: ordinary handling — pulling the phone out, setting it down,
+ * gesturing while holding it — clears 0.9 m/s2 easily, and every one of those
+ * jolts was being offered up as a step.
+ */
+const MIN_PEAK_MAGNITUDE = 1.8;
 /** Samples used to adapt the threshold to the device. */
 const WINDOW = 50;
 /** Gap after which walking is considered to have stopped, for active-time. */
@@ -171,6 +182,8 @@ class Pedometer {
   private lastSampleAt = 0;
   /** Timestamps of recent steps, for cadence. */
   private recent: number[] = [];
+  /** Rhythm gate that decides which peaks are actually steps. */
+  private detector = new StepDetector();
 
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private hydrated = false;
@@ -376,6 +389,7 @@ class Pedometer {
     this.steps = 0;
     this.activeMs = 0;
     this.recent = [];
+    this.detector.reset();
   }
 
   private onMotion(event: DeviceMotionEvent): void {
@@ -412,19 +426,28 @@ class Pedometer {
     const lower = upper * 0.4;
 
     if (this.armed && dynamic > upper) {
-      if (now - this.lastStepAt >= MIN_STEP_INTERVAL_MS) {
-        this.steps += 1;
-        this.lastStepAt = now;
-        this.recent.push(now);
-        if (this.recent.length > 240) this.recent.shift();
-        this.emit();
-        this.scheduleSave();
-      }
+      this.onPeak(now);
       this.armed = false;
     } else if (!this.armed && dynamic < lower) {
       // Re-arm only after the signal has genuinely fallen back.
       this.armed = true;
     }
+
+    // A long silence ends the current walk, so uncredited candidates are
+    // dropped rather than combining with a future jolt into a false "rhythm".
+    this.detector.idle(now);
+  }
+
+  /** Delegates the walking-vs-handling decision, then banks whatever it credits. */
+  private onPeak(now: number): void {
+    const credited = this.detector.push(now);
+    if (credited <= 0) return;
+    this.steps += credited;
+    this.lastStepAt = now;
+    for (let i = 0; i < credited; i++) this.recent.push(now);
+    while (this.recent.length > 240) this.recent.shift();
+    this.emit();
+    this.scheduleSave();
   }
 
   private scheduleSave(): void {

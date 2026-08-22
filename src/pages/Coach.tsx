@@ -27,6 +27,17 @@ export const Coach: React.FC = () => {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [listening, setListening] = useState(false);
+  /**
+   * Back out of the transcript WITHOUT leaving the Coach.
+   *
+   * The screen has two states — the standby view (orb + starters) and the
+   * transcript — but they were both derived from `messages.length`, so once a
+   * question had been asked there was no way back to standby: the header's back
+   * button popped the whole route and dumped the user on Home. This flag
+   * separates "which view" from "is there history", so back returns to standby
+   * and the conversation is still there (it also survives in localStorage).
+   */
+  const [standby, setStandby] = useState(false);
 
   /**
    * Conversation state for the 3D entity. `responding` is inferred from the
@@ -71,6 +82,8 @@ export const Coach: React.FC = () => {
     const message = text.trim();
     if (!message || thinking) return;
     haptic('light');
+    // Sending always means "show me the transcript", including from standby.
+    setStandby(false);
     const userMsg: CoachChatMessage = { role: 'user', text: message };
     const next = [...messages, userMsg];
     setMessages(next);
@@ -142,9 +155,19 @@ export const Coach: React.FC = () => {
 
       <header className="px-4 pt-4 pb-3 flex items-center gap-3 relative z-10 border-b border-white/[0.05]">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            // One step at a time: transcript -> standby -> out of the Coach.
+            if (messages.length > 0 && !standby) {
+              setStandby(true);
+              return;
+            }
+            // An explicit route, not navigate(-1): the Coach can be reached
+            // from the dock, from Home, or by deep link, and popping history
+            // from a deep link walks the user out of the app entirely.
+            navigate('/');
+          }}
           className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white"
-          aria-label="Back"
+          aria-label={messages.length > 0 && !standby ? 'Back to coach standby' : 'Back'}
         >
           <ChevronLeft size={18} />
         </button>
@@ -158,7 +181,7 @@ export const Coach: React.FC = () => {
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 relative z-10">
-        {messages.length === 0 ? (
+        {messages.length === 0 || standby ? (
           <div className="flex flex-col items-center text-center gap-5 pt-8">
             {/* The entity, not a logo: shape and particle density track the
                 conversation state, so "listening" and "thinking" are legible
@@ -174,6 +197,15 @@ export const Coach: React.FC = () => {
                 Ask about training, nutrition, recovery, or motivation. I remember our conversation.
               </p>
             </div>
+            {messages.length > 0 ? (
+              <button
+                onClick={() => setStandby(false)}
+                className="w-full h-12 rounded-2xl bg-accent text-bg font-semibold text-sm active:scale-[0.98] transition-transform"
+              >
+                Resume conversation ({messages.length} messages)
+              </button>
+            ) : null}
+
             <div className="w-full space-y-2 pt-2">
               {STARTERS.map((s, i) => (
                 <motion.button

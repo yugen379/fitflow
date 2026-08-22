@@ -602,8 +602,33 @@
     }
   }
   .spatial-enter {
-    animation: ff-spatial-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
-    will-change: transform, opacity;
+    /*
+     * `backwards`, NOT `both`.
+     *
+     * `both` keeps the final keyframe applied forever, and that keyframe ends
+     * on `transform: perspective(1400px) translate3d(0,0,0) ...`. A non-none
+     * transform makes the element a CONTAINING BLOCK for every
+     * `position: fixed` descendant — so every modal in the app (water picker,
+     * edit profile, premium gate, scanner) was being sized and positioned
+     * against this wrapper instead of the viewport. On a long page that put
+     * them well over a thousand pixels below the fold: the user taps, the modal
+     * mounts, and nothing appears to happen.
+     *
+     * `backwards` still applies the `from` state before the animation starts,
+     * so the entrance is identical — it just stops pinning the end state after
+     * it finishes. The final rendering is unchanged, because the `to` keyframe
+     * is already the element's natural state (opacity 1, no offset).
+     */
+    animation: ff-spatial-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    /*
+     * NO `will-change` here either. `will-change: opacity` (or transform)
+     * forms a STACKING CONTEXT for the life of the element, which capped every
+     * modal inside the page at this element's level — so the FloatingDock at
+     * z-[60] kept painting over sheets at z-[100] and ate their buttons.
+     *
+     * It was only ever a hint for a 0.42s one-shot entrance the compositor
+     * handles fine on its own. Correct stacking is worth more than the hint.
+     */
   }
   @media (prefers-reduced-motion: reduce) {
     .spatial-enter { animation: none; }

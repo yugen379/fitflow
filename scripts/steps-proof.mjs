@@ -20,6 +20,9 @@
 //            step_days mirror, and the session-delta clamp that stops a native
 //            pedometer restart from wiping the day.
 //   Part G — THEME: the light/dark/system resolution rule.
+//   Part I — STEP DETECTION: the rhythm gate that separates walking from a
+//            phone being shaken, waved or set down. This is the fix for real
+//            users reporting "when I move the phone it also calculates".
 //   Part H — BACKGROUND COUNTER: the cumulative-sensor arithmetic the native
 //            foreground service runs on (mirrored from StepStore.java) — the
 //            reboot discontinuity, the app-closed recovery, and day rollover.
@@ -57,6 +60,10 @@ const { resolveTheme } = await import('../src/hooks/useTheme.tsx');
 const {
   MAX_PLAUSIBLE_DELTA, applyRawReading, emptyCounterState, rawReadingDelta, rollDay,
 } = await import('../src/services/backgroundStepPolicy.ts');
+
+const {
+  MIN_RUN, MIN_STEP_INTERVAL_MS, MAX_STEP_INTERVAL_MS, StepDetector,
+} = await import('../src/lib/stepDetection.ts');
 
 const C = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', c: '\x1b[36m', x: '\x1b[0m' };
 const PASS = `${C.g}PASS${C.x}`;
@@ -725,6 +732,141 @@ console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
   check('4,000 hostile sensor readings: zero throws', throws === 0, `${throws}`);
   check('4,000 hostile sensor readings: the day never goes backwards or NaN',
     violations === 0, `${violations} violations`);
+}
+
+// --- Part I: walking vs handling -----------------------------------------------
+console.log(`\n${C.b}${C.c}Part I — step detection (rhythm gate)${C.x}\n`);
+
+// Feed a list of peak timestamps and total what gets credited.
+const run = (peaks) => {
+  const d = new StepDetector();
+  let total = 0;
+  for (const t of peaks) total += d.push(t);
+  return total;
+};
+
+// Build an evenly-spaced train, optionally jittered.
+const cadence = (count, intervalMs, start = 10000, jitter = 0) => {
+  const out = [];
+  let t = start;
+  for (let i = 0; i < count; i++) {
+    out.push(Math.round(t));
+    t += intervalMs + (jitter ? (((i * 37) % 11) - 5) / 5 * jitter : 0);
+  }
+  return out;
+};
+
+{
+  // --- Walking IS counted ---
+  check('a steady 20-step walk counts all 20', run(cadence(20, 520)) === 20,
+    `${run(cadence(20, 520))}`);
+  check('a brisk walk (2.5 steps/sec) counts in full', run(cadence(30, 400)) === 30,
+    `${run(cadence(30, 400))}`);
+  check('a slow stroll (1 step/sec) counts in full', run(cadence(15, 950)) === 15,
+    `${run(cadence(15, 950))}`);
+  check('the first steps of a walk are credited retroactively, not swallowed',
+    run(cadence(MIN_RUN, 520)) === MIN_RUN, `${run(cadence(MIN_RUN, 520))}`);
+  check('real gait jitter does not break the run', run(cadence(25, 520, 10000, 60)) === 25,
+    `${run(cadence(25, 520, 10000, 60))}`);
+  check('gradually speeding up stays counted', (() => {
+    const d = new StepDetector();
+    let t = 10000, total = 0, gap = 700;
+    for (let i = 0; i < 20; i++) { total += d.push(t); t += gap; gap = Math.max(380, gap - 15); }
+    return total === 20;
+  })());
+
+  // --- Handling is NOT counted ---
+  check('a single jolt counts nothing', run([10000]) === 0);
+  check('two jolts count nothing', run([10000, 10700]) === 0);
+  check('three jolts count nothing — one short of a run', run([10000, 10520, 11040]) === 0);
+  check('picking the phone up and putting it down counts nothing',
+    run([10000, 10800, 14000, 14300]) === 0);
+  check('random shaking counts nothing', (() => {
+    // Deliberately irregular intervals, all above the noise floor.
+    const gaps = [300, 900, 340, 1500, 420, 280, 1100, 350, 1800, 300, 700, 260];
+    let t = 10000; const peaks = [t];
+    for (const g of gaps) { t += g; peaks.push(t); }
+    return run(peaks) === 0;
+  })());
+  check('a burst of very fast vibration counts nothing',
+    run(cadence(30, 80)) === 0, `${run(cadence(30, 80))}`);
+  check('peaks slower than a human step never form a run',
+    run(cadence(10, MAX_STEP_INTERVAL_MS + 500)) === 0);
+
+  // --- Boundaries ---
+  // The ringing peak is dropped, and the four genuine peaks around it still
+  // form a valid gait — so the right answer is 4, not 0.
+  check('a ringing peak is dropped without killing the real walk around it',
+    run([10000, 10000 + MIN_STEP_INTERVAL_MS - 20, 10520, 11040, 11560]) === 4,
+    `${run([10000, 10000 + MIN_STEP_INTERVAL_MS - 20, 10520, 11040, 11560])}`);
+  check('a gap just over the maximum breaks the run',
+    run([10000, 10520, 11040, 11040 + MAX_STEP_INTERVAL_MS + 10, 12000]) === 0);
+}
+
+{
+  // A walk INTERRUPTED by handling: the walk counts, the handling does not, and
+  // the interruption does not destroy the steps already banked.
+  const d = new StepDetector();
+  let total = 0;
+  for (const t of cadence(12, 520, 10000)) total += d.push(t);
+  const afterWalk = total;
+  check('12 steps of walking are banked', afterWalk === 12, `${afterWalk}`);
+
+  // Now shake it irregularly — nothing more should be credited.
+  for (const t of [20000, 20900, 21100, 22800, 23050]) total += d.push(t);
+  check('shaking after a walk adds nothing', total === afterWalk, `${total}`);
+
+  // Resume walking; a fresh run must build up again and then count.
+  for (const t of cadence(10, 520, 40000)) total += d.push(t);
+  check('walking again after the interruption counts again', total === afterWalk + 10,
+    `${total}`);
+}
+
+{
+  // The idle() sweep must stop two distant jolts pretending to be a rhythm.
+  const d = new StepDetector();
+  let total = 0;
+  total += d.push(10000);
+  total += d.push(10520);
+  d.idle(10520 + MAX_STEP_INTERVAL_MS + 1);
+  total += d.push(30000);
+  total += d.push(30520);
+  check('idle() discards a stale partial run', total === 0, `${total}`);
+}
+
+{
+  // Fuzz: hostile timestamps must never throw, never credit a negative, and
+  // never credit more steps than peaks offered.
+  let seed = 424242;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  let throws = 0, bad = 0;
+
+  for (let i = 0; i < 2000; i++) {
+    const d = new StepDetector();
+    let credited = 0, offered = 0;
+    let t = 10000;
+    try {
+      for (let j = 0; j < 40; j++) {
+        const roll = rnd();
+        const stamp =
+          roll < 0.05 ? NaN
+          : roll < 0.1 ? -t
+          : roll < 0.15 ? undefined
+          : (t += Math.floor(rnd() * 2500));
+        offered++;
+        const got = d.push(stamp);
+        if (!Number.isFinite(got) || got < 0) { bad++; break; }
+        credited += got;
+      }
+      if (credited > offered) bad++;
+    } catch (error) {
+      throws++;
+      if (throws <= 3) console.log(`  ${FAIL} detector fuzz #${i} threw: ${error.message}`);
+    }
+  }
+  check('2,000 hostile peak streams: zero throws', throws === 0, `${throws}`);
+  check('2,000 hostile peak streams: never credits more steps than peaks seen',
+    bad === 0, `${bad} violations`);
 }
 
 // --- Summary -----------------------------------------------------------------

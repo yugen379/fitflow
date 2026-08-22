@@ -161,19 +161,38 @@ export const LiquidSkeleton: React.FC = () => (
  * animation would have been solving. In-page motion still uses the full library;
  * it lives in lazy route chunks where it costs nothing at boot.
  *
- * `perspective` sits on the outer container, not the animated child: the depth
- * effect has to be measured from the viewport, otherwise `rotateX` flattens
- * into a meaningless vertical squash.
+ * Depth comes from the `perspective()` function inside the keyframe transform,
+ * NOT from a `perspective` property on the container — see the comment on the
+ * wrapper below for why that distinction is load-bearing.
  */
 export const SpatialPageTransition: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const reduced = prefersReducedMotion();
 
   return (
-    <div className="relative" style={{ perspective: '1400px' }}>
+    // NO `perspective` on this wrapper. Like `transform`, the `perspective`
+    // property makes an element the CONTAINING BLOCK for every
+    // `position: fixed` descendant — which meant every modal in the app (water
+    // picker, edit profile, permissions sheet, scanner) was sized against this
+    // wrapper instead of the viewport, and opened far below the fold on any
+    // long page. The user taps, the modal mounts, nothing appears to happen.
+    //
+    // The depth effect is unaffected: the `ff-spatial-enter` keyframes already
+    // carry their own `perspective(1400px)` inside the transform function, so
+    // rotateX still has real depth rather than flattening into a squash.
+    <div className="relative">
       <main
         key={location.pathname}
-        className={cn('relative z-10', !reduced && 'spatial-enter')}
+        // `relative` WITHOUT a z-index on purpose. `z-10` here created a
+        // stacking context, which trapped every nested modal's `z-[100]` at
+        // root level 10 — underneath the FloatingDock at `z-[60]`. That is why
+        // the dock and the camera button painted on top of open sheets and ate
+        // their buttons. With `z-index: auto` this element no longer forms a
+        // context, so a modal's z-100 competes with the dock directly and wins.
+        //
+        // It still paints above ParticleField, which is `z-index: 0` and comes
+        // earlier in DOM order.
+        className={cn('relative', !reduced && 'spatial-enter')}
         style={{ transformOrigin: '50% 20%' }}
       >
         {children}

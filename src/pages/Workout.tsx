@@ -58,6 +58,8 @@ export const Workout: React.FC = () => {
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  /** Second-tap guard on the discard button; resets whenever the session changes. */
+  const [confirmQuit, setConfirmQuit] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
   const [customFocus, setCustomFocus] = useState<'Strength' | 'Cardio' | 'Cycling' | 'Swimming'>('Strength');
   const [customDuration, setCustomDuration] = useState(30);
@@ -482,11 +484,30 @@ export const Workout: React.FC = () => {
                 </div>
 
                 <div className="p-5 border-t border-white/[0.06] flex justify-between items-center gap-3">
+                  {/* Quitting throws away every set logged in this session, so
+                      it asks once rather than firing on a stray tap. Two taps,
+                      not a modal: another sheet over a full-screen session is
+                      more disruptive than the confirmation is worth. */}
                   <button
-                    onClick={() => { window.speechSynthesis?.cancel(); setActiveWorkout(null); }}
-                    className="text-accent-2 text-sm font-medium"
+                    onClick={() => {
+                      haptic('light');
+                      if (!confirmQuit) {
+                        setConfirmQuit(true);
+                        return;
+                      }
+                      window.speechSynthesis?.cancel();
+                      setConfirmQuit(false);
+                      setActiveWorkout(null);
+                    }}
+                    onBlur={() => setConfirmQuit(false)}
+                    className={cn(
+                      'text-sm font-medium rounded-xl px-3 py-2 -ml-1 transition-colors text-left shrink-0',
+                      confirmQuit
+                        ? 'bg-accent-2/15 border border-accent-2/40 text-accent-2'
+                        : 'text-accent-2',
+                    )}
                   >
-                    End session
+                    {confirmQuit ? 'Tap again to discard' : "I don't want to workout"}
                   </button>
                   <button
                     onClick={() => setShowFormCheck(true)}
