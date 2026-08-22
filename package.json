@@ -24,7 +24,8 @@
     "proof:engagement": "tsx scripts/engagement-proof.mjs",
     "proof:seed": "tsx scripts/seed-proof.mjs",
     "proof:subscription": "tsx scripts/subscription-proof.mjs",
-    "proof:scanner": "node scripts/gen-barcode-y4m.mjs && python scripts/scanner_cam_test.py"
+    "proof:scanner": "node scripts/gen-barcode-y4m.mjs && python scripts/scanner_cam_test.py",
+    "proof:preload": "tsx scripts/preload-proof.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/app-check": "^8.3.0",

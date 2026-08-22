@@ -218,3 +218,40 @@ export const prefetchPathHandlers = (path: string) => ({
 
 /** Test/debug hook: which routes have been warmed so far. */
 export const prefetchedRoutes = (): RouteKey[] => [...started];
+
+/**
+ * Every route chunk, for the boot preloader.
+ *
+ * `warmLikelyRoutes` deliberately trickles a handful of destinations one at a
+ * time AFTER the app is interactive. This is the other half: during the splash,
+ * when there is no screen to compete with, pull everything so the first tap on
+ * any tab resolves from memory instead of the network.
+ *
+ * `lab` is included here — unlike in the speculative set — because the splash is
+ * the one moment where paying for three.js costs the user nothing they can see.
+ * It is last in the list and the preloader is deadline-bounded, so on a slow
+ * connection it is simply the thing that does not finish.
+ */
+export const preloadAllRoutes = async (): Promise<void> => {
+  const order: RouteKey[] = [
+    ...SPECULATIVE,
+    'community', 'wellness', 'explore', 'library', 'analytics',
+    'mealPlan', 'challenges', 'settings', 'coach', 'pro',
+    'nutritionGoals', 'achievements', 'onboarding', 'lab',
+  ];
+  await Promise.all(
+    order.map(async (route) => {
+      if (started.has(route)) return;
+      started.add(route);
+      try {
+        await loaders[route]();
+      } catch {
+        started.delete(route);
+      }
+    }),
+  );
+};
+
+/** True once every route chunk has been pulled — the preload success signal. */
+export const allRoutesPreloaded = (): boolean =>
+  (Object.keys(loaders) as RouteKey[]).every((route) => started.has(route));

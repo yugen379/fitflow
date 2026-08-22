@@ -145,20 +145,32 @@
         background: rgba(255, 255, 255, 0.08);
         overflow: hidden;
       }
+      /* DETERMINATE. The bar was a shimmer sliding back and forth, which looks
+         busy and tells the user nothing. It is now driven by real preload
+         progress via --ff-progress, so the width IS the percentage. */
       #ff-splash .ff-bar i {
         display: block;
-        width: 40%;
+        width: var(--ff-progress, 0%);
         height: 100%;
         border-radius: 999px;
-        background: #c6ff3d;
-        animation: ff-slide 1.1s ease-in-out infinite;
+        background: linear-gradient(90deg, #c6ff3d 0%, #9cff1f 60%, #7fe7ff 100%);
+        /* Transform would be cheaper, but width keeps the rounded right cap
+           attached to the fill instead of sliding a fixed-width block. */
+        transition: width 220ms cubic-bezier(0.16, 1, 0.3, 1);
       }
-      @keyframes ff-slide {
-        0%   { transform: translateX(-100%); }
-        100% { transform: translateX(320%); }
+      #ff-splash .ff-pct {
+        margin: 0;
+        color: #c6ff3d;
+        font-size: 12px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        min-height: 15px;
       }
+      html[data-theme="light"] #ff-splash .ff-pct { color: #5e7a00; }
+      html[data-theme="light"] #ff-splash .ff-bar { background: rgba(11, 18, 32, 0.10); }
       @media (prefers-reduced-motion: reduce) {
-        #ff-splash .ff-bar i { animation: none; width: 100%; }
+        #ff-splash .ff-bar i { transition: none; }
         #ff-splash { transition: none; }
       }
     </style>
@@ -176,6 +188,7 @@
       <h1>FitFlow</h1>
       <p>Train smarter. Move farther.</p>
       <span class="ff-bar" aria-hidden="true"><i></i></span>
+      <p class="ff-pct" id="ff-pct">Loading 0%</p>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
