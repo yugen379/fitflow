@@ -26,6 +26,7 @@ import { TodayMission } from '../components/TodayMission';
 import { XPBar } from '../components/XPBar';
 import { OrbitalHUD } from '../components/3d/OrbitalHUD';
 import { StepHubWidget } from '../components/StepHubWidget';
+import { HydrationDrop } from '../components/HydrationDrop';
 import { NotificationCenter } from '../components/ui/NotificationCenter';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { useSteps } from '../hooks/useSteps';
@@ -35,6 +36,9 @@ import { Sparkles as SparklesIcon } from 'lucide-react';
 
 /** Daily step goal. Matches the target the /steps page and the nudge engine use. */
 const STEP_GOAL = 10000;
+
+/** Daily hydration target. Was hard-coded as 3000 in three separate places. */
+const WATER_GOAL_ML = 3000;
 
 export const Home: React.FC = () => {
   const { profile } = useAuth();
@@ -205,6 +209,12 @@ export const Home: React.FC = () => {
 
   const addWater = async (amount = 250) => {
     if (!profile?.uid) return;
+    // Optimistic: the total came only from the Firestore snapshot, so the drop
+    // sat still until the round-trip landed — which on a slow connection reads
+    // as a dead button. The listener recomputes from the logs and overwrites
+    // this with the authoritative figure a moment later, so a failed write
+    // self-corrects rather than leaving the number wrong.
+    setWater((current) => current + amount);
     try {
       celebrateSmall();
       await addDoc(collection(db, 'water_logs'), {
@@ -467,11 +477,24 @@ export const Home: React.FC = () => {
 
         <AnimatePresence>
           {waterPicker && (
-            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:p-4">
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setWaterPicker(false)}
               />
+
+              {/* The drop lives in the space ABOVE the sheet, which was
+                  previously just scrim. pointer-events-none so the whole area
+                  still dismisses on tap, exactly as before. */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 10 }}
+                transition={{ type: 'spring', stiffness: 180, damping: 24 }}
+                className="relative flex-1 flex items-center justify-center pointer-events-none sm:hidden"
+              >
+                <HydrationDrop currentMl={water} goalMl={WATER_GOAL_ML} showPresets={false} />
+              </motion.div>
               <motion.div
                 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
                 transition={{ type: 'spring', damping: 28 }}
@@ -481,15 +504,29 @@ export const Home: React.FC = () => {
                   <div className="w-10 h-10 rounded-xl bg-accent-3/12 border border-accent-3/25 flex items-center justify-center text-lg">💧</div>
                   <div>
                     <p className="text-eyebrow text-accent-3">Hydration</p>
-                    <p className="text-white font-display text-xl font-bold tracking-tight">{water}<span className="text-base text-text-dim font-medium ml-1">/ 3000 ml</span></p>
+                    <p className="num text-white font-display text-xl font-bold tracking-tight">
+                      {water.toLocaleString()}
+                      <span className="text-base text-text-dim font-medium ml-1">
+                        / {WATER_GOAL_ML.toLocaleString()} ml
+                      </span>
+                    </p>
                   </div>
                 </div>
+
+                {/* On a wide screen there is no tall scrim to fill, so the drop
+                    rides inside the sheet instead. */}
+                <div className="hidden sm:flex justify-center">
+                  <HydrationDrop currentMl={water} goalMl={WATER_GOAL_ML} showPresets={false} />
+                </div>
+
+                {/* The sheet keeps the buttons. The drop reacts to `water`
+                    rising, so the splash fires wherever the add came from. */}
                 <div className="grid grid-cols-4 gap-2">
                   {[100, 250, 500, 750].map(ml => (
                     <button
                       key={ml}
-                      onClick={() => { addWater(ml); setWaterPicker(false); }}
-                      className="glass p-3 flex flex-col items-center gap-1 hover:border-accent-3/30 transition-colors"
+                      onClick={() => addWater(ml)}
+                      className="glass p-3 flex flex-col items-center gap-1 hover:border-accent-3/30 active:scale-95 transition-all"
                     >
                       <span className="num font-display text-lg font-bold text-white">{ml}</span>
                       <span className="text-[10px] text-text-dim font-medium">ml</span>

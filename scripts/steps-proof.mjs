@@ -20,6 +20,12 @@
 //            step_days mirror, and the session-delta clamp that stops a native
 //            pedometer restart from wiping the day.
 //   Part G — THEME: the light/dark/system resolution rule.
+//   Part J — GAIT SIMULATION: the WHOLE signal path (high-pass, adaptive
+//            threshold, hysteresis, rhythm gate) driven with synthetic
+//            accelerometer waveforms at 60 Hz, for real walking styles and for
+//            the ways a phone gets handled. This is what the thresholds are
+//            tuned against — a floor picked by feel silently stopped counting
+//            for anyone who walks gently.
 //   Part I — STEP DETECTION: the rhythm gate that separates walking from a
 //            phone being shaken, waved or set down. This is the fix for real
 //            users reporting "when I move the phone it also calculates".
@@ -62,7 +68,7 @@ const {
 } = await import('../src/services/backgroundStepPolicy.ts');
 
 const {
-  MIN_RUN, MIN_STEP_INTERVAL_MS, MAX_STEP_INTERVAL_MS, StepDetector,
+  MIN_RUN, MIN_STEP_INTERVAL_MS, MAX_STEP_INTERVAL_MS, StepDetector, StepPipeline,
 } = await import('../src/lib/stepDetection.ts');
 
 const C = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', c: '\x1b[36m', x: '\x1b[0m' };
@@ -794,11 +800,15 @@ const cadence = (count, intervalMs, start = 10000, jitter = 0) => {
     run(cadence(10, MAX_STEP_INTERVAL_MS + 500)) === 0);
 
   // --- Boundaries ---
-  // The ringing peak is dropped, and the four genuine peaks around it still
-  // form a valid gait — so the right answer is 4, not 0.
+  // The ringing peak is dropped, and the genuine peaks around it still form a
+  // valid gait. Sized off MIN_RUN so retuning the gate cannot silently rot this
+  // fixture — it previously hard-coded 4 and broke the moment MIN_RUN moved.
+  const withRing = [10000, 10000 + MIN_STEP_INTERVAL_MS - 20,
+    ...Array.from({ length: MIN_RUN }, (_, i) => 10520 + i * 520)];
+  // MIN_RUN + 1: the opening peak is part of the walk too, and the ring between
+  // it and the next real step is the only thing dropped.
   check('a ringing peak is dropped without killing the real walk around it',
-    run([10000, 10000 + MIN_STEP_INTERVAL_MS - 20, 10520, 11040, 11560]) === 4,
-    `${run([10000, 10000 + MIN_STEP_INTERVAL_MS - 20, 10520, 11040, 11560])}`);
+    run(withRing) === MIN_RUN + 1, `${run(withRing)} (expected ${MIN_RUN + 1})`);
   check('a gap just over the maximum breaks the run',
     run([10000, 10520, 11040, 11040 + MAX_STEP_INTERVAL_MS + 10, 12000]) === 0);
 }
@@ -867,6 +877,235 @@ const cadence = (count, intervalMs, start = 10000, jitter = 0) => {
   check('2,000 hostile peak streams: zero throws', throws === 0, `${throws}`);
   check('2,000 hostile peak streams: never credits more steps than peaks seen',
     bad === 0, `${bad} violations`);
+}
+
+// --- Part J: end-to-end gait simulation ----------------------------------------
+console.log(`\n${C.b}${C.c}Part J — gait simulation (full signal path)${C.x}\n`);
+
+let SAMPLE_HZ = 60;
+let SAMPLE_MS = 1000 / SAMPLE_HZ;
+const GRAVITY = 9.81;
+const setRate = (hz) => { SAMPLE_HZ = hz; SAMPLE_MS = 1000 / hz; };
+
+// Deterministic pseudo-noise, so a failure is always reproducible.
+let noiseSeed = 987654321;
+const noise = (amp) => {
+  noiseSeed = (noiseSeed * 1103515245 + 12345) % 2147483648;
+  return ((noiseSeed / 2147483648) - 0.5) * 2 * amp;
+};
+
+/**
+ * Walking accelerometer magnitude.
+ *
+ * Real gait is not a clean sine: each stride has a strong heel strike plus a
+ * smaller toe-off, which is why a second harmonic is included. That harmonic is
+ * exactly what produces the closely-spaced double peaks a naive detector either
+ * double-counts or chokes on.
+ */
+const walkSignal = ({ steps, stepsPerSec, amplitude, harmonic = 0.35, noiseAmp = 0.12, startAt = 100000 }) => {
+  const out = [];
+  const durationMs = (steps / stepsPerSec) * 1000;
+  const w = 2 * Math.PI * stepsPerSec;
+  for (let t = 0; t < durationMs; t += SAMPLE_MS) {
+    const phase = (w * t) / 1000;
+    const mag = GRAVITY
+      + amplitude * Math.sin(phase)
+      + amplitude * harmonic * Math.sin(2 * phase + 0.9)
+      + noise(noiseAmp);
+    out.push({ mag, at: Math.round(startAt + t) });
+  }
+  return out;
+};
+
+/** Feed a signal through the pipeline and total the credited steps. */
+const runSignal = (samples, pipeline = new StepPipeline()) => {
+  let total = 0;
+  for (const s of samples) total += pipeline.push(s.mag, s.at);
+  return total;
+};
+
+/** Steps counted as a percentage of steps actually taken. */
+const accuracy = (counted, actual) => (counted / actual) * 100;
+
+{
+  // --- The rate sweep. `devicemotion` is NOT 60 Hz: it is whatever the device
+  // and browser deliver, measured at 14 Hz in one real environment and commonly
+  // 16-60 Hz across Android. A filter coefficient hard-coded for 60 Hz becomes a
+  // ~1 Hz cutoff at 14 Hz, which filters out walking itself and pins the counter
+  // at zero. That shipped once; this sweep is here so it cannot ship again.
+  // 14 Hz is the measured real-world floor (Android delivers roughly 16-60 Hz;
+  // 14 Hz was observed in a headless Chromium). 12 Hz is included for ordinary
+  // walking, but not for the gentle case — see the note on MIN_PEAK_MAGNITUDE
+  // for why buying that back costs more than it is worth.
+  for (const hz of [12, 14, 20, 30, 50, 60]) {
+    setRate(hz);
+    const counted = runSignal(walkSignal({ steps: 100, stepsPerSec: 1.8, amplitude: 3.0 }));
+    const pct = accuracy(counted, 100);
+    check(`walking is counted at a ${hz} Hz sample rate`, pct >= 80 && pct <= 120,
+      `${counted}/100 = ${pct.toFixed(0)}%`);
+
+    // The hard combination: a gentle hand-carried walk AND a slow sample rate.
+    // Low amplitude leaves little headroom over the noise floor, and a low rate
+    // costs more of it in the filter — so this is where a threshold set for a
+    // brisk pocket walk quietly stops counting.
+    if (hz >= 14) {
+      const gentle = runSignal(walkSignal({ steps: 100, stepsPerSec: 1.6, amplitude: 1.5 }));
+      check(`a gentle walk is counted at ${hz} Hz`, gentle >= 70 && gentle <= 130,
+        `${gentle}/100`);
+    }
+  }
+  setRate(60);
+}
+
+{
+  // --- Real walking must be counted, across placements and paces ---
+  const cases = [
+    { name: 'vigorous walk, phone in pocket', steps: 100, stepsPerSec: 2.0, amplitude: 4.0 },
+    { name: 'normal walk, phone in pocket',   steps: 100, stepsPerSec: 1.8, amplitude: 3.0 },
+    { name: 'normal walk, phone in hand',     steps: 100, stepsPerSec: 1.8, amplitude: 2.0 },
+    { name: 'gentle walk, phone in hand',     steps: 100, stepsPerSec: 1.6, amplitude: 1.5 },
+    { name: 'slow stroll',                    steps: 100, stepsPerSec: 1.2, amplitude: 2.2 },
+    { name: 'brisk march',                    steps: 100, stepsPerSec: 2.4, amplitude: 5.0 },
+    { name: 'jogging',                        steps: 100, stepsPerSec: 2.8, amplitude: 7.0 },
+  ];
+
+  for (const c of cases) {
+    const counted = runSignal(walkSignal(c));
+    const pct = accuracy(counted, c.steps);
+    // Within 20% either way: a pedometer that misses a fifth of a walk, or
+    // invents a fifth, is not usable. Consumer trackers land in this band.
+    check(`${c.name}: counts within 20%`, pct >= 80 && pct <= 120,
+      `${counted}/${c.steps} = ${pct.toFixed(0)}%`);
+  }
+}
+
+{
+  // --- Handling the phone must NOT be counted ---
+  const still = [];
+  for (let i = 0; i < 600; i++) still.push({ mag: GRAVITY + noise(0.05), at: 100000 + i * SAMPLE_MS });
+  check('a phone sitting on a desk counts nothing', runSignal(still) === 0, `${runSignal(still)}`);
+
+  // A single sharp jolt: picking it up.
+  const jolt = [];
+  for (let i = 0; i < 300; i++) {
+    const t = i * SAMPLE_MS;
+    const spike = (t > 500 && t < 700) ? 6 * Math.sin(((t - 500) / 200) * Math.PI) : 0;
+    jolt.push({ mag: GRAVITY + spike + noise(0.08), at: 100000 + t });
+  }
+  check('picking the phone up counts nothing', runSignal(jolt) === 0, `${runSignal(jolt)}`);
+
+  // Irregular waving — big amplitudes, no steady rhythm.
+  // Irregular at the level that matters: each half-swing gets its OWN duration,
+  // between 140 ms and 900 ms, so consecutive peaks are genuinely far apart in
+  // period. Two earlier versions of this test got the randomness wrong —
+  // `i % 13` is periodic, and per-sample jitter averages out across a
+  // half-cycle — so both were quietly simulating a steady rhythm and then
+  // complaining the rhythm gate counted it. Rhythmic shaking at walking cadence
+  // IS counted, by this and by every consumer pedometer; that is a real and
+  // stated limit, not something to fake a passing test around.
+  const wave = [];
+  let wavePhase = 0;
+  let waveAt = 100000;
+  for (let swing = 0; swing < 26; swing++) {
+    const swingMs = 140 + Math.abs(noise(1)) * 760;
+    const samples = Math.max(3, Math.round(swingMs / SAMPLE_MS));
+    for (let i = 0; i < samples; i++) {
+      wavePhase += Math.PI / samples;
+      wave.push({ mag: GRAVITY + 5 * Math.sin(wavePhase) + noise(0.3), at: Math.round(waveAt) });
+      waveAt += SAMPLE_MS;
+    }
+  }
+  const waved = runSignal(wave);
+  // Bound, not zero — and deliberately so. Randomly-timed swings will sometimes
+  // contain a genuinely rhythmic stretch, and when they do it is counted,
+  // because at that point the signal IS rhythmic motion at walking cadence.
+  // Verified by construction: raising MIN_RUN from 5 to 7 does not change this
+  // number at all, which means it comes from one real rhythmic stretch rather
+  // than from the gate being loose. ~13 s of shaking yielding under ten steps is
+  // the honest floor for an accelerometer; the hardware step sensor in the
+  // Android build is the fix, not a tighter threshold here.
+  check('irregular handling stays low', waved <= 15, `${waved}`);
+
+  // High-frequency vibration (a phone on a buzzing table / in a car).
+  const buzz = [];
+  for (let i = 0; i < 900; i++) {
+    const t = i * SAMPLE_MS;
+    buzz.push({ mag: GRAVITY + 3 * Math.sin((2 * Math.PI * 12 * t) / 1000) + noise(0.2), at: 100000 + t });
+  }
+  check('12 Hz vibration counts nothing', runSignal(buzz) === 0, `${runSignal(buzz)}`);
+}
+
+{
+  // --- A realistic day: walk, stop, handle the phone, walk again ---
+  const pipeline = new StepPipeline();
+  let total = 0;
+  let clock = 100000;
+
+  const feed = (samples) => { total += runSignal(samples, pipeline); };
+  const idleFor = (ms) => {
+    for (let t = 0; t < ms; t += SAMPLE_MS) {
+      total += pipeline.push(GRAVITY + noise(0.05), Math.round(clock + t));
+    }
+    clock += ms;
+  };
+
+  const walk = (steps, sps, amp) => {
+    const sig = walkSignal({ steps, stepsPerSec: sps, amplitude: amp, startAt: clock });
+    feed(sig);
+    clock = sig[sig.length - 1].at + SAMPLE_MS;
+  };
+
+  walk(40, 1.8, 3.0);
+  const afterFirst = total;
+  check('first 40-step walk is counted', accuracy(afterFirst, 40) >= 80, `${afterFirst}/40`);
+
+  idleFor(8000);
+  check('standing still adds nothing', total === afterFirst, `${total}`);
+
+  // Handle the phone: a few irregular jolts.
+  for (const gapMs of [0, 700, 260, 1500, 400]) {
+    clock += gapMs;
+    for (let i = 0; i < 12; i++) {
+      total += pipeline.push(GRAVITY + 5 * Math.sin((i / 12) * Math.PI) + noise(0.2), Math.round(clock + i * SAMPLE_MS));
+    }
+    clock += 12 * SAMPLE_MS;
+  }
+  check('handling the phone between walks adds at most a couple', total - afterFirst <= 4,
+    `${total - afterFirst}`);
+
+  const beforeSecond = total;
+  idleFor(5000);
+  walk(60, 2.0, 3.5);
+  check('the second walk is still counted after the interruption',
+    accuracy(total - beforeSecond, 60) >= 80, `${total - beforeSecond}/60`);
+}
+
+{
+  // Fuzz the whole pipeline with hostile samples: no throws, no negatives, and
+  // a still phone can never accumulate steps.
+  let seed = 13579;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  let throws = 0, bad = 0;
+
+  for (let i = 0; i < 500; i++) {
+    const pipeline = new StepPipeline();
+    let t = 100000, credited = 0;
+    try {
+      for (let j = 0; j < 200; j++) {
+        const roll = rnd();
+        const mag = roll < 0.05 ? NaN : roll < 0.1 ? Infinity : roll < 0.15 ? -50 : GRAVITY + (rnd() - 0.5) * 20;
+        t += Math.floor(rnd() * 60);
+        const got = pipeline.push(mag, t);
+        if (!Number.isFinite(got) || got < 0) { bad++; break; }
+        credited += got;
+      }
+    } catch (error) {
+      throws++;
+      if (throws <= 3) console.log(`  ${FAIL} pipeline fuzz #${i} threw: ${error.message}`);
+    }
+  }
+  check('500 hostile sample streams: zero throws', throws === 0, `${throws}`);
+  check('500 hostile sample streams: never a negative credit', bad === 0, `${bad}`);
 }
 
 // --- Summary -----------------------------------------------------------------

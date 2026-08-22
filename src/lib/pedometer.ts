@@ -41,7 +41,7 @@
 
 import { get, set } from 'idb-keyval';
 
-import { StepDetector } from './stepDetection';
+import { StepPipeline } from './stepDetection';
 
 import {
   KCAL_PER_STEP,
@@ -67,16 +67,6 @@ export type { StepBody };
  * harness, which cannot load this module because of its IndexedDB use.
  */
 
-/**
- * Below this the signal is noise, whatever the adaptive threshold says.
- *
- * Raised from 0.9: ordinary handling — pulling the phone out, setting it down,
- * gesturing while holding it — clears 0.9 m/s2 easily, and every one of those
- * jolts was being offered up as a step.
- */
-const MIN_PEAK_MAGNITUDE = 1.8;
-/** Samples used to adapt the threshold to the device. */
-const WINDOW = 50;
 /** Gap after which walking is considered to have stopped, for active-time. */
 const CADENCE_GAP_MS = 6000;
 
@@ -175,15 +165,12 @@ class Pedometer {
   private activeMs = 0;
 
   // Detection state
-  private window: number[] = [];
-  private mean = 0;
-  private armed = true;
   private lastStepAt = 0;
   private lastSampleAt = 0;
   /** Timestamps of recent steps, for cadence. */
   private recent: number[] = [];
-  /** Rhythm gate that decides which peaks are actually steps. */
-  private detector = new StepDetector();
+  /** Signal -> steps. All thresholds and the rhythm gate live in stepDetection. */
+  private pipeline = new StepPipeline();
 
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private hydrated = false;
@@ -389,7 +376,7 @@ class Pedometer {
     this.steps = 0;
     this.activeMs = 0;
     this.recent = [];
-    this.detector.reset();
+    this.pipeline.reset();
   }
 
   private onMotion(event: DeviceMotionEvent): void {
@@ -409,42 +396,17 @@ class Pedometer {
 
     const magnitude = Math.sqrt(x * x + y * y + z * z);
 
-    // Rolling mean ≈ gravity + posture. Subtracting it high-pass filters the
-    // signal without needing a real filter implementation.
-    this.window.push(magnitude);
-    if (this.window.length > WINDOW) this.window.shift();
-    this.mean = this.window.reduce((a, b) => a + b, 0) / this.window.length;
-
-    const dynamic = magnitude - this.mean;
-
-    // Adaptive band from the spread of recent samples, floored so a perfectly
-    // still phone cannot generate steps from sensor noise.
-    const variance =
-      this.window.reduce((sum, value) => sum + (value - this.mean) ** 2, 0) / this.window.length;
-    const spread = Math.sqrt(variance);
-    const upper = Math.max(MIN_PEAK_MAGNITUDE, spread * 0.85);
-    const lower = upper * 0.4;
-
-    if (this.armed && dynamic > upper) {
-      this.onPeak(now);
-      this.armed = false;
-    } else if (!this.armed && dynamic < lower) {
-      // Re-arm only after the signal has genuinely fallen back.
-      this.armed = true;
-    }
-
-    // A long silence ends the current walk, so uncredited candidates are
-    // dropped rather than combining with a future jolt into a false "rhythm".
-    this.detector.idle(now);
+    // Everything from here — high-pass, adaptive threshold, hysteresis and the
+    // rhythm gate — lives in stepDetection.ts so it can be driven with
+    // synthetic gait by the proof harness.
+    const credited = this.pipeline.push(magnitude, now);
+    if (credited > 0) this.creditSteps(credited, now);
   }
 
-  /** Delegates the walking-vs-handling decision, then banks whatever it credits. */
-  private onPeak(now: number): void {
-    const credited = this.detector.push(now);
-    if (credited <= 0) return;
-    this.steps += credited;
+  private creditSteps(count: number, now: number): void {
+    this.steps += count;
     this.lastStepAt = now;
-    for (let i = 0; i < credited; i++) this.recent.push(now);
+    for (let i = 0; i < count; i++) this.recent.push(now);
     while (this.recent.length > 240) this.recent.shift();
     this.emit();
     this.scheduleSave();

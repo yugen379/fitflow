@@ -861,3 +861,26 @@
 :root[data-theme="light"] .ff-scrubber::-moz-range-thumb {
   box-shadow: 0 2px 8px rgba(11, 18, 32, 0.28), 0 0 0 6px rgba(94, 122, 0, 0.14);
 }
+
+/* ── Hydration drop waves ──────────────────────────────────────────────────
+   Two layers translated at different speeds; their interference is what stops
+   the surface reading as a metronome. Each wave path is one full period
+   repeated across twice the viewBox width, so translating by exactly one
+   period (100 units) loops with no visible seam.
+
+   Transform only, so the compositor owns this and nothing redraws per frame in
+   JavaScript — which is what keeps it smooth on a mid-range phone. */
+@keyframes ff-wave-a {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100px); }
+}
+@keyframes ff-wave-b {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-120px); }
+}
+.ff-wave-a { animation: ff-wave-a 2.6s linear infinite; }
+.ff-wave-b { animation: ff-wave-b 3.9s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-wave-a, .ff-wave-b { animation: none; }
+}
