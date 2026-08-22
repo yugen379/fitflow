@@ -5,7 +5,9 @@
 // replaying your public API keys.
 //
 // Two providers, picked by platform:
-//   • Web / PWA  → reCAPTCHA v3 (env-gated by VITE_RECAPTCHA_V3_SITE_KEY).
+//   • Web / PWA  → reCAPTCHA ENTERPRISE (env-gated by VITE_RECAPTCHA_V3_SITE_KEY,
+//     a name kept for compatibility with existing builds and CI secrets even
+//     though the key it holds is an Enterprise key).
 //   • Android/iOS app → Play Integrity / App Attest via @capacitor-firebase/app-check.
 //
 // CRITICAL ARCHITECTURE NOTE: this app does its data I/O with the Firebase JS SDK
@@ -67,7 +69,7 @@ export const initAppCheck = async (app: FirebaseApp): Promise<void> => {
       return;
     }
 
-    // --- Web / PWA: reCAPTCHA v3 ---
+    // --- Web / PWA: reCAPTCHA Enterprise ---
     const siteKey = (import.meta as any).env?.VITE_RECAPTCHA_V3_SITE_KEY;
     if (!siteKey) return; // not configured → ship inert, enable later
 
@@ -77,9 +79,24 @@ export const initAppCheck = async (app: FirebaseApp): Promise<void> => {
     }
     // Loaded only now, after the site-key check — an unconfigured web build
     // never downloads the SDK at all.
-    const { initializeAppCheck, ReCaptchaV3Provider } = await loadAppCheck();
+    // ENTERPRISE, not V3.
+    //
+    // `6LdjDSQtAAAAA...` ("FitFlow App Check") is a reCAPTCHA ENTERPRISE key —
+    // confirmed with `gcloud recaptcha keys list`, and the project carries a
+    // recaptchaEnterpriseConfig for this app. The two providers hit different
+    // exchange endpoints:
+    //
+    //   ReCaptchaV3Provider         -> :exchangeRecaptchaV3Token
+    //   ReCaptchaEnterpriseProvider -> :exchangeRecaptchaEnterpriseToken
+    //
+    // Using the V3 provider with an Enterprise key sent an Enterprise token to
+    // the V3 endpoint, which cannot verify it — so every attestation failed with
+    // 403 "App attestation failed" on every page load. It went unnoticed because
+    // App Check enforcement is off, so nothing broke; it only meant App Check
+    // has never actually protected anything.
+    const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await loadAppCheck();
     initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(siteKey),
+      provider: new ReCaptchaEnterpriseProvider(siteKey),
       isTokenAutoRefreshEnabled: true,
     });
     initialized = true;
