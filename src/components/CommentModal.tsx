@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { addComment, reportContent, blockUser } from '../services/dataService';
 import { query, collection, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db, safeUnsubscribe } from '../lib/firestore';
+import { LoadingBar } from './LoadingBar';
 import { Post } from '../types';
 import { Avatar } from './Avatar';
 import { ReportModal } from './ReportModal';
@@ -98,7 +99,7 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="w-8 h-8 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
+              <LoadingBar label="Loading comments" />
             </div>
           ) : comments.filter(c => !blockedIds.has(c.userId)).length > 0 ? (
             comments.filter(c => !blockedIds.has(c.userId)).map((comment) => (

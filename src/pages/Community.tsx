@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 import { likePost, blockUser, reportContent } from '../services/dataService';
 import { Post } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { LoadingBar } from '../components/LoadingBar';
 import { query, collection, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { Logo } from '../components/Logo';
@@ -144,8 +145,8 @@ export const Community: React.FC = () => {
             className="space-y-6"
           >
             {loading ? (
-              <div className="flex justify-center p-10">
-                <div className="w-8 h-8 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
+              <div className="p-10">
+                <LoadingBar label="Loading feed" />
               </div>
             ) : visiblePosts.length > 0 ? (
               visiblePosts.map((post) => (

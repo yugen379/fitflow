@@ -10,6 +10,7 @@ import { lookupCatalog } from '../services/foodCatalogService';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { MealRecord } from '../types';
 import { db, safeUnsubscribe } from '../lib/firestore';
+import { LoadingBar } from '../components/LoadingBar';
 import { collection, query, where, orderBy, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useToast } from '../hooks/useToast';
@@ -759,8 +760,8 @@ export const Track: React.FC = () => {
           <span className="num text-xs text-text-dim">{meals.length} {meals.length === 1 ? 'item' : 'items'}</span>
         </div>
         {loading ? (
-          <div className="flex justify-center py-10">
-            <div className="w-8 h-8 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
+          <div className="py-10">
+            <LoadingBar label="Loading meals" />
           </div>
         ) : filtered.length ? filtered.map((m, i) => (
           <motion.div

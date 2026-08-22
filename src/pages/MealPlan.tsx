@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Sparkles, ChefHat, ShoppingCart, Flame, X, Loader2, RefreshCw, Replace, Share2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { LoadingBar } from '../components/LoadingBar';
 import { generateMealPlan, getRecipe, swapMeal } from '../services/geminiService';
 import { useToast } from '../hooks/useToast';
 import { db } from '../lib/firestore';
@@ -466,9 +467,8 @@ export const MealPlan: React.FC = () => {
                 </div>
 
                 {loadingRecipe ? (
-                  <div className="py-12 flex flex-col items-center gap-3">
-                    <Loader2 className="animate-spin text-accent" size={24} />
-                    <p className="text-sm text-text-dim">Fetching recipe…</p>
+                  <div className="py-12">
+                    <LoadingBar label="Fetching recipe" />
                   </div>
                 ) : !recipe ? (
                   <div className="py-10 flex flex-col items-center gap-3 text-center">

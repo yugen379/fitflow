@@ -9,6 +9,7 @@ import {
   AreaChart, Area,
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
+import { LoadingBar } from '../components/LoadingBar';
 import { StreakMonument } from '../components/3d/StreakMonument';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firestore';
@@ -121,9 +122,8 @@ export const Analytics: React.FC = () => {
       </header>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <div className="w-10 h-10 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
-          <p className="text-sm text-text-dim">Crunching your data…</p>
+        <div className="py-24">
+          <LoadingBar label="Crunching your data" />
         </div>
       ) : (
         <div className="space-y-5">

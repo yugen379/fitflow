@@ -8,6 +8,7 @@ import { isNativeApp } from './lib/pushPermission';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
 import { useToast } from './hooks/useToast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { LoadingBar } from './components/LoadingBar';
 import { initTelemetry, identify } from './lib/telemetry';
 import { warmLikelyRoutes } from './lib/prefetch';
 import { LiquidSkeleton, ParticleField, SpatialPageTransition } from './components/layout/SpatialPageTransition';
@@ -103,10 +104,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   
   if (loading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-bg">
-        <div className="w-10 h-10 border-2 border-white/10 border-t-accent rounded-full mb-6 animate-spin" />
-        <p className="text-xs text-text-dim font-medium ff-fade-dim">Loading your training data</p>
-      </div>
+      <LoadingBar fullScreen label="Loading your training data" />
     );
   }
   
