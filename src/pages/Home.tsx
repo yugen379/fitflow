@@ -5,7 +5,7 @@ import { query, collection, where, onSnapshot, addDoc, serverTimestamp, updateDo
 import { auth, handleFirestoreError } from '../lib/firebase';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { useNavigate } from 'react-router-dom';
-import { Zap, WifiOff, Volume2, Calendar, HeartPulse } from 'lucide-react';
+import { Zap, WifiOff, Volume2, Calendar, HeartPulse, ChefHat, ChevronRight } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { useTodayActivity } from '../hooks/useTodayActivity';
@@ -26,6 +26,7 @@ import { TodayMission } from '../components/TodayMission';
 import { XPBar } from '../components/XPBar';
 import { OrbitalHUD } from '../components/3d/OrbitalHUD';
 import { StepHubWidget } from '../components/StepHubWidget';
+import { prefetchPath } from '../lib/prefetch';
 import { HydrationDrop } from '../components/HydrationDrop';
 import { NotificationCenter } from '../components/ui/NotificationCenter';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
@@ -579,6 +580,27 @@ export const Home: React.FC = () => {
         </div>
         <span className="text-accent text-xl relative">›</span>
       </motion.button>
+
+      {/* Meal plan had NO entry point anywhere in the app — the route and the
+          whole AI weekly-menu screen existed but nothing linked to it, so it was
+          simply unreachable. This is that door. */}
+      <button
+        onClick={() => { void haptic('light'); prefetchPath('/meal-plan'); navigate('/meal-plan'); }}
+        onPointerEnter={() => prefetchPath('/meal-plan')}
+        className="w-full glass p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+      >
+        <div className="w-11 h-11 rounded-2xl bg-accent-4/12 border border-accent-4/25 flex items-center justify-center text-accent-4 shrink-0">
+          <ChefHat size={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-eyebrow text-accent-4">Meal plan</p>
+          <p className="text-white text-sm font-medium mt-0.5">Your AI week of meals</p>
+          <p className="text-xs text-text-dim mt-0.5">
+            Seven days, every meal listed, with ingredients and a shopping list.
+          </p>
+        </div>
+        <ChevronRight size={18} className="text-text-mute shrink-0" aria-hidden="true" />
+      </button>
 
       <div className="grid grid-cols-2 gap-3 perspective-1000">
         <ActionCard3D icon="🥗" label="Log meal" onClick={() => { haptic('light'); navigate('/track'); }} />

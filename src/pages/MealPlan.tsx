@@ -12,6 +12,8 @@ import { checkAndAwardBadge } from '../services/badgeService';
 import { haptic } from '../lib/haptics';
 import { celebrateSmall } from '../lib/celebrate';
 import { AnimatedNumber } from '../components/AnimatedNumber';
+import { MealDayCard, MEAL_TYPES as DAY_MEAL_TYPES } from '../components/MealDayCard';
+import type { MealType as DayMealType, Recipe } from '../components/MealDayCard';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 type MealType = typeof MEAL_TYPES[number];
@@ -82,6 +84,81 @@ export const MealPlan: React.FC = () => {
   const [shoppingChecked, setShoppingChecked] = useState<Set<string>>(new Set());
   const [swapping, setSwapping] = useState<{ dayIdx: number; mealKey: MealType } | null>(null);
   const [dailyTarget, setDailyTarget] = useState<number>(() => targetCaloriesFor(profile?.goal));
+
+  /**
+   * Recipes by dish name, cached across the session and to localStorage.
+   *
+   * The generator returns meal NAMES only; ingredients come from a separate
+   * per-dish call. Caching matters for two reasons: re-opening a meal should be
+   * instant, and the shopping list is built from what has actually been
+   * fetched — so every recipe loaded makes the list more complete.
+   */
+  const [recipes, setRecipes] = useState<Record<string, Recipe>>({});
+  const [loadingRecipes, setLoadingRecipes] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<{ dayIndex: number; meal: DayMealType } | null>(null);
+  const [loadingDay, setLoadingDay] = useState<number | null>(null);
+
+  const RECIPE_CACHE_KEY = profile?.uid ? `ff_recipes_${profile.uid}` : null;
+
+  useEffect(() => {
+    if (!RECIPE_CACHE_KEY) return;
+    try {
+      const raw = localStorage.getItem(RECIPE_CACHE_KEY);
+      if (raw) setRecipes(JSON.parse(raw));
+    } catch {
+      // A corrupt cache is not worth failing the screen for.
+    }
+  }, [RECIPE_CACHE_KEY]);
+
+  const cacheRecipe = (name: string, recipe: Recipe) => {
+    setRecipes((prev) => {
+      const next = { ...prev, [name]: recipe };
+      if (RECIPE_CACHE_KEY) {
+        try { localStorage.setItem(RECIPE_CACHE_KEY, JSON.stringify(next)); } catch { /* quota */ }
+      }
+      return next;
+    });
+  };
+
+  /** Fetch one dish's recipe unless it is already cached or in flight. */
+  const fetchRecipe = async (name: string): Promise<void> => {
+    if (!name || recipes[name] || loadingRecipes.has(name)) return;
+    setLoadingRecipes((prev) => new Set(prev).add(name));
+    try {
+      const r = await getRecipe(name);
+      if (r) cacheRecipe(name, r as Recipe);
+    } catch {
+      // Leave it uncached so a later tap retries.
+    } finally {
+      setLoadingRecipes((prev) => { const next = new Set(prev); next.delete(name); return next; });
+    }
+  };
+
+  const toggleMeal = (dayIndex: number, meal: DayMealType) => {
+    const open = expanded?.dayIndex === dayIndex && expanded?.meal === meal;
+    setExpanded(open ? null : { dayIndex, meal });
+    if (!open) void fetchRecipe(days[dayIndex]?.[meal]);
+  };
+
+  /**
+   * Load all four recipes for one day, SEQUENTIALLY.
+   *
+   * The Gemini free tier allows ~5 requests per minute per model. Firing 28
+   * requests for the whole week would be rate-limited into failure, so the unit
+   * of work is a day and the calls are serialised.
+   */
+  const loadDayIngredients = async (dayIndex: number) => {
+    const day = days[dayIndex];
+    if (!day) return;
+    setLoadingDay(dayIndex);
+    try {
+      for (const meal of DAY_MEAL_TYPES) {
+        await fetchRecipe(day[meal]);
+      }
+    } finally {
+      setLoadingDay(null);
+    }
+  };
 
   // Sync the daily target with profile.goal once profile loads, but let the user override.
   useEffect(() => {
@@ -205,28 +282,55 @@ export const MealPlan: React.FC = () => {
     }
   };
 
-  // Build the shopping list from the current 7-day plan
+  /**
+   * Shopping list, from REAL ingredients.
+   *
+   * This used to be built by splitting the meal NAMES on commas, "and" and
+   * "with" — so "Grilled chicken with quinoa and roasted veg" became three
+   * "ingredients", none of which were quantities and one of which was
+   * "roasted veg". It looked like a shopping list and was closer to a word
+   * salad of the menu.
+   *
+   * It now aggregates the ingredient arrays that `getRecipe` actually returned,
+   * deduplicated case-insensitively. That means it only covers meals whose
+   * recipes have been loaded — which the UI states plainly rather than
+   * pretending the list is complete.
+   */
   const shoppingList: string[] = React.useMemo(() => {
     if (!days.length) return [];
-    const tokens = new Set<string>();
-    days.forEach(d => {
-      MEAL_TYPES.forEach(mt => {
-        const raw = (d as any)[mt];
-        if (typeof raw !== 'string') return;
-        // Split on commas and 'with' / 'and' to extract food tokens.
-        raw.split(/,| and | with /i).forEach(token => {
-          const cleaned = token
-            .trim()
-            .replace(/^\d+\s*(g|oz|cup|cups|tbsp|tsp)\s*/i, '')
-            .replace(/[.()]/g, '')
-            .replace(/^a /, '')
-            .toLowerCase();
-          if (cleaned.length >= 3 && cleaned.length <= 32) tokens.add(cleaned);
+    const seen = new Map<string, string>();
+    days.forEach((day) => {
+      DAY_MEAL_TYPES.forEach((meal) => {
+        const name = (day as any)[meal];
+        const recipe = typeof name === 'string' ? recipes[name] : undefined;
+        recipe?.ingredients?.forEach((raw) => {
+          if (typeof raw !== 'string') return;
+          const item = raw.trim();
+          if (item.length < 2 || item.length > 80) return;
+          // Keep the first spelling seen; dedupe on a normalised key so
+          // "2 eggs" and "2 Eggs" do not both appear.
+          const key = item.toLowerCase().replace(/\s+/g, ' ');
+          if (!seen.has(key)) seen.set(key, item);
         });
       });
     });
-    return Array.from(tokens).sort();
-  }, [days]);
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [days, recipes]);
+
+  /** How much of the week the list actually covers, so the UI can be honest. */
+  const recipeCoverage = React.useMemo(() => {
+    let total = 0;
+    let loaded = 0;
+    days.forEach((day) => {
+      DAY_MEAL_TYPES.forEach((meal) => {
+        const name = (day as any)[meal];
+        if (typeof name !== 'string' || !name) return;
+        total += 1;
+        if (recipes[name]) loaded += 1;
+      });
+    });
+    return { total, loaded };
+  }, [days, recipes]);
 
   const shareShoppingList = async () => {
     const text = `🛒 FitFlow shopping list this week:\n\n${shoppingList.map(i => '• ' + i).join('\n')}`;
@@ -401,37 +505,42 @@ export const MealPlan: React.FC = () => {
             </div>
           </div>
 
-          {days.map((day, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.04, type: 'spring', stiffness: 220, damping: 22 }}
-              className="glass overflow-hidden"
-            >
-              <div className="px-5 py-3 border-b border-white/[0.06] flex justify-between items-center">
-                <p className="text-eyebrow text-accent">{day.day}</p>
-                <div className="flex items-center gap-1.5">
-                  <Flame size={12} className="text-accent-2/70" />
-                  <span className="num text-xs text-text-dim font-medium">{day.calories} kcal</span>
-                </div>
-              </div>
-              <div className="p-5 grid grid-cols-2 gap-4">
-                {MEAL_TYPES.map(mt => (
+          {days.map((day, idx) => {
+            const dayRecipesLoaded = DAY_MEAL_TYPES.every((m) => {
+              const n = (day as any)[m];
+              return !n || !!recipes[n];
+            });
+            return (
+              <div key={idx} className="space-y-2">
+                <MealDayCard
+                  day={day as any}
+                  dayIndex={idx}
+                  expanded={expanded?.dayIndex === idx ? expanded.meal : null}
+                  onToggle={toggleMeal}
+                  recipes={recipes}
+                  loading={loadingRecipes}
+                  swapping={swapping?.dayIdx === idx}
+                  onSwap={(dayIndex, meal, name) => {
+                    setSelectedMeal({ name, type: meal, dayIdx: dayIndex, mealKey: meal as MealType });
+                    void swapSelected();
+                  }}
+                />
+
+                {/* Per DAY, not per week: four recipe calls at a time keeps this
+                    inside the Gemini free tier's ~5 requests/minute. */}
+                {!dayRecipesLoaded ? (
                   <button
-                    key={mt}
-                    onClick={() => openRecipe(day[mt], mt, idx, mt)}
-                    className="text-left space-y-1 group"
+                    type="button"
+                    onClick={() => void loadDayIngredients(idx)}
+                    disabled={loadingDay !== null}
+                    className="w-full h-10 rounded-2xl bg-white/[0.03] border border-white/[0.07] text-text-dim text-[11px] font-semibold active:scale-[0.99] transition-transform disabled:opacity-50"
                   >
-                    <p className="text-eyebrow text-text-dim">{mt}</p>
-                    <p className="text-sm font-medium text-white leading-snug group-hover:text-accent transition-colors">
-                      {day[mt] || '—'}
-                    </p>
+                    {loadingDay === idx ? 'Loading ingredients…' : `Load ingredients for ${day.day}`}
                   </button>
-                ))}
+                ) : null}
               </div>
-            </motion.div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -537,12 +646,23 @@ export const MealPlan: React.FC = () => {
                   <p className="text-xs text-text-dim mt-0.5 num">
                     {shoppingChecked.size} / {shoppingList.length} ticked
                   </p>
+                  {/* The list only covers meals whose recipes have been fetched.
+                      Saying so beats implying the week is fully accounted for. */}
+                  {recipeCoverage.total > 0 && recipeCoverage.loaded < recipeCoverage.total ? (
+                    <p className="text-[11px] text-accent-4 mt-1 leading-snug max-w-[220px]">
+                      From {recipeCoverage.loaded} of {recipeCoverage.total} meals. Load more days to complete it.
+                    </p>
+                  ) : null}
                 </div>
                 <button onClick={() => setShoppingOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close"><X size={16} /></button>
               </div>
               <div className="flex-1 overflow-y-auto space-y-1.5 -mx-1 px-1">
                 {shoppingList.length === 0 ? (
-                  <p className="text-sm text-text-dim text-center py-8">List builds from your meal plan once it's generated.</p>
+                  <p className="text-sm text-text-dim text-center py-8 leading-relaxed px-4">
+                    {days.length === 0
+                      ? 'Generate a plan first, then load a day’s ingredients to start the list.'
+                      : 'No ingredients loaded yet. Open a day and tap “Load ingredients” — each one you load is added here.'}
+                  </p>
                 ) : shoppingList.map(item => {
                   const checked = shoppingChecked.has(item);
                   return (
