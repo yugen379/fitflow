@@ -68,6 +68,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   React.useEffect(() => {
     if (!user || loading) return;
     warmLikelyRoutes();
+    // Deliver anything a previous session failed to write. This used to run
+    // only on an offline->online transition, so a queue built up while online
+    // was never sent — workouts and meals sat in it indefinitely.
+    void import('./services/offlineService').then((m) => m.startOfflineSync());
   }, [user, loading]);
 
   React.useEffect(() => {

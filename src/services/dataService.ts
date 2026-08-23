@@ -56,8 +56,20 @@ const cleanObject = (obj: any) => {
   return newObj;
 };
 
-export const logMeal = async (userId: string, meal: Omit<MealRecord, 'id' | 'timestamp' | 'userId'>) => {
-  if (!navigator.onLine) {
+/**
+ * `queueOnFailure: false` makes the call THROW instead of swallowing the error
+ * into the offline queue. The queue replay uses it: without this the replay
+ * re-queued the very item it was retrying, and then the caller overwrote the
+ * stored queue with its own list — silently deleting the record.
+ */
+export interface WriteOptions { queueOnFailure?: boolean }
+
+export const logMeal = async (
+  userId: string,
+  meal: Omit<MealRecord, 'id' | 'timestamp' | 'userId'>,
+  { queueOnFailure = true }: WriteOptions = {},
+) => {
+  if (!navigator.onLine && queueOnFailure) {
     try { await addToOfflineQueue({ type: 'logMeal', payload: meal, userId }); } catch { /* swallow */ }
     return 'offline-queued';
   }
@@ -85,14 +97,19 @@ export const logMeal = async (userId: string, meal: Omit<MealRecord, 'id' | 'tim
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', 'meals');
+    if (!queueOnFailure) throw error;
     // Don't bubble the error — queue and pretend success so the UI stays calm.
     try { await addToOfflineQueue({ type: 'logMeal', payload: meal, userId }); } catch { /* swallow */ }
     return 'queued';
   }
 };
 
-export const logWorkout = async (userId: string, workout: Omit<WorkoutRecord, 'id' | 'timestamp' | 'userId'>) => {
-  if (!navigator.onLine) {
+export const logWorkout = async (
+  userId: string,
+  workout: Omit<WorkoutRecord, 'id' | 'timestamp' | 'userId'>,
+  { queueOnFailure = true }: WriteOptions = {},
+) => {
+  if (!navigator.onLine && queueOnFailure) {
     try { await addToOfflineQueue({ type: 'logWorkout', payload: workout, userId }); } catch { /* swallow */ }
     return 'offline-queued';
   }
@@ -109,6 +126,7 @@ export const logWorkout = async (userId: string, workout: Omit<WorkoutRecord, 'i
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', 'workouts');
+    if (!queueOnFailure) throw error;
     try { await addToOfflineQueue({ type: 'logWorkout', payload: workout, userId }); } catch { /* swallow */ }
     return 'queued';
   }

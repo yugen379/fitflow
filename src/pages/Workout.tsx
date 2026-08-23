@@ -188,14 +188,20 @@ export const Workout: React.FC = () => {
   const [prs, setPrs] = useState<{ name: string; type: 'weight' | 'reps' | '1rm'; value: number }[]>([]);
 
   const finishSession = async (finalLogs: ExLog[]) => {
-    if (!profile?.uid || !activeWorkout || !finalLogs.length) return;
+    // NOT `|| !finalLogs.length`. A session finished without any logged sets
+    // used to return here silently: no save, no message, the workout simply
+    // gone. Time spent training is worth recording even when nothing was
+    // logged against it.
+    if (!profile?.uid || !activeWorkout) return;
     setIsSaving(true);
     try {
       const cals = Math.floor((MET[activeWorkout] || 5) * (profile.weight || 70) * (timer / 3600));
       await logWorkout(profile.uid, {
         type: activeWorkout,
-        duration: Math.floor(timer / 60) || 1,
-        caloriesBurned: cals || 1,
+        // Rounded, not floored: a 90-second session is closer to 2 minutes than
+        // to 1, and the rules require duration > 0 so it can never be zero.
+        duration: Math.max(1, Math.round(timer / 60)),
+        caloriesBurned: Math.max(1, cals),
         exerciseLogs: finalLogs,
         notes: '',
         ...(formChecks.length ? { formChecks } : {}),

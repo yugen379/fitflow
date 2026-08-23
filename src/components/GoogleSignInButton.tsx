@@ -112,6 +112,32 @@ const WebGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) =>
   const containerRef = useRef<HTMLDivElement>(null);
   const [gsiReady, setGsiReady] = useState<boolean | null>(null);
   const [signing, setSigning] = useState(false);
+  /** True once the user has left for Google and come back still signed out. */
+  const [stalled, setStalled] = useState(false);
+
+  /**
+   * Detect a stalled GIS popup.
+   *
+   * The popup is cross-origin, so there is no callback to hook and no error to
+   * catch — the only observable is the page being hidden (the user left for
+   * Google) and then shown again with no credential having arrived. That is
+   * indistinguishable from "changed their mind", which is why this only
+   * promotes the alternative route rather than doing anything automatically.
+   */
+  useEffect(() => {
+    let leftAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        leftAt = Date.now();
+        return;
+      }
+      // Back after long enough to have actually seen the Google screen.
+      if (leftAt > 0 && Date.now() - leftAt > 2500) setStalled(true);
+      leftAt = 0;
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   // Initialize GIS once
   useEffect(() => {
@@ -203,6 +229,31 @@ const WebGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) =>
       {gsiReady === null && (
         <div className="h-14 w-full glass rounded-full animate-pulse" aria-hidden />
       )}
+
+      {/*
+        ALWAYS offered, not only when GIS fails to load.
+        The reported failure was GIS loading fine and then stalling on a blank
+        accounts.google.com/gsi/transform page — its popup runs in a
+        cross-origin iframe, so the app cannot detect that and cannot cancel it.
+        Without a second route the user is simply stuck. This one is a full-page
+        redirect: no popup, no opener to lose, nothing for Android to discard
+        when it reclaims a background tab.
+
+        It becomes prominent once the user has come back from a sign-in attempt
+        without being signed in, which is exactly the stalled case.
+      */}
+      {!signing ? (
+        <button
+          onClick={handleFallback}
+          className={
+            stalled
+              ? 'w-full h-12 rounded-2xl bg-accent/12 border border-accent/30 text-accent text-xs font-semibold active:scale-[0.98] transition-transform'
+              : 'text-[11px] text-text-mute underline underline-offset-4 active:opacity-70'
+          }
+        >
+          {stalled ? 'Stuck on the Google screen? Sign in another way' : 'Having trouble? Sign in another way'}
+        </button>
+      ) : null}
     </div>
   );
 };
