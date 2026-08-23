@@ -118,12 +118,22 @@ export const upsertStepDay = async (
 
     lastWritten.set(key, steps);
     lastWriteAt.set(key, now);
+    lastError = null;
     return true;
-  } catch {
-    // Offline, rules rejection, or a signed-out race. The local count stands.
+  } catch (error: any) {
+    // Offline, rules rejection, or a signed-out race. The local count stands,
+    // but the reason is recorded so the Steps screen can show it instead of
+    // silently never persisting — `step_days` sat empty on the server for a
+    // whole release without anything surfacing.
+    lastError = String(error?.code || error?.message || error).slice(0, 120);
+    console.warn('step_days write failed:', error);
     return false;
   }
 };
+
+/** Why the most recent write failed, or null if the last one succeeded. */
+let lastError: string | null = null;
+export const lastStepSyncError = (): string | null => lastError;
 
 /** Today's stored count on the server, or 0. Used to seed a fresh install. */
 export const fetchStepDay = async (uid: string | undefined, day: string): Promise<number> => {

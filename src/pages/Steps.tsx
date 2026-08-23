@@ -26,6 +26,8 @@ import { explainCalories, explainDistance, kmToMiles } from '../lib/stepFormulas
 import { fetchStepHistory } from '../services/stepSyncService';
 import { mergeHistory } from '../services/stepSyncPolicy';
 import { BackgroundStepsCard } from '../components/BackgroundStepsCard';
+import { pedometer } from '../lib/pedometer';
+import { lastStepSyncError } from '../services/stepSyncService';
 import { readBackgroundHistory } from '../lib/backgroundSteps';
 import { SPRING } from '../lib/motion';
 import { EMPTY_STATS, nextAchievements } from '../lib/achievements';
@@ -136,6 +138,20 @@ export const Steps: React.FC = () => {
   }, [horizon, live.steps, profile?.uid, profile?.weight, profile?.height]);
 
   const todayKey = localDateKey();
+
+  // Polled, not subscribed: these are diagnostics, and a 1s refresh is both
+  // cheap and enough to watch the numbers move while walking.
+  const [diag, setDiag] = useState(() => pedometer.getDiagnostics());
+  const [syncError, setSyncError] = useState<string | null>(null);
+  useEffect(() => {
+    const tick = () => {
+      setDiag(pedometer.getDiagnostics());
+      setSyncError(lastStepSyncError() ?? pedometer.getSyncError());
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const bars = useMemo<DayBar[]>(() => {
     return weekDates().map((date) => {
@@ -272,6 +288,47 @@ export const Steps: React.FC = () => {
           </button>
         ) : null}
       </motion.section>
+
+      {/* Sensor diagnostic.
+          "It isn't counting" and "it forgot my steps" have several distinct
+          causes that look identical from outside: the listener never attached,
+          the browser is not delivering devicemotion, events arrive but never
+          clear the threshold, or they count fine and the Firestore mirror
+          silently fails. `step_days` was empty on the server for an entire
+          release without anything surfacing. These are the numbers that tell
+          the difference. */}
+      <section className="glass-spatial p-5" aria-labelledby="diag-heading">
+        <p className="text-eyebrow text-accent">Sensor</p>
+        <h2 id="diag-heading" className="font-display text-base font-semibold text-white mt-0.5">
+          What the sensor is doing
+        </h2>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3">
+          {[
+            ['Listening', diag.listening ? 'yes' : 'NO'],
+            ['Motion events', `${diag.samples}`],
+            ['Rate', diag.hz > 0 ? `${diag.hz} Hz` : 'none'],
+            ['Last event', diag.lastSampleAgoMs === null ? 'never' : `${Math.round(diag.lastSampleAgoMs / 1000)}s ago`],
+            ['Steps counted', `${diag.steps}`],
+            ['Saving to cloud', diag.syncing ? 'on' : 'OFF'],
+          ].map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-text-mute">{k}</dt>
+              <dd className="num text-sm text-white tabular-nums truncate">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        {syncError ? (
+          <p className="num text-[10px] text-accent-2 mt-3 leading-relaxed break-words">
+            Save failed: {syncError}
+          </p>
+        ) : null}
+        {diag.samples === 0 ? (
+          <p className="text-[11px] text-text-mute mt-3 leading-relaxed">
+            No motion events at all. This browser is not delivering them — a phone with the screen
+            on and this tab open is required, and a desktop browser has no motion sensor.
+          </p>
+        ) : null}
+      </section>
 
       <BackgroundStepsCard
         status={live.background}

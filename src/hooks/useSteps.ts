@@ -150,11 +150,12 @@ export const useSteps = ({
 
   // ── Firestore mirror ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!uid) {
-      pedometer.setSyncHandler(null);
-      return;
-    }
-    pedometer.setSyncHandler((snap) => {
+    if (!uid) return;
+    // Named, so the cleanup can deregister THIS handler specifically. Both Home
+    // and /steps mount `useSteps`, and during a route transition both exist for
+    // a moment — a blind `setSyncHandler(null)` from the outgoing screen used to
+    // switch step syncing off for the rest of the session.
+    const handler = (snap: StepSnapshot) => {
       void upsertStepDay(uidRef.current ?? undefined, {
         day: snap.date,
         steps: snap.steps,
@@ -162,9 +163,13 @@ export const useSteps = ({
         calories: snap.calories,
         activeMs: snap.activeMs,
         source: 'client',
-      });
-    });
-    return () => pedometer.setSyncHandler(null);
+      }).then(
+        (wrote) => { if (wrote) pedometer.noteSyncError(null); },
+        (error: any) => pedometer.noteSyncError(String(error?.code || error?.message || error).slice(0, 90)),
+      );
+    };
+    pedometer.setSyncHandler(handler);
+    return () => pedometer.clearSyncHandler(handler);
   }, [uid]);
 
   useEffect(() => {

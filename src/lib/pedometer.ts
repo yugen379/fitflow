@@ -172,6 +172,12 @@ class Pedometer {
   /** Signal -> steps. All thresholds and the rhythm gate live in stepDetection. */
   private pipeline = new StepPipeline();
 
+  // Diagnostics only — never used by the counting logic itself.
+  private sampleCount = 0;
+  private peakCount = 0;
+  /** Timestamps of the last few samples, for a live sample-rate readout. */
+  private sampleTimes: number[] = [];
+
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private hydrated = false;
   private handler: ((event: DeviceMotionEvent) => void) | null = null;
@@ -179,6 +185,44 @@ class Pedometer {
   // -------------------------------------------------------------------------
   // Public surface
   // -------------------------------------------------------------------------
+
+  /**
+   * What the sensor is actually doing, for the on-screen diagnostic.
+   *
+   * "It isn't counting" has at least four distinct causes that look identical
+   * from the outside: the listener was never attached, the browser is not
+   * delivering `devicemotion` at all, events arrive but never clear the
+   * detection threshold, or peaks are detected but rejected as non-rhythmic.
+   * Guessing between them from a bug report is hopeless; showing the numbers
+   * makes it a ten-second answer.
+   */
+  getDiagnostics(): {
+    status: PedometerStatus;
+    listening: boolean;
+    syncing: boolean;
+    syncError: string | null;
+    samples: number;
+    hz: number;
+    lastSampleAgoMs: number | null;
+    peaks: number;
+    steps: number;
+    visible: boolean;
+  } {
+    const now = Date.now();
+    const recentWindow = this.sampleTimes.filter((t) => now - t <= 3000);
+    return {
+      status: this.status,
+      listening: this.handler !== null,
+      syncing: this.syncHandler !== null,
+      syncError: this.lastSyncError,
+      samples: this.sampleCount,
+      hz: recentWindow.length > 1 ? Math.round(recentWindow.length / 3) : 0,
+      lastSampleAgoMs: this.lastSampleAt > 0 ? now - this.lastSampleAt : null,
+      peaks: this.peakCount,
+      steps: this.steps,
+      visible: typeof document === 'undefined' ? true : document.visibilityState === 'visible',
+    };
+  }
 
   getStatus(): PedometerStatus {
     return this.status;
@@ -200,9 +244,34 @@ class Pedometer {
     this.emit();
   }
 
-  /** Register the Firestore mirror. Called once, from the steps hook. */
+  /**
+   * Register the Firestore mirror.
+   *
+   * Clearing is IDENTITY-CHECKED. Two screens use `useSteps` (Home and /steps),
+   * and during a route transition both are briefly mounted — so the outgoing
+   * screen's cleanup could run after the incoming one had already registered,
+   * nulling a handler it did not own and silently switching off step syncing for
+   * the rest of the session. `step_days` had zero documents on the server.
+   */
   setSyncHandler(handler: ((snapshot: StepSnapshot) => void) | null): void {
+    if (handler === null) return;
     this.syncHandler = handler;
+  }
+
+  /** Deregister a specific handler, ignoring a stale one from an unmounted screen. */
+  clearSyncHandler(handler: (snapshot: StepSnapshot) => void): void {
+    if (this.syncHandler === handler) this.syncHandler = null;
+  }
+
+  /** Last error the Firestore mirror reported, for the on-screen diagnostic. */
+  private lastSyncError: string | null = null;
+
+  noteSyncError(message: string | null): void {
+    this.lastSyncError = message;
+  }
+
+  getSyncError(): string | null {
+    return this.lastSyncError;
   }
 
   /**
@@ -394,13 +463,20 @@ class Pedometer {
     }
     this.lastSampleAt = now;
 
+    this.sampleCount += 1;
+    this.sampleTimes.push(now);
+    if (this.sampleTimes.length > 200) this.sampleTimes.shift();
+
     const magnitude = Math.sqrt(x * x + y * y + z * z);
 
     // Everything from here — high-pass, adaptive threshold, hysteresis and the
     // rhythm gate — lives in stepDetection.ts so it can be driven with
     // synthetic gait by the proof harness.
     const credited = this.pipeline.push(magnitude, now);
-    if (credited > 0) this.creditSteps(credited, now);
+    if (credited > 0) {
+      this.peakCount += credited;
+      this.creditSteps(credited, now);
+    }
   }
 
   private creditSteps(count: number, now: number): void {
