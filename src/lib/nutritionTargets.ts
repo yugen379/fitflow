@@ -5,7 +5,7 @@ import type { UserProfile, MacroTargets, DayTargets } from '../types';
 // Pure (no firebase/React) so the proof harness can exercise it directly.
 //
 // Resolution order:
-//   1. base calories from goal
+//   1. the user's explicit calorieTarget, else base calories from goal
 //   2. macro split — percent mode (free) or exact grams (premium)
 //   3. day-type override (premium) — workout vs rest day calorie/carb/protein
 // ---------------------------------------------------------------------------
@@ -34,8 +34,16 @@ export const computeDailyTargets = (
   date: Date = new Date(),
 ): DailyTargets => {
   const goal = profile?.goal;
-  let calories = baseCaloriesFor(goal);
   const mt = profile?.macroTargets as MacroTargets | undefined;
+
+  // An explicit target the user set (on the meal-plan screen, or anywhere else)
+  // beats the figure derived from their goal. Without this, Daily Fuel and the
+  // meal plan disagreed about the same number.
+  const chosen = mt?.calorieTarget;
+  let calories =
+    typeof chosen === 'number' && Number.isFinite(chosen) && chosen > 0
+      ? round(chosen)
+      : baseCaloriesFor(goal);
 
   let proteinG: number;
   let carbsG: number;
@@ -50,8 +58,18 @@ export const computeDailyTargets = (
     const derived = round(proteinG * 4 + carbsG * 4 + fatsG * 9);
     if (derived > 0) calories = derived;
   } else {
-    const split = mt && mt.mode === 'percent'
-      ? { proteinPct: mt.proteinPct ?? 0, carbsPct: mt.carbsPct ?? 0, fatsPct: mt.fatsPct ?? 0 }
+    // A percent split only counts if it actually has percentages in it.
+    //
+    // Setting a calorie target writes `{ mode: 'percent', calorieTarget }` with
+    // no percentages — a perfectly reasonable thing to store, which used to make
+    // this branch read three zeros and hand the user 0g of protein, carbs and
+    // fat. An empty split means "no preference", so it falls back to the goal's
+    // default rather than to nothing.
+    const hasSplit =
+      !!mt && mt.mode === 'percent' &&
+      ((mt.proteinPct ?? 0) + (mt.carbsPct ?? 0) + (mt.fatsPct ?? 0)) > 0;
+    const split = hasSplit
+      ? { proteinPct: mt!.proteinPct ?? 0, carbsPct: mt!.carbsPct ?? 0, fatsPct: mt!.fatsPct ?? 0 }
       : defaultSplitFor(goal);
     const sum = (split.proteinPct + split.carbsPct + split.fatsPct) || 100;
     proteinG = round((calories * (split.proteinPct / sum)) / 4);

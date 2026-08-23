@@ -7,7 +7,7 @@ import { LoadingBar } from '../components/LoadingBar';
 import { generateMealPlan, getRecipe, swapMeal } from '../services/geminiService';
 import { useToast } from '../hooks/useToast';
 import { db } from '../lib/firestore';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { haptic } from '../lib/haptics';
 import { celebrateSmall } from '../lib/celebrate';
@@ -160,18 +160,71 @@ export const MealPlan: React.FC = () => {
     }
   };
 
-  // Sync the daily target with profile.goal once profile loads, but let the user override.
+  /**
+   * Resolve the target on load, profile FIRST.
+   *
+   * Order matters: the profile is the shared source of truth that Daily Fuel
+   * also reads, so it must win over this screen's local cache. The cache is
+   * only a fallback for a profile that has not synced yet, and the goal-derived
+   * default is the last resort.
+   *
+   * Reading localStorage first was half of the original bug — a stale local
+   * value would quietly override a target set anywhere else.
+   */
   useEffect(() => {
     if (!profile?.uid) return;
-    const saved = localStorage.getItem(TARGET_KEY(profile.uid));
-    if (saved && parseInt(saved) > 0) setDailyTarget(parseInt(saved));
+    const fromProfile = (profile.macroTargets as any)?.calorieTarget;
+    if (typeof fromProfile === 'number' && fromProfile > 0) {
+      setDailyTarget(fromProfile);
+      localStorage.setItem(TARGET_KEY(profile.uid), String(fromProfile));
+      return;
+    }
+    const saved = parseInt(localStorage.getItem(TARGET_KEY(profile.uid)) || '', 10);
+    if (saved > 0) setDailyTarget(saved);
     else setDailyTarget(targetCaloriesFor(profile.goal));
-  }, [profile?.uid, profile?.goal]);
+  }, [profile?.uid, profile?.goal, (profile?.macroTargets as any)?.calorieTarget]);
 
+  /**
+   * Change the daily calorie target.
+   *
+   * Writes it to the PROFILE, not just this screen. The target used to live only
+   * in localStorage here, while Daily Fuel derived its own number from the
+   * user's goal — so raising the target on the meal plan left the Track screen
+   * still showing the old figure. `macroTargets.calorieTarget` is now the one
+   * source both read (see lib/nutritionTargets.ts).
+   *
+   * The local copy is kept as an offline-friendly cache; the profile write is
+   * best-effort and never blocks the UI.
+   */
   const updateDailyTarget = (n: number) => {
     const clamped = Math.max(1000, Math.min(5000, n));
     setDailyTarget(clamped);
-    if (profile?.uid) localStorage.setItem(TARGET_KEY(profile.uid), String(clamped));
+    if (!profile?.uid) return;
+    localStorage.setItem(TARGET_KEY(profile.uid), String(clamped));
+    void persistCalorieTarget(clamped);
+  };
+
+  /**
+   * Mirror the target onto the user doc.
+   *
+   * Merged into the existing macroTargets so a user's macro split is never
+   * clobbered, and defaulted to percent mode when they have none — in grams
+   * mode the grams define the calories, and a separate figure would contradict
+   * them.
+   */
+  const persistCalorieTarget = async (kcal: number) => {
+    if (!profile?.uid) return;
+    try {
+      const existing = (profile.macroTargets as any) || {};
+      await updateDoc(doc(db, 'users', profile.uid), {
+        macroTargets: { ...existing, mode: existing.mode || 'percent', calorieTarget: kcal },
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      // Offline or rules rejection: the on-screen number and the local cache are
+      // still correct, and the next change retries.
+      console.warn('Persist calorie target failed:', e);
+    }
   };
 
   useEffect(() => { if (profile?.uid) loadSaved(); }, [profile?.uid]);
@@ -183,9 +236,15 @@ export const MealPlan: React.FC = () => {
       if (snap.exists()) {
         const data = snap.data();
         setDays(data.days || []);
-        if (data.dailyTarget && typeof data.dailyTarget === 'number') {
+        // Only adopt the plan's target when the profile has no explicit one:
+        // the profile is what Daily Fuel reads, and a saved plan must never
+        // silently pull the shared target backwards.
+        const fromProfile = (profile.macroTargets as any)?.calorieTarget;
+        const profileHasTarget = typeof fromProfile === 'number' && fromProfile > 0;
+        if (!profileHasTarget && typeof data.dailyTarget === 'number' && data.dailyTarget > 0) {
           setDailyTarget(data.dailyTarget);
           localStorage.setItem(TARGET_KEY(profile.uid), String(data.dailyTarget));
+          void persistCalorieTarget(data.dailyTarget);
         }
       }
     } catch (e) {
@@ -233,6 +292,8 @@ export const MealPlan: React.FC = () => {
 
       setDays(nextDays);
       await persistPlan(nextDays, target);
+      // Generating IS choosing a target — make sure Daily Fuel agrees.
+      await persistCalorieTarget(target);
       if (profile?.uid) checkAndAwardBadge(profile.uid, 'ai_chef').catch(() => {});
       celebrateSmall();
       showToast(`Your ${target} kcal/day plan is ready`, 'success');

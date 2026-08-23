@@ -14,6 +14,18 @@ export type SubscriptionStatus =
  */
 export interface MacroTargets {
   mode: 'percent' | 'grams';
+  /**
+   * The user's chosen daily calorie target, in kcal.
+   *
+   * ONE source of truth. The meal-plan screen used to keep its own target in
+   * localStorage while Daily Fuel derived a completely separate number from
+   * `goal`, so changing the target on one screen left the other showing the old
+   * one. Both now read this.
+   *
+   * Only meaningful in percent mode: in grams mode the macro grams define the
+   * calorie total, so an independent figure here would contradict them.
+   */
+  calorieTarget?: number;
   /** percent mode — must sum to ~100 */
   proteinPct?: number;
   carbsPct?: number;

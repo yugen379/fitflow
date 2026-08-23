@@ -83,6 +83,76 @@ check('null → null', toMillis(null) === null);
 check('garbage → null', toMillis('not-a-date') === null && toMillis({}) === null);
 
 console.log(`\n${C.b}Nutrition targets — base & macro split${C.x}`);
+// ── Shared calorie target: the meal plan and Daily Fuel must agree ──────────
+// Regression: the meal-plan screen kept its target in localStorage while
+// Daily Fuel derived a separate number from `goal`, so changing it on one
+// screen left the other showing the old figure. Both now resolve through
+// macroTargets.calorieTarget.
+{
+  const goalOnly = computeDailyTargets({ goal: 'fat_loss' });
+  check('with no explicit target, calories still come from the goal',
+    goalOnly.calories === baseCaloriesFor('fat_loss'), `${goalOnly.calories}`);
+
+  const chosen = computeDailyTargets({ goal: 'fat_loss', macroTargets: { mode: 'percent', calorieTarget: 2400 } });
+  check('an explicit calorieTarget overrides the goal default',
+    chosen.calories === 2400, `${chosen.calories}`);
+  check('the SAME profile gives the SAME number to both screens',
+    computeDailyTargets({ goal: 'fat_loss', macroTargets: { mode: 'percent', calorieTarget: 2400 } }).calories
+      === chosen.calories);
+
+  // Changing the target must move Daily Fuel's macros with it, not just the
+  // headline number.
+  const low = computeDailyTargets({ goal: 'fat_loss', macroTargets: { mode: 'percent', calorieTarget: 1600 } });
+  const high = computeDailyTargets({ goal: 'fat_loss', macroTargets: { mode: 'percent', calorieTarget: 3200 } });
+  check('doubling the target roughly doubles protein',
+    Math.abs(high.proteinG - low.proteinG * 2) <= 2, `${low.proteinG} -> ${high.proteinG}`);
+  check('doubling the target roughly doubles carbs',
+    Math.abs(high.carbsG - low.carbsG * 2) <= 2, `${low.carbsG} -> ${high.carbsG}`);
+  check('doubling the target roughly doubles fats',
+    Math.abs(high.fatsG - low.fatsG * 2) <= 2, `${low.fatsG} -> ${high.fatsG}`);
+
+  // Garbage must never poison the number the user eats to.
+  for (const bad of [0, -500, NaN, Infinity, null, undefined, 'lots']) {
+    const r = computeDailyTargets({ goal: 'maintenance', macroTargets: { mode: 'percent', calorieTarget: bad } });
+    check(`a calorieTarget of ${String(bad)} falls back to the goal default`,
+      r.calories === baseCaloriesFor('maintenance'), `${r.calories}`);
+  }
+
+  // In grams mode the grams define the calories; an independent figure would
+  // contradict them, so it must NOT win.
+  const grams = computeDailyTargets({
+    goal: 'muscle_gain',
+    macroTargets: { mode: 'grams', proteinG: 150, carbsG: 300, fatsG: 80, calorieTarget: 9999 },
+  });
+  check('in grams mode the macros define calories, not calorieTarget',
+    grams.calories === 150 * 4 + 300 * 4 + 80 * 9, `${grams.calories}`);
+
+  // Regression: setting only a calorie target writes { mode:'percent',
+  // calorieTarget } with no percentages. That must NOT zero the macros.
+  const targetOnly = computeDailyTargets({ goal: 'fat_loss', macroTargets: { mode: 'percent', calorieTarget: 2750 } });
+  check('a calorie target with no percentages still yields real macros',
+    targetOnly.proteinG > 0 && targetOnly.carbsG > 0 && targetOnly.fatsG > 0,
+    `P${targetOnly.proteinG} C${targetOnly.carbsG} F${targetOnly.fatsG}`);
+  check('those macros use the goal default split and add back up to the target',
+    Math.abs(targetOnly.proteinG * 4 + targetOnly.carbsG * 4 + targetOnly.fatsG * 9 - 2750) <= 12,
+    `${targetOnly.proteinG * 4 + targetOnly.carbsG * 4 + targetOnly.fatsG * 9}`);
+  const explicitSplit = computeDailyTargets({ goal: 'fat_loss', macroTargets: { mode: 'percent', calorieTarget: 2000, proteinPct: 40, carbsPct: 30, fatsPct: 30 } });
+  check('an explicit percent split is still honoured',
+    Math.abs(explicitSplit.proteinG - (2000 * 0.4) / 4) <= 1, `${explicitSplit.proteinG}`);
+
+  // A day-type override is a deliberate per-day change and still outranks it.
+  const dayOverride = computeDailyTargets(
+    {
+      goal: 'fat_loss',
+      macroTargets: { mode: 'percent', calorieTarget: 2000 },
+      dayTargets: { enabled: true, schedule: { '1': 'workout' }, workout: { calories: 2600 }, rest: {} },
+    },
+    new Date('2026-08-24T12:00:00'), // a Monday
+  );
+  check('a workout-day override still outranks the shared target',
+    dayOverride.calories === 2600, `${dayOverride.calories}`);
+}
+
 let t = computeDailyTargets({});
 check('default goal → 2200 kcal, percent mode, base day', t.calories === 2200 && t.macroMode === 'percent' && t.dayType === 'base');
 check('default macros (25/45/30 of 2200)', t.proteinG === 138 && t.carbsG === 248 && t.fatsG === 73, JSON.stringify(t));
