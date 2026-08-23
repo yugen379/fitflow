@@ -19,6 +19,15 @@ interface AuthContextType {
    * overwrite their account.
    */
   profileUnreachable: boolean;
+  /**
+   * Why the profile could not be read, in the user's hands.
+   *
+   * A generic "connection problem" screen is unactionable for both of us: a
+   * rules rejection, a blocked App Check token and a genuinely dead network all
+   * look identical. Surfacing the real code turns a support round trip into a
+   * screenshot.
+   */
+  profileErrorCode: string | null;
   /** Re-attempt the profile subscription after a stall. */
   retryProfile: () => void;
   signIn: () => Promise<void>;
@@ -35,7 +44,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  * regardless of the cause, so the ceiling is a small multiple of a slow-but-
  * working cold start, not a network timeout.
  */
-const PROFILE_TIMEOUT_MS = 6000;
+const PROFILE_TIMEOUT_MS = 12000;
 
 /**
  * Absolute ceiling on the loading screen, measured from when the provider
@@ -47,7 +56,7 @@ const PROFILE_TIMEOUT_MS = 6000;
  * parallel with everything else, which is the only way to bound what the user
  * actually waits.
  */
-const BOOT_TIMEOUT_MS = 6000;
+const BOOT_TIMEOUT_MS = 12000;
 
 /*
  * Why 6s and not something more cautious: being early is cheap. If the profile
@@ -63,6 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [profileUnreachable, setProfileUnreachable] = useState(false);
+  const [profileErrorCode, setProfileErrorCode] = useState<string | null>(null);
   /** Set the moment anything resolves the gate, so the boot watchdog can stand down. */
   const resolvedRef = useRef(false);
   /** Bumped to re-run the auth/profile effect on an explicit retry. */
@@ -78,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const timer = setTimeout(() => {
       if (resolvedRef.current) return;
       resolvedRef.current = true;
+      setProfileErrorCode((prev) => prev ?? `boot timeout after ${BOOT_TIMEOUT_MS}ms — auth or Firestore never answered`);
       setProfileUnreachable(true);
       setLoading(false);
     }, BOOT_TIMEOUT_MS);
@@ -175,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
          */
         watchdog = setTimeout(() => {
           if (disposed || myGeneration !== generation) return;
+          setProfileErrorCode((prev) => prev ?? `timeout after ${PROFILE_TIMEOUT_MS}ms — no response from Firestore`);
           setProfileUnreachable(true);
           resolvedRef.current = true;
           setLoading(false);
@@ -199,6 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             clearWatchdog();
             setProfileUnreachable(false);
+            setProfileErrorCode(null);
             resolvedRef.current = true;
             setLoading(false);
             if (!ensuredOnce) {
@@ -235,8 +248,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setLoading(false);
             });
           }
-        }, (error) => {
+        }, (error: any) => {
           console.error('Profile sync error:', error);
+          setProfileErrorCode(
+            [error?.code, error?.message].filter(Boolean).join(' — ').slice(0, 160) || 'unknown',
+          );
           clearWatchdog();
           // An error IS an answer — the app stops blocking. Whether the user can
           // continue depends on whether a cached profile already arrived.
@@ -269,6 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const retryProfile = () => {
     setProfileUnreachable(false);
+    setProfileErrorCode(null);
     setLoading(true);
     setRetryToken((n) => n + 1);
   };
@@ -277,7 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{
       user, profile, loading, signIn, signOut,
       authError, clearAuthError: () => setAuthError(null),
-      profileUnreachable, retryProfile,
+      profileUnreachable, profileErrorCode, retryProfile,
     }}>
       {children}
     </AuthContext.Provider>

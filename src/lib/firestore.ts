@@ -16,7 +16,14 @@
  *     test for exactly that in scripts/perf-proof.mjs.
  */
 
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 
 import { app, firebaseConfig } from './firebase';
 
@@ -27,11 +34,49 @@ import { app, firebaseConfig } from './firebase';
  * safe when open in more than one tab and falls back gracefully where
  * unsupported.
  */
-export const db = initializeFirestore(
-  app,
-  { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
-  firebaseConfig.firestoreDatabaseId,
-);
+/**
+ * Create the Firestore instance, degrading rather than failing.
+ *
+ * The persistent cache is worth having, but it is NOT worth the app for. It
+ * depends on IndexedDB, and the multi-tab manager additionally depends on a
+ * leader election across tabs — both of which can fail or stall on a real
+ * phone: private browsing, storage pressure, a corrupted database, or several
+ * tabs of the app open at once (a user reported exactly that, with four tabs).
+ *
+ * When it stalls there is no error to catch. The snapshot listener simply never
+ * fires, which is indistinguishable from a dead network and is how the app came
+ * to sit on "Loading your training data" indefinitely.
+ *
+ * So each level falls back to a simpler one. Losing offline persistence costs a
+ * slower cold start; losing Firestore costs the entire app.
+ */
+const createDb = (): Firestore => {
+  const databaseId = firebaseConfig.firestoreDatabaseId;
+
+  try {
+    return initializeFirestore(
+      app,
+      { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
+      databaseId,
+    );
+  } catch (error) {
+    console.warn('Firestore persistent cache unavailable, falling back to memory:', error);
+  }
+
+  try {
+    // No IndexedDB, no leader election — just an in-memory cache. Every read
+    // costs the network, but reads WORK.
+    return initializeFirestore(app, { localCache: memoryLocalCache() }, databaseId);
+  } catch (error) {
+    console.warn('Firestore memory cache init failed, using defaults:', error);
+  }
+
+  // `initializeFirestore` also throws if it has already run for this app, in
+  // which case the existing instance is the right answer.
+  return getFirestore(app, databaseId);
+};
+
+export const db = createDb();
 
 /**
  * Tear down an `onSnapshot` listener without ever throwing.

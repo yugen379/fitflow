@@ -59,7 +59,7 @@ const signOutOfApp = async () => {
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, profile, loading, profileUnreachable, retryProfile } = useAuth();
+  const { user, profile, loading, profileUnreachable, profileErrorCode, retryProfile } = useAuth();
   const { showToast } = useToast();
 
   // Warm the bottom-nav destinations once the app is up. Deliberately after
@@ -153,6 +153,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         >
           Sign out
         </button>
+
+        {/* The actual reason, verbatim. Small and monospaced so it reads as
+            diagnostics rather than as something the user did wrong — but
+            visible, because "connection problem" is unactionable for everyone
+            and this turns a support round trip into a screenshot. */}
+        {profileErrorCode ? (
+          <p className="num text-[10px] text-text-mute/80 mt-4 leading-relaxed max-w-[280px] break-words">
+            {profileErrorCode}
+          </p>
+        ) : null}
       </div>
     );
   }
