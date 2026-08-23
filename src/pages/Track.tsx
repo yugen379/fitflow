@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Camera, CameraOff, Sparkles, X, Loader2, ScanBarcode, Image as ImageIcon, Aperture, Pencil, Settings } from 'lucide-react';
+import { Search, Plus, Camera, CameraOff, Sparkles, X, Loader2, ScanBarcode, Image as ImageIcon, Aperture, Pencil, Settings, ChefHat } from 'lucide-react';
 import { canOpenAppSettings, openAppSettings } from '../lib/appSettings';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
@@ -595,9 +595,20 @@ export const Track: React.FC = () => {
 
   return (
     <div className="pb-28 pt-4 px-4 space-y-5">
-      <div className="pt-2">
-        <p className="text-eyebrow text-accent">Nutrition</p>
-        <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">Today's intake</h1>
+      <div className="pt-2 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-eyebrow text-accent">Nutrition</p>
+          <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">Today's intake</h1>
+        </div>
+        {/* The second door to the meal plan. Someone hunting for "meals" comes
+            to the Fuel tab first, so the link belongs here as well as on Home. */}
+        <button
+          onClick={() => navigate('/meal-plan')}
+          className="shrink-0 h-11 px-3 rounded-2xl bg-accent-4/12 border border-accent-4/30 text-accent-4 text-[11px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-transform"
+        >
+          <ChefHat size={14} aria-hidden="true" />
+          Meal plan
+        </button>
       </div>
 
       {/* Fuel gauge + macro orbitals, over what has actually been logged today.
