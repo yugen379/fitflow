@@ -43,14 +43,19 @@ export const LEGAL: LegalIdentity = {
   // Confirmed by the publisher 2026-08-27: personal Play developer account,
   // not an incorporated entity, based in Malaysia.
   kind: 'individual',
-  // STILL REQUIRED — your full legal name as it appears on the Play developer
-  // account, and a postal address. Both are mandatory controller-identity
-  // fields (GDPR Art. 13; Malaysia's PDPA s.7 notice requirement), and the
-  // release build refuses to ship while they are UNSET. That refusal is the
-  // feature: the previous version simply printed a placeholder to users.
-  name: UNSET,
+  // Supplied by the publisher 2026-08-27.
+  //
+  // `name` MUST match the Google Play developer account exactly — Play's User
+  // Data policy checks the listed developer against the policy, and a
+  // mismatch is a rejection.
+  //
+  // `address` is still area-level. GDPR Art. 13 and PDPA s.7 want a contact
+  // address a person can actually reach: street/unit and a postcode. Bukit
+  // Jambul alone is a locality, not a deliverable address. See the advisory
+  // that scripts/check-legal.mjs prints.
+  name: 'Yugentiran',
   tradingName: 'FitFlow',
-  address: UNSET,
+  address: 'Bukit Jambul, Penang, Malaysia',
   governingLaw: 'Malaysia',
   privacyEmail: 'fitflow2000@gmail.com',
   dataProtectionEmail: 'fitflow2000@gmail.com',

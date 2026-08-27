@@ -51,8 +51,36 @@ for (const page of LEGAL_PAGES) {
 
 const isRelease = !!process.env.CI;
 
+// Advisory, not a gate: a value can be present and still not do its job.
+//
+// The point of the controller address is that a regulator or a data subject can
+// reach the publisher. A locality on its own ("Bukit Jambul, Penang, Malaysia")
+// satisfies "is a string" and satisfies nothing else. Every deliverable
+// Malaysian address carries a 5-digit postcode, and almost every deliverable
+// address anywhere carries a street number — so a digit-free address is very
+// likely incomplete. This warns and never blocks, because address formats vary
+// and a false block on a legitimate address would be worse than a nudge.
+const advisories = [];
+const address = field('address');
+if (address && !/\d/.test(address)) {
+  advisories.push(
+    `address has no street number or postcode — "${address}"\n` +
+    `    A privacy policy address should be one a letter could actually reach.\n` +
+    `    Malaysian postcodes are 5 digits (Bukit Jambul is in the 11900 range).`,
+  );
+}
+const name = field('name');
+if (name && name.split(/\s+/).length < 2) {
+  advisories.push(
+    `"${name}" is a single word — confirm it matches your Google Play developer\n` +
+    `    account name EXACTLY. Play checks the policy against the listed\n` +
+    `    developer, and a mismatch is a rejection.`,
+  );
+}
+
 if (missing.length === 0 && banned.length === 0) {
   console.log(`${C.g}+ check-legal: publisher identity complete (${kind})${C.x}`);
+  for (const a of advisories) console.log(`  ${C.y}advisory:${C.x} ${a}`);
   process.exit(0);
 }
 
