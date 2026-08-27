@@ -9,6 +9,7 @@ import { collection, doc, setDoc, getDocs, updateDoc, query, where, serverTimest
 import { db } from '../lib/firestore';
 import { dayKey, computeRetention, streakWithFreezes, daysBetweenKeys, RetentionStats } from './retentionUtils';
 import { getFreezeDays } from './streakFreezeService';
+import { reportSwallowed } from '../lib/telemetry';
 import { checkAndAwardBadge, checkStreakBadge } from './badgeService';
 
 /**
@@ -56,8 +57,11 @@ export const recordActiveDay = async (uid: string): Promise<void> => {
       { userId: uid, day, timestamp: serverTimestamp() },
       { merge: true },
     );
-  } catch {
-    // ignore — losing one day's marker is harmless
+  } catch (err) {
+    // The log still succeeded, so this stays non-fatal. It is not harmless
+    // though: this marker IS the streak, and a day lost here is a streak
+    // broken for a reason the user will never be able to explain.
+    reportSwallowed('analytics.recordActiveDay.marker', err, { uid, day });
   }
   // Best-effort denormalization for the server-side nudge engine and the UI.
   try {
@@ -90,8 +94,11 @@ export const recordActiveDay = async (uid: string): Promise<void> => {
     await checkStreakBadge(uid, currentStreak);
     const gap = previousDay ? daysBetweenKeys(previousDay, day) : null;
     if (gap !== null && gap >= 7) await checkAndAwardBadge(uid, 'comeback_kid');
-  } catch {
-    // ignore — denormalization is an accelerator, never a dependency
+  } catch (err) {
+    // Non-fatal by design, but everything downstream reads these fields:
+    // the streak the whole UI shows, the server-side nudge engine, and the
+    // streak + comeback badges. Failing here is silent and total.
+    reportSwallowed('analytics.recordActiveDay.denormalize', err, { uid, day });
   }
 };
 
@@ -118,7 +125,11 @@ export const getRetentionStats = async (
     return freezeDays.length
       ? { ...stats, currentStreak: streakWithFreezes(days, freezeDays, today) }
       : stats;
-  } catch {
+  } catch (err) {
+    // The fallback FABRICATES a plausible answer (a brand-new one-day
+    // streak) so the UI has something to render. That is a lie the user
+    // cannot detect, so it must not also be a lie the developer cannot see.
+    reportSwallowed('analytics.getRetentionStats.fallback', err, { uid });
     return computeRetention(today, [today], today);
   }
 };

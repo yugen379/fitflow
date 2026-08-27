@@ -3,6 +3,7 @@ import { collection, doc, updateDoc, arrayUnion, getDoc, getDocs, addDoc, increm
 import { computeLevel } from './missionUtils';
 import { daysBetweenKeys } from './retentionUtils';
 import { dayKeysOf, hasConsecutiveRun, sinceDaysAgo } from './badgeUtils';
+import { reportSwallowed } from '../lib/telemetry';
 
 export interface Badge {
   id: string;
@@ -170,7 +171,12 @@ export async function checkWeeklyWorkoutBadge(userId: string): Promise<void> {
       limit(20),
     ));
     if (snap.size >= 5) await checkAndAwardBadge(userId, 'week_warrior');
-  } catch { /* best-effort — a badge must never break a workout save */ }
+  } catch (err) {
+    // Still best-effort: the workout save must not fail because a badge
+    // lookup did. But a checker that always throws is a badge that can never
+    // be earned, which is invisible from the outside — so it is counted.
+    reportSwallowed('badgeService.weekWarrior', err, { userId });
+  }
 }
 
 /** Call after a meal log — "Macro Master": macros logged 7 days running. */
@@ -193,7 +199,9 @@ export async function checkMacroBadge(userId: string): Promise<void> {
     if (hasConsecutiveRun(dayKeysOf(withMacros), 7)) {
       await checkAndAwardBadge(userId, 'macro_master');
     }
-  } catch { /* best-effort */ }
+  } catch (err) {
+    reportSwallowed('badgeService.macroMaster', err, { userId });
+  }
 }
 
 /**
@@ -226,5 +234,7 @@ export async function checkWellnessBadges(userId: string): Promise<void> {
         await checkAndAwardBadge(userId, 'wellness_zen');
       }
     }
-  } catch { /* best-effort */ }
+  } catch (err) {
+    reportSwallowed('badgeService.wellness', err, { userId });
+  }
 }

@@ -2,13 +2,13 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { LogoMark } from '../components/Logo';
+import { LEGAL, publisherBlock } from '../lib/legal';
 
-const COMPANY = 'FitFlow, Inc.';
-const COMPANY_ADDRESS = '[REPLACE WITH REGISTERED BUSINESS ADDRESS]';
-const GOVERNING_LAW = '[REPLACE — e.g. State of Delaware, USA]';
-const ARBITRATION_VENUE = '[REPLACE — e.g. American Arbitration Association]';
-const LEGAL_EMAIL = 'fitflow2000@gmail.com';
-const LAST_UPDATED = '2026-06-15';
+// Identity comes from src/lib/legal.ts, gated by scripts/check-legal.mjs.
+const COMPANY = LEGAL.name;
+const GOVERNING_LAW = LEGAL.governingLaw;
+const LEGAL_EMAIL = LEGAL.supportEmail;
+const LAST_UPDATED = LEGAL.lastUpdated;
 
 export const Terms: React.FC = () => {
   const navigate = useNavigate();
@@ -139,8 +139,9 @@ export const Terms: React.FC = () => {
 
         <Section title="11. Limitation of liability">
           <p className="uppercase tracking-wide text-white/90 text-xs">
-            To the maximum extent permitted by law, {COMPANY} and its officers,
-            employees, and affiliates will not be liable for indirect, incidental,
+            To the maximum extent permitted by law, {COMPANY}{LEGAL.kind === 'company'
+              ? ' and its officers, employees, and affiliates'
+              : ''} will not be liable for indirect, incidental,
             special, consequential, or punitive damages, or for any loss of profits,
             data, goodwill, or other intangible losses arising out of your use of
             the Service. Our total liability for any claim is capped at the greater
@@ -165,12 +166,20 @@ export const Terms: React.FC = () => {
         <Section title="13. Governing law and disputes">
           <p>
             These Terms are governed by the laws of {GOVERNING_LAW}, without regard
-            to conflict-of-laws principles. Any dispute will be resolved by binding
-            arbitration administered by {ARBITRATION_VENUE}, except where you opt
-            out within 30 days of accepting these Terms or where the dispute may
-            be brought in small-claims court. You and {COMPANY} agree to resolve
-            disputes individually and waive class-action rights to the extent
-            permitted by law.
+            to conflict-of-laws principles, and the courts of {GOVERNING_LAW} have
+            jurisdiction over any dispute.
+          </p>
+          <p>
+            Nothing here removes rights you have as a consumer under the law of
+            the country you live in. If you are a consumer in the EU, the UK, or
+            anywhere else with mandatory consumer-protection rules, you keep
+            every right and every forum those rules give you, including the
+            right to bring proceedings where you live.
+          </p>
+          <p>
+            We will try to resolve any complaint with you directly first — write
+            to <a href={`mailto:${LEGAL_EMAIL}`} className="text-accent">{LEGAL_EMAIL}</a>
+            and we will respond within 30 days.
           </p>
         </Section>
 
@@ -184,8 +193,7 @@ export const Terms: React.FC = () => {
 
         <Section title="15. Contact">
           <p>
-            {COMPANY}<br/>
-            {COMPANY_ADDRESS}<br/>
+            {publisherBlock().map((line) => <React.Fragment key={line}>{line}<br/></React.Fragment>)}
             <a href={`mailto:${LEGAL_EMAIL}`} className="text-accent">{LEGAL_EMAIL}</a>
           </p>
         </Section>

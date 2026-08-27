@@ -260,19 +260,67 @@ export interface FirestoreErrorInfo {
   }
 }
 
-// Logs Firestore failures for diagnostics but never throws to the caller — the calling
-// code (logMeal / logWorkout / createPost) handles the failure by routing to the offline
-// queue, so the customer never sees a raw error toast for save operations.
+/**
+ * Every Firestore failure in the app funnels through here.
+ *
+ * It still never throws — the callers (logMeal / logWorkout / createPost)
+ * recover by routing to the offline queue, and the customer must not see a raw
+ * error toast for a save that will be retried. What changed is that it no
+ * longer stops at `console.warn`.
+ *
+ * A console warning in a shipped PWA reaches nobody. Sentry was installed,
+ * initialised and never called from this function, so the single busiest error
+ * path in the product was invisible in production — which is exactly how
+ * fourteen of fifteen required composite indexes stayed missing for months
+ * while the affected screens quietly rendered nothing.
+ *
+ * `failed-precondition` is escalated deliberately: from Firestore it almost
+ * always means "this query has no index", it is invisible by construction
+ * (every caller swallows it), and it does not self-heal. It is the one error
+ * class here that is a standing outage rather than a transient.
+ *
+ * The user's EMAIL used to be attached to permission-denied reports. That is
+ * PII in a diagnostic channel, and it bought nothing: `identify()` already
+ * associates the Sentry user, and uid is the only key anything is queried by.
+ */
 export const handleFirestoreError = (error: any, operationType: FirestoreErrorInfo['operationType'], path: string | null = null) => {
+  const code: string = error?.code || 'unknown';
   const user = auth.currentUser;
-  if (error?.code === 'permission-denied') {
-    console.warn(`Firestore ${operationType} permission-denied on ${path}`, {
-      userId: user?.uid,
-      email: user?.email,
-    });
-  } else {
-    console.warn(`Firestore ${operationType} failed on ${path}:`, error?.code || error?.message || error);
+
+  // Collection name only — a full document path can carry a uid or a food name.
+  const collection = (path || 'unknown').split('/')[0];
+  const missingIndex = code === 'failed-precondition';
+
+  console.warn(`Firestore ${operationType} ${code} on ${path}`, { userId: user?.uid });
+
+  if (missingIndex) {
+    // The Firestore SDK puts the console link to create the index in the
+    // message. Keep it — in dev it is the whole fix.
+    console.error(
+      `[firestore] MISSING INDEX: ${operationType} on ${collection} — this query ` +
+      `returns nothing until an index exists. Add it to firestore.indexes.json ` +
+      `(not just the console) so a deploy reproduces it:\n${error?.message || ''}`,
+    );
   }
+
+  void import('./telemetry')
+    .then(({ captureError }) =>
+      captureError(error, {
+        operationType,
+        path,
+        code,
+        userId: user?.uid ?? null,
+        emailVerified: user?.emailVerified ?? null,
+      }, {
+        // Grouped by shape, not by document — one issue per broken query, not
+        // one per user who hit it.
+        signature: `firestore:${code}:${operationType}:${collection}`,
+        level: missingIndex || code === 'permission-denied' ? 'error' : 'warning',
+        tags: { firestoreCode: code, operation: operationType, collection },
+      }),
+    )
+    .catch(() => { /* telemetry must never break a data path */ });
+
   return null;
 };
 

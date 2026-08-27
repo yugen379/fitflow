@@ -2,6 +2,7 @@ import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { computeLevel } from './missionUtils';
 import { checkProgressionBadges } from './badgeService';
+import { reportSwallowed } from '../lib/telemetry';
 
 /**
  * Award XP and keep the stored `level` in sync with the curve.
@@ -25,8 +26,16 @@ export const awardXp = async (userId: string, amount: number): Promise<void> => 
     if (snap.data().level !== level) {
       await updateDoc(userRef, { level });
     }
-    try { await checkProgressionBadges(userId, points, level); } catch { /* best-effort */ }
-  } catch {
+    try {
+      await checkProgressionBadges(userId, points, level);
+    } catch (err) {
+      reportSwallowed('xpService.progressionBadges', err, { userId, points, level });
+    }
+  } catch (err) {
+    // XP is a reward, never a blocker — the logging flow still succeeds. But
+    // XP that silently fails to land is a progression bar that stops moving
+    // for reasons no one can see, so the failure is counted.
+    reportSwallowed('xpService.awardXp', err, { userId, amount });
     /* swallow — see note above */
   }
 };

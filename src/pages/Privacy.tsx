@@ -2,13 +2,14 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { LogoMark } from '../components/Logo';
+import { LEGAL, publisherBlock } from '../lib/legal';
 
-// Replace these placeholders with your real legal entity before public launch.
-const COMPANY = 'FitFlow, Inc.';
-const COMPANY_ADDRESS = '[REPLACE WITH REGISTERED BUSINESS ADDRESS]';
-const PRIVACY_EMAIL = 'fitflow2000@gmail.com';
-const DPO_EMAIL = 'fitflow2000@gmail.com';
-const LAST_UPDATED = '2026-06-15';
+// Identity comes from src/lib/legal.ts, which is the single source of truth
+// and is gated by scripts/check-legal.mjs so a release cannot ship it unset.
+const COMPANY = LEGAL.name;
+const PRIVACY_EMAIL = LEGAL.privacyEmail;
+const DPO_EMAIL = LEGAL.dataProtectionEmail;
+const LAST_UPDATED = LEGAL.lastUpdated;
 
 export const Privacy: React.FC = () => {
   const navigate = useNavigate();
@@ -154,8 +155,7 @@ export const Privacy: React.FC = () => {
 
         <Section title="11. Contact">
           <p>
-            {COMPANY}<br/>
-            {COMPANY_ADDRESS}<br/>
+            {publisherBlock().map((line) => <React.Fragment key={line}>{line}<br/></React.Fragment>)}
             Privacy: <a href={`mailto:${PRIVACY_EMAIL}`} className="text-accent">{PRIVACY_EMAIL}</a><br/>
             EU/UK Data Protection: <a href={`mailto:${DPO_EMAIL}`} className="text-accent">{DPO_EMAIL}</a>
           </p>

@@ -3,6 +3,7 @@ import { handleFirestoreError } from '../lib/firebase';
 import { db } from '../lib/firestore';
 import { MealRecord, WorkoutRecord, Post, UserProfile } from '../types';
 import { addToOfflineQueue } from './offlineService';
+import { reportSwallowed } from '../lib/telemetry';
 import { saveToCatalog } from './foodCatalogService';
 import { awardXp } from './xpService';
 import { checkMacroBadge, checkSocialBadge, checkWeeklyWorkoutBadge } from './badgeService';
@@ -58,7 +59,15 @@ export const logMeal = async (
   { queueOnFailure = true }: WriteOptions = {},
 ) => {
   if (!navigator.onLine && queueOnFailure) {
-    try { await addToOfflineQueue({ type: 'logMeal', payload: meal, userId }); } catch { /* swallow */ }
+    try {
+      await addToOfflineQueue({ type: 'logMeal', payload: meal, userId });
+    } catch (queueErr) {
+      // The write failed AND the fallback queue failed. The meal the
+      // customer just logged now exists nowhere, and the UI has already told
+      // them it saved. That is the worst outcome this app has, so it is the
+      // one failure on this path that is reported instead of swallowed.
+      reportSwallowed('dataService.logMeal.offline', queueErr, { userId });
+    }
     return 'offline-queued';
   }
   try {
@@ -91,7 +100,15 @@ export const logMeal = async (
     handleFirestoreError(error, 'create', 'meals');
     if (!queueOnFailure) throw error;
     // Don't bubble the error — queue and pretend success so the UI stays calm.
-    try { await addToOfflineQueue({ type: 'logMeal', payload: meal, userId }); } catch { /* swallow */ }
+    try {
+      await addToOfflineQueue({ type: 'logMeal', payload: meal, userId });
+    } catch (queueErr) {
+      // The write failed AND the fallback queue failed. The meal the
+      // customer just logged now exists nowhere, and the UI has already told
+      // them it saved. That is the worst outcome this app has, so it is the
+      // one failure on this path that is reported instead of swallowed.
+      reportSwallowed('dataService.logMeal.failed', queueErr, { userId });
+    }
     return 'queued';
   }
 };
@@ -102,7 +119,15 @@ export const logWorkout = async (
   { queueOnFailure = true }: WriteOptions = {},
 ) => {
   if (!navigator.onLine && queueOnFailure) {
-    try { await addToOfflineQueue({ type: 'logWorkout', payload: workout, userId }); } catch { /* swallow */ }
+    try {
+      await addToOfflineQueue({ type: 'logWorkout', payload: workout, userId });
+    } catch (queueErr) {
+      // The write failed AND the fallback queue failed. The workout the
+      // customer just logged now exists nowhere, and the UI has already told
+      // them it saved. That is the worst outcome this app has, so it is the
+      // one failure on this path that is reported instead of swallowed.
+      reportSwallowed('dataService.logWorkout.offline', queueErr, { userId });
+    }
     return 'offline-queued';
   }
   try {
@@ -122,7 +147,15 @@ export const logWorkout = async (
   } catch (error) {
     handleFirestoreError(error, 'create', 'workouts');
     if (!queueOnFailure) throw error;
-    try { await addToOfflineQueue({ type: 'logWorkout', payload: workout, userId }); } catch { /* swallow */ }
+    try {
+      await addToOfflineQueue({ type: 'logWorkout', payload: workout, userId });
+    } catch (queueErr) {
+      // The write failed AND the fallback queue failed. The workout the
+      // customer just logged now exists nowhere, and the UI has already told
+      // them it saved. That is the worst outcome this app has, so it is the
+      // one failure on this path that is reported instead of swallowed.
+      reportSwallowed('dataService.logWorkout.failed', queueErr, { userId });
+    }
     return 'queued';
   }
 };

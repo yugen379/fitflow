@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && node scripts/scan-bundle-secrets.mjs",
+    "build": "vite build && node scripts/scan-bundle-secrets.mjs && node scripts/check-legal.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
@@ -13,6 +13,8 @@
     "proof:coach": "tsx scripts/coach-proof.mjs",
     "proof:briefing": "tsx scripts/briefing-proof.mjs",
     "proof:badges": "tsx scripts/badges-proof.mjs",
+    "proof:telemetry": "node scripts/telemetry-proof.mjs",
+    "check:legal": "node scripts/check-legal.mjs",
     "proof:mission": "tsx scripts/mission-proof.mjs",
     "proof:biomechanics": "tsx scripts/biomechanics-proof.mjs",
     "proof:viewport": "node scripts/viewport-proof.mjs",
