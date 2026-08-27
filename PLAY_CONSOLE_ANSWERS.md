@@ -93,6 +93,90 @@ Use **`PLAY_DATA_SAFETY.md`** — it's code-accurate. Gate answers:
 
 ---
 
+## 12) Foreground service permissions declaration  <-- REQUIRED, blocks the release
+
+*(Policy -> App content -> Foreground service permissions -> "Go to declaration")*
+
+Verified against the **shipped** `v1.5.0` bundle's merged manifest, not the source.
+These must match exactly or review rejects the release.
+
+**Which foreground service types does your app use?** -> tick **Health** only.
+
+The app declares exactly one: `android:foregroundServiceType="health"` on
+`.steps.StepCounterService`, with `FOREGROUND_SERVICE` and
+`FOREGROUND_SERVICE_HEALTH`. Do **not** tick dataSync, location or any other type
+-- the app declares none of them.
+
+**Describe the functionality** (paste):
+
+> FitFlow counts the user's daily steps using the device's hardware step-counter
+> sensor. The foreground service keeps that sensor listener alive while the app is
+> closed, so the day's step total stays accurate without the user having to open
+> the app. The service starts only when the user explicitly turns "Background step
+> counting" on, and can be turned off at any time from the same screen. While it
+> runs it shows a persistent notification reading "N steps today - FitFlow is
+> counting your steps". No location data is used for step counting, and no step
+> data is shared with third parties.
+
+**Is it user-initiated?** -> **Yes.** It starts only from an explicit tap
+(`enableBackgroundCounting`, on the Home and Steps screens); nothing starts it
+automatically on install. The boot receiver restarts it after a reboot **only if
+the user had already switched it on**.
+
+**Video demonstrating the feature** -> Google requires a link (an unlisted YouTube
+video, ~30 seconds). Record: open the Steps screen -> toggle "Background step
+counting" on -> grant the Activity Recognition prompt -> show the persistent
+notification appear -> close the app -> show the count still rising in the
+notification. Set it **unlisted, not private**, or the reviewer cannot open it.
+
+Permitted-use-case mapping: the `health` type covers continuous fitness/activity
+tracking and takes `ACTIVITY_RECOGNITION` as its runtime permission, which the app
+requests before starting the service.
+
+---
+
+## 13) Health declaration  <-- REQUIRED, blocks the release
+
+*(Policy -> App content -> Health -> "Go to declaration")*
+
+**Does your app access Health Connect?** -> **Yes.**
+
+The eight permissions below are merged in from `capacitor-health-connect`, so they
+do not appear in `android/app/src/main/AndroidManifest.xml` -- but they ARE in the
+shipped bundle. All are **read-only**; the app requests no WRITE permission.
+
+| Health Connect permission | Play form data type |
+| --- | --- |
+| `READ_STEPS` | Steps |
+| `READ_ACTIVE_CALORIES_BURNED` | Active calories burned |
+| `READ_TOTAL_CALORIES_BURNED` | Total calories burned |
+| `READ_HEART_RATE` | Heart rate |
+| `READ_SLEEP` | Sleep |
+| `READ_EXERCISE` | Exercise |
+| `READ_WEIGHT` | Weight |
+| `READ_DISTANCE` | Distance |
+
+**Purpose, for all eight** (paste):
+
+> To personalise the user's fitness plan, daily insights and weekly recap.
+
+- **Share Health Connect data with third parties?** -> **No**
+- **Use Health Connect data for advertising or marketing?** -> **No**
+- **Is the app a medical device / for diagnosis or treatment?** -> **No**
+  (fitness and wellness only)
+- **Permissions-rationale screen** -> already implemented: the
+  `.HealthConnectPermissionsRationale` activity-alias handles
+  `androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE`. Google checks it exists.
+- **Privacy policy URL** -> the same one used in section 1.
+
+If the form asks you to justify each type individually: steps and distance feed
+the daily step ring and streaks; active and total calories feed the calorie
+balance against food logged; heart rate and exercise feed workout intensity and
+the weekly recap; sleep feeds the recovery screen; weight feeds the progress chart
+and the calorie target.
+
+---
+
 ## Only 2 things actually need YOU (everything else is copy-paste above)
 1. **Create a reviewer test account** (email/password on the live web app) → enter under **App access** (#2).
 2. **Confirm the privacy page** shows your real legal name + contact address (#1).
