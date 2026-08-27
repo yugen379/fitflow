@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, ArrowRight, Volume2, TrendingUp, Trophy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { PremiumGate } from '../components/PremiumGate';
 import { db } from '../lib/firestore';
 import {
   collection, query, where, getDocs, orderBy, doc, setDoc, getDoc,
@@ -192,6 +193,10 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
                 </div>
               </div>
             ) : data && stats ? (
+              // Pro. The headline is the whole product here, so it is blurred
+              // rather than hidden — a recap they can see the shape of sells
+              // far better than a screen that simply is not there.
+              <PremiumGate feature="weekly-recap">
               <div className="space-y-5">
                 <div className="space-y-2">
                   <h2 className="font-display text-3xl font-bold text-white tracking-tight leading-tight">{data.headline}</h2>
@@ -246,6 +251,7 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
                   </button>
                 </div>
               </div>
+              </PremiumGate>
             ) : (
               <p className="text-text-dim text-sm">No data yet for this week. Log a workout to start your recap.</p>
             )}

@@ -134,7 +134,7 @@ gate(/match \/workout_plans\//.test(read('firestore.rules')),
 // ─── 4. Proof gates ───────────────────────────────────────────────────────────
 console.log(`\n${C.b}4 · Proof gates${C.x}`);
 const pkg = JSON.parse(read('package.json') || '{}');
-const offline = ['proof:telemetry', 'proof:badges', 'proof:library', 'proof:retention', 'proof:mission',
+const offline = ['proof:telemetry', 'proof:badges', 'proof:library', 'proof:features', 'proof:retention', 'proof:mission',
   'proof:steps', 'proof:quickadd', 'proof:subscription', 'proof:biomechanics', 'proof:preload'];
 let allProofs = true;
 for (const p of offline) {

@@ -14,6 +14,8 @@ import { StreakMonument } from '../components/3d/StreakMonument';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { PremiumGate } from '../components/PremiumGate';
+import { getEntitlement } from '../lib/billing';
+import { historyDaysFor } from '../lib/features';
 import exerciseLibrary from '../data/exerciseLibrary.json';
 import { StreakHeatmap } from '../components/StreakHeatmap';
 import { RetentionCard } from '../components/RetentionCard';
@@ -65,8 +67,17 @@ export const Analytics: React.FC = () => {
   const fetchAll = async (uid: string) => {
     setLoading(true);
     try {
-      const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      const q = query(collection(db,'workouts'), where('userId','==',uid), where('timestamp','>=',sixMonthsAgo), orderBy('timestamp','asc'));
+      // Free accounts see a rolling week; Pro sees six months.
+      //
+      // The window is applied to the QUERY, not to the rendering, so a free
+      // account never downloads history it is not entitled to see. Nothing is
+      // deleted — the data stays on the server and the charts fill back in the
+      // moment they subscribe.
+      const days = historyDaysFor(getEntitlement(profile));
+      const since = new Date();
+      if (Number.isFinite(days)) since.setDate(since.getDate() - days);
+      else since.setMonth(since.getMonth() - 6);
+      const q = query(collection(db,'workouts'), where('userId','==',uid), where('timestamp','>=',since), orderBy('timestamp','asc'));
       const snap = await getDocs(q);
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
       buildActivity(docs); buildCalorie(docs); buildMuscle(docs); buildVolume(docs);

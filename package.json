@@ -15,6 +15,7 @@
     "proof:briefing": "tsx scripts/briefing-proof.mjs",
     "proof:badges": "tsx scripts/badges-proof.mjs",
     "proof:library": "node scripts/library-proof.mjs",
+    "proof:features": "tsx scripts/features-proof.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-stepdays-test.mjs\"",
     "proof:telemetry": "node scripts/telemetry-proof.mjs",
     "check:legal": "node scripts/check-legal.mjs",

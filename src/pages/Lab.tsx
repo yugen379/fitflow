@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
 import { BiomechanicsViewport } from '../biomechanics/BiomechanicsViewport';
+import { PremiumGate } from '../components/PremiumGate';
 import { ActivationLegend } from '../biomechanics/components/ActivationLegend';
 import { EquipmentPicker } from '../biomechanics/components/EquipmentPicker';
 import { PhaseScrubber } from '../biomechanics/components/PhaseScrubber';
@@ -229,10 +230,13 @@ const LabInner: React.FC = () => {
         })}
       </div>
 
-      {/* Viewport */}
-      <div className="h-[46vh] min-h-[300px] max-h-[440px]">
-        <BiomechanicsViewport />
-      </div>
+      {/* Viewport — Pro. The lab is the clearest "look what this does"
+          moment in the app, so it is blurred rather than hidden. */}
+      <PremiumGate feature="biomechanics-lab">
+        <div className="h-[46vh] min-h-[300px] max-h-[440px]">
+          <BiomechanicsViewport />
+        </div>
+      </PremiumGate>
 
       <PhaseScrubber controls={controls} />
 

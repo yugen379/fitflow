@@ -395,6 +395,51 @@ const cascadeText = async (
   return null;
 };
 
+/**
+ * Server-side "is this user Pro?", mirroring lib/billing on the client.
+ *
+ * Trial OR paid OR the launch-giveaway flag. Deliberately fail-CLOSED on any
+ * error: an unreadable profile must not hand out paid AI. Kept small and
+ * dependency-free rather than importing the client module, which is bundled
+ * for the browser.
+ */
+const TRIAL_DAYS_SERVER = 7;
+const DAY_MS_SERVER = 24 * 60 * 60 * 1000;
+
+const isProUid = async (uid: string): Promise<boolean> => {
+  if (process.env.ALL_FEATURES_FREE === "true") return true;
+  try {
+    const snap = await db.doc(`users/${uid}`).get();
+    if (!snap.exists) return false;
+    const u = snap.data() as any;
+
+    if (u.subscriptionType === "premium") {
+      const status = u.subscriptionStatus;
+      if (status === "canceled" || status === "expired") {
+        const until = toMillisServer(u.currentPeriodEnd) ?? toMillisServer(u.graceUntil);
+        if (until != null && until > Date.now()) return true;
+      } else {
+        return true;
+      }
+    }
+
+    const started = toMillisServer(u.trialStartedAt) ?? toMillisServer(u.createdAt);
+    if (started != null && Date.now() < started + TRIAL_DAYS_SERVER * DAY_MS_SERVER) return true;
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+const toMillisServer = (v: any): number | null => {
+  if (!v) return null;
+  if (typeof v?.toMillis === "function") return v.toMillis();
+  if (typeof v?._seconds === "number") return v._seconds * 1000;
+  if (typeof v === "number") return v;
+  const t = Date.parse(String(v));
+  return Number.isFinite(t) ? t : null;
+};
+
 export const geminiProxy = functions.https.onRequest(
   { secrets: [geminiApiKey] },
   async (req, res) => {
@@ -433,6 +478,18 @@ export const geminiProxy = functions.https.onRequest(
     if (!apiKey) throw new Error("Gemini API key is not configured in Firebase");
     const ai = new GoogleGenAI({ apiKey });
     const { action, payload = {} } = req.body || {};
+
+    // Coach chat is Pro-only, and it is the one action with open-ended cost:
+    // a client-side gate is a UI convenience, not a spend control. Entitlement
+    // is recomputed here from the user doc the webhooks own, so a modified
+    // client or a replayed request cannot buy Gemini calls on the free tier.
+    if (action === "askCoach") {
+      const allowed = await isProUid(callerUid);
+      if (!allowed) {
+        res.status(402).json({ error: "Coach chat requires FitFlow Pro" });
+        return;
+      }
+    }
 
     // Run the cascade and parse JSON, falling back to the given shape on any
     // failure so the client always receives usable structured content.

@@ -34,14 +34,19 @@ e = ent({ subscriptionType: 'free' });
 check('free, no trial → not Pro', e.isPro === false && e.status === 'free');
 
 console.log(`\n${C.b}Cardless trial window${C.x}`);
+// Derived from TRIAL_DAYS, never hardcoded. These assertions used to say 6,
+// so changing the trial length failed the proof for the one reason a proof
+// must not fail: the constant moved and the test had its own copy of it.
 e = ent({ trialStartedAt: NOW, subscriptionType: 'free' });
-check('fresh trial → Pro, 6 days left, source trial', e.isPro && e.trialDaysLeft === 6 && e.source === 'trial' && e.status === 'trialing');
+check(`fresh trial → Pro, ${TRIAL_DAYS} days left, source trial`,
+  e.isPro && e.trialDaysLeft === TRIAL_DAYS && e.source === 'trial' && e.status === 'trialing');
 e = ent({ trialStartedAt: NOW - 3 * DAY });
-check('trial day 3 → Pro, 3 days left', e.isPro && e.trialDaysLeft === 3);
-e = ent({ trialStartedAt: NOW - 5 * DAY });
+check(`trial day 3 → Pro, ${TRIAL_DAYS - 3} days left`, e.isPro && e.trialDaysLeft === TRIAL_DAYS - 3);
+e = ent({ trialStartedAt: NOW - (TRIAL_DAYS - 1) * DAY });
 check('trial last day → Pro, 1 day left', e.isPro && e.trialDaysLeft === 1);
-e = ent({ trialStartedAt: NOW - 6 * DAY });
-check('trial exactly expired (6d) → not Pro, status expired', e.isPro === false && e.status === 'expired' && e.trialDaysLeft === 0);
+e = ent({ trialStartedAt: NOW - TRIAL_DAYS * DAY });
+check(`trial exactly expired (${TRIAL_DAYS}d) → not Pro, status expired`,
+  e.isPro === false && e.status === 'expired' && e.trialDaysLeft === 0);
 e = ent({ trialStartedAt: NOW - 30 * DAY });
 check('trial long expired → not Pro, expired', e.isPro === false && e.status === 'expired');
 

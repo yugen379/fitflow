@@ -3,21 +3,40 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Sparkles, X, Check, Crown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { isProUnlocked } from '../lib/billing';
+import { isProUnlocked, TRIAL_DAYS } from '../lib/billing';
+import { PRO_FEATURES, type Feature } from '../lib/features';
 import { purchaseUiAllowed } from '../services/playBillingService';
 
 interface PremiumGateProps {
-  feature: string;
+  /**
+   * A Feature id from lib/features, or a free-text label.
+   *
+   * The id form is preferred: it is type-checked against the registry, and
+   * it carries the pitch line, so the lock explains what the user gets
+   * rather than only what they cannot have.
+   */
+  feature: Feature | (string & {});
   children: React.ReactNode;
   className?: string;
 }
 
+/** Resolve a Feature id to its registry entry; free text passes through. */
+const metaFor = (feature: string) =>
+  (PRO_FEATURES as Record<string, { title: string; pitch: string }>)[feature] ??
+  { title: feature, pitch: '' };
+
+// Exactly what Pro buys — nothing more.
+//
+// This list used to advertise the AI meal plan, AI form check and Health
+// Connect sync, all of which are FREE, plus data export, which the app does
+// not have. Selling a subscription on things the user already has, and one
+// thing that does not exist, is the kind of copy that produces refunds.
 const PERKS = [
-  'Unlimited AI form check, meal plans, weekly recaps',
-  'Native Health Connect & HealthKit sync',
-  'Advanced analytics with plateau detection',
-  'Priority Gemini responses + voice coaching',
-  'Full data export and history retention',
+  'AI Coach chat — ask anything, any time',
+  'Your full history, not just the last 7 days',
+  'The AI weekly recap, every week',
+  'The 3D Biomechanics Lab',
+  'Unlimited streak freezes + Pro challenges',
 ];
 
 export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, className }) => {
@@ -52,7 +71,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
             </div>
             <div className="glass px-4 py-3 rounded-2xl space-y-1">
               <p className="text-eyebrow text-accent">FitFlow Pro</p>
-              <p className="text-white font-display text-base font-bold tracking-tight">{feature}</p>
+              <p className="text-white font-display text-base font-bold tracking-tight">{metaFor(feature).title}</p>
               <p className="text-text-dim text-xs">Tap to unlock</p>
             </div>
           </motion.button>
@@ -82,7 +101,10 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
                 </div>
                 <div>
                   <p className="text-eyebrow text-accent">FitFlow Pro</p>
-                  <h2 className="font-display text-3xl font-bold text-white tracking-tight mt-1">Unlock {feature}</h2>
+                  <h2 className="font-display text-3xl font-bold text-white tracking-tight mt-1">Unlock {metaFor(feature).title}</h2>
+                  {metaFor(feature).pitch && (
+                    <p className="text-text-dim text-sm mt-2 max-w-xs mx-auto leading-relaxed">{metaFor(feature).pitch}</p>
+                  )}
                 </div>
               </div>
 
@@ -107,7 +129,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
                   {purchaseUiAllowed() ? <>See plans &amp; subscribe</> : <>See what's included</>}
                 </button>
                 <p className="w-full text-center text-xs text-text-mute">
-                  New accounts get a 6-day free trial — no card needed.
+                  New accounts get a {TRIAL_DAYS}-day free trial — no card needed.
                 </p>
               </div>
             </motion.div>

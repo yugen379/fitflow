@@ -68,7 +68,7 @@ export interface UserProfile {
   dietaryPreferences?: string[];
   subscriptionType: 'free' | 'premium';
   // --- Billing / subscription (all server-trusted except trialStartedAt which is fixed at signup) ---
-  /** Server timestamp set once at signup; the 6-day cardless trial is measured from this. Immutable. */
+  /** Server timestamp set once at signup; the cardless trial (billing.TRIAL_DAYS) is measured from this. Immutable. */
   trialStartedAt?: any;
   /** Lifecycle for display: trialing | active | past_due | canceled | expired | free. Written by server/webhook. */
   subscriptionStatus?: SubscriptionStatus;

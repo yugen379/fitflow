@@ -9,10 +9,13 @@ import { collection, query, orderBy, limit, doc, updateDoc, arrayUnion, onSnapsh
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { Avatar } from '../components/Avatar';
 import { checkChallengeBadge } from '../services/badgeService';
+import { canUse } from '../lib/features';
 
 interface ChallengeDef {
   baseId: string;
   title: string;
+  /** Pro-only. Free accounts see it, marked, and are asked to subscribe. */
+  pro?: boolean;
   description: string;
   target: number;
   metric: 'workouts' | 'calories' | 'streakDays' | 'water' | 'minutes';
@@ -34,9 +37,9 @@ const WEEKLY_POOL: ChallengeDef[] = [
 ];
 
 const MONTHLY_POOL: ChallengeDef[] = [
-  { baseId: 'burn10k',        title: 'Burn 10,000 calories',    description: 'Solo endurance test — torch 10K calories of activity in 30 days.', target: 10000, metric: 'calories',   type: 'individual', prize: 'Elite badge',           period: 'monthly' },
+  { baseId: 'burn10k',        title: 'Burn 10,000 calories',    description: 'Solo endurance test — torch 10K calories of activity in 30 days.', target: 10000, metric: 'calories',   type: 'individual', prize: 'Elite badge',           period: 'monthly', pro: true },
   { baseId: 'workouts20',     title: '20 workouts in a month',  description: 'Show up 20 times this month, in any form. Movement compounds.',    target: 20,    metric: 'workouts',   type: 'individual', prize: 'Consistency badge',     period: 'monthly' },
-  { baseId: 'mins1500',       title: '1,500 active minutes',    description: 'A full month of intentional movement — 25 hours of training.',     target: 1500,  metric: 'minutes',    type: 'community',  prize: 'Marathon Mover badge',  period: 'monthly' },
+  { baseId: 'mins1500',       title: '1,500 active minutes',    description: 'A full month of intentional movement — 25 hours of training.',     target: 1500,  metric: 'minutes',    type: 'community',  prize: 'Marathon Mover badge',  period: 'monthly', pro: true },
   { baseId: 'water100l',      title: '100 litres of water',     description: 'Community hydration challenge — collectively drink 100L.',         target: 100000,metric: 'water',      type: 'community',  prize: 'Aquaholic badge',       period: 'monthly' },
   { baseId: 'streak30',       title: '30-day streak',           description: 'The legendary one — log activity every day this month.',           target: 30,    metric: 'streakDays', type: 'individual', prize: 'Unbreakable badge',     period: 'monthly' },
 ];
@@ -218,6 +221,13 @@ export const Challenges: React.FC = () => {
 
   const handleJoin = async (challenge: any) => {
     if (!profile?.uid) return;
+    // Pro-only challenge on a free account: send them to the paywall rather
+    // than writing a membership they cannot complete.
+    if (challenge?.pro && !canUse('pro-challenges', profile)) {
+      showToast('That challenge is part of FitFlow Pro', 'info');
+      navigate('/pro');
+      return;
+    }
     setLoading(true);
     try {
       const userRef = doc(db, 'users', profile.uid);

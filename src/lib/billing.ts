@@ -8,8 +8,15 @@ import type { UserProfile, SubscriptionStatus, BillingPlan } from '../types';
 // deterministically. The React app uses the thin wrappers at the bottom.
 // ---------------------------------------------------------------------------
 
-/** Length of the cardless free trial, in days. */
-export const TRIAL_DAYS = 6;
+/**
+ * Length of the cardless free trial, in days.
+ *
+ * Seven, so the trial spans a full week: a user sees one complete cycle of
+ * weekday training, a weekend, and the weekly recap that lands at the end of
+ * it. Six days ended mid-cycle and cut the recap — the single best argument
+ * for subscribing — out of the trial entirely.
+ */
+export const TRIAL_DAYS = 7;
 /** How long Pro stays unlocked after a payment fails (Stripe dunning window). */
 export const GRACE_DAYS = 3;
 const DAY_MS = 86_400_000;

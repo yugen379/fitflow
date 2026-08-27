@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { LogoMark } from '../components/Logo';
 import { LEGAL, publisherBlock } from '../lib/legal';
+import { TRIAL_DAYS } from '../lib/billing';
 
 // Identity comes from src/lib/legal.ts, gated by scripts/check-legal.mjs.
 const COMPANY = LEGAL.name;
@@ -103,7 +104,7 @@ export const Terms: React.FC = () => {
         <Section title="7. Subscriptions and refunds">
           <List items={[
             'FitFlow Pro is a recurring subscription billed monthly ($4.99) or yearly ($60.10) via Stripe (web) or the platform store (mobile).',
-            'New accounts include a 6-day free trial that requires no credit card and never auto-charges. When the trial ends, your account simply reverts to the free tier unless you choose to subscribe.',
+            `New accounts include a ${TRIAL_DAYS}-day free trial that requires no credit card and never auto-charges. During the trial every feature is unlocked. When it ends, your account reverts to the free tier — you keep step tracking, meal and workout logging, barcode scanning, AI meal plans, AI form check, challenges and achievements for free, and the Pro features stop until you choose to subscribe.`,
             'Cancel at any time in Settings or your platform store; cancellation takes effect at the end of the current paid billing period.',
             'Refunds: we generally do not offer prorated refunds. EU/UK users have statutory withdrawal rights as required by law.',
             'Pricing may change with at least 14 days notice for active subscribers.',

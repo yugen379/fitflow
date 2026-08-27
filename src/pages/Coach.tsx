@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Send, Sparkles, Loader2, Volume2, Mic, MicOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { PremiumGate } from '../components/PremiumGate';
+import { canUse } from '../lib/features';
 import { askCoach, CoachChatMessage } from '../services/geminiService';
 import { haptic } from '../lib/haptics';
 import { useToast } from '../hooks/useToast';
@@ -81,6 +83,11 @@ export const Coach: React.FC = () => {
   const send = async (text: string) => {
     const message = text.trim();
     if (!message || thinking) return;
+    // The composer is wrapped in a PremiumGate, so this is unreachable in
+    // normal use. It stays because a Gemini call costs real money and a
+    // rendering bug must not be able to spend it. The server enforces the
+    // same rule independently — see functions geminiProxy.
+    if (!canUse('coach-chat', profile)) return;
     haptic('light');
     // Sending always means "show me the transcript", including from standby.
     setStandby(false);
@@ -291,6 +298,10 @@ export const Coach: React.FC = () => {
       </div>
 
       <div className="px-3 pb-3 pt-2 relative z-10 border-t border-white/[0.05] bg-bg/70 backdrop-blur-xl">
+        {/* Gate the composer, not the page: the header, the back button and
+            the transcript all stay usable, and what is locked is exactly the
+            thing Pro buys. */}
+        <PremiumGate feature="coach-chat" className="min-h-[64px]">
         <div className="glass rounded-2xl flex items-end gap-2 p-2">
           <button
             onClick={handleVoice}
@@ -339,6 +350,7 @@ export const Coach: React.FC = () => {
             {thinking ? <Loader2 className="animate-spin" size={16} /> : <Send size={14} />}
           </button>
         </div>
+        </PremiumGate>
       </div>
     </div>
   );

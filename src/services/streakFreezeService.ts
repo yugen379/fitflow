@@ -14,7 +14,10 @@ import { dayKey } from './retentionUtils';
 import { isProUnlocked } from '../lib/billing';
 import type { UserProfile } from '../types';
 
-export const FREE_FREEZES_PER_MONTH = 1;
+// Re-exported from lib/features so the paywall has ONE table of what the free
+// tier gets, rather than a number here and a number there that can drift.
+export { FREE_STREAK_FREEZES_PER_MONTH as FREE_FREEZES_PER_MONTH } from '../lib/features';
+const FREE_FREEZES_PER_MONTH = 1;
 
 /** 'YYYY-MM' for the given date (local). Used to reset the monthly free allowance. */
 export const monthKey = (d: Date = new Date()): string => dayKey(d).slice(0, 7);
