@@ -4,6 +4,7 @@ import { ProgressRing } from './ProgressRing';
 import { AnimatedNumber } from './AnimatedNumber';
 import { Mission, MissionTask } from '../services/missionUtils';
 import { celebrateSession } from '../lib/celebrate';
+import { dayKey } from '../services/retentionUtils';
 import { haptic } from '../lib/haptics';
 
 // Home's hero widget — the answer to "what should I do RIGHT NOW?".
@@ -30,7 +31,10 @@ export const TodayMission: React.FC<Props> = ({
 
   useEffect(() => {
     if (loading || !uid || !mission.complete) return;
-    const key = `ff_mission_complete_${uid}_${new Date().toISOString().slice(0, 10)}`;
+    // LOCAL day: on a UTC key the celebration fires a second time when the UTC
+    // date rolls over mid-morning, and a mission completed before that rollover
+    // is filed under yesterday.
+    const key = `ff_mission_complete_${uid}_${dayKey(new Date())}`;
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, '1');
     celebrateSession();

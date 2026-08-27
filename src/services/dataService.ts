@@ -7,43 +7,30 @@ import { saveToCatalog } from './foodCatalogService';
 import { awardXp } from './xpService';
 import { XP_AWARDS } from './missionUtils';
 
+/**
+ * Mark the user active for today and refresh their streak.
+ *
+ * This used to compute the streak itself, from `Math.ceil(elapsedMs / 86400000)`
+ * against the profile's `updatedAt`. That is elapsed time, not calendar days, and
+ * it was wrong in both directions:
+ *
+ *   • Two logs an hour apart gave `ceil(0.04) === 1`, which read as "a new day"
+ *     and incremented the streak AGAIN. Breakfast, lunch and dinner earned three
+ *     streak days in one afternoon.
+ *   • Two logs on genuinely consecutive days but 25 hours apart gave
+ *     `ceil(1.04) === 2`, which read as "a day was missed" and reset the streak
+ *     to 1. Logging at 08:00 and then 08:01 the next morning destroyed it.
+ *
+ * It also keyed off `updatedAt`, which every unrelated profile write touches, so
+ * changing a setting moved the streak clock.
+ *
+ * The app already had a correct, proof-tested streak (`npm run proof:retention`)
+ * built on per-day activity markers. This now delegates to it, so there is one
+ * streak instead of two that disagree.
+ */
 export const checkAndUpdateStreak = async (userId: string) => {
-  try {
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return;
-
-    const userData = userSnap.data() as UserProfile;
-    const lastUpdate = userData.updatedAt?.toDate() || userData.createdAt?.toDate();
-    const now = new Date();
-    
-    if (lastUpdate) {
-      const diffTime = Math.abs(now.getTime() - lastUpdate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays === 1) {
-        // Daily login/activity - increment streak
-        await updateDoc(userRef, {
-          streak: increment(1),
-          updatedAt: serverTimestamp()
-        });
-      } else if (diffDays > 1) {
-        // Streak broken
-        await updateDoc(userRef, {
-          streak: 1,
-          updatedAt: serverTimestamp()
-        });
-      }
-    } else {
-      // First activity
-      await updateDoc(userRef, {
-        streak: 1,
-        updatedAt: serverTimestamp()
-      });
-    }
-  } catch (error) {
-    console.error("Streak update error:", error);
-  }
+  const { recordActiveDay } = await import('./analyticsService');
+  await recordActiveDay(userId);
 };
 
 const cleanObject = (obj: any) => {

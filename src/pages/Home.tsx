@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Zap, WifiOff, Volume2, Calendar, HeartPulse, ChefHat, ChevronRight } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { checkAndAwardBadge } from '../services/badgeService';
+import { awardXp } from '../services/xpService';
 import { useTodayActivity } from '../hooks/useTodayActivity';
 import { scheduleReminders, getDaysSinceLastWorkout } from '../services/notificationService';
 import { CoachBriefingCard } from '../components/CoachBriefingCard';
@@ -223,9 +224,11 @@ export const Home: React.FC = () => {
         amount,
         timestamp: serverTimestamp(),
       });
-      await updateDoc(doc(db, 'users', profile.uid), {
-        points: (profile.points || 0) + Math.round(amount / 25),
-      });
+      // Atomic, via awardXp: a bare `points: profile.points + n` is a
+      // read-modify-write against a value from a Firestore snapshot that may
+      // already be stale, so it silently ERASED any XP awarded in between —
+      // and it never recomputed `level`, leaving the XP bar off its curve.
+      await awardXp(profile.uid, Math.round(amount / 25));
       await checkAndAwardBadge(profile.uid, 'hydration_hero');
     } catch (error) {
       handleFirestoreError(error, 'write', 'water_logs');

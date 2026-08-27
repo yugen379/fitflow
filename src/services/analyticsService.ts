@@ -7,8 +7,9 @@
 
 import { collection, doc, setDoc, getDocs, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firestore';
-import { dayKey, computeRetention, streakWithFreezes, RetentionStats } from './retentionUtils';
+import { dayKey, computeRetention, streakWithFreezes, daysBetweenKeys, RetentionStats } from './retentionUtils';
 import { getFreezeDays } from './streakFreezeService';
+import { checkAndAwardBadge, checkStreakBadge } from './badgeService';
 
 /**
  * Mark today active for this user. Idempotent (one doc per uid+day). Never throws.
@@ -18,9 +19,37 @@ import { getFreezeDays } from './streakFreezeService';
  * those cheap fields instead of re-querying every user's activity_days — see
  * engagementUtils / functions/src/index.ts (streak-risk + win-back).
  */
+/**
+ * The day this session has already recorded, per uid.
+ *
+ * Recording is idempotent, but the denormalisation below reads every active-day
+ * marker the user has. That is fine once per day; it is not fine on every meal
+ * and workout write, which is where this is now called from. Once today is
+ * banked there is nothing left to recompute until the date changes.
+ */
+let recordedFor: { uid: string; day: string } | null = null;
+
+/**
+ * Mark today active for this user. Idempotent (one doc per uid+day). Never throws.
+ *
+ * Also denormalizes lastActiveDay + currentStreak + streak onto the user doc and
+ * resets the win-back tier (the user is back). The proactive-engagement Cloud
+ * Functions read those cheap fields instead of re-querying every user's
+ * activity_days — see engagementUtils / functions/src/index.ts (streak-risk +
+ * win-back).
+ *
+ * `streak` is written alongside `currentStreak` because `streak` is the field the
+ * entire UI reads — Home, Profile, Analytics, both leaderboards, the AI coach's
+ * context and the XP bar. It used to be maintained by a separate counter that
+ * measured ELAPSED HOURS rather than calendar days, so it incremented again on
+ * every extra log within 24h and reset to 1 whenever two consecutive days were
+ * more than 24h apart (logging at 08:00 then 08:01 the next day broke it). There
+ * is now exactly one streak in the app, and it is this proof-tested one.
+ */
 export const recordActiveDay = async (uid: string): Promise<void> => {
   if (!uid) return;
   const day = dayKey(new Date());
+  if (recordedFor && recordedFor.uid === uid && recordedFor.day === day) return;
   try {
     await setDoc(
       doc(db, 'activity_days', `${uid}_${day}`),
@@ -30,19 +59,37 @@ export const recordActiveDay = async (uid: string): Promise<void> => {
   } catch {
     // ignore — losing one day's marker is harmless
   }
-  // Best-effort denormalization for the server-side nudge engine.
+  // Best-effort denormalization for the server-side nudge engine and the UI.
   try {
     const snap = await getDocs(query(collection(db, 'activity_days'), where('userId', '==', uid)));
     const days = snap.docs.map((d) => d.data().day as string).filter((d) => typeof d === 'string');
+
+    // The most recent day BEFORE today, for the comeback badge. Computed before
+    // today is appended so it cannot see itself.
+    const previousDay = days
+      .filter((d) => (daysBetweenKeys(d, day) ?? 0) > 0)
+      .sort()
+      .pop();
+
     if (!days.includes(day)) days.push(day);
     const freezeDays = await getFreezeDays(uid);
     const currentStreak = streakWithFreezes(days, freezeDays, day);
     await updateDoc(doc(db, 'users', uid), {
       lastActiveDay: day,
       currentStreak,
+      // One streak, one number, everywhere.
+      streak: currentStreak,
       winbackLastTier: 0,
       updatedAt: serverTimestamp(),
     });
+    recordedFor = { uid, day };
+
+    // Badges that depend on the streak had no caller at all until now, so
+    // "On A Roll", "Consistency King" and "Unstoppable" were displayed in the
+    // Profile gallery as goals nobody could ever reach.
+    await checkStreakBadge(uid, currentStreak);
+    const gap = previousDay ? daysBetweenKeys(previousDay, day) : null;
+    if (gap !== null && gap >= 7) await checkAndAwardBadge(uid, 'comeback_kid');
   } catch {
     // ignore — denormalization is an accelerator, never a dependency
   }

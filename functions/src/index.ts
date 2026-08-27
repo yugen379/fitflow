@@ -607,7 +607,18 @@ export const sendWorkoutReminders = onSchedule(
     const now = new Date();
     const target = new Date(now.getTime() + 30 * 60 * 1000); // 30 min from now
     const targetHourUtc = target.getUTCHours();
-    const today = now.toISOString().slice(0, 10);
+    // Keyed on the TARGET day, not the current one.
+    //
+    // This runs every 30 minutes and matches on the hour 30 minutes out, so the
+    // same reminder hour is matched by two consecutive runs; `lastReminderDate`
+    // is what stops the second one from sending. Keyed on `now`, that guard
+    // failed for exactly one hour a day: the run at 23:30 UTC (target hour 0)
+    // stamped day N, and the run at 00:00 UTC stamped day N+1, so the guard
+    // never matched and the user got the same push twice, 30 minutes apart.
+    // For a UTC+8 athlete that is an 08:00 reminder — one of the most commonly
+    // chosen times there is. The target is the same instant in both runs, so
+    // keying on it dedupes across the midnight boundary too.
+    const today = target.toISOString().slice(0, 10);
 
     const snap = await db
       .collection("users")

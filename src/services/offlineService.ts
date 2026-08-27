@@ -63,11 +63,31 @@ const writeQueue = async (queue: OfflineAction[]): Promise<void> => {
   }
 };
 
-export const addToOfflineQueue = async (action: OfflineAction) => {
-  const queue = await readQueue();
-  queue.push({ ...action, queuedAt: action.queuedAt ?? Date.now(), attempts: action.attempts ?? 0 });
-  await writeQueue(queue);
+/**
+ * Serialises every read-modify-write of the queue.
+ *
+ * Two `addToOfflineQueue` calls that overlap — a user logging a meal and a
+ * workout in quick succession while offline, or a log landing while the replay
+ * below is mid-flight — both read the same array, both push their own item, and
+ * the second write clobbers the first. One of the two records is gone, silently,
+ * with no error anywhere. Every mutation now queues behind the previous one.
+ */
+let mutationChain: Promise<unknown> = Promise.resolve();
+
+const mutate = <T>(fn: () => Promise<T>): Promise<T> => {
+  const next = mutationChain.then(fn, fn);
+  // Keep the chain alive even if this link rejects, or one failure would wedge
+  // every future queue operation.
+  mutationChain = next.catch(() => {});
+  return next;
 };
+
+export const addToOfflineQueue = async (action: OfflineAction) =>
+  mutate(async () => {
+    const queue = await readQueue();
+    queue.push({ ...action, queuedAt: action.queuedAt ?? Date.now(), attempts: action.attempts ?? 0 });
+    await writeQueue(queue);
+  });
 
 /** How many writes are still waiting, for the UI to be honest about it. */
 export const pendingOfflineCount = async (): Promise<number> => (await readQueue()).length;
@@ -108,7 +128,15 @@ export const syncOfflineQueue = async (): Promise<{ sent: number; failed: number
         }
       }
     }
-    await writeQueue(remaining);
+    // Re-read before overwriting. A failed write that queued WHILE this replay
+    // was in flight is sitting in storage right now, appended after the snapshot
+    // we started from — and blindly writing `remaining` would delete it. The
+    // queue is append-only apart from this function, so everything past the
+    // snapshot length is new and must be preserved.
+    await mutate(async () => {
+      const latest = await readQueue();
+      await writeQueue([...remaining, ...latest.slice(queue.length)]);
+    });
   } finally {
     syncing = false;
   }

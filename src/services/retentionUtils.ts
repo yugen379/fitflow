@@ -145,3 +145,17 @@ export const streakWithFreezes = (
   }
   return count;
 };
+
+/**
+ * Whole days from `fromKey` to `toKey`, both 'YYYY-MM-DD'. Negative if `toKey`
+ * is earlier; null if either side is malformed.
+ *
+ * Both sides go through the UTC-anchored ordinal, so this is immune to DST and
+ * to the local offset — unlike subtracting two `Date`s, which is what made the
+ * old streak counter break on any day longer or shorter than exactly 24 hours.
+ */
+export const daysBetweenKeys = (fromKey: string, toKey: string): number | null => {
+  const a = dayOrdinal(fromKey);
+  const b = dayOrdinal(toKey);
+  return a === null || b === null ? null : b - a;
+};

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { dayKey } from '../services/retentionUtils';
+import { awardXp } from '../services/xpService';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -47,14 +49,18 @@ export const Wellness: React.FC = () => {
       snap.docs.forEach(d => {
         const ts = d.data().timestamp?.toDate?.();
         if (!ts) return;
-        const k = ts.toISOString().slice(0, 10);
+        // LOCAL day. On a UTC key, sleep logged in the morning — which is when
+        // sleep is always logged — fell into the PREVIOUS day's bar for anyone
+        // east of Greenwich, and the whole chart shifted depending on what time
+        // of day you happened to open it.
+        const k = dayKey(ts);
         byDay[k] = (byDay[k] || 0) + (d.data().hours || 0);
       });
       const trend: { day: string; hours: number; date: string }[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
+        const key = dayKey(d);
         trend.push({
           day: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
           hours: byDay[key] || 0,
@@ -84,10 +90,10 @@ export const Wellness: React.FC = () => {
         timestamp: serverTimestamp()
       });
 
-      // Reward points
-      await updateDoc(doc(db, 'users', profile.uid), {
-        points: (profile.points || 0) + 30
-      });
+      // Reward points — atomic, and it keeps `level` on the curve. The previous
+      // `points: profile.points + 30` overwrote whatever XP had landed since the
+      // profile snapshot was taken, so recovery logging could LOWER your total.
+      await awardXp(profile.uid, 30);
 
       showToast('Recovery logged');
       navigate('/');

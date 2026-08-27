@@ -5,9 +5,13 @@ import { generateDailyChallenge, DailyChallenge as DailyChallengeData } from '..
 import { useAuth } from '../hooks/useAuth';
 import { haptic } from '../lib/haptics';
 import { celebrateSession } from '../lib/celebrate';
+import { dayKey } from '../services/retentionUtils';
 
 const STORAGE_KEY = (uid: string, date: string) => `ff_challenge_${uid}_${date}`;
-const today = () => new Date().toISOString().slice(0, 10);
+// LOCAL day, not UTC. With toISOString() the challenge rolled over at UTC
+// midnight, so everyone east of Greenwich spent the first hours of each
+// morning looking at yesterday's challenge, already ticked off.
+const today = () => dayKey(new Date());
 
 interface Stored {
   challenge: DailyChallengeData;

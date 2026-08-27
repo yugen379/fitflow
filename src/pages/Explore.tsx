@@ -7,6 +7,7 @@ import { Play, Square, Map as MapIcon, ChevronLeft, Footprints, Activity, Bike }
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { checkAndAwardBadge } from '../services/badgeService';
+import { awardXp } from '../services/xpService';
 
 type Coord = { lat: number; lng: number; t: number };
 type ActivityType = 'run' | 'walk' | 'cycle';
@@ -141,9 +142,11 @@ export const Explore: React.FC = () => {
         caloriesBurned: cals,
         timestamp: serverTimestamp(),
       });
-      await updateDoc(doc(db, 'users', profile.uid), {
-        points: (profile.points || 0) + Math.floor(km * 100),
-      });
+      // Atomic, via awardXp: a bare `points: profile.points + n` is a
+      // read-modify-write against a value from a Firestore snapshot that may
+      // already be stale, so it silently ERASED any XP awarded in between —
+      // and it never recomputed `level`, leaving the XP bar off its curve.
+      await awardXp(profile.uid, Math.floor(km * 100));
       if (km >= 5) await checkAndAwardBadge(profile.uid, 'marathoner');
       showToast(`Saved · ${km.toFixed(2)} km`);
     } catch {

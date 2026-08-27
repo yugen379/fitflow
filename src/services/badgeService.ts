@@ -1,6 +1,7 @@
 import { db } from '../lib/firestore';
-import { collection, doc, updateDoc, arrayUnion, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, getDoc, getDocs, addDoc, increment, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { computeLevel } from './missionUtils';
+import { dayKey, daysBetweenKeys } from './retentionUtils';
 
 export interface Badge {
   id: string;
@@ -62,12 +63,23 @@ export async function checkAndAwardBadge(userId: string, badgeId: string): Promi
     const badge = ALL_BADGES.find(b => b.id === badgeId);
     if (!badge) return null;
 
-    const newPoints = (profile.points || 0) + 150;
+    // `arrayUnion` makes the badge itself race-free, but the 150 XP must be an
+    // atomic increment too: written as `profile.points + 150` it discarded any
+    // XP awarded between the read above and this write — and two badges earned
+    // together (which happens constantly, e.g. a workout that also breaks a
+    // streak) awarded 150 total instead of 300.
     await updateDoc(userRef, {
       badges: arrayUnion(badgeId),
-      points: newPoints,
-      level: computeLevel(newPoints).level,
+      points: increment(150),
     });
+    // Re-read the authoritative total so `level` matches the curve rather than
+    // a figure computed from a stale snapshot.
+    const after = await getDoc(userRef);
+    const newPoints = typeof after.data()?.points === 'number' ? after.data()!.points : 0;
+    const newLevel = computeLevel(newPoints).level;
+    if (after.data()?.level !== newLevel) {
+      await updateDoc(userRef, { level: newLevel });
+    }
 
     await addDoc(collection(db, 'notifications'), {
       userId,
@@ -110,4 +122,138 @@ export async function checkStreakBadge(userId: string, streak: number): Promise<
 export async function checkProgressionBadges(userId: string, points: number, level: number): Promise<void> {
   if (points >= 1000) await checkAndAwardBadge(userId, 'centurion');
   if (level >= 5)     await checkAndAwardBadge(userId, 'level_5');
+}
+
+
+// ─── History-dependent badges ─────────────────────────────────────────────────
+//
+// Ten of the badges in ALL_BADGES had no awarding path anywhere in the app. They
+// were rendered in the Profile gallery next to the earnable ones, with their
+// requirement text, as goals — and no sequence of user actions could ever unlock
+// them. The rest of this file is what makes them real.
+//
+// Every check below opens with `alreadyEarned`, a single document read, so once a
+// badge is won its query never runs again. The queries themselves are bounded to
+// the window the requirement actually needs.
+
+/** One document read. `null` when the profile can't be reached. */
+const earnedBadges = async (userId: string): Promise<Set<string> | null> => {
+  try {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (!snap.exists()) return null;
+    const list = snap.data().badges;
+    return new Set<string>(Array.isArray(list) ? list : []);
+  } catch {
+    return null;
+  }
+};
+
+/** Distinct LOCAL day keys from a set of docs carrying a `timestamp`. */
+const dayKeysOf = (docs: { data: () => any }[]): string[] => {
+  const days = new Set<string>();
+  for (const d of docs) {
+    const ts = d.data()?.timestamp?.toDate?.();
+    if (ts instanceof Date && !isNaN(ts.getTime())) days.add(dayKey(ts));
+  }
+  return Array.from(days).sort();
+};
+
+/** True when `days` contains a run of `needed` consecutive calendar days. */
+const hasConsecutiveRun = (days: string[], needed: number): boolean => {
+  let run = 0;
+  let prev: string | null = null;
+  for (const d of days) {
+    run = prev !== null && daysBetweenKeys(prev, d) === 1 ? run + 1 : 1;
+    if (run >= needed) return true;
+    prev = d;
+  }
+  return false;
+};
+
+const sinceDaysAgo = (n: number): Date => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+/** Call after a community post — "Social Butterfly". */
+export async function checkSocialBadge(userId: string): Promise<void> {
+  await checkAndAwardBadge(userId, 'social_butterfly');
+}
+
+/** Call after joining a challenge — "Challenge Accepted". */
+export async function checkChallengeBadge(userId: string): Promise<void> {
+  await checkAndAwardBadge(userId, 'challenge_accepted');
+}
+
+/** Call after saving a workout — "Week Warrior": 5 workouts inside 7 days. */
+export async function checkWeeklyWorkoutBadge(userId: string): Promise<void> {
+  try {
+    const earned = await earnedBadges(userId);
+    if (!earned || earned.has('week_warrior')) return;
+    const snap = await getDocs(query(
+      collection(db, 'workouts'),
+      where('userId', '==', userId),
+      where('timestamp', '>=', sinceDaysAgo(6)),
+      limit(20),
+    ));
+    if (snap.size >= 5) await checkAndAwardBadge(userId, 'week_warrior');
+  } catch { /* best-effort — a badge must never break a workout save */ }
+}
+
+/** Call after a meal log — "Macro Master": macros logged 7 days running. */
+export async function checkMacroBadge(userId: string): Promise<void> {
+  try {
+    const earned = await earnedBadges(userId);
+    if (!earned || earned.has('macro_master')) return;
+    const snap = await getDocs(query(
+      collection(db, 'meals'),
+      where('userId', '==', userId),
+      where('timestamp', '>=', sinceDaysAgo(8)),
+      limit(200),
+    ));
+    // Only meals that actually carry macros count — the badge says "tracked
+    // macros", not "logged something".
+    const withMacros = snap.docs.filter((d) => {
+      const m = d.data();
+      return [m.protein, m.carbs, m.fats].some((v) => typeof v === 'number' && v > 0);
+    });
+    if (hasConsecutiveRun(dayKeysOf(withMacros), 7)) {
+      await checkAndAwardBadge(userId, 'macro_master');
+    }
+  } catch { /* best-effort */ }
+}
+
+/**
+ * Call after a recovery log — "Sleep Master" (8h+ three times) and
+ * "Wellness Zen" (mood + stress three days running).
+ */
+export async function checkWellnessBadges(userId: string): Promise<void> {
+  try {
+    const earned = await earnedBadges(userId);
+    if (!earned) return;
+
+    if (!earned.has('sleep_master')) {
+      const snap = await getDocs(query(
+        collection(db, 'sleep_logs'),
+        where('userId', '==', userId),
+        where('hours', '>=', 8),
+        limit(3),
+      ));
+      if (snap.size >= 3) await checkAndAwardBadge(userId, 'sleep_master');
+    }
+
+    if (!earned.has('wellness_zen')) {
+      const snap = await getDocs(query(
+        collection(db, 'wellness_logs'),
+        where('userId', '==', userId),
+        where('timestamp', '>=', sinceDaysAgo(6)),
+        limit(50),
+      ));
+      if (hasConsecutiveRun(dayKeysOf(snap.docs), 3)) {
+        await checkAndAwardBadge(userId, 'wellness_zen');
+      }
+    }
+  } catch { /* best-effort */ }
 }

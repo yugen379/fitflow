@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { useAuth } from '../hooks/useAuth';
+import { dayKey } from '../services/retentionUtils';
 
 const WEEKS = 13; // ~3 months
 const DAYS = 7;
@@ -13,7 +14,9 @@ const startOfDay = (d: Date) => {
   return c;
 };
 
-const dayKey = (d: Date) => startOfDay(d).toISOString().slice(0, 10);
+// The shared LOCAL-day key. The local-midnight-then-toISOString() version this
+// replaces happened to stay self-consistent, but it labelled every bucket with
+// the wrong date for any positive UTC offset — one edit away from a real bug.
 
 interface Props {
   className?: string;
