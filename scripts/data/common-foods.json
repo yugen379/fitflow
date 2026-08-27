@@ -1,143 +1,1892 @@
 [
-  { "name": "Banana", "calories": 105, "protein": 1, "carbs": 27, "fats": 0 },
-  { "name": "Apple", "calories": 95, "protein": 0, "carbs": 25, "fats": 0 },
-  { "name": "Orange", "calories": 62, "protein": 1, "carbs": 15, "fats": 0 },
-  { "name": "Strawberries", "calories": 49, "protein": 1, "carbs": 12, "fats": 0 },
-  { "name": "Blueberries", "calories": 84, "protein": 1, "carbs": 21, "fats": 0 },
-  { "name": "Grapes", "calories": 104, "protein": 1, "carbs": 27, "fats": 0 },
-  { "name": "Avocado", "calories": 240, "protein": 3, "carbs": 13, "fats": 22 },
-  { "name": "Mango", "calories": 99, "protein": 1, "carbs": 25, "fats": 1 },
-  { "name": "Pineapple", "calories": 82, "protein": 1, "carbs": 22, "fats": 0 },
-  { "name": "Watermelon", "calories": 46, "protein": 1, "carbs": 12, "fats": 0 },
-  { "name": "Pear", "calories": 101, "protein": 1, "carbs": 27, "fats": 0 },
-  { "name": "Peach", "calories": 59, "protein": 1, "carbs": 14, "fats": 0 },
-  { "name": "Kiwi", "calories": 42, "protein": 1, "carbs": 10, "fats": 0 },
-  { "name": "Raspberries", "calories": 64, "protein": 1, "carbs": 15, "fats": 1 },
-
-  { "name": "Chicken Breast", "calories": 165, "protein": 31, "carbs": 0, "fats": 4 },
-  { "name": "Chicken Thigh", "calories": 209, "protein": 26, "carbs": 0, "fats": 11 },
-  { "name": "Ground Beef", "calories": 250, "protein": 26, "carbs": 0, "fats": 15 },
-  { "name": "Sirloin Steak", "calories": 244, "protein": 36, "carbs": 0, "fats": 10 },
-  { "name": "Pork Chop", "calories": 231, "protein": 26, "carbs": 0, "fats": 14 },
-  { "name": "Bacon", "calories": 92, "protein": 6, "carbs": 0, "fats": 7 },
-  { "name": "Turkey Breast", "calories": 135, "protein": 30, "carbs": 0, "fats": 1 },
-  { "name": "Salmon", "calories": 208, "protein": 20, "carbs": 0, "fats": 13 },
-  { "name": "Tuna", "calories": 132, "protein": 28, "carbs": 0, "fats": 1 },
-  { "name": "Shrimp", "calories": 99, "protein": 24, "carbs": 0, "fats": 0 },
-  { "name": "Cod", "calories": 105, "protein": 23, "carbs": 0, "fats": 1 },
-  { "name": "Tilapia", "calories": 128, "protein": 26, "carbs": 0, "fats": 3 },
-  { "name": "Egg", "calories": 78, "protein": 6, "carbs": 1, "fats": 5 },
-  { "name": "Egg White", "calories": 17, "protein": 4, "carbs": 0, "fats": 0 },
-  { "name": "Tofu", "calories": 144, "protein": 17, "carbs": 3, "fats": 9 },
-  { "name": "Tempeh", "calories": 192, "protein": 20, "carbs": 8, "fats": 11 },
-  { "name": "Lentils", "calories": 230, "protein": 18, "carbs": 40, "fats": 1 },
-  { "name": "Chickpeas", "calories": 269, "protein": 15, "carbs": 45, "fats": 4 },
-  { "name": "Black Beans", "calories": 227, "protein": 15, "carbs": 41, "fats": 1 },
-  { "name": "Kidney Beans", "calories": 225, "protein": 15, "carbs": 40, "fats": 1 },
-  { "name": "Edamame", "calories": 188, "protein": 18, "carbs": 14, "fats": 8 },
-
-  { "name": "White Rice", "calories": 205, "protein": 4, "carbs": 45, "fats": 0 },
-  { "name": "Brown Rice", "calories": 216, "protein": 5, "carbs": 45, "fats": 2 },
-  { "name": "Quinoa", "calories": 222, "protein": 8, "carbs": 39, "fats": 4 },
-  { "name": "Oatmeal", "calories": 158, "protein": 6, "carbs": 27, "fats": 3 },
-  { "name": "Pasta", "calories": 221, "protein": 8, "carbs": 43, "fats": 1 },
-  { "name": "Spaghetti", "calories": 221, "protein": 8, "carbs": 43, "fats": 1 },
-  { "name": "White Bread", "calories": 79, "protein": 3, "carbs": 15, "fats": 1 },
-  { "name": "Whole Wheat Bread", "calories": 81, "protein": 4, "carbs": 14, "fats": 1 },
-  { "name": "Bagel", "calories": 245, "protein": 10, "carbs": 48, "fats": 2 },
-  { "name": "Tortilla", "calories": 138, "protein": 4, "carbs": 22, "fats": 4 },
-  { "name": "Sweet Potato", "calories": 112, "protein": 2, "carbs": 26, "fats": 0 },
-  { "name": "Potato", "calories": 161, "protein": 4, "carbs": 37, "fats": 0 },
-  { "name": "Couscous", "calories": 176, "protein": 6, "carbs": 36, "fats": 0 },
-  { "name": "Cornflakes", "calories": 100, "protein": 2, "carbs": 24, "fats": 0 },
-  { "name": "Granola", "calories": 471, "protein": 13, "carbs": 64, "fats": 20 },
-  { "name": "Pancakes", "calories": 175, "protein": 5, "carbs": 22, "fats": 7 },
-  { "name": "Waffle", "calories": 218, "protein": 6, "carbs": 25, "fats": 11 },
-
-  { "name": "Broccoli", "calories": 55, "protein": 4, "carbs": 11, "fats": 1 },
-  { "name": "Spinach", "calories": 23, "protein": 3, "carbs": 4, "fats": 0 },
-  { "name": "Carrot", "calories": 25, "protein": 1, "carbs": 6, "fats": 0 },
-  { "name": "Tomato", "calories": 22, "protein": 1, "carbs": 5, "fats": 0 },
-  { "name": "Cucumber", "calories": 16, "protein": 1, "carbs": 4, "fats": 0 },
-  { "name": "Bell Pepper", "calories": 31, "protein": 1, "carbs": 6, "fats": 0 },
-  { "name": "Onion", "calories": 44, "protein": 1, "carbs": 10, "fats": 0 },
-  { "name": "Lettuce", "calories": 5, "protein": 0, "carbs": 1, "fats": 0 },
-  { "name": "Kale", "calories": 33, "protein": 3, "carbs": 6, "fats": 1 },
-  { "name": "Cauliflower", "calories": 27, "protein": 2, "carbs": 5, "fats": 0 },
-  { "name": "Green Beans", "calories": 31, "protein": 2, "carbs": 7, "fats": 0 },
-  { "name": "Asparagus", "calories": 27, "protein": 3, "carbs": 5, "fats": 0 },
-  { "name": "Zucchini", "calories": 33, "protein": 2, "carbs": 6, "fats": 1 },
-  { "name": "Mushrooms", "calories": 22, "protein": 3, "carbs": 3, "fats": 0 },
-  { "name": "Corn", "calories": 88, "protein": 3, "carbs": 19, "fats": 1 },
-  { "name": "Peas", "calories": 62, "protein": 4, "carbs": 11, "fats": 0 },
-  { "name": "Brussels Sprouts", "calories": 38, "protein": 3, "carbs": 8, "fats": 0 },
-
-  { "name": "Milk", "calories": 122, "protein": 8, "carbs": 12, "fats": 5 },
-  { "name": "Skim Milk", "calories": 83, "protein": 8, "carbs": 12, "fats": 0 },
-  { "name": "Almond Milk", "calories": 39, "protein": 1, "carbs": 3, "fats": 3 },
-  { "name": "Oat Milk", "calories": 120, "protein": 3, "carbs": 16, "fats": 5 },
-  { "name": "Greek Yogurt", "calories": 100, "protein": 17, "carbs": 6, "fats": 1 },
-  { "name": "Yogurt", "calories": 149, "protein": 9, "carbs": 11, "fats": 8 },
-  { "name": "Cheddar Cheese", "calories": 113, "protein": 7, "carbs": 0, "fats": 9 },
-  { "name": "Mozzarella", "calories": 85, "protein": 6, "carbs": 1, "fats": 6 },
-  { "name": "Cottage Cheese", "calories": 98, "protein": 11, "carbs": 3, "fats": 4 },
-  { "name": "Cream Cheese", "calories": 99, "protein": 2, "carbs": 2, "fats": 10 },
-  { "name": "Butter", "calories": 102, "protein": 0, "carbs": 0, "fats": 12 },
-  { "name": "Parmesan", "calories": 110, "protein": 10, "carbs": 1, "fats": 7 },
-
-  { "name": "Almonds", "calories": 164, "protein": 6, "carbs": 6, "fats": 14 },
-  { "name": "Peanuts", "calories": 161, "protein": 7, "carbs": 5, "fats": 14 },
-  { "name": "Walnuts", "calories": 185, "protein": 4, "carbs": 4, "fats": 18 },
-  { "name": "Cashews", "calories": 157, "protein": 5, "carbs": 9, "fats": 12 },
-  { "name": "Peanut Butter", "calories": 188, "protein": 8, "carbs": 6, "fats": 16 },
-  { "name": "Almond Butter", "calories": 98, "protein": 3, "carbs": 3, "fats": 9 },
-  { "name": "Chia Seeds", "calories": 138, "protein": 5, "carbs": 12, "fats": 9 },
-  { "name": "Flax Seeds", "calories": 150, "protein": 5, "carbs": 8, "fats": 12 },
-  { "name": "Olive Oil", "calories": 119, "protein": 0, "carbs": 0, "fats": 14 },
-  { "name": "Coconut Oil", "calories": 121, "protein": 0, "carbs": 0, "fats": 14 },
-
-  { "name": "Hamburger", "calories": 354, "protein": 20, "carbs": 29, "fats": 17 },
-  { "name": "Cheeseburger", "calories": 303, "protein": 15, "carbs": 30, "fats": 14 },
-  { "name": "Pizza Slice", "calories": 285, "protein": 12, "carbs": 36, "fats": 10 },
-  { "name": "French Fries", "calories": 312, "protein": 4, "carbs": 41, "fats": 15 },
-  { "name": "Hot Dog", "calories": 290, "protein": 10, "carbs": 23, "fats": 18 },
-  { "name": "Chicken Nuggets", "calories": 297, "protein": 15, "carbs": 18, "fats": 18 },
-  { "name": "Caesar Salad", "calories": 184, "protein": 6, "carbs": 9, "fats": 14 },
-  { "name": "Sushi Roll", "calories": 255, "protein": 9, "carbs": 38, "fats": 7 },
-  { "name": "Burrito", "calories": 445, "protein": 18, "carbs": 56, "fats": 17 },
-  { "name": "Taco", "calories": 156, "protein": 8, "carbs": 13, "fats": 8 },
-  { "name": "Ramen", "calories": 380, "protein": 10, "carbs": 52, "fats": 14 },
-  { "name": "Fried Rice", "calories": 333, "protein": 9, "carbs": 52, "fats": 10 },
-  { "name": "Mac and Cheese", "calories": 310, "protein": 11, "carbs": 40, "fats": 12 },
-  { "name": "Grilled Cheese", "calories": 291, "protein": 10, "carbs": 28, "fats": 16 },
-  { "name": "Club Sandwich", "calories": 360, "protein": 22, "carbs": 30, "fats": 17 },
-
-  { "name": "Protein Shake", "calories": 160, "protein": 30, "carbs": 5, "fats": 2 },
-  { "name": "Whey Protein", "calories": 120, "protein": 24, "carbs": 3, "fats": 2 },
-  { "name": "Protein Bar", "calories": 200, "protein": 20, "carbs": 22, "fats": 7 },
-  { "name": "Orange Juice", "calories": 112, "protein": 2, "carbs": 26, "fats": 0 },
-  { "name": "Apple Juice", "calories": 114, "protein": 0, "carbs": 28, "fats": 0 },
-  { "name": "Coffee", "calories": 2, "protein": 0, "carbs": 0, "fats": 0 },
-  { "name": "Latte", "calories": 190, "protein": 12, "carbs": 19, "fats": 7 },
-  { "name": "Cappuccino", "calories": 74, "protein": 4, "carbs": 6, "fats": 4 },
-  { "name": "Green Tea", "calories": 2, "protein": 0, "carbs": 0, "fats": 0 },
-  { "name": "Cola", "calories": 140, "protein": 0, "carbs": 39, "fats": 0 },
-  { "name": "Beer", "calories": 154, "protein": 2, "carbs": 13, "fats": 0 },
-  { "name": "Red Wine", "calories": 125, "protein": 0, "carbs": 4, "fats": 0 },
-  { "name": "Smoothie", "calories": 211, "protein": 5, "carbs": 44, "fats": 2 },
-
-  { "name": "Dark Chocolate", "calories": 170, "protein": 2, "carbs": 13, "fats": 12 },
-  { "name": "Milk Chocolate", "calories": 150, "protein": 2, "carbs": 17, "fats": 8 },
-  { "name": "Ice Cream", "calories": 207, "protein": 4, "carbs": 24, "fats": 11 },
-  { "name": "Potato Chips", "calories": 152, "protein": 2, "carbs": 15, "fats": 10 },
-  { "name": "Popcorn", "calories": 31, "protein": 1, "carbs": 6, "fats": 0 },
-  { "name": "Pretzels", "calories": 108, "protein": 3, "carbs": 22, "fats": 1 },
-  { "name": "Cookie", "calories": 148, "protein": 2, "carbs": 20, "fats": 7 },
-  { "name": "Donut", "calories": 253, "protein": 4, "carbs": 31, "fats": 14 },
-  { "name": "Muffin", "calories": 265, "protein": 4, "carbs": 44, "fats": 9 },
-  { "name": "Croissant", "calories": 231, "protein": 5, "carbs": 26, "fats": 12 },
-  { "name": "Hummus", "calories": 166, "protein": 8, "carbs": 14, "fats": 10 },
-  { "name": "Guacamole", "calories": 90, "protein": 1, "carbs": 5, "fats": 8 },
-  { "name": "Honey", "calories": 64, "protein": 0, "carbs": 17, "fats": 0 },
-  { "name": "Maple Syrup", "calories": 52, "protein": 0, "carbs": 13, "fats": 0 }
+  {
+    "name": "Air Kelapa (coconut water)",
+    "calories": 60,
+    "protein": 1,
+    "carbs": 14,
+    "fats": 0
+  },
+  {
+    "name": "Ais Kacang",
+    "calories": 260,
+    "protein": 4,
+    "carbs": 52,
+    "fats": 5
+  },
+  {
+    "name": "Almond Butter",
+    "calories": 98,
+    "protein": 3,
+    "carbs": 3,
+    "fats": 9
+  },
+  {
+    "name": "Almond Milk",
+    "calories": 39,
+    "protein": 1,
+    "carbs": 3,
+    "fats": 3
+  },
+  {
+    "name": "Almonds",
+    "calories": 164,
+    "protein": 6,
+    "carbs": 6,
+    "fats": 14
+  },
+  {
+    "name": "Apam Balik",
+    "calories": 300,
+    "protein": 6,
+    "carbs": 45,
+    "fats": 11
+  },
+  {
+    "name": "Apple",
+    "calories": 95,
+    "protein": 0,
+    "carbs": 25,
+    "fats": 0
+  },
+  {
+    "name": "Apple Juice",
+    "calories": 114,
+    "protein": 0,
+    "carbs": 28,
+    "fats": 0
+  },
+  {
+    "name": "Asam Laksa",
+    "calories": 380,
+    "protein": 18,
+    "carbs": 55,
+    "fats": 9
+  },
+  {
+    "name": "Asparagus",
+    "calories": 27,
+    "protein": 3,
+    "carbs": 5,
+    "fats": 0
+  },
+  {
+    "name": "Avocado",
+    "calories": 240,
+    "protein": 3,
+    "carbs": 13,
+    "fats": 22
+  },
+  {
+    "name": "Avocado Toast",
+    "calories": 290,
+    "protein": 8,
+    "carbs": 30,
+    "fats": 16
+  },
+  {
+    "name": "Ayam Goreng Berempah",
+    "calories": 390,
+    "protein": 28,
+    "carbs": 12,
+    "fats": 26
+  },
+  {
+    "name": "Ayam Masak Merah",
+    "calories": 380,
+    "protein": 27,
+    "carbs": 14,
+    "fats": 24
+  },
+  {
+    "name": "Ayam Percik",
+    "calories": 340,
+    "protein": 30,
+    "carbs": 9,
+    "fats": 20
+  },
+  {
+    "name": "Bacon",
+    "calories": 92,
+    "protein": 6,
+    "carbs": 0,
+    "fats": 7
+  },
+  {
+    "name": "Bagel",
+    "calories": 245,
+    "protein": 10,
+    "carbs": 48,
+    "fats": 2
+  },
+  {
+    "name": "Bagel with Cream Cheese",
+    "calories": 380,
+    "protein": 13,
+    "carbs": 55,
+    "fats": 12
+  },
+  {
+    "name": "Bak Kut Teh",
+    "calories": 430,
+    "protein": 34,
+    "carbs": 12,
+    "fats": 26
+  },
+  {
+    "name": "Baked Potato with Butter",
+    "calories": 320,
+    "protein": 6,
+    "carbs": 56,
+    "fats": 9
+  },
+  {
+    "name": "Banana",
+    "calories": 105,
+    "protein": 1,
+    "carbs": 27,
+    "fats": 0
+  },
+  {
+    "name": "Banh Mi",
+    "calories": 480,
+    "protein": 20,
+    "carbs": 60,
+    "fats": 18
+  },
+  {
+    "name": "Basmati Rice (1 cup)",
+    "calories": 205,
+    "protein": 4,
+    "carbs": 45,
+    "fats": 0
+  },
+  {
+    "name": "Beef Burger with Cheese",
+    "calories": 640,
+    "protein": 33,
+    "carbs": 44,
+    "fats": 36
+  },
+  {
+    "name": "Beef Noodle Soup",
+    "calories": 480,
+    "protein": 30,
+    "carbs": 56,
+    "fats": 14
+  },
+  {
+    "name": "Beef Steak (200g sirloin)",
+    "calories": 420,
+    "protein": 52,
+    "carbs": 0,
+    "fats": 23
+  },
+  {
+    "name": "Beer",
+    "calories": 154,
+    "protein": 2,
+    "carbs": 13,
+    "fats": 0
+  },
+  {
+    "name": "Bell Pepper",
+    "calories": 31,
+    "protein": 1,
+    "carbs": 6,
+    "fats": 0
+  },
+  {
+    "name": "Bibimbap",
+    "calories": 590,
+    "protein": 22,
+    "carbs": 82,
+    "fats": 18
+  },
+  {
+    "name": "Black Beans",
+    "calories": 227,
+    "protein": 15,
+    "carbs": 41,
+    "fats": 1
+  },
+  {
+    "name": "Blueberries",
+    "calories": 84,
+    "protein": 1,
+    "carbs": 21,
+    "fats": 0
+  },
+  {
+    "name": "Broccoli",
+    "calories": 55,
+    "protein": 4,
+    "carbs": 11,
+    "fats": 1
+  },
+  {
+    "name": "Brown Rice",
+    "calories": 216,
+    "protein": 5,
+    "carbs": 45,
+    "fats": 2
+  },
+  {
+    "name": "Brownie",
+    "calories": 240,
+    "protein": 3,
+    "carbs": 32,
+    "fats": 12
+  },
+  {
+    "name": "Brussels Sprouts",
+    "calories": 38,
+    "protein": 3,
+    "carbs": 8,
+    "fats": 0
+  },
+  {
+    "name": "Bubble Tea (regular)",
+    "calories": 340,
+    "protein": 3,
+    "carbs": 68,
+    "fats": 6
+  },
+  {
+    "name": "Bubur Cha Cha",
+    "calories": 250,
+    "protein": 3,
+    "carbs": 42,
+    "fats": 8
+  },
+  {
+    "name": "Burrito",
+    "calories": 445,
+    "protein": 18,
+    "carbs": 56,
+    "fats": 17
+  },
+  {
+    "name": "Butter",
+    "calories": 102,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 12
+  },
+  {
+    "name": "Butter Chicken",
+    "calories": 520,
+    "protein": 30,
+    "carbs": 16,
+    "fats": 37
+  },
+  {
+    "name": "Caesar Dressing (2 tbsp)",
+    "calories": 160,
+    "protein": 1,
+    "carbs": 1,
+    "fats": 17
+  },
+  {
+    "name": "Caesar Salad",
+    "calories": 184,
+    "protein": 6,
+    "carbs": 9,
+    "fats": 14
+  },
+  {
+    "name": "Capati",
+    "calories": 150,
+    "protein": 5,
+    "carbs": 24,
+    "fats": 4
+  },
+  {
+    "name": "Cappuccino",
+    "calories": 74,
+    "protein": 4,
+    "carbs": 6,
+    "fats": 4
+  },
+  {
+    "name": "Carbonara",
+    "calories": 660,
+    "protein": 26,
+    "carbs": 70,
+    "fats": 30
+  },
+  {
+    "name": "Carrot",
+    "calories": 25,
+    "protein": 1,
+    "carbs": 6,
+    "fats": 0
+  },
+  {
+    "name": "Cashews",
+    "calories": 157,
+    "protein": 5,
+    "carbs": 9,
+    "fats": 12
+  },
+  {
+    "name": "Cauliflower",
+    "calories": 27,
+    "protein": 2,
+    "carbs": 5,
+    "fats": 0
+  },
+  {
+    "name": "Cendol",
+    "calories": 290,
+    "protein": 3,
+    "carbs": 46,
+    "fats": 11
+  },
+  {
+    "name": "Char Kway Teow",
+    "calories": 742,
+    "protein": 23,
+    "carbs": 76,
+    "fats": 38
+  },
+  {
+    "name": "Char Siu Bao",
+    "calories": 210,
+    "protein": 7,
+    "carbs": 33,
+    "fats": 6
+  },
+  {
+    "name": "Cheddar Cheese",
+    "calories": 113,
+    "protein": 7,
+    "carbs": 0,
+    "fats": 9
+  },
+  {
+    "name": "Chee Cheong Fun",
+    "calories": 240,
+    "protein": 6,
+    "carbs": 44,
+    "fats": 5
+  },
+  {
+    "name": "Cheeseburger",
+    "calories": 303,
+    "protein": 15,
+    "carbs": 30,
+    "fats": 14
+  },
+  {
+    "name": "Chia Pudding",
+    "calories": 240,
+    "protein": 8,
+    "carbs": 26,
+    "fats": 12
+  },
+  {
+    "name": "Chia Seeds",
+    "calories": 138,
+    "protein": 5,
+    "carbs": 12,
+    "fats": 9
+  },
+  {
+    "name": "Chicken Breast",
+    "calories": 165,
+    "protein": 31,
+    "carbs": 0,
+    "fats": 4
+  },
+  {
+    "name": "Chicken Caesar Salad",
+    "calories": 470,
+    "protein": 30,
+    "carbs": 14,
+    "fats": 33
+  },
+  {
+    "name": "Chicken Congee",
+    "calories": 250,
+    "protein": 14,
+    "carbs": 38,
+    "fats": 4
+  },
+  {
+    "name": "Chicken Katsu Curry",
+    "calories": 780,
+    "protein": 32,
+    "carbs": 92,
+    "fats": 30
+  },
+  {
+    "name": "Chicken Nuggets",
+    "calories": 297,
+    "protein": 15,
+    "carbs": 18,
+    "fats": 18
+  },
+  {
+    "name": "Chicken Nuggets (6 pieces)",
+    "calories": 280,
+    "protein": 15,
+    "carbs": 18,
+    "fats": 17
+  },
+  {
+    "name": "Chicken Rice",
+    "calories": 607,
+    "protein": 28,
+    "carbs": 73,
+    "fats": 22
+  },
+  {
+    "name": "Chicken Thigh",
+    "calories": 209,
+    "protein": 26,
+    "carbs": 0,
+    "fats": 11
+  },
+  {
+    "name": "Chicken Tikka Masala",
+    "calories": 490,
+    "protein": 32,
+    "carbs": 18,
+    "fats": 32
+  },
+  {
+    "name": "Chicken Wrap",
+    "calories": 450,
+    "protein": 28,
+    "carbs": 44,
+    "fats": 17
+  },
+  {
+    "name": "Chickpeas",
+    "calories": 269,
+    "protein": 15,
+    "carbs": 45,
+    "fats": 4
+  },
+  {
+    "name": "Chocolate Chip Cookie",
+    "calories": 160,
+    "protein": 2,
+    "carbs": 21,
+    "fats": 8
+  },
+  {
+    "name": "Club Sandwich",
+    "calories": 360,
+    "protein": 22,
+    "carbs": 30,
+    "fats": 17
+  },
+  {
+    "name": "Coconut Oil",
+    "calories": 121,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 14
+  },
+  {
+    "name": "Cod",
+    "calories": 105,
+    "protein": 23,
+    "carbs": 0,
+    "fats": 1
+  },
+  {
+    "name": "Coffee",
+    "calories": 2,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 0
+  },
+  {
+    "name": "Cola",
+    "calories": 140,
+    "protein": 0,
+    "carbs": 39,
+    "fats": 0
+  },
+  {
+    "name": "Cookie",
+    "calories": 148,
+    "protein": 2,
+    "carbs": 20,
+    "fats": 7
+  },
+  {
+    "name": "Corn",
+    "calories": 88,
+    "protein": 3,
+    "carbs": 19,
+    "fats": 1
+  },
+  {
+    "name": "Cornflakes",
+    "calories": 100,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 0
+  },
+  {
+    "name": "Cottage Cheese",
+    "calories": 98,
+    "protein": 11,
+    "carbs": 3,
+    "fats": 4
+  },
+  {
+    "name": "Cottage Cheese (100g)",
+    "calories": 98,
+    "protein": 11,
+    "carbs": 3,
+    "fats": 4
+  },
+  {
+    "name": "Couscous",
+    "calories": 176,
+    "protein": 6,
+    "carbs": 36,
+    "fats": 0
+  },
+  {
+    "name": "Cream Cheese",
+    "calories": 99,
+    "protein": 2,
+    "carbs": 2,
+    "fats": 10
+  },
+  {
+    "name": "Croissant",
+    "calories": 231,
+    "protein": 5,
+    "carbs": 26,
+    "fats": 12
+  },
+  {
+    "name": "Cucumber",
+    "calories": 16,
+    "protein": 1,
+    "carbs": 4,
+    "fats": 0
+  },
+  {
+    "name": "Curry Laksa",
+    "calories": 590,
+    "protein": 22,
+    "carbs": 58,
+    "fats": 30
+  },
+  {
+    "name": "Curry Mee",
+    "calories": 605,
+    "protein": 22,
+    "carbs": 62,
+    "fats": 30
+  },
+  {
+    "name": "Dark Chocolate",
+    "calories": 170,
+    "protein": 2,
+    "carbs": 13,
+    "fats": 12
+  },
+  {
+    "name": "Dark Chocolate (30g)",
+    "calories": 170,
+    "protein": 2,
+    "carbs": 13,
+    "fats": 12
+  },
+  {
+    "name": "Dhal Curry",
+    "calories": 210,
+    "protein": 11,
+    "carbs": 28,
+    "fats": 6
+  },
+  {
+    "name": "Dim Sum Siew Mai (4 pieces)",
+    "calories": 200,
+    "protein": 12,
+    "carbs": 16,
+    "fats": 10
+  },
+  {
+    "name": "Donut",
+    "calories": 253,
+    "protein": 4,
+    "carbs": 31,
+    "fats": 14
+  },
+  {
+    "name": "Duck Rice",
+    "calories": 680,
+    "protein": 28,
+    "carbs": 74,
+    "fats": 30
+  },
+  {
+    "name": "Edamame",
+    "calories": 188,
+    "protein": 18,
+    "carbs": 14,
+    "fats": 8
+  },
+  {
+    "name": "Egg",
+    "calories": 78,
+    "protein": 6,
+    "carbs": 1,
+    "fats": 5
+  },
+  {
+    "name": "Egg White",
+    "calories": 17,
+    "protein": 4,
+    "carbs": 0,
+    "fats": 0
+  },
+  {
+    "name": "Fish and Chips",
+    "calories": 840,
+    "protein": 34,
+    "carbs": 88,
+    "fats": 38
+  },
+  {
+    "name": "Flax Seeds",
+    "calories": 150,
+    "protein": 5,
+    "carbs": 8,
+    "fats": 12
+  },
+  {
+    "name": "French Fries",
+    "calories": 312,
+    "protein": 4,
+    "carbs": 41,
+    "fats": 15
+  },
+  {
+    "name": "French Toast (2 slices)",
+    "calories": 340,
+    "protein": 12,
+    "carbs": 40,
+    "fats": 15
+  },
+  {
+    "name": "Fried Rice",
+    "calories": 333,
+    "protein": 9,
+    "carbs": 52,
+    "fats": 10
+  },
+  {
+    "name": "Fried Rice (Chinese)",
+    "calories": 560,
+    "protein": 16,
+    "carbs": 78,
+    "fats": 20
+  },
+  {
+    "name": "Granola",
+    "calories": 471,
+    "protein": 13,
+    "carbs": 64,
+    "fats": 20
+  },
+  {
+    "name": "Grapes",
+    "calories": 104,
+    "protein": 1,
+    "carbs": 27,
+    "fats": 0
+  },
+  {
+    "name": "Greek Yogurt",
+    "calories": 100,
+    "protein": 17,
+    "carbs": 6,
+    "fats": 1
+  },
+  {
+    "name": "Greek Yogurt (170g)",
+    "calories": 100,
+    "protein": 17,
+    "carbs": 6,
+    "fats": 0
+  },
+  {
+    "name": "Green Beans",
+    "calories": 31,
+    "protein": 2,
+    "carbs": 7,
+    "fats": 0
+  },
+  {
+    "name": "Green Curry with Rice",
+    "calories": 620,
+    "protein": 22,
+    "carbs": 70,
+    "fats": 28
+  },
+  {
+    "name": "Green Tea",
+    "calories": 2,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 0
+  },
+  {
+    "name": "Grilled Cheese",
+    "calories": 291,
+    "protein": 10,
+    "carbs": 28,
+    "fats": 16
+  },
+  {
+    "name": "Grilled Chicken Sandwich",
+    "calories": 420,
+    "protein": 33,
+    "carbs": 42,
+    "fats": 12
+  },
+  {
+    "name": "Grilled Salmon Fillet",
+    "calories": 367,
+    "protein": 40,
+    "carbs": 0,
+    "fats": 22
+  },
+  {
+    "name": "Ground Beef",
+    "calories": 250,
+    "protein": 26,
+    "carbs": 0,
+    "fats": 15
+  },
+  {
+    "name": "Guacamole",
+    "calories": 90,
+    "protein": 1,
+    "carbs": 5,
+    "fats": 8
+  },
+  {
+    "name": "Gyoza (5 pieces)",
+    "calories": 230,
+    "protein": 10,
+    "carbs": 24,
+    "fats": 10
+  },
+  {
+    "name": "Half-Boiled Eggs (2)",
+    "calories": 140,
+    "protein": 12,
+    "carbs": 1,
+    "fats": 10
+  },
+  {
+    "name": "Hamburger",
+    "calories": 354,
+    "protein": 20,
+    "carbs": 29,
+    "fats": 17
+  },
+  {
+    "name": "Har Gow (4 pieces)",
+    "calories": 160,
+    "protein": 9,
+    "carbs": 20,
+    "fats": 5
+  },
+  {
+    "name": "Hokkien Mee",
+    "calories": 620,
+    "protein": 24,
+    "carbs": 68,
+    "fats": 27
+  },
+  {
+    "name": "Honey",
+    "calories": 64,
+    "protein": 0,
+    "carbs": 17,
+    "fats": 0
+  },
+  {
+    "name": "Hot Dog",
+    "calories": 290,
+    "protein": 10,
+    "carbs": 23,
+    "fats": 18
+  },
+  {
+    "name": "Hummus",
+    "calories": 166,
+    "protein": 8,
+    "carbs": 14,
+    "fats": 10
+  },
+  {
+    "name": "Hummus (2 tbsp)",
+    "calories": 70,
+    "protein": 2,
+    "carbs": 6,
+    "fats": 5
+  },
+  {
+    "name": "Ice Cream",
+    "calories": 207,
+    "protein": 4,
+    "carbs": 24,
+    "fats": 11
+  },
+  {
+    "name": "Ice Cream (1 scoop)",
+    "calories": 140,
+    "protein": 2,
+    "carbs": 17,
+    "fats": 7
+  },
+  {
+    "name": "Idli (2 pieces)",
+    "calories": 116,
+    "protein": 4,
+    "carbs": 24,
+    "fats": 1
+  },
+  {
+    "name": "Ikan Bakar",
+    "calories": 260,
+    "protein": 34,
+    "carbs": 3,
+    "fats": 12
+  },
+  {
+    "name": "Ikan Goreng",
+    "calories": 310,
+    "protein": 30,
+    "carbs": 6,
+    "fats": 19
+  },
+  {
+    "name": "Kale",
+    "calories": 33,
+    "protein": 3,
+    "carbs": 6,
+    "fats": 1
+  },
+  {
+    "name": "Kaya Toast",
+    "calories": 230,
+    "protein": 6,
+    "carbs": 32,
+    "fats": 9
+  },
+  {
+    "name": "Keropok Lekor",
+    "calories": 220,
+    "protein": 8,
+    "carbs": 28,
+    "fats": 9
+  },
+  {
+    "name": "Ketupat",
+    "calories": 160,
+    "protein": 3,
+    "carbs": 35,
+    "fats": 1
+  },
+  {
+    "name": "Kidney Beans",
+    "calories": 225,
+    "protein": 15,
+    "carbs": 40,
+    "fats": 1
+  },
+  {
+    "name": "Kimchi",
+    "calories": 25,
+    "protein": 1,
+    "carbs": 4,
+    "fats": 0
+  },
+  {
+    "name": "Kiwi",
+    "calories": 42,
+    "protein": 1,
+    "carbs": 10,
+    "fats": 0
+  },
+  {
+    "name": "Kopi O",
+    "calories": 35,
+    "protein": 0,
+    "carbs": 9,
+    "fats": 0
+  },
+  {
+    "name": "Kopi Susu",
+    "calories": 150,
+    "protein": 3,
+    "carbs": 24,
+    "fats": 4
+  },
+  {
+    "name": "Korean Fried Chicken (4 pieces)",
+    "calories": 520,
+    "protein": 30,
+    "carbs": 34,
+    "fats": 28
+  },
+  {
+    "name": "Kuih Lapis",
+    "calories": 130,
+    "protein": 1,
+    "carbs": 22,
+    "fats": 4
+  },
+  {
+    "name": "Kung Pao Chicken",
+    "calories": 430,
+    "protein": 30,
+    "carbs": 22,
+    "fats": 25
+  },
+  {
+    "name": "Laksa Johor",
+    "calories": 550,
+    "protein": 22,
+    "carbs": 66,
+    "fats": 22
+  },
+  {
+    "name": "Latte",
+    "calories": 190,
+    "protein": 12,
+    "carbs": 19,
+    "fats": 7
+  },
+  {
+    "name": "Lentils",
+    "calories": 230,
+    "protein": 18,
+    "carbs": 40,
+    "fats": 1
+  },
+  {
+    "name": "Lettuce",
+    "calories": 5,
+    "protein": 0,
+    "carbs": 1,
+    "fats": 0
+  },
+  {
+    "name": "Limau Ais",
+    "calories": 70,
+    "protein": 0,
+    "carbs": 18,
+    "fats": 0
+  },
+  {
+    "name": "Lontong",
+    "calories": 420,
+    "protein": 11,
+    "carbs": 52,
+    "fats": 19
+  },
+  {
+    "name": "Lor Mee",
+    "calories": 520,
+    "protein": 20,
+    "carbs": 68,
+    "fats": 18
+  },
+  {
+    "name": "Mac and Cheese",
+    "calories": 310,
+    "protein": 11,
+    "carbs": 40,
+    "fats": 12
+  },
+  {
+    "name": "Maggi Goreng",
+    "calories": 580,
+    "protein": 16,
+    "carbs": 74,
+    "fats": 24
+  },
+  {
+    "name": "Mango",
+    "calories": 99,
+    "protein": 1,
+    "carbs": 25,
+    "fats": 1
+  },
+  {
+    "name": "Maple Syrup",
+    "calories": 52,
+    "protein": 0,
+    "carbs": 13,
+    "fats": 0
+  },
+  {
+    "name": "Mapo Tofu",
+    "calories": 320,
+    "protein": 18,
+    "carbs": 12,
+    "fats": 22
+  },
+  {
+    "name": "Margherita Pizza (2 slices)",
+    "calories": 500,
+    "protein": 20,
+    "carbs": 62,
+    "fats": 18
+  },
+  {
+    "name": "Mee Goreng Mamak",
+    "calories": 660,
+    "protein": 20,
+    "carbs": 82,
+    "fats": 27
+  },
+  {
+    "name": "Mee Rebus",
+    "calories": 480,
+    "protein": 16,
+    "carbs": 70,
+    "fats": 15
+  },
+  {
+    "name": "Mee Siam",
+    "calories": 450,
+    "protein": 12,
+    "carbs": 68,
+    "fats": 14
+  },
+  {
+    "name": "Milk",
+    "calories": 122,
+    "protein": 8,
+    "carbs": 12,
+    "fats": 5
+  },
+  {
+    "name": "Milk Chocolate",
+    "calories": 150,
+    "protein": 2,
+    "carbs": 17,
+    "fats": 8
+  },
+  {
+    "name": "Milo Ais",
+    "calories": 220,
+    "protein": 6,
+    "carbs": 36,
+    "fats": 6
+  },
+  {
+    "name": "Mixed Nuts (30g)",
+    "calories": 180,
+    "protein": 6,
+    "carbs": 6,
+    "fats": 16
+  },
+  {
+    "name": "Mozzarella",
+    "calories": 85,
+    "protein": 6,
+    "carbs": 1,
+    "fats": 6
+  },
+  {
+    "name": "Muffin",
+    "calories": 265,
+    "protein": 4,
+    "carbs": 44,
+    "fats": 9
+  },
+  {
+    "name": "Murtabak",
+    "calories": 560,
+    "protein": 24,
+    "carbs": 52,
+    "fats": 28
+  },
+  {
+    "name": "Mushrooms",
+    "calories": 22,
+    "protein": 3,
+    "carbs": 3,
+    "fats": 0
+  },
+  {
+    "name": "Naan",
+    "calories": 260,
+    "protein": 8,
+    "carbs": 45,
+    "fats": 5
+  },
+  {
+    "name": "Nasi Briyani with Chicken",
+    "calories": 830,
+    "protein": 33,
+    "carbs": 96,
+    "fats": 33
+  },
+  {
+    "name": "Nasi Campur",
+    "calories": 620,
+    "protein": 24,
+    "carbs": 76,
+    "fats": 24
+  },
+  {
+    "name": "Nasi Dagang",
+    "calories": 610,
+    "protein": 22,
+    "carbs": 74,
+    "fats": 26
+  },
+  {
+    "name": "Nasi Goreng",
+    "calories": 637,
+    "protein": 19,
+    "carbs": 84,
+    "fats": 24
+  },
+  {
+    "name": "Nasi Goreng Kampung",
+    "calories": 590,
+    "protein": 18,
+    "carbs": 78,
+    "fats": 22
+  },
+  {
+    "name": "Nasi Kandar",
+    "calories": 780,
+    "protein": 30,
+    "carbs": 88,
+    "fats": 34
+  },
+  {
+    "name": "Nasi Kerabu",
+    "calories": 520,
+    "protein": 20,
+    "carbs": 72,
+    "fats": 17
+  },
+  {
+    "name": "Nasi Lemak",
+    "calories": 644,
+    "protein": 17,
+    "carbs": 82,
+    "fats": 27
+  },
+  {
+    "name": "Nasi Lemak with Fried Chicken",
+    "calories": 890,
+    "protein": 34,
+    "carbs": 92,
+    "fats": 42
+  },
+  {
+    "name": "Oat Milk",
+    "calories": 120,
+    "protein": 3,
+    "carbs": 16,
+    "fats": 5
+  },
+  {
+    "name": "Oatmeal",
+    "calories": 158,
+    "protein": 6,
+    "carbs": 27,
+    "fats": 3
+  },
+  {
+    "name": "Olive Oil",
+    "calories": 119,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 14
+  },
+  {
+    "name": "Olive Oil (1 tbsp)",
+    "calories": 119,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 14
+  },
+  {
+    "name": "Omelette (3 eggs)",
+    "calories": 320,
+    "protein": 21,
+    "carbs": 3,
+    "fats": 25
+  },
+  {
+    "name": "Onde-Onde (5 pieces)",
+    "calories": 200,
+    "protein": 2,
+    "carbs": 33,
+    "fats": 7
+  },
+  {
+    "name": "Onion",
+    "calories": 44,
+    "protein": 1,
+    "carbs": 10,
+    "fats": 0
+  },
+  {
+    "name": "Onion Rings",
+    "calories": 410,
+    "protein": 5,
+    "carbs": 48,
+    "fats": 22
+  },
+  {
+    "name": "Orange",
+    "calories": 62,
+    "protein": 1,
+    "carbs": 15,
+    "fats": 0
+  },
+  {
+    "name": "Orange Juice",
+    "calories": 112,
+    "protein": 2,
+    "carbs": 26,
+    "fats": 0
+  },
+  {
+    "name": "Otak-Otak",
+    "calories": 120,
+    "protein": 8,
+    "carbs": 5,
+    "fats": 8
+  },
+  {
+    "name": "Overnight Oats",
+    "calories": 350,
+    "protein": 13,
+    "carbs": 52,
+    "fats": 10
+  },
+  {
+    "name": "Pad Thai",
+    "calories": 660,
+    "protein": 24,
+    "carbs": 82,
+    "fats": 26
+  },
+  {
+    "name": "Palak Paneer",
+    "calories": 380,
+    "protein": 17,
+    "carbs": 14,
+    "fats": 29
+  },
+  {
+    "name": "Pancakes",
+    "calories": 175,
+    "protein": 5,
+    "carbs": 22,
+    "fats": 7
+  },
+  {
+    "name": "Pancakes (3)",
+    "calories": 350,
+    "protein": 9,
+    "carbs": 52,
+    "fats": 12
+  },
+  {
+    "name": "Parmesan",
+    "calories": 110,
+    "protein": 10,
+    "carbs": 1,
+    "fats": 7
+  },
+  {
+    "name": "Pasta",
+    "calories": 221,
+    "protein": 8,
+    "carbs": 43,
+    "fats": 1
+  },
+  {
+    "name": "Pau Daging",
+    "calories": 230,
+    "protein": 10,
+    "carbs": 33,
+    "fats": 7
+  },
+  {
+    "name": "Pau Kaya",
+    "calories": 180,
+    "protein": 4,
+    "carbs": 32,
+    "fats": 4
+  },
+  {
+    "name": "Peach",
+    "calories": 59,
+    "protein": 1,
+    "carbs": 14,
+    "fats": 0
+  },
+  {
+    "name": "Peanut Butter",
+    "calories": 188,
+    "protein": 8,
+    "carbs": 6,
+    "fats": 16
+  },
+  {
+    "name": "Peanut Butter (2 tbsp)",
+    "calories": 190,
+    "protein": 8,
+    "carbs": 6,
+    "fats": 16
+  },
+  {
+    "name": "Peanuts",
+    "calories": 161,
+    "protein": 7,
+    "carbs": 5,
+    "fats": 14
+  },
+  {
+    "name": "Pear",
+    "calories": 101,
+    "protein": 1,
+    "carbs": 27,
+    "fats": 0
+  },
+  {
+    "name": "Peas",
+    "calories": 62,
+    "protein": 4,
+    "carbs": 11,
+    "fats": 0
+  },
+  {
+    "name": "Pepperoni Pizza (2 slices)",
+    "calories": 600,
+    "protein": 24,
+    "carbs": 62,
+    "fats": 28
+  },
+  {
+    "name": "Pho Bo",
+    "calories": 420,
+    "protein": 26,
+    "carbs": 60,
+    "fats": 8
+  },
+  {
+    "name": "Pineapple",
+    "calories": 82,
+    "protein": 1,
+    "carbs": 22,
+    "fats": 0
+  },
+  {
+    "name": "Pisang Goreng (3 pieces)",
+    "calories": 280,
+    "protein": 3,
+    "carbs": 42,
+    "fats": 12
+  },
+  {
+    "name": "Pizza Slice",
+    "calories": 285,
+    "protein": 12,
+    "carbs": 36,
+    "fats": 10
+  },
+  {
+    "name": "Popcorn",
+    "calories": 31,
+    "protein": 1,
+    "carbs": 6,
+    "fats": 0
+  },
+  {
+    "name": "Popiah",
+    "calories": 180,
+    "protein": 6,
+    "carbs": 26,
+    "fats": 6
+  },
+  {
+    "name": "Pork Chop",
+    "calories": 231,
+    "protein": 26,
+    "carbs": 0,
+    "fats": 14
+  },
+  {
+    "name": "Potato",
+    "calories": 161,
+    "protein": 4,
+    "carbs": 37,
+    "fats": 0
+  },
+  {
+    "name": "Potato Chips",
+    "calories": 152,
+    "protein": 2,
+    "carbs": 15,
+    "fats": 10
+  },
+  {
+    "name": "Pretzels",
+    "calories": 108,
+    "protein": 3,
+    "carbs": 22,
+    "fats": 1
+  },
+  {
+    "name": "Protein Bar",
+    "calories": 200,
+    "protein": 20,
+    "carbs": 22,
+    "fats": 7
+  },
+  {
+    "name": "Protein Shake",
+    "calories": 160,
+    "protein": 30,
+    "carbs": 5,
+    "fats": 2
+  },
+  {
+    "name": "Protein Shake (1 scoop)",
+    "calories": 130,
+    "protein": 25,
+    "carbs": 4,
+    "fats": 2
+  },
+  {
+    "name": "Quinoa",
+    "calories": 222,
+    "protein": 8,
+    "carbs": 39,
+    "fats": 4
+  },
+  {
+    "name": "Ramen",
+    "calories": 380,
+    "protein": 10,
+    "carbs": 52,
+    "fats": 14
+  },
+  {
+    "name": "Ramen (Tonkotsu)",
+    "calories": 650,
+    "protein": 28,
+    "carbs": 72,
+    "fats": 27
+  },
+  {
+    "name": "Raspberries",
+    "calories": 64,
+    "protein": 1,
+    "carbs": 15,
+    "fats": 1
+  },
+  {
+    "name": "Red Wine",
+    "calories": 125,
+    "protein": 0,
+    "carbs": 4,
+    "fats": 0
+  },
+  {
+    "name": "Rendang Daging",
+    "calories": 470,
+    "protein": 28,
+    "carbs": 10,
+    "fats": 36
+  },
+  {
+    "name": "Roast Chicken Rice",
+    "calories": 640,
+    "protein": 30,
+    "carbs": 74,
+    "fats": 25
+  },
+  {
+    "name": "Rojak",
+    "calories": 320,
+    "protein": 9,
+    "carbs": 40,
+    "fats": 15
+  },
+  {
+    "name": "Roti Canai",
+    "calories": 301,
+    "protein": 6,
+    "carbs": 38,
+    "fats": 14
+  },
+  {
+    "name": "Roti Telur",
+    "calories": 400,
+    "protein": 12,
+    "carbs": 42,
+    "fats": 20
+  },
+  {
+    "name": "Roti Tissue",
+    "calories": 420,
+    "protein": 7,
+    "carbs": 62,
+    "fats": 17
+  },
+  {
+    "name": "Salmon",
+    "calories": 208,
+    "protein": 20,
+    "carbs": 0,
+    "fats": 13
+  },
+  {
+    "name": "Sambal Udang",
+    "calories": 300,
+    "protein": 22,
+    "carbs": 12,
+    "fats": 18
+  },
+  {
+    "name": "Samosa (2 pieces)",
+    "calories": 300,
+    "protein": 6,
+    "carbs": 34,
+    "fats": 16
+  },
+  {
+    "name": "Satay Ayam (5 sticks)",
+    "calories": 280,
+    "protein": 26,
+    "carbs": 10,
+    "fats": 15
+  },
+  {
+    "name": "Satay Daging (5 sticks)",
+    "calories": 320,
+    "protein": 27,
+    "carbs": 11,
+    "fats": 19
+  },
+  {
+    "name": "Scrambled Eggs (2 eggs)",
+    "calories": 200,
+    "protein": 13,
+    "carbs": 2,
+    "fats": 15
+  },
+  {
+    "name": "Shrimp",
+    "calories": 99,
+    "protein": 24,
+    "carbs": 0,
+    "fats": 0
+  },
+  {
+    "name": "Sirap Bandung",
+    "calories": 180,
+    "protein": 3,
+    "carbs": 34,
+    "fats": 4
+  },
+  {
+    "name": "Sirloin Steak",
+    "calories": 244,
+    "protein": 36,
+    "carbs": 0,
+    "fats": 10
+  },
+  {
+    "name": "Skim Milk",
+    "calories": 83,
+    "protein": 8,
+    "carbs": 12,
+    "fats": 0
+  },
+  {
+    "name": "Smoothie",
+    "calories": 211,
+    "protein": 5,
+    "carbs": 44,
+    "fats": 2
+  },
+  {
+    "name": "Smoothie Bowl",
+    "calories": 380,
+    "protein": 10,
+    "carbs": 62,
+    "fats": 11
+  },
+  {
+    "name": "Spaghetti",
+    "calories": 221,
+    "protein": 8,
+    "carbs": 43,
+    "fats": 1
+  },
+  {
+    "name": "Spaghetti Bolognese",
+    "calories": 590,
+    "protein": 27,
+    "carbs": 74,
+    "fats": 20
+  },
+  {
+    "name": "Spinach",
+    "calories": 23,
+    "protein": 3,
+    "carbs": 4,
+    "fats": 0
+  },
+  {
+    "name": "Strawberries",
+    "calories": 49,
+    "protein": 1,
+    "carbs": 12,
+    "fats": 0
+  },
+  {
+    "name": "Sugarcane Juice",
+    "calories": 180,
+    "protein": 0,
+    "carbs": 44,
+    "fats": 0
+  },
+  {
+    "name": "Sushi Roll",
+    "calories": 255,
+    "protein": 9,
+    "carbs": 38,
+    "fats": 7
+  },
+  {
+    "name": "Sushi Roll (6 pieces)",
+    "calories": 250,
+    "protein": 9,
+    "carbs": 42,
+    "fats": 4
+  },
+  {
+    "name": "Sweet and Sour Pork",
+    "calories": 520,
+    "protein": 24,
+    "carbs": 52,
+    "fats": 24
+  },
+  {
+    "name": "Sweet Potato",
+    "calories": 112,
+    "protein": 2,
+    "carbs": 26,
+    "fats": 0
+  },
+  {
+    "name": "Sweet Potato Fries",
+    "calories": 380,
+    "protein": 4,
+    "carbs": 52,
+    "fats": 18
+  },
+  {
+    "name": "Taco",
+    "calories": 156,
+    "protein": 8,
+    "carbs": 13,
+    "fats": 8
+  },
+  {
+    "name": "Tau Fu Fah",
+    "calories": 130,
+    "protein": 5,
+    "carbs": 22,
+    "fats": 3
+  },
+  {
+    "name": "Teh O Ais Limau",
+    "calories": 90,
+    "protein": 0,
+    "carbs": 23,
+    "fats": 0
+  },
+  {
+    "name": "Teh Tarik",
+    "calories": 130,
+    "protein": 3,
+    "carbs": 20,
+    "fats": 4
+  },
+  {
+    "name": "Tempeh",
+    "calories": 192,
+    "protein": 20,
+    "carbs": 8,
+    "fats": 11
+  },
+  {
+    "name": "Thosai",
+    "calories": 170,
+    "protein": 5,
+    "carbs": 30,
+    "fats": 4
+  },
+  {
+    "name": "Tilapia",
+    "calories": 128,
+    "protein": 26,
+    "carbs": 0,
+    "fats": 3
+  },
+  {
+    "name": "Tofu",
+    "calories": 144,
+    "protein": 17,
+    "carbs": 3,
+    "fats": 9
+  },
+  {
+    "name": "Tom Yum Soup",
+    "calories": 180,
+    "protein": 16,
+    "carbs": 12,
+    "fats": 8
+  },
+  {
+    "name": "Tomato",
+    "calories": 22,
+    "protein": 1,
+    "carbs": 5,
+    "fats": 0
+  },
+  {
+    "name": "Tortilla",
+    "calories": 138,
+    "protein": 4,
+    "carbs": 22,
+    "fats": 4
+  },
+  {
+    "name": "Tuna",
+    "calories": 132,
+    "protein": 28,
+    "carbs": 0,
+    "fats": 1
+  },
+  {
+    "name": "Tuna Salad",
+    "calories": 290,
+    "protein": 25,
+    "carbs": 8,
+    "fats": 18
+  },
+  {
+    "name": "Turkey Breast",
+    "calories": 135,
+    "protein": 30,
+    "carbs": 0,
+    "fats": 1
+  },
+  {
+    "name": "Vadai",
+    "calories": 180,
+    "protein": 6,
+    "carbs": 20,
+    "fats": 9
+  },
+  {
+    "name": "Waffle",
+    "calories": 218,
+    "protein": 6,
+    "carbs": 25,
+    "fats": 11
+  },
+  {
+    "name": "Walnuts",
+    "calories": 185,
+    "protein": 4,
+    "carbs": 4,
+    "fats": 18
+  },
+  {
+    "name": "Wantan Mee (dry)",
+    "calories": 512,
+    "protein": 24,
+    "carbs": 66,
+    "fats": 17
+  },
+  {
+    "name": "Watermelon",
+    "calories": 46,
+    "protein": 1,
+    "carbs": 12,
+    "fats": 0
+  },
+  {
+    "name": "Whey Protein",
+    "calories": 120,
+    "protein": 24,
+    "carbs": 3,
+    "fats": 2
+  },
+  {
+    "name": "White Bread",
+    "calories": 79,
+    "protein": 3,
+    "carbs": 15,
+    "fats": 1
+  },
+  {
+    "name": "White Rice",
+    "calories": 205,
+    "protein": 4,
+    "carbs": 45,
+    "fats": 0
+  },
+  {
+    "name": "Whole Wheat Bread",
+    "calories": 81,
+    "protein": 4,
+    "carbs": 14,
+    "fats": 1
+  },
+  {
+    "name": "Yogurt",
+    "calories": 149,
+    "protein": 9,
+    "carbs": 11,
+    "fats": 8
+  },
+  {
+    "name": "Yong Tau Foo (6 pieces)",
+    "calories": 280,
+    "protein": 20,
+    "carbs": 18,
+    "fats": 14
+  },
+  {
+    "name": "Zucchini",
+    "calories": 33,
+    "protein": 2,
+    "carbs": 6,
+    "fats": 1
+  }
 ]

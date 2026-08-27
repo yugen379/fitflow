@@ -11,11 +11,15 @@ import { logWorkout } from '../services/dataService';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
 import { saveWorkoutPlan, listWorkoutPlans, deleteWorkoutPlan, WorkoutPlan } from '../services/workoutPlanService';
+import { MUSCLE_GROUPS, EQUIPMENT, CATEGORIES as TAXONOMY_CATEGORIES, DIFFICULTIES as TAXONOMY_DIFFICULTIES } from '../data/taxonomy';
 
-const CATEGORIES = ['All', 'Strength', 'Cardio', 'HIIT', 'Yoga', 'Flexibility', 'Recovery'];
-const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
-const EQUIPMENT = ['None', 'Dumbbells', 'Barbell', 'Resistance Band', 'Machine', 'Kettlebell'];
-const DIFFICULTIES = ['All', 'Beginner', 'Intermediate', 'Advanced'];
+// Filter vocabulary comes from src/data/taxonomy.ts, the same source the data
+// is normalised against. Held separately here, the two drifted: the equipment
+// list omitted six values the dataset actually used (Yoga Mat, Bench, Pull-up
+// Bar, Jump Rope, Wall, Box) so those exercises were unfilterable, and the
+// 'Resistance Band' chip matched nothing at all.
+const CATEGORIES = ['All', ...TAXONOMY_CATEGORIES];
+const DIFFICULTIES = ['All', ...TAXONOMY_DIFFICULTIES];
 
 export const Library: React.FC = () => {
   const navigate = useNavigate();
