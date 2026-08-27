@@ -249,9 +249,11 @@ export const Home: React.FC = () => {
   useEffect(() => {
     if (!profile?.uid) return;
     const goal = profile.goal;
+    // public_profiles, not users: this only needs a COUNT of people sharing a
+    // goal, and /users is owner-only now. See syncPublicProfile in functions.
     const q = goal
-      ? query(collection(db, 'users'), where('goal', '==', goal), limit(500))
-      : query(collection(db, 'users'), limit(500));
+      ? query(collection(db, 'public_profiles'), where('goal', '==', goal), limit(500))
+      : query(collection(db, 'public_profiles'), limit(500));
     const unsub = onSnapshot(q,
       (snap) => setCommunityCount(snap.size),
       () => setCommunityCount(null),

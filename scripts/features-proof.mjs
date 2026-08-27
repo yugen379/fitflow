@@ -160,6 +160,53 @@ check('server entitlement helper fails closed',
 check('the gated action name matches one the proxy actually handles',
   /case "askCoach":/.test(fns));
 
+// ── Client/server entitlement PARITY ─────────────────────────────────────────
+//
+// isProUid() is the only check a modified client cannot skip. If it is more
+// permissive than the UI gate it is not a spend control, it is decoration.
+// Each of these caught a real divergence.
+
+// It shipped as `if (canceled || expired) {...} else { return true; }`, so a
+// past_due subscription — payment failed, grace long gone — kept unlimited
+// Gemini calls forever, while subscription-proof asserts the client treats
+// exactly that state as NOT Pro.
+const serverPastDue = fns.slice(fns.indexOf('const isProUid'), fns.indexOf('const toMillisServer'));
+check('server denies past_due outside the grace window',
+  /status === "past_due"/.test(serverPastDue) && /graceUntil/.test(serverPastDue),
+  'past_due must be entitled only while now < graceUntil, as on the client');
+check('server denies a canceled sub past its period end',
+  /status === "canceled"/.test(serverPastDue) && /currentPeriodEnd/.test(serverPastDue));
+check('server never grants the paid branch to an expired sub',
+  /status === "expired"/.test(serverPastDue));
+
+// The client measures the trial from trialStartedAt and nothing else. A
+// createdAt fallback hands a server-side trial to legacy accounts whose UI is
+// locked — permissive in the one direction that costs money.
+check('server measures the trial from trialStartedAt only',
+  !/toMillisServer\(u\.createdAt\)/.test(serverPastDue));
+
+// The server cannot import the client module, so it holds its own copy of the
+// trial length. A copy that can drift needs a test that fails when it does.
+const serverTrials = [...fns.matchAll(/TRIAL_DAYS\s*=\s*(\d+)/g)].map((m) => Number(m[1]));
+// Every copy, not just the first. There were three, and the one the 6->7 change
+// missed was the LAST one — matching only the first would have passed.
+check(`the server keeps exactly one trial-length constant (found ${serverTrials.length})`,
+  serverTrials.length === 1, 'copies drift: ' + serverTrials.join(', '));
+const serverTrial = serverTrials[0];
+check(`server trial length matches the client constant (${serverTrial} === ${TRIAL_DAYS})`,
+  serverTrial === TRIAL_DAYS);
+
+// ── One table for the free allowance ─────────────────────────────────────────
+//
+// streakFreezeService re-exported the shared constant AND declared a local one
+// of the same name. `export ... from` creates no local binding, so the local
+// const did not collide — it shadowed the shared value for every use inside
+// the module. Importers saw the table, the module's own logic saw a hardcoded 1.
+const freezeSrc = readFileSync(join(ROOT, 'src/services/streakFreezeService.ts'), 'utf8');
+check('the freeze allowance is not redeclared locally',
+  !/^\s*const FREE_FREEZES_PER_MONTH\s*=\s*\d/m.test(freezeSrc),
+  'it must come from lib/features, not a second copy');
+
 // Copy must not sell what is already free.
 const gate = readFileSync(join(ROOT, 'src/components/PremiumGate.tsx'), 'utf8');
 check('perks do not advertise the free AI meal plan', !/meal plans/i.test(gate.slice(gate.indexOf('const PERKS'), gate.indexOf('];', gate.indexOf('const PERKS')))));

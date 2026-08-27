@@ -62,7 +62,16 @@ export const Analytics: React.FC = () => {
   const [totalCals,     setTotalCals]     = useState(0);
   const [loading,       setLoading]       = useState(true);
 
-  useEffect(() => { if (profile?.uid) fetchAll(profile.uid); }, [profile?.uid]);
+  // Refetch when entitlement flips, not just when the user changes.
+  //
+  // The profile arrives via onSnapshot, so when the Stripe webhook writes
+  // entitlement the object updates IN PLACE with the same uid. Keying this
+  // effect on uid alone meant the history window was fixed at whatever the
+  // account was on mount: someone who subscribed while looking at this screen
+  // kept the 7-day chart until they navigated away and back, despite the copy
+  // promising it fills back in the moment they subscribe.
+  const isProNow = getEntitlement(profile).isPro;
+  useEffect(() => { if (profile?.uid) fetchAll(profile.uid); }, [profile?.uid, isProNow]);
 
   const fetchAll = async (uid: string) => {
     setLoading(true);

@@ -14,10 +14,16 @@ import { dayKey } from './retentionUtils';
 import { isProUnlocked } from '../lib/billing';
 import type { UserProfile } from '../types';
 
-// Re-exported from lib/features so the paywall has ONE table of what the free
-// tier gets, rather than a number here and a number there that can drift.
-export { FREE_STREAK_FREEZES_PER_MONTH as FREE_FREEZES_PER_MONTH } from '../lib/features';
-const FREE_FREEZES_PER_MONTH = 1;
+// Imported from lib/features so the paywall has ONE table of what the free tier
+// gets, rather than a number here and a number there that can drift.
+//
+// This was an `export ... from` re-export next to a local `const ... = 1`. An
+// `export ... from` creates NO local binding, so the const did not collide with
+// it — it silently shadowed it for every use INSIDE this module. Importers read
+// the shared table while getFreezeStatus() below read the hardcoded 1: exactly
+// the drift the re-export was added to prevent. One binding now, used by both.
+import { FREE_STREAK_FREEZES_PER_MONTH as FREE_FREEZES_PER_MONTH } from '../lib/features';
+export { FREE_FREEZES_PER_MONTH };
 
 /** 'YYYY-MM' for the given date (local). Used to reset the monthly free allowance. */
 export const monthKey = (d: Date = new Date()): string => dayKey(d).slice(0, 7);

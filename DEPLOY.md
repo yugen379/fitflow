@@ -136,6 +136,43 @@ and `src/pages/Terms.tsx` with your real entity info.
 
 ---
 
+## Deploying the /users privacy fix (ORDER MATTERS)
+
+`/users/{userId}` used to be `allow get, list: if isSignedIn()`. Firestore rules
+cannot restrict which **fields** a read returns, so permitting the read permitted
+the whole document — every signed-in account could read any other user's `age`,
+`weight`, `healthConditions`, `email`, `fcmToken` and `stripeCustomerId`, purely
+so leaderboards could show a name and a score. Verified in the emulator; see
+`npm run test:rules:privacy`.
+
+The fix moves cross-user reads to `public_profiles/{uid}`, a six-field mirror
+maintained only by the `syncPublicProfile` Cloud Function.
+
+**Deploy in this order.** The trigger only fires when a user document is written,
+so shipping the rules first leaves every leaderboard empty until each user next
+logs something.
+
+```bash
+# 1. The mirror function must exist BEFORE anything depends on the mirror.
+firebase deploy --only functions:syncPublicProfile
+
+# 2. Populate mirrors for users who already exist (the trigger never saw them).
+#    Needs ADC or GOOGLE_APPLICATION_CREDENTIALS.
+npm run backfill:public-profiles -- --dry   # inspect first
+npm run backfill:public-profiles
+
+# 3. Only now tighten the rules.
+firebase deploy --only firestore:rules
+```
+
+Rolling back? Revert step 3 only. The mirror and the backfill are additive and
+harmless on their own.
+
+Adding a field to the leaderboard later means adding it to **both**
+`PUBLIC_PROFILE_FIELDS` in `functions/src/index.ts` and the copy in
+`scripts/backfill-public-profiles.mjs` — `npm run proof:privacy` fails if the two
+drift, and refuses any field on its sensitive list.
+
 ## Tier 2 — public launch (2–4 weeks)
 
 ### 10. Switch Stripe to live mode

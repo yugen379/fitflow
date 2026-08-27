@@ -188,8 +188,9 @@ export const Challenges: React.FC = () => {
   const [boardError, setBoardError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Public mirror, not /users — see syncPublicProfile in functions/src/index.ts.
     const q = query(
-      collection(db, 'users'),
+      collection(db, 'public_profiles'),
       orderBy('points', 'desc'),
       limit(20),
     );

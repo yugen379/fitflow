@@ -32,7 +32,9 @@ export const Community: React.FC = () => {
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50));
-    const uQ = query(collection(db, 'users'), orderBy('points', 'desc'), limit(10));
+    // Leaderboards read the public mirror. /users carries health, contact and
+    // billing data and is owner-only.
+    const uQ = query(collection(db, 'public_profiles'), orderBy('points', 'desc'), limit(10));
 
     const unsubPosts = onSnapshot(q, (snap) => {
       setPosts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post)));
