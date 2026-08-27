@@ -177,6 +177,54 @@ and the calorie target.
 
 ---
 
+## 14) ACTIVITY_RECOGNITION declaration  <-- REQUIRED, blocks the release
+
+*(Policy -> App content -> Sensitive app permissions -> Activity recognition)*
+
+Verified against the shipped v1.5.0 bundle and the native source, not assumed.
+
+**What the app actually does with it.** `ACTIVITY_RECOGNITION` is used for exactly
+one thing: reading `Sensor.TYPE_STEP_COUNTER`, which Android gates behind this
+permission from API 29. See `StepCounterService.java:107,118,147`. It is also the
+prerequisite runtime permission for the `health` foreground service - promoting
+without it throws on Android 14+.
+
+**What it does NOT do, and must not be claimed.** The app does not use Google's
+Activity Recognition API. There is no `ActivityRecognitionClient`,
+`DetectedActivity` or `ActivityTransition` anywhere in the codebase, so it never
+classifies or infers activity types (walking, running, cycling, driving). If the
+form offers "detects user activity type", do not tick it - that would be a
+declaration the binary contradicts.
+
+**Description** (paste):
+
+> FitFlow is a fitness tracking app. It uses ACTIVITY_RECOGNITION solely to read
+> the device's built-in hardware step-counter sensor (Sensor.TYPE_STEP_COUNTER),
+> which Android gates behind this permission from API 29 onwards. The step count
+> is used to show the user their daily steps, estimated distance and calories
+> burned, and to drive their step goal, streaks and achievements - all displayed
+> only to that user inside the app.
+>
+> This permission is also the prerequisite runtime permission for our
+> FOREGROUND_SERVICE_HEALTH service, which keeps the step-counter listener alive
+> so the count stays accurate while the app is closed.
+>
+> FitFlow does not use the Activity Recognition API and does not classify or
+> infer activity types such as walking, running, cycling or driving. Step data is
+> never used for advertising or marketing, is never sold, and is not shared with
+> third parties. The permission is requested in context, only when the user turns
+> on step counting, and the rest of the app works normally if it is declined -
+> steps simply are not counted.
+
+- **Shared with third parties?** No
+- **Used for advertising?** No
+- **Requested in context?** Yes - only when the user enables step counting
+- **App usable if denied?** Yes - every other feature works; steps are not counted
+- If a demo video is requested here too, the same one as section 12 applies: it
+  shows the permission gating the counter and the count rising with the app closed.
+
+---
+
 ## Only 2 things actually need YOU (everything else is copy-paste above)
 1. **Create a reviewer test account** (email/password on the live web app) → enter under **App access** (#2).
 2. **Confirm the privacy page** shows your real legal name + contact address (#1).
