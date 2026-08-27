@@ -7,18 +7,21 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const cfg = JSON.parse(readFileSync(join(__dir, '..', 'firebase-applet-config.json'), 'utf8'));
 
 admin.initializeApp({ projectId: cfg.projectId, credential: admin.credential.applicationDefault() });
-// Named database, same as the client (getFirestore(app, firestoreDatabaseId))
-// and the seed script. db.settings({databaseId}) is NOT the admin API for this
-// and silently reads (default) instead, which is how the first run of this
-// script reported an empty collection that was really just the wrong database.
-const db = cfg.firestoreDatabaseId
-  ? admin.firestore(admin.app(), cfg.firestoreDatabaseId)
-  : admin.firestore();
+// The database id MUST go through the modular getFirestore(app, id).
+//
+// `admin.firestore(app, id)` — the namespaced form this used — silently
+// IGNORES the second argument in firebase-admin v13 and hands back the
+// (default) database. This project keeps all of its data in a NAMED database,
+// so every write this script made went into an empty (default) that the app
+// never reads. It reported success each time. The catalog seed has therefore
+// never actually reached the app, and neither had any diagnostic run here.
+const db = getFirestore(admin.app(), cfg.firestoreDatabaseId || undefined);
 
 const today = new Date();
 const pad = (n) => String(n).padStart(2, '0');

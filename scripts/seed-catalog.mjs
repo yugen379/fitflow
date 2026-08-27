@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const { catalogKey, normalizeCatalogFood } = await import('../src/services/foodCatalogUtils.ts');
 
@@ -28,10 +29,15 @@ admin.initializeApp({
   projectId: cfg.projectId,
   credential: admin.credential.applicationDefault(),
 });
-// Match the app's named database (db = getFirestore(app, firestoreDatabaseId)).
-const db = cfg.firestoreDatabaseId
-  ? admin.firestore(admin.app(), cfg.firestoreDatabaseId)
-  : admin.firestore();
+// The database id MUST go through the modular getFirestore(app, id).
+//
+// `admin.firestore(app, id)` — the namespaced form this used — silently
+// IGNORES the second argument in firebase-admin v13 and hands back the
+// (default) database. This project keeps all of its data in a NAMED database,
+// so every write this script made went into an empty (default) that the app
+// never reads. It reported success each time. The catalog seed has therefore
+// never actually reached the app, and neither had any diagnostic run here.
+const db = getFirestore(admin.app(), cfg.firestoreDatabaseId || undefined);
 
 const FieldValue = admin.firestore.FieldValue;
 
