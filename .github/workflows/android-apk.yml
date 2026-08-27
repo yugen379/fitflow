@@ -64,6 +64,18 @@ jobs:
           # Unset today → Stripe fallback. Add the goog_ secret once RevenueCat is
           # wired and native Subscribe switches to Google Play Billing automatically.
           VITE_REVENUECAT_ANDROID_KEY: ${{ secrets.VITE_REVENUECAT_ANDROID_KEY }}
+          # Error reporting must be baked in here too. deploy.yml passed these and
+          # this workflow did not, so the WEB app reported and the ANDROID app —
+          # the one closed testers actually install — was silent. Testers cannot
+          # send you a stack trace; this is the only way a crash on their phone
+          # ever reaches you.
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+          # Tags every event with the build it came from, so a crash report says
+          # which version broke rather than just "android".
+          VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_APP_ENV: production
         run: npm run build
 
       - name: Write google-services.json from secret (optional — enables push)
@@ -133,6 +145,14 @@ jobs:
           VITE_ALL_FEATURES_FREE: ${{ secrets.VITE_ALL_FEATURES_FREE }}
           VITE_PLAY_STORE_BUILD: 'true'
           VITE_REVENUECAT_ANDROID_KEY: ${{ secrets.VITE_REVENUECAT_ANDROID_KEY }}
+          # This is the bundle that goes to Play — the build closed testers run.
+          # Of the two Android builds it is the one that MOST needs reporting,
+          # and it had none.
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+          VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_APP_ENV: production
         run: npm run build
 
       - name: Sync Play-safe web → Android

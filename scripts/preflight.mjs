@@ -8,7 +8,7 @@
 //
 // Exit codes: 0 = clear to ship. 1 = a blocking gate failed.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -82,10 +82,43 @@ gate(dsnAnywhere, 'VITE_SENTRY_DSN is configured',
       'enough) then: gh secret set VITE_SENTRY_DSN'
     : 'not found in .env or the environment; could not check GitHub secrets');
 
-advise(dsnInSecrets !== false || !/VITE_SENTRY_DSN/.test(read('.github/workflows/deploy.yml')),
-  'the deploy workflow does not reference a secret that is unset',
-  'deploy.yml passes VITE_SENTRY_DSN, which currently resolves to an empty string');
-
+// Every workflow STEP that runs a production `npm run build` must bake the DSN
+// into that step's own env, or the artifact it produces is silent.
+//
+// android-apk.yml wired none, so the WEB app reported crashes and the ANDROID
+// app — the build closed testers install, whose users cannot send you a stack
+// trace — did not.
+//
+// This counts STEPS, not occurrences. The first version of this check counted
+// how many times the string "VITE_SENTRY_DSN" appeared in the file, which is
+// two per wiring line (`VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}`), so a
+// two-build workflow with only one build wired still looked covered. It passed
+// its own negative test. Per-step is the only counting that means anything.
+const wfDir = join(ROOT, '.github/workflows');
+const unwiredSteps = [];
+try {
+  for (const f of readdirSync(wfDir)) {
+    if (!/\.ya?ml$/.test(f)) continue;
+    const text = readFileSync(join(wfDir, f), 'utf8');
+    // Split on step boundaries: a "- name:" at the step indent level.
+    const steps = text.split(/^\s*- name:/m);
+    for (const step of steps) {
+      // Any step whose body runs the production build, block scalar or not.
+      if (!/npm run build/.test(step)) continue;
+      // ...except the Cloud Functions build. `cd functions && npm run build` is
+      // tsc over server code: there is no web bundle to bake a DSN into, and
+      // functions report through their own runtime, not this client SDK.
+      if (/cd functions/.test(step) || /--prefix\s+["']?functions/.test(step)) continue;
+      if (!/VITE_SENTRY_DSN:/.test(step)) {
+        const label = (step.split(/\r?\n/)[0] || '').trim().slice(0, 40);
+        unwiredSteps.push(`${f} → "${label}"`);
+      }
+    }
+  }
+} catch { /* no workflows dir */ }
+gate(unwiredSteps.length === 0,
+  'every build step bakes in error reporting',
+  unwiredSteps.join('; '));
 // ─── 3. Data layer ────────────────────────────────────────────────────────────
 console.log(`\n${C.b}3 · Data layer${C.x}`);
 let indexes = { indexes: [] };
