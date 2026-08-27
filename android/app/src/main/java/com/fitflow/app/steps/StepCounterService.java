@@ -5,8 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.hardware.Sensor;
@@ -94,6 +96,44 @@ public class StepCounterService extends Service implements SensorEventListener {
     private boolean listening = false;
     private long lastNotificationAt = 0L;
 
+    /**
+     * Rolls the day over at midnight even when nobody is walking.
+     *
+     * The day used to roll ONLY inside applyRawReading(), which runs only on a
+     * sensor event — and events are batched up to BATCH_LATENCY_US and stop
+     * entirely while the user is asleep and still. So at 00:00 nothing fired:
+     * the ongoing notification kept showing YESTERDAY's total, and went on
+     * showing it until the first steps of the new day were physically taken.
+     *
+     * ACTION_DATE_CHANGED is the system's own midnight signal. TIME_CHANGED and
+     * TIMEZONE_CHANGED matter too — both can change what "today" is without a
+     * single step being taken (crossing a timezone on a flight, say).
+     */
+    private final BroadcastReceiver dayChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (store == null) {
+                return;
+            }
+            // getStepsToday() calls rollDayIfNeeded() internally, so simply
+            // reading it performs the rollover and returns the new day's count.
+            long steps = store.getStepsToday();
+            String day = store.getDay();
+
+            Intent broadcast = new Intent(BROADCAST_STEPS);
+            broadcast.setPackage(getPackageName());
+            broadcast.putExtra(EXTRA_STEPS, steps);
+            broadcast.putExtra(EXTRA_DAY, day);
+            sendBroadcast(broadcast);
+
+            // Forced, not maybeUpdateNotification(): the once-a-minute throttle
+            // exists to avoid churn on sensor bursts, and midnight is precisely
+            // the moment the stale number must not survive another second.
+            updateNotificationNow(steps);
+        }
+    };
+    private boolean dayReceiverRegistered = false;
+
     /** True when the service is currently promoted and counting. */
     private static volatile boolean running = false;
 
@@ -148,6 +188,15 @@ public class StepCounterService extends Service implements SensorEventListener {
         }
         store = new StepStore(this);
         createChannel();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_DATE_CHANGED);
+        filter.addAction(Intent.ACTION_TIME_CHANGED);
+        filter.addAction(Intent.ACTION_TIMEZONE_CHANGED);
+        // System broadcasts only -> NOT_EXPORTED, which is mandatory from API 34.
+        ContextCompat.registerReceiver(this, dayChangeReceiver, filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED);
+        dayReceiverRegistered = true;
     }
 
     @Override
@@ -228,6 +277,14 @@ public class StepCounterService extends Service implements SensorEventListener {
     }
 
     private void shutdown() {
+        if (dayReceiverRegistered) {
+            try {
+                unregisterReceiver(dayChangeReceiver);
+            } catch (IllegalArgumentException ignored) {
+                // Already unregistered.
+            }
+            dayReceiverRegistered = false;
+        }
         if (listening && sensorManager != null) {
             sensorManager.unregisterListener(this);
             listening = false;
@@ -253,6 +310,15 @@ public class StepCounterService extends Service implements SensorEventListener {
             startForeground(NOTIFICATION_ID, notification);
         }
         lastNotificationAt = SystemClock.elapsedRealtime();
+    }
+
+    /** Write the notification immediately, ignoring the throttle. */
+    private void updateNotificationNow(long steps) {
+        lastNotificationAt = SystemClock.elapsedRealtime();
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            manager.notify(NOTIFICATION_ID, buildNotification(steps));
+        }
     }
 
     private void maybeUpdateNotification(long steps) {

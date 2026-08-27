@@ -222,8 +222,26 @@ service cloud.firestore {
     }
 
     // Users
-    match /users/{userId} {
+    // Public, non-sensitive projection of a user, maintained ONLY by the
+    // syncPublicProfile Cloud Function (admin SDK bypasses these rules).
+    //
+    // This exists because /users/{userId} used to be `allow get, list: if
+    // isSignedIn()`. Rules cannot restrict which FIELDS a read returns, so that
+    // one line exposed every user's age, weight, healthConditions, email,
+    // fcmToken and Stripe customer id to any signed-in account — to power a
+    // leaderboard that needs a name and a score. Leaderboards read this instead.
+    match /public_profiles/{userId} {
       allow get, list: if isSignedIn();
+      // No client writes, ever. A client-writable mirror would let anyone put
+      // any name and any score on the leaderboard.
+      allow create, update, delete: if false;
+    }
+
+    match /users/{userId} {
+      // OWNER-ONLY. Cross-user reads go to /public_profiles above.
+      allow get: if isOwner(userId);
+      // No client ever enumerates the user collection.
+      allow list: if false;
       allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().subscriptionType == 'free';
       allow update: if isOwner(userId) && (
         // Action: Update Profile Info (allows fields added for flagship features).

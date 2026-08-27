@@ -11,7 +11,7 @@ import { useToast } from '../hooks/useToast';
 import { allFeaturesFree, getEntitlement, isPlayStoreBuild } from '../lib/billing';
 import { openBillingPortal, isPortalConfigured } from '../services/stripeService';
 import { purchaseUiAllowed } from '../services/playBillingService';
-import { auth } from '../lib/firebase';
+import { app, auth } from '../lib/firebase';
 import { db } from '../lib/firestore';
 import { requestPushPermission, isNativeApp, micSupported } from '../lib/pushPermission';
 import {
@@ -142,20 +142,35 @@ export const Settings: React.FC = () => {
         'weight_history', 'body_metrics', 'activity_routes', 'notifications',
       ];
       const data: Record<string, any[]> = { user: [profile] };
+      // A collection that FAILED to read and a collection that is genuinely
+      // empty both used to serialize as []. On a data-export — the artefact a
+      // GDPR access request is answered with — silently omitting records while
+      // reporting success is the worst of the two failure modes.
+      const missing: string[] = [];
       for (const c of collectionsToExport) {
         try {
           const snap = await getDocs(query(collection(db, c), where('userId', '==', profile.uid)));
           data[c] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch { data[c] = []; }
+        } catch { data[c] = []; missing.push(c); }
       }
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `fitflow-${profile.uid}-${new Date().toISOString().slice(0, 10)}.json`;
+      // Firefox only follows a click on an anchor that is in the document, and
+      // revoking synchronously after click() can cancel a download the browser
+      // has not started reading yet. Attach, click, then revoke on the next turn.
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-      showToast('Data exported');
+      setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 0);
+      showToast(
+        missing.length
+          ? `Exported, but ${missing.length} section(s) could not be read — try again`
+          : 'Data exported',
+        missing.length ? 'error' : undefined,
+      );
     } catch {
       showToast('Export failed', 'error');
     } finally {
@@ -170,18 +185,50 @@ export const Settings: React.FC = () => {
       const collectionsToWipe = [
         'meals', 'workouts', 'water_logs', 'sleep_logs', 'wellness_logs',
         'weight_history', 'body_metrics', 'activity_routes', 'notifications',
-        'posts', 'comments',
+        'posts', 'comments', 'activity_days', 'streak_freezes', 'workout_plans',
       ];
+      // Prefer the server. functions/deleteAccount runs with admin privileges and
+      // is the only path that erases EVERYTHING the delete-account page promises:
+      // it also covers activity_days, streak_freezes, workout_plans, meal_plans
+      // and weekly_recaps, and recursiveDelete's the user doc's subcollections
+      // (progression, blocks). It was written months ago and never called —
+      // nothing in src/ referenced it — so deletion has always run the partial
+      // client path below.
+      try {
+        const { getFunctions, httpsCallable } = await import('firebase/functions');
+        await httpsCallable(getFunctions(app), 'deleteAccount')();
+        showToast('Account deleted');
+        await signOut();
+        navigate('/');
+        return;
+      } catch (e: any) {
+        // Re-auth is the user's to resolve; do not fall through and half-delete.
+        if (e?.code === 'functions/unauthenticated' || e?.code === 'auth/requires-recent-login') {
+          showToast('Please sign in again, then re-try delete', 'error');
+          await signOut();
+          return;
+        }
+        // Otherwise fall through to the client-side wipe (function not deployed,
+        // offline, region mismatch). It is weaker, so it now reports honestly.
+      }
+
+      let incomplete = false;
       for (const c of collectionsToWipe) {
         try {
           const snap = await getDocs(query(collection(db, c), where('userId', '==', profile.uid)));
           if (snap.empty) continue;
-          const batch = writeBatch(db);
-          snap.docs.forEach(d => batch.delete(d.ref));
-          await batch.commit();
-        } catch { /* continue */ }
+          // Firestore caps a batch at 500 writes. This used to commit one batch
+          // per collection, so any user with 500+ meals threw, hit the silent
+          // `catch`, and kept that collection forever while being told the
+          // account was deleted. Chunk, and remember if anything failed.
+          for (let i = 0; i < snap.docs.length; i += 450) {
+            const batch = writeBatch(db);
+            snap.docs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+          }
+        } catch { incomplete = true; }
       }
-      try { await deleteDoc(doc(db, 'users', profile.uid)); } catch { /* permission */ }
+      try { await deleteDoc(doc(db, 'users', profile.uid)); } catch { incomplete = true; }
       try { await deleteUser(auth.currentUser); } catch (e: any) {
         if (e?.code === 'auth/requires-recent-login') {
           showToast('Please sign in again, then re-try delete', 'error');
@@ -190,7 +237,13 @@ export const Settings: React.FC = () => {
         }
         throw e;
       }
-      showToast('Account deleted');
+      // Never claim a complete erasure we did not perform.
+      showToast(
+        incomplete
+          ? 'Account deleted, but some data could not be removed — email fitflow2000@gmail.com'
+          : 'Account deleted',
+        incomplete ? 'error' : undefined,
+      );
       navigate('/');
     } catch {
       showToast('Delete failed. Try signing out and back in first.', 'error');

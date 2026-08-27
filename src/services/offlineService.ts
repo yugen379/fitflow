@@ -97,17 +97,30 @@ let syncing = false;
 export const syncOfflineQueue = async (): Promise<{ sent: number; failed: number }> => {
   // Re-entrancy guard: startup, `online` and `visibilitychange` can all fire at
   // once, and two replays racing would deliver duplicates.
+  //
+  // The flag MUST be claimed synchronously, before the first `await`. It used to
+  // be set after `await readQueue()`, so two callers both read `syncing === false`,
+  // both suspended on the same await, and both replayed the SAME queue — every
+  // item delivered twice. A duplicated meal or workout is worse than a delayed
+  // one, and this is the exact failure the guard was written to stop.
   if (syncing) return { sent: 0, failed: 0 };
   if (typeof navigator !== 'undefined' && !navigator.onLine) return { sent: 0, failed: 0 };
-
-  const queue = await readQueue();
-  if (queue.length === 0) return { sent: 0, failed: 0 };
-
   syncing = true;
+
   const remaining: OfflineAction[] = [];
   let sent = 0;
+  let queue: OfflineAction[] = [];
 
   try {
+    queue = await readQueue();
+    if (queue.length === 0) return { sent: 0, failed: 0 };
+    // Captured as a NUMBER, now, rather than read off `queue` after the replay.
+    // IndexedDB structured-clones on read so `queue` is our own copy, but the
+    // correctness of the merge below must not rest on the storage layer's copy
+    // semantics — an in-memory or mocked backing store that hands back a live
+    // reference would see this length grow under us and silently drop every
+    // item queued during the replay.
+    const snapshotLength = queue.length;
     for (const action of queue) {
       try {
         // `queueOnFailure: false` — the retry must THROW rather than quietly
@@ -135,7 +148,7 @@ export const syncOfflineQueue = async (): Promise<{ sent: number; failed: number
     // snapshot length is new and must be preserved.
     await mutate(async () => {
       const latest = await readQueue();
-      await writeQueue([...remaining, ...latest.slice(queue.length)]);
+      await writeQueue([...remaining, ...latest.slice(snapshotLength)]);
     });
   } finally {
     syncing = false;
@@ -151,9 +164,17 @@ export const syncOfflineQueue = async (): Promise<{ sent: number; failed: number
  * need an offline→online transition to ever be delivered, which for most users
  * never came.
  */
+let wired = false;
+
 export const startOfflineSync = (): void => {
   if (typeof window === 'undefined') return;
+  // Idempotent. The doc comment says "called once from the app entry", but the
+  // actual caller is a ProtectedRoute effect — and there is one ProtectedRoute
+  // per route, so every navigation mounted a fresh one and added another pair of
+  // listeners that nothing ever removed. Replay is still triggered on each call.
   void syncOfflineQueue();
+  if (wired) return;
+  wired = true;
   window.addEventListener('online', () => void syncOfflineQueue());
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') void syncOfflineQueue();

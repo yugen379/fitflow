@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
@@ -41,12 +42,24 @@ const geminiApiKey = defineSecret("GEMINI_API_KEY");
 //   STRIPE_SECRET_KEY      — sk_live_… / sk_test_…
 //   STRIPE_WEBHOOK_SECRET  — whsec_…  (from the webhook endpoint in Stripe)
 //
-// The 6-day free trial is APP-MANAGED and cardless (see lib/billing.ts), so we
+// The free trial (TRIAL_DAYS) is APP-MANAGED and cardless (see lib/billing.ts), so we
 // do NOT use Stripe's trial_period_days here — checkout charges immediately when
 // the user chooses to subscribe. The webhook is the ONLY writer of billing
 // fields on the user doc (admin SDK bypasses Firestore rules).
 // ---------------------------------------------------------------------------
 const GRACE_DAYS = 3;
+/**
+ * Length of the cardless trial, in days. MUST equal TRIAL_DAYS in
+ * src/lib/billing.ts — proof:features asserts the two are equal.
+ *
+ * There were three copies of this number: 7 here (entitlement) and 6 in
+ * sendTrialEndingReminders, which the 6->7 change missed. That reminder is the
+ * single highest-leverage conversion push in the product and it was firing on
+ * day 5 of 7 — "your trial ends tomorrow", two days early — and never again,
+ * because trialEndingNotifiedAt makes it idempotent. One constant now.
+ */
+const TRIAL_DAYS = 7;
+const DAY_MS = 86_400_000;
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 
@@ -403,9 +416,6 @@ const cascadeText = async (
  * dependency-free rather than importing the client module, which is bundled
  * for the browser.
  */
-const TRIAL_DAYS_SERVER = 7;
-const DAY_MS_SERVER = 24 * 60 * 60 * 1000;
-
 const isProUid = async (uid: string): Promise<boolean> => {
   if (process.env.ALL_FEATURES_FREE === "true") return true;
   try {
@@ -413,18 +423,36 @@ const isProUid = async (uid: string): Promise<boolean> => {
     if (!snap.exists) return false;
     const u = snap.data() as any;
 
+    const now = Date.now();
+
+    // Mirrors computeEntitlement() in src/lib/billing.ts branch for branch.
+    // Any divergence here is a hole: this is the only check a modified client
+    // cannot skip, so it must never be MORE permissive than the UI gate.
     if (u.subscriptionType === "premium") {
       const status = u.subscriptionStatus;
-      if (status === "canceled" || status === "expired") {
-        const until = toMillisServer(u.currentPeriodEnd) ?? toMillisServer(u.graceUntil);
-        if (until != null && until > Date.now()) return true;
+      if (status === "past_due") {
+        // Dunning: entitled only inside the explicit grace window. This used to
+        // fall through to an unconditional `return true`, so a subscription
+        // whose payment had failed kept unlimited Gemini calls forever — the
+        // exact spend control this function exists to enforce.
+        const graceUntil = toMillisServer(u.graceUntil);
+        if (graceUntil != null && now < graceUntil) return true;
+      } else if (status === "canceled") {
+        // Cancelled but paid through the end of the period.
+        const periodEnd = toMillisServer(u.currentPeriodEnd);
+        if (periodEnd != null && now < periodEnd) return true;
+      } else if (status === "expired") {
+        // Never entitled by the paid branch; may still be inside a trial below.
       } else {
+        // 'active', 'trialing', undefined (legacy) -> trust the premium flag.
         return true;
       }
     }
 
-    const started = toMillisServer(u.trialStartedAt) ?? toMillisServer(u.createdAt);
-    if (started != null && Date.now() < started + TRIAL_DAYS_SERVER * DAY_MS_SERVER) return true;
+    // Trial is measured from trialStartedAt ONLY, as on the client. Falling back
+    // to createdAt would hand a trial to legacy accounts whose UI is locked.
+    const started = toMillisServer(u.trialStartedAt);
+    if (started != null && now < started + TRIAL_DAYS * DAY_MS) return true;
     return false;
   } catch {
     return false;
@@ -439,6 +467,67 @@ const toMillisServer = (v: any): number | null => {
   const t = Date.parse(String(v));
   return Number.isFinite(t) ? t : null;
 };
+
+// ---------------------------------------------------------------------------
+// Public profile mirror — the fix for a blanket `allow get, list: if isSignedIn()`
+// on /users/{userId}.
+//
+// Leaderboards and the community count need to read OTHER people's documents.
+// Firestore rules cannot filter fields: a rule that permits the read permits the
+// WHOLE document. So every signed-in user could read every other user's age,
+// weight, healthConditions (special-category health data), email, fcmToken and
+// Stripe customer id, because four screens wanted a name and a score.
+//
+// This mirrors ONLY the fields a leaderboard renders into a separate collection
+// that is world-readable to signed-in users and writable by nobody but this
+// function. /users/{userId} is now owner-only.
+//
+// The whitelist is deliberately an ALLOW-list, not a deny-list: a new sensitive
+// field added to the user doc is private by default and cannot leak by omission.
+// ---------------------------------------------------------------------------
+const PUBLIC_PROFILE_FIELDS = [
+  "displayName", // shown on the leaderboard row
+  "photoURL",    // avatar
+  "points",      // XP, the leaderboard sort key
+  "streak",      // "N day streak" on the row
+  "level",       // shared game stat
+  "goal",        // Home counts athletes sharing your goal (one of four coarse values)
+] as const;
+
+const publicViewOf = (u: Record<string, any>): Record<string, any> => {
+  const out: Record<string, any> = {};
+  for (const f of PUBLIC_PROFILE_FIELDS) if (u[f] !== undefined) out[f] = u[f];
+  return out;
+};
+
+export const syncPublicProfile = onDocumentWritten(
+  { document: "users/{uid}", database: DATABASE_ID },
+  async (event) => {
+    const uid = event.params.uid;
+    const after = event.data?.after;
+    const ref = db.doc(`public_profiles/${uid}`);
+
+    // Deleted user -> the mirror must go too, or a deleted account keeps
+    // appearing on the leaderboard forever.
+    if (!after?.exists) {
+      await ref.delete().catch(() => {});
+      return;
+    }
+
+    const next = publicViewOf(after.data() as Record<string, any>);
+    // Skip the write when nothing public changed. Without this, every step
+    // sync and every meal log would rewrite the mirror and re-trigger nothing
+    // useful — just cost.
+    const before = event.data?.before;
+    if (before?.exists) {
+      const prev = publicViewOf(before.data() as Record<string, any>);
+      if (JSON.stringify(prev) === JSON.stringify(next)) return;
+    }
+    await ref.set(next, { merge: false }).catch((e) => {
+      console.error("public profile mirror failed for", uid, e);
+    });
+  },
+);
 
 export const geminiProxy = functions.https.onRequest(
   { secrets: [geminiApiKey] },
@@ -838,11 +927,9 @@ Tone: warm, direct, like a real human coach. No emojis.`,
 
 // ---------------------------------------------------------------------------
 // Trial-ending nudge — runs daily, pushes a conversion reminder to users whose
-// cardless 6-day trial has ~1 day left and who haven't subscribed yet.
-// Idempotency: trialEndingNotifiedAt prevents repeat sends. (Keep TRIAL_DAYS in
-// sync with src/lib/billing.ts.)
+// cardless trial has ~1 day left and who haven't subscribed yet.
+// Idempotency: trialEndingNotifiedAt prevents repeat sends.
 // ---------------------------------------------------------------------------
-const TRIAL_DAYS = 6;
 
 export const sendTrialEndingReminders = onSchedule(
   { schedule: "every day 16:00", timeZone: "UTC" },

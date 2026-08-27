@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.5.1",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -17,6 +17,7 @@
     "proof:library": "node scripts/library-proof.mjs",
     "proof:features": "tsx scripts/features-proof.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-stepdays-test.mjs\"",
+    "test:rules:privacy": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-privacy-test.mjs\"",
     "proof:telemetry": "node scripts/telemetry-proof.mjs",
     "check:legal": "node scripts/check-legal.mjs",
     "proof:mission": "tsx scripts/mission-proof.mjs",
@@ -32,7 +33,10 @@
     "proof:seed": "tsx scripts/seed-proof.mjs",
     "proof:subscription": "tsx scripts/subscription-proof.mjs",
     "proof:scanner": "node scripts/gen-barcode-y4m.mjs && python scripts/scanner_cam_test.py",
-    "proof:preload": "tsx scripts/preload-proof.mjs"
+    "proof:preload": "tsx scripts/preload-proof.mjs",
+    "proof:offline": "tsx scripts/offline-proof.mjs",
+    "proof:privacy": "node scripts/privacy-proof.mjs",
+    "backfill:public-profiles": "node scripts/backfill-public-profiles.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/app-check": "^8.3.0",
