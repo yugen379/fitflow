@@ -41,10 +41,17 @@ jobs:
       - name: Build functions
         run: cd functions && npm run build
 
-      - name: Deploy Hosting + Functions + Rules
+      # firestore:indexes belongs here as much as rules do. Left out, the only
+      # way an index reached production was somebody pasting the console link
+      # from a failed query — so firestore.indexes.json drifted to 1 declared
+      # index against the 14 composite query shapes the app actually issues,
+      # and every one of those queries failed with failed-precondition. The
+      # call sites all swallow errors, so nothing surfaced: those features did
+      # not break loudly, they silently never worked.
+      - name: Deploy Hosting + Functions + Rules + Indexes
         uses: w9jds/firebase-action@v14.10.1
         with:
-          args: deploy --only hosting,functions,firestore:rules
+          args: deploy --only hosting,functions,firestore:rules,firestore:indexes
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
