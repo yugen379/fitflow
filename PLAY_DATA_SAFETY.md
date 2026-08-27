@@ -176,11 +176,13 @@ dialog instead, you must add that permission AND file the declaration.
 2. **Privacy policy must be at a public URL.** The form requires a hosted link. The policy
    already exists in-app (`src/pages/Privacy.tsx`, also reachable at your web app
    `/privacy` route). Use that public URL, e.g. `https://<your-web-domain>/privacy`.
-3. **Fix the policy's placeholders** before going public:
-   - `COMPANY = 'FitFlow, Inc.'` → for a solo/individual Play account this should be **your
-     legal name** (or a registered trading name), not "Inc." unless you've incorporated.
-   - `COMPANY_ADDRESS = '[REPLACE WITH REGISTERED BUSINESS ADDRESS]'` → real contact address
-     (Play + GDPR require a reachable address).
-4. **Stripe vs. Play Billing wording:** the policy lists Stripe for billing — accurate for the
-   **web** app, but on **Android** purchases go through **Google Play Billing (RevenueCat)**.
-   Add one line so the policy covers both. (Doesn't change Data Safety answers.)
+3. ~~**Fix the policy's placeholders**~~ — **DONE (2026-08-27).** Publisher identity now
+   lives in `src/lib/legal.ts` (individual developer, Malaysia), and
+   `scripts/check-legal.mjs` fails a release build if it is ever unset again.
+   Two advisories remain, printed by that script: the address is still area-level
+   (no street or postcode), and the single-word name must match the Play developer
+   account exactly or review will reject it.
+4. ~~**Stripe vs. Play Billing wording**~~ — **DONE (2026-08-27).** The policy now names
+   both processors: Stripe on the web, Google Play Billing via RevenueCat in the
+   Android app. This matters for Data Safety accuracy — they are different processors
+   receiving different data, and the form is checked against the policy.

@@ -39,7 +39,7 @@ export const Privacy: React.FC = () => {
             'Profile: age, height, weight, goal weight, training goal, dietary preferences, health conditions.',
             'Activity: workouts, meals, water, sleep, mood, weight history, GPS routes, posts and comments.',
             'Photos: meal images you upload for AI nutrition analysis; camera frames captured during AI form check.',
-            'Billing: if you subscribe to Pro, payment info is handled by Stripe — we never see your card details.',
+            'Billing: if you subscribe to Pro, payment is handled by Stripe (web) or Google Play Billing via RevenueCat (Android app) — we never see your card details.',
           ]} />
 
           <SubHead>1.2 Information collected automatically</SubHead>
@@ -84,7 +84,8 @@ export const Privacy: React.FC = () => {
           <List items={[
             'Google Firebase — authentication, Firestore database, FCM push messaging, Cloud Functions.',
             'Google Gemini API — AI content generation. Per Google\'s terms, prompts are not used to train public models.',
-            'Stripe — subscription billing (we never store your card details).',
+            'Stripe — subscription billing on the web (we never store your card details).',
+            'Google Play Billing / RevenueCat — subscription billing in the Android app.',
             'Sentry — error and crash reporting.',
             'PostHog — product analytics (only if enabled).',
             'OpenFoodFacts — barcode lookup (no account data is shared, only the scanned barcode number).',

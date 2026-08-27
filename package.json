@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && node scripts/scan-bundle-secrets.mjs && node scripts/check-legal.mjs",
+    "preflight": "node scripts/preflight.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
