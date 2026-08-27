@@ -159,6 +159,30 @@ const LOCAL = ['nasi lemak', 'char kway teow', 'roti canai', 'teh tarik', 'satay
 const missingLocal = LOCAL.filter((d) => !foodNames.some((n) => n.includes(d)));
 check('local staples are in the seed', missingLocal.length === 0, missingLocal.join(', '));
 
+// ─── Rules: reads that must survive a missing document ────────────────────────
+//
+// `resource` is null when a document does not exist, so `resource.data.x` in a
+// get rule denies every read of an absent doc. That is fatal for any collection
+// the app READS BEFORE WRITING: step_days did exactly that, the first read of
+// each day was denied, the write never ran, and the collection held zero
+// documents for the whole life of the feature.
+//
+// Collections keyed `<uid>_<suffix>` must gate reads on the id prefix instead.
+console.log(`\n${C.b}Rules - reads survive a missing document${C.x}`);
+const rules = read('firestore.rules');
+const getRuleFor = (coll) => {
+  const i = rules.indexOf(`match /${coll}/`);
+  if (i < 0) return null;
+  const seg = rules.slice(i, i + 1400);
+  const m = seg.match(/allow (?:get|read)[^;]*;/);
+  return m ? m[0] : null;
+};
+for (const coll of ['step_days', 'activity_days', 'streak_freezes', 'weekly_recaps']) {
+  const rule = getRuleFor(coll);
+  if (!rule) { check(`${coll} has a get rule`, false); continue; }
+  check(`${coll} get rule does not dereference resource.data`,
+    !/resource\.data/.test(rule), rule.replace(/\s+/g, ' ').slice(0, 110));
+}
 // ─── Summary ──────────────────────────────────────────────────────────────────
 const total = pass + fail;
 console.log(`\n${C.b}Result: ${fail === 0 ? C.g : C.r}${pass}/${total}${C.x}${C.b} checks passed${C.x}`);

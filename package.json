@@ -15,6 +15,7 @@
     "proof:briefing": "tsx scripts/briefing-proof.mjs",
     "proof:badges": "tsx scripts/badges-proof.mjs",
     "proof:library": "node scripts/library-proof.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-stepdays-test.mjs\"",
     "proof:telemetry": "node scripts/telemetry-proof.mjs",
     "check:legal": "node scripts/check-legal.mjs",
     "proof:mission": "tsx scripts/mission-proof.mjs",
@@ -78,6 +79,7 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/browser": "^8.0.3",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/canvas-confetti": "^1.9.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",

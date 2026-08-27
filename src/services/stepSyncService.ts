@@ -37,6 +37,7 @@ import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs,
 
 import { db } from '../lib/firestore';
 import { cleanSteps, mergeDayCount, shouldWrite } from './stepSyncPolicy';
+import { reportSwallowed } from '../lib/telemetry';
 
 export interface StepDay {
   day: string;
@@ -91,8 +92,22 @@ export const upsertStepDay = async (
   try {
     // Read-then-max rather than a blind write: another device may legitimately
     // be ahead of this one, and the rules would reject a lower number anyway.
-    const existing = await getDoc(ref);
-    const remoteSteps = existing.exists() ? cleanSteps(existing.data()?.steps) : 0;
+    //
+    // The read is an OPTIMISATION, never a precondition. It used to sit inside
+    // the same try as the write, so a failed read skipped the write entirely —
+    // and the read failed every single time, because the `get` rule
+    // dereferenced `resource.data` on a document that does not exist yet. One
+    // denied read meant the collection could never receive its first document,
+    // for the whole life of the feature. If the read fails now, we report it
+    // and write anyway; the worst case is the rules reject a lower count, which
+    // is the outcome the read was there to avoid, not a correctness problem.
+    let remoteSteps = 0;
+    try {
+      const existing = await getDoc(ref);
+      remoteSteps = existing.exists() ? cleanSteps(existing.data()?.steps) : 0;
+    } catch (readErr) {
+      reportSwallowed('stepSync.readBeforeWrite', readErr, { day: entry.day });
+    }
     if (mergeDayCount(steps, remoteSteps) > steps) {
       // Remote already knows more. Record it so we stop retrying, and let the
       // caller adopt the higher number.

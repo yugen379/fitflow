@@ -429,7 +429,12 @@ service cloud.firestore {
 
     // Active-day markers (#4) — one doc per user per day, id format <uid>_<YYYY-MM-DD>.
     match /activity_days/{docId} {
-      allow get: if isOwner(resource.data.userId);
+      // Prefix-gated, not resource-gated: `resource` is null for a document
+      // that does not exist, so `resource.data.userId` denies every read of an
+      // absent doc. Ids here are `<uid>_<day>`, which answers the same question
+      // and is answerable when the document is missing. step_days had this bug
+      // for real; these two are latent until something reads one by id.
+      allow get: if isSignedIn() && docId.matches("^" + request.auth.uid + "_.*$");
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create, update: if isVerified() && docId.matches('^' + request.auth.uid + '_.*$') && isValidActivityDay(incoming());
       allow delete: if isOwner(existing().userId);
@@ -440,7 +445,12 @@ service cloud.firestore {
     // allowance is enforced client-side + bounded by the streakFreezeUsedThisMonth
     // counter on the user doc (a user can at most over-grant their OWN streak).
     match /streak_freezes/{docId} {
-      allow get: if isOwner(resource.data.userId);
+      // Prefix-gated, not resource-gated: `resource` is null for a document
+      // that does not exist, so `resource.data.userId` denies every read of an
+      // absent doc. Ids here are `<uid>_<day>`, which answers the same question
+      // and is answerable when the document is missing. step_days had this bug
+      // for real; these two are latent until something reads one by id.
+      allow get: if isSignedIn() && docId.matches("^" + request.auth.uid + "_.*$");
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create, update: if isVerified() && docId.matches('^' + request.auth.uid + '_.*$') && isValidStreakFreeze(incoming());
     }
@@ -453,7 +463,20 @@ service cloud.firestore {
     // the same max() in stepSyncService; this is the half that a buggy or
     // hostile client cannot skip. No deletes: a walked day is a fact.
     match /step_days/{docId} {
-      allow get: if isOwner(resource.data.userId);
+      // Readable by doc-id prefix, NOT by dereferencing resource.data.
+      //
+      // `resource` is null for a document that does not exist yet, so
+      // `resource.data.userId` denied every read of an absent doc. That is not
+      // a corner case here: stepSyncService reads this doc BEFORE writing it,
+      // to merge against any higher count from another device. So the first
+      // sync of every day read a document that was not there, was denied, and
+      // the write that would have created it never ran. step_days held zero
+      // documents for the entire life of the feature.
+      //
+      // The id is `<uid>_<day>` and `create` enforces that, so the prefix is
+      // exactly as strong as the old check while also being answerable when
+      // the document is missing. Same idiom as weekly_recaps below.
+      allow get: if isSignedIn() && docId.matches("^" + request.auth.uid + "_.*$");
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isVerified() &&
                     docId == request.auth.uid + '_' + incoming().day &&
