@@ -264,7 +264,7 @@ export const deleteAccount = functions.https.onCall(async (data: any, context: a
   const collections = [
     "meals", "workouts", "water_logs", "sleep_logs", "wellness_logs",
     "weight_history", "body_metrics", "activity_routes", "notifications",
-    "posts", "comments", "activity_days", "streak_freezes",
+    "posts", "comments", "activity_days", "streak_freezes", "workout_plans",
   ];
   for (const c of collections) {
     const snap = await db.collection(c).where("userId", "==", uid).get();

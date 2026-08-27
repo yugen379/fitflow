@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { dayKey } from '../services/retentionUtils';
 import { awardXp } from '../services/xpService';
+import { checkWellnessBadges } from '../services/badgeService';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -94,6 +95,10 @@ export const Wellness: React.FC = () => {
       // `points: profile.points + 30` overwrote whatever XP had landed since the
       // profile snapshot was taken, so recovery logging could LOWER your total.
       await awardXp(profile.uid, 30);
+      // "Sleep Master" (8h+ x3) and "Wellness Zen" (mood + stress 3 days
+      // running) — both read the two collections written just above, so this
+      // is the only place either can be detected.
+      void checkWellnessBadges(profile.uid);
 
       showToast('Recovery logged');
       navigate('/');

@@ -172,6 +172,17 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    // A BUILT session, not a completed one. Deliberately has no `timestamp`:
+    // nothing about a plan is a training record, and keeping the shapes
+    // distinct is what stops a plan being mistaken for a workout again.
+    function isValidWorkoutPlan(data) {
+      return data.keys().hasAll(['userId', 'name', 'exercises', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 120 &&
+             data.exercises is list && data.exercises.size() > 0 && data.exercises.size() <= 40 &&
+             data.createdAt == request.time;
+    }
+
     function isValidWeightRecord(data) {
       return data.keys().hasAll(['userId', 'weight', 'timestamp']) &&
              data.userId == request.auth.uid &&
@@ -275,6 +286,14 @@ service cloud.firestore {
       allow create: if isVerified() && isValidId(workoutId) && isValidWorkout(incoming());
       allow update: if isOwner(existing().userId) && isValidWorkout(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['type', 'duration', 'caloriesBurned', 'notes', 'exerciseLogs']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Saved workout plans (built in the exercise library, started from Workout).
+    match /workout_plans/{planId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(planId) && isValidWorkoutPlan(incoming());
       allow delete: if isOwner(existing().userId);
     }
 

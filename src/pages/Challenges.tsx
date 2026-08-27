@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 import { collection, query, orderBy, limit, doc, updateDoc, arrayUnion, onSnapshot, where, getDocs } from 'firebase/firestore';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { Avatar } from '../components/Avatar';
+import { checkChallengeBadge } from '../services/badgeService';
 
 interface ChallengeDef {
   baseId: string;
@@ -222,6 +223,8 @@ export const Challenges: React.FC = () => {
       const userRef = doc(db, 'users', profile.uid);
       // Persist baseId so the "joined" state carries across week/month rollovers.
       await updateDoc(userRef, { activeChallenges: arrayUnion(challenge.baseId || challenge.id) });
+      // "Challenge Accepted" — first challenge joined.
+      void checkChallengeBadge(profile.uid);
       showToast(`Joined ${challenge.title}`, 'success');
       setSelectedChallenge(null);
       setActiveTab('my');

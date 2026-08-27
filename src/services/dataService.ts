@@ -5,6 +5,7 @@ import { MealRecord, WorkoutRecord, Post, UserProfile } from '../types';
 import { addToOfflineQueue } from './offlineService';
 import { saveToCatalog } from './foodCatalogService';
 import { awardXp } from './xpService';
+import { checkMacroBadge, checkSocialBadge, checkWeeklyWorkoutBadge } from './badgeService';
 import { XP_AWARDS } from './missionUtils';
 
 /**
@@ -81,6 +82,10 @@ export const logMeal = async (
     // Denormalize lastMealAt for the server-side meal-time nudge (engagementUtils):
     // the function suppresses a nudge once anything's been logged today. Best-effort.
     try { await updateDoc(doc(db, 'users', userId), { lastMealAt: serverTimestamp() }); } catch { /* best-effort */ }
+    // "Macro Master" — 7 consecutive days of macro logging. This is the only
+    // meal path in the app, so it is the only place the run can be detected.
+    // Fire-and-forget: a badge lookup must never delay the log returning.
+    void checkMacroBadge(userId);
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', 'meals');
@@ -110,6 +115,9 @@ export const logWorkout = async (
     // XP only on the confirmed write — the offline-queued path earns it on replay.
     // Fire-and-forget: the XP bar reacts via the profile snapshot, not this call.
     void awardXp(userId, XP_AWARDS.workout);
+    // "Week Warrior" — 5 workouts inside 7 days. Every completed session goes
+    // through here, so this is the one place the count is always right.
+    void checkWeeklyWorkoutBadge(userId);
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', 'workouts');
@@ -136,6 +144,9 @@ export const createPost = async (userId: string, username: string, userPhoto: st
     }
 
     const docRef = await addDoc(collection(db, 'posts'), postData);
+    // "Social Butterfly" — first community post. Fire-and-forget so the post
+    // appears immediately.
+    void checkSocialBadge(userId);
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', 'posts');

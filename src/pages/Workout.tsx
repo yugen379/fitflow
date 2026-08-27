@@ -15,7 +15,7 @@ import { generateWorkoutPlan } from '../services/geminiService';
 import { checkAndAwardBadge, checkWorkoutTimeBadge, checkCalorieBadge } from '../services/badgeService';
 import { analyzeProgression, updateProgression } from '../services/progressionService';
 import { useToast } from '../hooks/useToast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ProgressionLog } from '../types';
 import { prefetchHandlers } from '../lib/prefetch';
 import { AnatomyViewer } from '../components/3d/AnatomyViewer';
@@ -136,11 +136,20 @@ export const Workout: React.FC = () => {
   }, [activeWorkout, step, restRemaining]);
 
   useEffect(() => {
-    if (activeWorkout && stack[curIdx] && profile?.uid) {
-      analyzeProgression(profile.uid, stack[curIdx].id).then(p => {
-        if (p) { setProgression(p); setWeight(p.suggestedWeight); setReps(p.suggestedReps); }
-      });
-    }
+    const ex = stack[curIdx];
+    if (!activeWorkout || !ex) return;
+    // A saved plan carries the sets/reps/weight the user chose when they built
+    // it. Seed the inputs from those first so a plan started with no training
+    // history behind it still opens on its own prescription instead of the
+    // generic 3 x 10 @ 20. Progression, when there IS history, then overrides —
+    // a measured recommendation beats a remembered one.
+    if (typeof ex.sets === 'number' && ex.sets > 0) setSets(ex.sets);
+    if (typeof ex.reps === 'number' && ex.reps > 0) setReps(ex.reps);
+    if (typeof ex.weight === 'number' && ex.weight > 0) setWeight(ex.weight);
+    if (!profile?.uid) return;
+    analyzeProgression(profile.uid, ex.id).then(p => {
+      if (p) { setProgression(p); setWeight(p.suggestedWeight); setReps(p.suggestedReps); }
+    });
   }, [curIdx, activeWorkout]);
 
   // Rest timer
@@ -165,6 +174,30 @@ export const Workout: React.FC = () => {
     setPrs([]); setShared(false); setRestRemaining(null); setFormChecks([]);
     speak(`Starting ${type}. First up: ${s[0].name}.`);
   };
+
+  // A session handed over from the Library's saved plans.
+  //
+  // The plan is consumed exactly once: `replace` clears it from history state so
+  // a back-navigation, or a remount from a hot reload, cannot silently restart
+  // the session on top of one already in progress.
+  const location = useLocation();
+  const planStartedRef = useRef(false);
+  useEffect(() => {
+    const plan = (location.state as any)?.startPlan;
+    if (!plan || planStartedRef.current) return;
+    const exercises = Array.isArray(plan.exercises) ? plan.exercises : [];
+    if (!exercises.length) return;
+    planStartedRef.current = true;
+    navigate(location.pathname, { replace: true, state: null });
+    startSession(plan.name || 'Custom Stack', exercises.map((e: any) => ({
+      id: e.id,
+      name: e.name,
+      sets: e.sets,
+      reps: e.reps,
+      weight: e.weight,
+    })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const nextExercise = () => {
     const log: ExLog = { exerciseId: stack[curIdx].id, name: stack[curIdx].name, sets, reps, weight, difficulty };

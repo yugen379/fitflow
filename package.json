@@ -12,6 +12,7 @@
     "proof:barcode": "tsx scripts/barcode-proof.mjs",
     "proof:coach": "tsx scripts/coach-proof.mjs",
     "proof:briefing": "tsx scripts/briefing-proof.mjs",
+    "proof:badges": "tsx scripts/badges-proof.mjs",
     "proof:mission": "tsx scripts/mission-proof.mjs",
     "proof:biomechanics": "tsx scripts/biomechanics-proof.mjs",
     "proof:viewport": "node scripts/viewport-proof.mjs",

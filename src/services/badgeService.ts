@@ -1,7 +1,8 @@
 import { db } from '../lib/firestore';
 import { collection, doc, updateDoc, arrayUnion, getDoc, getDocs, addDoc, increment, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { computeLevel } from './missionUtils';
-import { dayKey, daysBetweenKeys } from './retentionUtils';
+import { daysBetweenKeys } from './retentionUtils';
+import { dayKeysOf, hasConsecutiveRun, sinceDaysAgo } from './badgeUtils';
 
 export interface Badge {
   id: string;
@@ -147,36 +148,6 @@ const earnedBadges = async (userId: string): Promise<Set<string> | null> => {
     return null;
   }
 };
-
-/** Distinct LOCAL day keys from a set of docs carrying a `timestamp`. */
-const dayKeysOf = (docs: { data: () => any }[]): string[] => {
-  const days = new Set<string>();
-  for (const d of docs) {
-    const ts = d.data()?.timestamp?.toDate?.();
-    if (ts instanceof Date && !isNaN(ts.getTime())) days.add(dayKey(ts));
-  }
-  return Array.from(days).sort();
-};
-
-/** True when `days` contains a run of `needed` consecutive calendar days. */
-const hasConsecutiveRun = (days: string[], needed: number): boolean => {
-  let run = 0;
-  let prev: string | null = null;
-  for (const d of days) {
-    run = prev !== null && daysBetweenKeys(prev, d) === 1 ? run + 1 : 1;
-    if (run >= needed) return true;
-    prev = d;
-  }
-  return false;
-};
-
-const sinceDaysAgo = (n: number): Date => {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
 /** Call after a community post — "Social Butterfly". */
 export async function checkSocialBadge(userId: string): Promise<void> {
   await checkAndAwardBadge(userId, 'social_butterfly');

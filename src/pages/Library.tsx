@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, Clock, Search, ChevronLeft, X, Dumbbell, Activity, Compass, Plus, SlidersHorizontal, Check, Trash2, Save, Youtube } from 'lucide-react';
 import { openExternal } from '../lib/openExternal';
@@ -10,8 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { logWorkout } from '../services/dataService';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firestore';
+import { saveWorkoutPlan, listWorkoutPlans, deleteWorkoutPlan, WorkoutPlan } from '../services/workoutPlanService';
 
 const CATEGORIES = ['All', 'Strength', 'Cardio', 'HIIT', 'Yoga', 'Flexibility', 'Recovery'];
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
@@ -37,6 +36,19 @@ export const Library: React.FC = () => {
   const [isBuilderMode, setIsBuilderMode] = useState(false);
   const [selectedForWorkout, setSelectedForWorkout] = useState<(Exercise & { sets: number; reps: number; weight: number; userDifficulty: string })[]>([]);
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
+  const [plans, setPlans] = useState<WorkoutPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+
+  // Saved sessions the user has built. Loaded once — the list only changes
+  // through the two handlers below, which keep it in step locally.
+  useEffect(() => {
+    let alive = true;
+    if (!profile?.uid) { setPlansLoading(false); return; }
+    listWorkoutPlans(profile.uid).then((p) => {
+      if (alive) { setPlans(p); setPlansLoading(false); }
+    });
+    return () => { alive = false; };
+  }, [profile?.uid]);
 
   const toggleMuscle = (muscle: string) => {
     setSelectedMuscles(prev => prev.includes(muscle) ? prev.filter(m => m !== muscle) : [...prev, muscle]);
@@ -105,6 +117,16 @@ export const Library: React.FC = () => {
     setSelectedForWorkout(selectedForWorkout.filter(e => e.id !== id));
   };
 
+  /**
+   * Save the built stack as a PLAN, not as a completed workout.
+   *
+   * This used to `addDoc` straight into `workouts` - the collection that means
+   * "a session you finished". Nothing ever read it back, so the plan was
+   * write-only, while the streak heat-map, the weekly recap, challenge progress,
+   * "Week Warrior" and the "you have not trained in N days" nudge all counted it
+   * as training that had happened. Picking six exercises credited a full session
+   * nobody had performed. See services/workoutPlanService.
+   */
   const saveCustomWorkout = async () => {
     if (!profile?.uid || selectedForWorkout.length < 4) {
       showToast("Select at least 4 exercises", "info");
@@ -112,48 +134,50 @@ export const Library: React.FC = () => {
     }
     setIsSavingWorkout(true);
     try {
-      const duration = selectedForWorkout.reduce((acc, curr) => acc + curr.duration, 0);
-      const calories = selectedForWorkout.reduce((acc, curr) => acc + (curr.duration * (curr.calories_per_minute || 5)), 0);
-      
-      await addDoc(collection(db, 'workouts'), {
-        userId: profile.uid,
-        type: 'Custom Stack',
-        duration,
-        caloriesBurned: calories,
-        exercises: selectedForWorkout.map(ex => ex.name),
-        exerciseDetails: selectedForWorkout.map(ex => ({ 
-          id: ex.id, 
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight,
-          difficulty: ex.userDifficulty
-        })),
-        exerciseLogs: selectedForWorkout.map(ex => ({
-          exerciseId: ex.id,
-          exerciseName: ex.name,
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight,
-          difficulty: ex.userDifficulty,
-          completed: false
-        })),
-        timestamp: serverTimestamp(),
-        notes: "Custom built session"
-      });
-
-      showToast("Custom session saved to plan");
-      setIsBuilderMode(false);
-      setSelectedForWorkout([]);
-    } catch (err) {
-      // Direct Firestore add failed — queue silently and still confirm to the user.
-      console.warn('Custom workout save failed; will retry from offline queue:', err);
-      showToast('Saved locally — will sync when back online', 'info');
+      const name = `Custom Stack · ${selectedForWorkout.length} exercises`;
+      const exercises = selectedForWorkout.map(ex => ({
+        id: ex.id,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight,
+        difficulty: ex.userDifficulty,
+        duration: ex.duration,
+        caloriesPerMinute: ex.calories_per_minute || 5,
+      }));
+      const id = await saveWorkoutPlan(profile.uid, name, exercises);
+      if (!id) {
+        // Only reachable when the write genuinely failed. Say so - the previous
+        // version claimed "will retry from offline queue" while queueing nothing.
+        showToast("Couldn't save the session — check your connection", "error");
+        return;
+      }
+      setPlans(prev => [{
+        id,
+        name,
+        exercises,
+        duration: exercises.reduce((a, e) => a + (e.duration || 0), 0),
+        calories: Math.round(exercises.reduce((a, e) => a + (e.duration || 0) * e.caloriesPerMinute, 0)),
+        createdAt: new Date(),
+      }, ...prev]);
+      showToast("Session saved — start it any time");
       setIsBuilderMode(false);
       setSelectedForWorkout([]);
     } finally {
       setIsSavingWorkout(false);
     }
+  };
+
+  /** Hand the plan to the Workout page, which starts a real timed session. */
+  const startPlan = (plan: WorkoutPlan) => {
+    navigate("/workout", { state: { startPlan: plan } });
+  };
+
+  const removePlan = async (plan: WorkoutPlan) => {
+    const ok = await deleteWorkoutPlan(plan.id);
+    if (!ok) { showToast("Couldn't delete that session", "error"); return; }
+    setPlans(prev => prev.filter(p => p.id !== plan.id));
+    showToast("Session deleted");
   };
 
   return (
@@ -293,6 +317,46 @@ export const Library: React.FC = () => {
       </div>
 
       <AnimatePresence>
+        {/* Saved sessions — the plans built here, now actually startable. */}
+        {!plansLoading && plans.length > 0 && !isBuilderMode && (
+          <div className="mb-8 space-y-3">
+            <div className="flex items-center gap-2">
+              <Save className="text-accent" size={16} />
+              <h2 className="text-sm font-black uppercase text-white tracking-wide">Your sessions</h2>
+              <span className="text-xs text-text-dim num">{plans.length}</span>
+            </div>
+            <div className="space-y-2">
+              {plans.map(plan => (
+                <div
+                  key={plan.id}
+                  className="glass rounded-2xl p-4 flex items-center gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white truncate">{plan.name}</p>
+                    <p className="text-xs text-text-dim num mt-0.5">
+                      {plan.exercises.length} exercises · {plan.duration} min · ~{plan.calories} kcal
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => startPlan(plan)}
+                    className="h-10 px-4 rounded-xl bg-accent text-bg text-xs font-black uppercase flex items-center gap-1.5 shrink-0"
+                    aria-label={`Start ${plan.name}`}
+                  >
+                    <Play size={14} /> Start
+                  </button>
+                  <button
+                    onClick={() => removePlan(plan)}
+                    className="w-10 h-10 rounded-xl glass flex items-center justify-center text-text-dim hover:text-red-400 transition-colors shrink-0"
+                    aria-label={`Delete ${plan.name}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isBuilderMode && selectedForWorkout.length > 0 && (
           <motion.div 
             initial={{ y: 50, opacity: 0 }}
