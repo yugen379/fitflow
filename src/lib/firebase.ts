@@ -33,6 +33,23 @@ export { firebaseConfig };
 // services. Inert until a reCAPTCHA site key is configured (see lib/appCheck.ts).
 initAppCheck(app);
 export const auth = getAuth(app);
+
+/**
+ * Local emulator wiring for the UI proof harness (npm run proof:ui).
+ *
+ * The condition is written INLINE against import.meta.env on purpose. Vite
+ * replaces that expression with a literal at build time, so a normal build
+ * folds it to `false`, eliminates the branch, and never emits ./devEmulators.
+ * Routing it through a helper function instead defeats dead-code elimination
+ * and ships the test hook — which is exactly what the first version did.
+ *
+ * This is not an auth bypass: real Firebase auth still runs, against a
+ * throwaway local emulator. It exists because all 22 routes sit behind
+ * ProtectedRoute, so nothing could test a signed-in page.
+ */
+if (import.meta.env.VITE_USE_EMULATORS === 'true') {
+  void import('./devEmulators').then((m) => m.connectEmulators(auth));
+}
 // `db` now lives in ./firestore so that importing auth does not drag ~80 kB of
 // Firestore onto the boot path. This module must never import it statically.
 export const googleProvider = new GoogleAuthProvider();

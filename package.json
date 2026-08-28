@@ -36,6 +36,7 @@
     "proof:preload": "tsx scripts/preload-proof.mjs",
     "proof:offline": "tsx scripts/offline-proof.mjs",
     "proof:privacy": "node scripts/privacy-proof.mjs",
+    "proof:ui": "firebase emulators:exec --only auth,firestore \"node scripts/ui-proof.mjs\"",
     "backfill:public-profiles": "node scripts/backfill-public-profiles.mjs"
   },
   "dependencies": {

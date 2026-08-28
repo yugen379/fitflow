@@ -66,4 +66,33 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`✓ scan-bundle-secrets: ${files.length} files clean (no unexpected API keys in dist/)`);
+// ── Test seams must never reach a production bundle ─────────────────────────
+//
+// src/lib/devEmulators.ts wires Firebase to local emulators and installs a
+// window.__e2eSignIn hook for the UI proof harness. It is reached only through
+//   if (import.meta.env.VITE_USE_EMULATORS === 'true') { await import(...) }
+// which Vite folds to `false` in a normal build, so the module is dropped.
+//
+// That guarantee is one refactor deep. The first version of this wiring used a
+// helper FUNCTION for the check — bundlers cannot prove a call is constant, so
+// dead-code elimination did not fire and __e2eSignIn shipped. It was inert,
+// because the flag is never set in production, but "it does not execute" is a
+// far weaker property than "it is not there". This asserts the strong one.
+const SEAMS = ['__e2eSignIn', 'devEmulators', '127.0.0.1:9099'];
+const seamHits = [];
+for (const file of files) {
+  const text = fs.readFileSync(file, 'utf8');
+  for (const seam of SEAMS) {
+    if (text.includes(seam)) seamHits.push(`${seam} in dist/${path.relative(DIST, file)}`);
+  }
+}
+if (seamHits.length > 0) {
+  console.error(`\n✗ TEST SEAM IN BUNDLE — ${seamHits.length} match(es):\n`);
+  for (const h of seamHits) console.error(`  ${h}`);
+  console.error('\nThe emulator wiring must be unreachable in a production build. Keep the');
+  console.error('check inline so Vite can fold it to false — never behind a helper');
+  console.error('function, which defeats dead-code elimination.\n');
+  process.exit(1);
+}
+
+console.log(`✓ scan-bundle-secrets: ${files.length} files clean (no unexpected API keys or test seams in dist/)`);
