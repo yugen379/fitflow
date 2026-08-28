@@ -172,11 +172,6 @@ manual.push(
    'no UI test covers any of the 22 pages; this path has never been walked by a stranger'],
   ['Sentry issues reviewed after 48h of real traffic',
    'the point of yesterday\'s work is the signal it produces, not the code'],
-  ['public_profiles deployed IN ORDER: functions -> backfill -> rules',
-   'the tightened /users rules make leaderboards read public_profiles. Ship the ' +
-   'rules first and every board is empty until each user next writes. Order is: ' +
-   'deploy functions (syncPublicProfile), run npm run backfill:public-profiles, ' +
-   'THEN deploy rules. See DEPLOY.md.'],
 );
 
 console.log(`\n${C.b}6 · Manual gates ${C.d}(nothing here can be automated)${C.x}`);
