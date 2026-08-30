@@ -90,12 +90,42 @@ const usable = (value: unknown, min: number, max: number): number | null => {
   return n;
 };
 
-/** Steps that are not a real, non-negative count contribute nothing. */
+/**
+ * The most steps a human can plausibly take in one day.
+ *
+ * The 24-hour treadmill world record is a shade over 250 k; ~200 k is already
+ * far beyond anything a real user will produce, so a day above this is a
+ * corrupt reading, not an athlete. Matches the clamp in the native
+ * StepStore.applyRawReading so both sides agree on what "impossible" means.
+ */
+export const MAX_PLAUSIBLE_DAILY_STEPS = 200_000;
+
+/**
+ * Steps that are not a real, non-negative count contribute nothing.
+ *
+ * The upper clamp matters as much as the lower one: a cumulative counter
+ * adopted without a baseline produces six-figure days, and every derived
+ * number inherits it — 701,754 steps rendered as 511 km walked and 36,090 kcal
+ * burned. Clamping here keeps one bad reading from poisoning the whole card.
+ */
 const usableSteps = (steps: unknown): number => {
   const n = Number(steps);
   if (!Number.isFinite(n) || n <= 0) return 0;
-  return n;
+  return Math.min(n, MAX_PLAUSIBLE_DAILY_STEPS);
 };
+
+/**
+ * True when a step total is a physically plausible single day.
+ *
+ * Deliberately strict about the TYPE, not just the range: `Number(null)` is 0,
+ * so a coercing check would wave `null` through as a valid zero-step day. This
+ * guards a persistence path, where "absent" and "zero" must not be confused.
+ */
+export const isPlausibleDailySteps = (steps: unknown): boolean =>
+  typeof steps === 'number' &&
+  Number.isFinite(steps) &&
+  steps >= 0 &&
+  steps <= MAX_PLAUSIBLE_DAILY_STEPS;
 
 /**
  * Walking stride in metres: height-derived when the profile has a usable

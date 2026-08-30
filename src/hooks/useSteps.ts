@@ -59,6 +59,7 @@ import {
   onBackgroundSteps,
   openBatterySettings,
   readTodayBackgroundSteps,
+  setBackgroundBody,
   requestActivityAccess,
   requestNotificationAccess,
   startBackgroundCounting,
@@ -194,6 +195,13 @@ export const useSteps = ({
     setBackground(next);
     if (steps > 0) await pedometer.adoptDeviceCount(steps);
   }, []);
+
+  // Keep the service's copy of bodyweight current, so the calories in the
+  // ongoing notification match the calories on the card rather than being
+  // computed off the 70 kg reference.
+  useEffect(() => {
+    void setBackgroundBody(weightKg);
+  }, [weightKg]);
 
   useEffect(() => {
     void refreshBackground();

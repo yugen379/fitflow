@@ -23,7 +23,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 
 import { cn } from '../../lib/utils';
 import { store } from '../../biomechanics/store';
-import { EXERCISE_TO_CLIP, getClipOrDefault } from '../../biomechanics/motions';
+import { EXERCISE_TO_CLIP, getClip } from '../../biomechanics/motions';
 
 const BiomechanicsViewport = lazy(() =>
   import('../../biomechanics/BiomechanicsViewport').then((m) => ({ default: m.BiomechanicsViewport })),
@@ -53,10 +53,18 @@ export const AnatomyViewer: React.FC<AnatomyViewerProps> = ({
   className,
   showAngles = true,
 }) => {
-  // Resolve through the library map first, then let the engine's own fallback
-  // handle anything unmapped.
+  // Resolve through the library map first, then allow a raw clip id (the Lab
+  // passes one directly).
+  //
+  // STRICT on purpose. This used to end in getClipOrDefault(), whose fallback is
+  // the back squat — so Swimming, Cardio and Cycling all rendered a barbell
+  // squat, complete with plates, labelled "Muscle activation · LIVE". Showing
+  // the wrong movement is worse than showing none: it is a confident lie about
+  // what the user is doing. Only the 16 mapped exercises have a real clip.
   const clipId = exerciseId ? (EXERCISE_TO_CLIP[exerciseId] ?? exerciseId) : null;
-  const clip = getClipOrDefault(clipId);
+  const clip = clipId ? getClip(clipId) : undefined;
+
+  if (!clip) return null;
 
   return (
     <ReduxProvider store={store}>

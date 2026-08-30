@@ -69,6 +69,7 @@ interface BackgroundStepsPlugin {
   stop(): Promise<BackgroundStepsStatus>;
   getToday(): Promise<TodaySteps>;
   getHistory(): Promise<{ days: Record<string, number> }>;
+  setBody(options: { weightKg?: number }): Promise<void>;
   addListener(
     eventName: 'stepsChanged',
     listener: (event: TodaySteps) => void,
@@ -195,5 +196,21 @@ export const onBackgroundSteps = async (
     };
   } catch {
     return () => {};
+  }
+};
+
+/**
+ * Give the native service the bodyweight it needs to show calories in the
+ * ongoing notification. Best-effort: a device without the plugin, or a profile
+ * with no weight, simply keeps the 70 kg reference figure.
+ */
+export const setBackgroundBody = async (weightKg?: number | null): Promise<void> => {
+  if (!isBackgroundStepsSupported()) return;
+  const w = Number(weightKg);
+  if (!Number.isFinite(w) || w <= 0) return;
+  try {
+    await BackgroundSteps.setBody({ weightKg: w });
+  } catch {
+    /* older build without setBody — the notification falls back to 70 kg */
   }
 };

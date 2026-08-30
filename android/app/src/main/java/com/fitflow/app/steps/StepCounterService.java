@@ -87,7 +87,17 @@ public class StepCounterService extends Service implements SensorEventListener {
     private static final int BATCH_LATENCY_US = 60 * 1000 * 1000;
 
     /** Rewriting the notification on every burst is wasteful; once a minute is plenty. */
-    private static final long NOTIFICATION_MIN_INTERVAL_MS = 60_000L;
+    /**
+     * How often the ongoing notification may be redrawn.
+     *
+     * Was 60 s, which is why the count visibly sat still for a minute at a time
+     * and read as "it only updates now and then". A walking user produces
+     * roughly two sensor events a second, so 5 s is frequent enough to look
+     * continuous while still collapsing a burst of events into one redraw.
+     * Notification updates are cheap; the sensor listener is the expensive part
+     * and it runs regardless.
+     */
+    private static final long NOTIFICATION_MIN_INTERVAL_MS = 5_000L;
 
     private SensorManager sensorManager;
     private Sensor stepCounter;
@@ -342,9 +352,21 @@ public class StepCounterService extends Service implements SensorEventListener {
                     this, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         }
 
+        // Steps AND calories, both live. The calorie figure uses the same
+        // formula and the same bodyweight as the in-app card, so the two can
+        // never disagree about the same day.
+        //
+        // A paired Wear OS watch mirrors phone notifications by default (nothing
+        // here sets setLocalOnly), so these two numbers are also what shows on
+        // the wrist. NOT VERIFIED ON A REAL WATCH: at PRIORITY_MIN the mirrored
+        // notification may sit silently at the bottom of the watch stream. If
+        // it needs to be glanceable there, that is a priority/channel change,
+        // and a genuinely standalone readout is a Wear OS module, not this.
+        long kcal = store.caloriesFor(steps);
+
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle(String.format(java.util.Locale.US, "%,d steps today", steps))
-                .setContentText("FitFlow is counting your steps")
+                .setContentTitle(String.format(java.util.Locale.US, "%,d steps · %,d kcal", steps, kcal))
+                .setContentText("FitFlow is counting while you walk")
                 .setSmallIcon(android.R.drawable.ic_menu_directions)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)

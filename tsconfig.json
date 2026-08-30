@@ -28,5 +28,9 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["functions", "node_modules", "dist"]
+  // "android" and "ios" hold a COPY of dist (the native web-asset bundle), so
+  // globbing them makes tsc walk the built output twice over — enough to blow
+  // the default heap once the iOS project exists. They are build output, not
+  // source, and belong here next to "dist".
+  "exclude": ["functions", "node_modules", "dist", "android", "ios"]
 }

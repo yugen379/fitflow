@@ -53,6 +53,16 @@ public final class StepStore {
     private static final String KEY_LAST_RAW = "last_raw";
     private static final String KEY_HAS_BASELINE = "has_baseline";
     private static final String KEY_HISTORY = "history";
+    private static final String KEY_WEIGHT_KG = "weight_kg";
+
+    /**
+     * Calorie constants, kept identical to src/lib/stepFormulas.ts. The
+     * notification and the in-app card must never disagree about the same day,
+     * so both sides use kcal/step = 0.04 scaled linearly by bodyweight against a
+     * 70 kg reference.
+     */
+    private static final double KCAL_PER_STEP = 0.04d;
+    private static final double REFERENCE_WEIGHT_KG = 70.0d;
 
     /** Days of history retained. Beyond this the oldest entries are dropped. */
     private static final int HISTORY_LIMIT = 400;
@@ -82,6 +92,29 @@ public final class StepStore {
     public synchronized String getDay() {
         rollDayIfNeeded();
         return prefs.getString(KEY_DAY, todayKey());
+    }
+
+    /**
+     * Remember the user's bodyweight so the notification can show calories.
+     * Ignored unless it is physically plausible — the service must never render
+     * a calorie figure derived from a junk profile value.
+     */
+    public synchronized void setWeightKg(double weightKg) {
+        if (weightKg >= 25.0d && weightKg <= 300.0d) {
+            prefs.edit().putFloat(KEY_WEIGHT_KG, (float) weightKg).apply();
+        }
+    }
+
+    /** Stored bodyweight, or the 70 kg reference when the profile has none. */
+    public synchronized double getWeightKg() {
+        float stored = prefs.getFloat(KEY_WEIGHT_KG, 0f);
+        return stored >= 25f && stored <= 300f ? stored : REFERENCE_WEIGHT_KG;
+    }
+
+    /** Active kilocalories for a step count, matching stepFormulas.caloriesFor. */
+    public synchronized long caloriesFor(long steps) {
+        if (steps <= 0) return 0L;
+        return Math.round(steps * KCAL_PER_STEP * (getWeightKg() / REFERENCE_WEIGHT_KG));
     }
 
     /**

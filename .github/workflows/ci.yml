@@ -31,6 +31,10 @@ jobs:
           VITE_STRIPE_PRICE_MONTHLY: ${{ secrets.VITE_STRIPE_PRICE_MONTHLY }}
           VITE_STRIPE_PRICE_YEARLY: ${{ secrets.VITE_STRIPE_PRICE_YEARLY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          # App Check. Without this the shield ships inert: appCheck.ts
+          # reads VITE_RECAPTCHA_V3_SITE_KEY, so setting the repo secret
+          # alone does nothing unless it is forwarded here too.
+          VITE_RECAPTCHA_V3_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_V3_SITE_KEY }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_ENV: production

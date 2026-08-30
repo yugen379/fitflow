@@ -75,6 +75,11 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 3000000,
+          // The pose model + MediaPipe wasm are ~17 MB fetched lazily the first
+          // time Form Check opens. Precaching them would make every first load
+          // of the app pay for a feature most sessions never touch, so they are
+          // excluded here and cached on first use by the runtime rule below.
+          globIgnores: ['**/pose/**'],
           // Take over immediately on update and purge stale precaches so a new
           // deploy can never leave a returning user on a broken half-cached app.
           skipWaiting: true,
@@ -85,6 +90,19 @@ export default defineConfig(({mode}) => {
           // /delete-account is a static HTML page (Play data-deletion URL) — never serve the SPA shell for it.
           navigateFallbackDenylist: [/^\/__\//, /^\/delete-account$/],
           runtimeCaching: [
+            {
+              // Pose model + wasm: immutable, versioned by filename, and huge.
+              // CacheFirst means Form Check pays the download once per device
+              // and works offline every time after that.
+              urlPattern: /\/pose\/.*\.(task|wasm|js)$/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'pose-model',
+                expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] },
+                rangeRequests: true
+              }
+            },
             {
               urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
               handler: 'CacheFirst',

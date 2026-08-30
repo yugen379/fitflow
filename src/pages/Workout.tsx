@@ -19,6 +19,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ProgressionLog } from '../types';
 import { prefetchHandlers } from '../lib/prefetch';
 import { AnatomyViewer } from '../components/3d/AnatomyViewer';
+import { hasClipFor } from '../biomechanics/motions';
 
 const WORKOUT_TYPES = [
   { id: 'strength', name: 'Strength', icon: Dumbbell, hint: 'Lift heavy' },
@@ -433,16 +434,18 @@ export const Workout: React.FC = () => {
                   {/* Live muscle activation. Reuses the biomechanics engine, so
                       the heatmap is driven by the same solved joint angles the
                       Lab uses rather than a decorative loop. */}
-                  <div className="h-52 rounded-[28px] overflow-hidden glass-spatial relative">
-                    <AnatomyViewer exerciseId={stack[curIdx]?.id} showAngles={false} />
-                    <div className="absolute top-3 left-4 pointer-events-none">
-                      <p className="text-eyebrow text-accent-3">Muscle activation</p>
+                  {hasClipFor(stack[curIdx]?.id) && (
+                    <div className="h-52 rounded-[28px] overflow-hidden glass-spatial relative">
+                      <AnatomyViewer exerciseId={stack[curIdx]?.id} showAngles={false} />
+                      <div className="absolute top-3 left-4 pointer-events-none">
+                        <p className="text-eyebrow text-accent-3">Muscle activation</p>
+                      </div>
+                      <div className="absolute top-3 right-4 inline-flex items-center gap-1.5 pointer-events-none">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent-2 breathing-glow" />
+                        <span className="text-[10px] uppercase tracking-[0.14em] text-white/70 font-semibold">Live</span>
+                      </div>
                     </div>
-                    <div className="absolute top-3 right-4 inline-flex items-center gap-1.5 pointer-events-none">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent-2 breathing-glow" />
-                      <span className="text-[10px] uppercase tracking-[0.14em] text-white/70 font-semibold">Live</span>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Progressive overload — amber, because it is a distinct
                       signal from "on plan": the load actually went up. */}

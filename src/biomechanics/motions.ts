@@ -227,6 +227,18 @@ const CLIP_BY_ID = new Map(MOTION_CLIPS.map((c) => [c.id, c]));
 
 export const getClip = (id: string): MotionClip | undefined => CLIP_BY_ID.get(id);
 
+/**
+ * Does this library exercise have a real 3D clip?
+ *
+ * Callers MUST gate the whole viewport on this rather than leaning on
+ * `getClipOrDefault`. Swimming, cycling and cardio have no barbell clip, and
+ * defaulting them to the back squat rendered a loaded barbell for a swim.
+ */
+export const hasClipFor = (exerciseId: string | null | undefined): boolean => {
+  if (!exerciseId) return false;
+  return CLIP_BY_ID.has(EXERCISE_TO_CLIP[exerciseId] ?? exerciseId);
+};
+
 /** Falls back to the squat so the viewport can never be handed `undefined`. */
 export const getClipOrDefault = (id: string | null | undefined): MotionClip =>
   (id ? CLIP_BY_ID.get(id) : undefined) ?? BACK_SQUAT;

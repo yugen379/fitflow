@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.5.1",
+  "version": "1.5.2",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -38,7 +38,9 @@
     "proof:privacy": "node scripts/privacy-proof.mjs",
     "promo": "firebase emulators:exec --only auth,firestore \"node scripts/make-promo.mjs\"",
     "proof:ui": "firebase emulators:exec --only auth,firestore \"node scripts/ui-proof.mjs\"",
-    "backfill:public-profiles": "node scripts/backfill-public-profiles.mjs"
+    "backfill:public-profiles": "node scripts/backfill-public-profiles.mjs",
+    "proof:formcheck": "tsx scripts/formcheck-proof.mjs",
+    "proof:regressions": "tsx scripts/regressions-proof.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/app-check": "^8.3.0",
@@ -47,9 +49,11 @@
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
     "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.3.1",
     "@capacitor/push-notifications": "^8.1.1",
     "@capgo/capacitor-pedometer": "^8.0.39",
     "@google/genai": "^1.50.1",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "@reduxjs/toolkit": "^2.12.0",

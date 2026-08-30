@@ -244,6 +244,21 @@ public class BackgroundStepsPlugin extends Plugin {
         getStatus(call);
     }
 
+    /**
+     * Hand the service the user's bodyweight so the ongoing notification can
+     * show calories that match the in-app card exactly. Optional: with no
+     * weight stored the store falls back to the 70 kg reference rather than
+     * hiding the figure.
+     */
+    @PluginMethod
+    public void setBody(PluginCall call) {
+        Double weightKg = call.getDouble("weightKg");
+        if (weightKg != null) {
+            store.setWeightKg(weightKg);
+        }
+        call.resolve();
+    }
+
     // ------------------------------------------------------------------
     // Reads
     // ------------------------------------------------------------------

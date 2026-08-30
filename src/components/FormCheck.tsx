@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Volume2, VolumeX, Sparkles, AlertTriangle, CheckCircle2, Camera as CameraIcon, RefreshCcw } from 'lucide-react';
 import { analyzeFormFrame, FormFeedback } from '../services/geminiService';
+import { PoseOverlay } from './PoseOverlay';
+import type { FormVerdict } from '../lib/formRules';
 
 export interface FormCheckSummary {
   exerciseName: string;
@@ -28,8 +30,40 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
   const inflightRef = useRef(false);
   const startedAtRef = useRef<number>(Date.now());
   const allSamplesRef = useRef<FormFeedback[]>([]);
+  // Rolling window of measured verdicts. Capped because this fills at ~20 Hz.
+  const measuredRef = useRef<{ status: FormVerdict['status']; score: number; cue?: string }[]>([]);
+
+  /**
+   * Summary from MEASURED geometry when the on-device model ran. Joint angles
+   * beat a language model's read of a JPEG, so those win when both exist; the
+   * Gemini path stays as the fallback for devices that could not load the model.
+   */
+  const buildMeasuredSummary = (): FormCheckSummary | undefined => {
+    const m = measuredRef.current;
+    if (m.length === 0) return undefined;
+    const avgRating = Math.round((m.reduce((a, s) => a + s.score, 0) / m.length / 10) * 10) / 10;
+    const worstStatus: FormCheckSummary['worstStatus'] =
+      m.some(s => s.status === 'danger') ? 'danger'
+      : m.some(s => s.status === 'fix') ? 'fix'
+      : 'good';
+    // Rank cues by how often they actually fired, not by recency — a fault seen
+    // on 40% of frames matters more than one glimpsed in the last rep.
+    const counts = new Map<string, number>();
+    for (const s of m) if (s.cue) counts.set(s.cue, (counts.get(s.cue) ?? 0) + 1);
+    const topCues = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => c);
+    return {
+      exerciseName,
+      samples: m.length,
+      avgRating,
+      worstStatus,
+      topCues,
+      durationSec: Math.round((Date.now() - startedAtRef.current) / 1000),
+    };
+  };
 
   const buildSummary = (): FormCheckSummary | undefined => {
+    const measured = buildMeasuredSummary();
+    if (measured) return measured;
     const valid = allSamplesRef.current.filter(s => s.rating > 0);
     if (valid.length === 0) return undefined;
     const avgRating = Math.round((valid.reduce((a, s) => a + s.rating, 0) / valid.length) * 10) / 10;
@@ -66,6 +100,35 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [paused, setPaused] = useState(false);
+  // Measured, on-device verdict — updates ~20x/sec, independent of Gemini.
+  const [verdict, setVerdict] = useState<FormVerdict | null>(null);
+  // null = still loading the model; false = unavailable, run Gemini-only.
+  const [poseReady, setPoseReady] = useState<boolean | null>(null);
+
+  const lastMeasuredSpokenRef = useRef<string>('');
+
+  /**
+   * Every analysed frame. Records the sample, and speaks only when a DANGER
+   * fault appears — at ~20 Hz anything chattier would talk over itself, and a
+   * joint under load in a bad position is the one thing worth interrupting for.
+   */
+  const handleVerdict = useCallback((v: FormVerdict | null) => {
+    setVerdict(v);
+    if (!v) return;
+    const cue = v.issues[0]?.cue;
+    measuredRef.current.push({ status: v.status, score: v.score, cue });
+    if (measuredRef.current.length > 400) measuredRef.current.shift();
+
+    if (voiceOn && v.status === 'danger' && cue && cue !== lastMeasuredSpokenRef.current && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(cue);
+      u.rate = 1.05;
+      window.speechSynthesis.speak(u);
+      lastMeasuredSpokenRef.current = cue;
+      lastSpokenRef.current = cue;
+    }
+    if (v.status !== 'danger') lastMeasuredSpokenRef.current = '';
+  }, [voiceOn]);
 
   const start = useCallback(async (mode: 'user' | 'environment') => {
     setError(null);
@@ -141,14 +204,26 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [captureAndAnalyze]);
 
+  // Measured geometry wins whenever it is available: it is objective and it is
+  // current, where a Gemini sample can be up to INTERVAL_MS stale. Gemini's
+  // sentence is kept as the secondary line — it is the better coach, just the
+  // slower one.
+  const shownStatus = verdict?.status ?? feedback?.status;
+  const shownCue =
+    verdict
+      ? (verdict.issues[0]?.cue ?? 'Good form — hold that.')
+      : feedback?.cue;
+  const shownDetail = verdict ? feedback?.cue : feedback?.details;
+  const shownScore = verdict ? Math.round(verdict.score / 10) : feedback?.rating;
+
   const statusColor =
-    feedback?.status === 'good' ? 'text-accent'
-    : feedback?.status === 'danger' ? 'text-accent-2'
+    shownStatus === 'good' ? 'text-accent'
+    : shownStatus === 'danger' ? 'text-accent-2'
     : 'text-accent-3';
 
   const StatusIcon =
-    feedback?.status === 'good' ? CheckCircle2
-    : feedback?.status === 'danger' ? AlertTriangle
+    shownStatus === 'good' ? CheckCircle2
+    : shownStatus === 'danger' ? AlertTriangle
     : Sparkles;
 
   return (
@@ -198,7 +273,37 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
           className="absolute inset-0 w-full h-full object-cover"
           style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
         />
+        {/* Frame-grab scratch canvas for the Gemini call — never displayed. */}
         <canvas ref={canvasRef} className="hidden" />
+
+        {/* The live skeleton. Mirrored in lockstep with the video so the lines
+            sit on the body rather than its reflection. */}
+        {!error && (
+          <PoseOverlay
+            videoRef={videoRef}
+            exerciseName={exerciseName}
+            mirrored={facingMode === 'user'}
+            paused={paused}
+            onVerdict={handleVerdict}
+            onReady={setPoseReady}
+          />
+        )}
+
+        {poseReady === null && !error && (
+          <div className="absolute inset-x-0 bottom-24 flex justify-center pointer-events-none">
+            <div className="glass rounded-full px-4 py-2 text-xs text-text-dim">
+              Loading body tracking…
+            </div>
+          </div>
+        )}
+
+        {poseReady === true && !verdict && !error && (
+          <div className="absolute inset-x-0 bottom-24 flex justify-center pointer-events-none">
+            <div className="glass rounded-full px-4 py-2 text-xs text-text-dim">
+              Step back so your whole body is in frame
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center bg-bg/80">
@@ -211,9 +316,9 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
         {/* Live feedback overlay */}
         <div className="absolute inset-x-0 top-4 flex justify-center px-4 pointer-events-none">
           <AnimatePresence mode="wait">
-            {feedback && (
+            {shownStatus && shownCue && (
               <motion.div
-                key={feedback.cue}
+                key={shownCue}
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
@@ -221,12 +326,12 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
               >
                 <StatusIcon size={18} className={statusColor} />
                 <div className="flex-1">
-                  <p className="text-white text-sm font-medium leading-tight">{feedback.cue}</p>
-                  {feedback.details && (
-                    <p className="text-text-dim text-xs mt-1 leading-snug">{feedback.details}</p>
+                  <p className="text-white text-sm font-medium leading-tight">{shownCue}</p>
+                  {shownDetail && shownDetail !== shownCue && (
+                    <p className="text-text-dim text-xs mt-1 leading-snug">{shownDetail}</p>
                   )}
                 </div>
-                <span className={`num text-xl font-bold ${statusColor}`}>{feedback.rating || '–'}</span>
+                <span className={`num text-xl font-bold ${statusColor}`}>{shownScore || '–'}</span>
               </motion.div>
             )}
           </AnimatePresence>

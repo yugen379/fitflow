@@ -15,6 +15,7 @@ import { isPlayStoreBuild } from '../lib/billing';
 import type { Plan } from './stripeService';
 
 const RC_ANDROID_KEY = (import.meta as any).env?.VITE_REVENUECAT_ANDROID_KEY as string | undefined;
+const RC_IOS_KEY = (import.meta as any).env?.VITE_REVENUECAT_IOS_KEY as string | undefined;
 // The entitlement identifier configured in the RevenueCat dashboard.
 const ENTITLEMENT_ID = 'pro';
 // com.fitflow.fitness — used only to deep-link the Play "manage subscription" screen.
@@ -23,17 +24,42 @@ const ANDROID_PACKAGE = 'com.fitflow.fitness';
 let configured = false;
 let configuredUid: string | null = null;
 
-/** True only inside the Android app with a RevenueCat key configured. */
-export const isPlayBillingConfigured = (): boolean =>
-  !!(Capacitor?.isNativePlatform?.() && RC_ANDROID_KEY);
+const platform = (): string => Capacitor?.getPlatform?.() ?? 'web';
+
+/**
+ * The RevenueCat key for the store this build ships through. Passing the
+ * Android key to a StoreKit build (or vice versa) makes RevenueCat fail to
+ * configure, so the platform picks the key — never the caller.
+ */
+const storeKey = (): string | undefined => {
+  if (!Capacitor?.isNativePlatform?.()) return undefined;
+  return platform() === 'ios' ? RC_IOS_KEY : RC_ANDROID_KEY;
+};
+
+/** True inside a native app that has a RevenueCat key for ITS OWN store. */
+export const isStoreBillingConfigured = (): boolean => !!storeKey();
+
+/** @deprecated Use isStoreBillingConfigured — this covers StoreKit too now. */
+export const isPlayBillingConfigured = isStoreBillingConfigured;
 
 /**
  * Whether this build may show purchase UI (pricing, plans, checkout entry
- * points). False only in a Play Store build without Play Billing configured —
+ * points).
+ *
+ * Android: false only in a Play Store build without Play Billing configured —
  * there the sole path would be external checkout, which Play policy forbids.
+ *
+ * iOS: there is no sideload channel, so EVERY iOS build is a store build. App
+ * Store Guideline 3.1.1 forbids sending users to external checkout for digital
+ * goods, so without a StoreKit key there is no purchase path at all — the app
+ * shows what Pro includes and nothing more. VITE_PLAY_STORE_BUILD is not
+ * consulted on iOS; it cannot be relied on to be set for an Xcode archive.
  */
-export const purchaseUiAllowed = (): boolean =>
-  isPlayBillingConfigured() || !(Capacitor?.isNativePlatform?.() && isPlayStoreBuild());
+export const purchaseUiAllowed = (): boolean => {
+  if (isStoreBillingConfigured()) return true;
+  if (platform() === 'ios') return false;
+  return !(Capacitor?.isNativePlatform?.() && isPlayStoreBuild());
+};
 
 const loadRC = () => import('@revenuecat/purchases-capacitor');
 
@@ -44,7 +70,7 @@ export const configurePlayBilling = async (uid: string): Promise<void> => {
     const { Purchases, LOG_LEVEL } = await loadRC();
     if (!configured) {
       await Purchases.setLogLevel({ level: LOG_LEVEL.ERROR });
-      await Purchases.configure({ apiKey: RC_ANDROID_KEY!, appUserID: uid });
+      await Purchases.configure({ apiKey: storeKey()!, appUserID: uid });
       configured = true;
       configuredUid = uid;
     } else if (configuredUid !== uid) {
@@ -164,9 +190,15 @@ export const restorePlayPurchases = async (uid: string): Promise<PurchaseOutcome
   }
 };
 
-/** Deep-link to the Play subscriptions screen (RevenueCat has no manage UI). */
+/**
+ * Deep-link to the store's own subscriptions screen (RevenueCat has no manage
+ * UI). iOS must point at Apple's page — sending an App Store subscriber to a
+ * Play URL leaves them with no way to cancel, which Apple treats as a defect.
+ */
 export const openPlaySubscriptions = async (): Promise<void> => {
-  const url = `https://play.google.com/store/account/subscriptions?package=${ANDROID_PACKAGE}`;
+  const url = platform() === 'ios'
+    ? 'https://apps.apple.com/account/subscriptions'
+    : `https://play.google.com/store/account/subscriptions?package=${ANDROID_PACKAGE}`;
   try {
     const { openExternal } = await import('../lib/openExternal');
     await openExternal(url);

@@ -48,6 +48,7 @@ import {
   KM_PER_STEP,
   caloriesFor,
   distanceKmFor,
+  isPlausibleDailySteps,
   kmToMiles,
   speedKmhFor,
 } from './stepFormulas';
@@ -373,6 +374,15 @@ class Pedometer {
   async adoptDeviceCount(steps: number): Promise<void> {
     await this.hydrate();
     this.rollDateIfNeeded();
+    // A device tier that hands us a cumulative since-boot counter instead of a
+    // daily one produces six-figure "days". Because this adopt is a monotonic
+    // max, ONE such reading used to stick permanently — it outranked every
+    // later honest reading, and the Firestore mirror re-seeded it on the next
+    // launch. Refusing the implausible value is what stops that ratchet.
+    if (!isPlausibleDailySteps(steps)) {
+      console.warn(`Ignoring implausible step count: ${steps}`);
+      return;
+    }
     if (steps > this.steps) {
       this.steps = Math.round(steps);
       this.emit();
@@ -427,8 +437,20 @@ class Pedometer {
     try {
       const stored = (await get(STORAGE_PREFIX + this.date)) as StoredDay | undefined;
       if (stored) {
-        this.steps = stored.steps ?? 0;
-        this.activeMs = stored.activeMs ?? 0;
+        // SELF-HEAL. A day already poisoned by a cumulative reading is stored
+        // on disk, so guarding only the write path would leave the bad number
+        // on screen forever. Anything impossible is dropped on load and the day
+        // restarts from the honest tiers.
+        const persisted = stored.steps ?? 0;
+        if (isPlausibleDailySteps(persisted)) {
+          this.steps = persisted;
+          this.activeMs = stored.activeMs ?? 0;
+        } else {
+          console.warn(`Discarding corrupt stored day (${persisted} steps) for ${this.date}`);
+          this.steps = 0;
+          this.activeMs = 0;
+          this.scheduleSave();
+        }
       }
     } catch {
       // No IndexedDB (private mode, old webview): count for this session only.

@@ -70,6 +70,10 @@ jobs:
           # send you a stack trace; this is the only way a crash on their phone
           # ever reaches you.
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          # App Check. Without this the shield ships inert: appCheck.ts
+          # reads VITE_RECAPTCHA_V3_SITE_KEY, so setting the repo secret
+          # alone does nothing unless it is forwarded here too.
+          VITE_RECAPTCHA_V3_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_V3_SITE_KEY }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           # Tags every event with the build it came from, so a crash report says
@@ -149,6 +153,10 @@ jobs:
           # Of the two Android builds it is the one that MOST needs reporting,
           # and it had none.
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          # App Check. Without this the shield ships inert: appCheck.ts
+          # reads VITE_RECAPTCHA_V3_SITE_KEY, so setting the repo secret
+          # alone does nothing unless it is forwarded here too.
+          VITE_RECAPTCHA_V3_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_V3_SITE_KEY }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_VERSION: ${{ github.ref_name }}

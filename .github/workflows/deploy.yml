@@ -29,6 +29,10 @@ jobs:
           VITE_STRIPE_PRICE_YEARLY: ${{ secrets.VITE_STRIPE_PRICE_YEARLY }}
           VITE_ALL_FEATURES_FREE: ${{ secrets.VITE_ALL_FEATURES_FREE }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          # App Check. Without this the shield ships inert: appCheck.ts
+          # reads VITE_RECAPTCHA_V3_SITE_KEY, so setting the repo secret
+          # alone does nothing unless it is forwarded here too.
+          VITE_RECAPTCHA_V3_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_V3_SITE_KEY }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_ENV: production
@@ -90,6 +94,10 @@ jobs:
           VITE_PLAY_STORE_BUILD: 'true'
           VITE_REVENUECAT_ANDROID_KEY: ${{ secrets.VITE_REVENUECAT_ANDROID_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          # App Check. Without this the shield ships inert: appCheck.ts
+          # reads VITE_RECAPTCHA_V3_SITE_KEY, so setting the repo secret
+          # alone does nothing unless it is forwarded here too.
+          VITE_RECAPTCHA_V3_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_V3_SITE_KEY }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_ENV: production
