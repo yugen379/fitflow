@@ -14,7 +14,7 @@
 //
 // Run: npm run proof:ui   (boots the emulators and the dev server itself)
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import admin from 'firebase-admin';
@@ -36,7 +36,23 @@ const EMAIL = 'e2e@fitflow.test';
 const PASSWORD = 'e2e-password-123';
 
 let server;
-const shutdown = () => { try { server?.kill(); } catch { /* already gone */ } };
+const shutdown = () => {
+  const pid = server?.pid;
+  if (!pid) return;
+  try {
+    if (process.platform === 'win32') {
+      // The spawn below uses `shell: true` on Windows, so `pid` is the npx.cmd
+      // wrapper — NOT the node process actually listening on port 3000. A plain
+      // .kill() reaps the wrapper and orphans the grandchild: the emulators stop,
+      // this process exits 0, and the dev server keeps holding the port, so the
+      // NEXT run of this gate cannot bind it and dies on startup. /T kills the
+      // whole tree, which is the only thing that actually frees the port.
+      spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' });
+    } else {
+      server.kill();
+    }
+  } catch { /* already gone */ }
+};
 process.on('exit', shutdown);
 
 // ── 1. Seed the Auth emulator ────────────────────────────────────────────────
@@ -205,4 +221,19 @@ await browser.close();
 const total = pass + fail;
 console.log(`\n${C.b}Result: ${fail === 0 ? C.g : C.r}${pass}/${total}${C.x}${C.b} checks passed${C.x}`);
 if (fail === 0) console.log(`${C.g}${C.b}100% success, zero errors${C.x}\n`);
-else { console.log(`${C.r}${C.b}${fail} FAILED${C.x}\n`); process.exit(1); }
+else console.log(`${C.r}${C.b}${fail} FAILED${C.x}\n`);
+
+// Exit EXPLICITLY, on BOTH paths. The dev server spawned above is a live child
+// process, so the event loop never drains on its own — falling off the end of
+// the module does not end the run, it hangs it. `shutdown` is bound to
+// process.on('exit'), which cannot rescue that: 'exit' only fires once the
+// process is already terminating, and the child is the very thing preventing it
+// from terminating. The handler waits for an event that is waiting for it.
+//
+// The previous code exited explicitly on the FAILURE branch only, so the gate
+// hung exactly when it PASSED: a green run left the dev server and both
+// emulators alive and never returned control to `emulators:exec`. Run by hand
+// it looked like a 20-minute stall after printing "100% success"; in CI it
+// would burn the whole job timeout and report a green suite as a red build.
+shutdown();
+process.exit(fail === 0 ? 0 : 1);
