@@ -20,6 +20,7 @@ import { ProgressionLog } from '../types';
 import { prefetchHandlers } from '../lib/prefetch';
 import { AnatomyViewer } from '../components/3d/AnatomyViewer';
 import { hasClipFor } from '../biomechanics/motions';
+import { coachCueFor, modalityOf } from '../lib/coachCue';
 
 const WORKOUT_TYPES = [
   { id: 'strength', name: 'Strength', icon: Dumbbell, hint: 'Lift heavy' },
@@ -108,6 +109,15 @@ export const Workout: React.FC = () => {
       setSharing(false);
     }
   };
+
+  // The Coach sentence for THIS session's modality. A swim or a ride never gets
+  // a kilogram figure — see lib/coachCue.ts. The trend still comes from the
+  // progression record, because "last one felt easy" is true of any sport.
+  const coachCue = coachCueFor(
+    modalityOf(activeWorkout),
+    progression?.trend ?? 'stable',
+    { suggestedWeight: progression?.suggestedWeight, suggestedReps: progression?.suggestedReps },
+  );
 
   useEffect(() => { if (profile?.voiceCoachingEnabled !== undefined) setVoiceOn(profile.voiceCoachingEnabled); }, [profile?.voiceCoachingEnabled]);
 
@@ -474,12 +484,21 @@ export const Workout: React.FC = () => {
                       <div className="flex-1">
                         <p className="text-eyebrow text-accent">Coach</p>
                         <p className="text-sm text-white mt-0.5">
-                          Try <span className="text-accent font-semibold num">{progression.suggestedWeight}kg</span> × <span className="text-accent font-semibold num">{progression.suggestedReps}</span> reps
+                          {/* Kilograms and reps are the wrong vocabulary for a
+                              swim or a ride, so the sentence comes from
+                              coachCue.ts and only strength carries a load. */}
+                          {coachCue.highlight ? (
+                            <>
+                              Try <span className="text-accent font-semibold num">{coachCue.highlight}</span>
+                            </>
+                          ) : (
+                            coachCue.text
+                          )}
                           <span className={cn(
                             'ml-2 text-xs font-medium',
                             progression.trend === 'up' ? 'text-accent' : progression.trend === 'down' ? 'text-accent-2' : 'text-text-dim',
                           )}>
-                            {progression.trend === 'up' ? '↑ Progressing' : progression.trend === 'down' ? '↓ Deload' : '→ Maintain'}
+                            {coachCue.trendLabel}
                           </span>
                         </p>
                       </div>

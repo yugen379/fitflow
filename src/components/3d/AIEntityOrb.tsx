@@ -16,7 +16,7 @@
  * is unavailable or reduced motion is requested.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { AdditiveBlending, BufferAttribute, Color, IcosahedronGeometry, Mesh, Points } from 'three';
 
@@ -221,6 +221,66 @@ const LABEL: Record<EntityState, string> = {
   responding: 'Coach is responding',
 };
 
+/**
+ * The FitFlow mark, sitting on the orb.
+ *
+ * Deliberately a 2D overlay rather than a texture on the sphere. The orb is a
+ * vertex-displaced icosahedron spinning on two axes, so a mapped texture would
+ * warp with the displacement, pinch at the poles (IcosahedronGeometry has no
+ * usable spherical UVs) and tumble out of view twice a second. An overlay stays
+ * legible and cannot bend.
+ *
+ * Sizing: at camera z=3.5 / fov=45 the unit-radius orb fills ~69% of the frame,
+ * so 26% of the container puts the mark comfortably inside the sphere at any
+ * size. It also covers the CssOrb fallback, which is 58% wide.
+ *
+ * The gradient id is per-instance via useId. A hard-coded SVG id would collide
+ * with any other copy of the mark on the same page and the two would fight over
+ * one gradient definition — the classic duplicate-defs bug.
+ */
+const OrbMark: React.FC = () => {
+  const gradientId = `orb-mark-${useId().replace(/:/g, '')}`;
+  return (
+    <div
+      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 64 64"
+        fill="none"
+        style={{
+          width: '26%',
+          // Lifts the mark off a bright orb without washing it out.
+          filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.45))',
+        }}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="8" y1="56" x2="56" y2="8" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#9CFF1F" />
+            <stop offset="55%" stopColor="#C6FF3D" />
+            <stop offset="100%" stopColor="#E7FF8C" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M18 46 C 18 30, 26 22, 42 22 L 46 22"
+          stroke={`url(#${gradientId})`}
+          strokeWidth="6.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M22 34 L 36 34"
+          stroke={`url(#${gradientId})`}
+          strokeWidth="6.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <circle cx="46" cy="22" r="3.5" fill="#C6FF3D" />
+      </svg>
+    </div>
+  );
+};
+
 export const AIEntityOrb: React.FC<{ state?: EntityState; className?: string }> = ({
   state = 'idle',
   className,
@@ -246,6 +306,9 @@ export const AIEntityOrb: React.FC<{ state?: EntityState; className?: string }> 
       ) : (
         <CssOrb state={state} />
       )}
+      {/* Outside the WebGL branch on purpose: the mark must also sit on the
+          CSS fallback orb, and on the reduced-motion path. */}
+      <OrbMark />
       <p className="sr-only" aria-live="polite">
         {LABEL[state]}
       </p>

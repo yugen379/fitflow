@@ -22,6 +22,7 @@ const { hasClipFor, getClip, EXERCISE_TO_CLIP } = await import('../src/biomechan
 const {
   MAX_PLAUSIBLE_DAILY_STEPS, isPlausibleDailySteps, caloriesFor, distanceKmFor,
 } = await import('../src/lib/stepFormulas.ts');
+const { modalityOf, isEndurance, coachCueFor } = await import('../src/lib/coachCue.ts');
 
 // ── 1. No 3D model for an exercise that has no 3D model ──────────────────────
 console.log(`\n${C.b}${C.c}Bug 1 — barbell model shown for non-barbell exercises${C.x}\n`);
@@ -81,6 +82,48 @@ check('a normal day is completely unaffected by the clamp',
 check('derived numbers stay finite for hostile input',
   [NaN, Infinity, -1, 1e18].every((v) =>
     Number.isFinite(caloriesFor(v, 70)) && Number.isFinite(distanceKmFor(v, 170))));
+
+// ── 3. Coach quoting kilograms at a swimmer ──────────────────────────────────
+console.log(`
+${C.b}${C.c}Bug 3 — "Try 20kg x 10 reps" shown for Cardio/Cycling/Swimming${C.x}
+`);
+
+for (const [type, want] of [['Cardio','cardio'],['Cycling','cycling'],['Swimming','swimming'],['Strength','strength']]) {
+  check(`"${type}" classifies as ${want}`, modalityOf(type) === want, modalityOf(type));
+}
+check('an unknown workout type falls back to strength', modalityOf('Mobility') === 'strength');
+check('null / undefined types do not throw', modalityOf(null) === 'strength' && modalityOf(undefined) === 'strength');
+
+const TRENDS = ['up', 'down', 'stable'];
+for (const m of ['cardio', 'cycling', 'swimming']) {
+  for (const t of TRENDS) {
+    const cue = coachCueFor(m, t, { suggestedWeight: 20, suggestedReps: 10 });
+    check(`${m}/${t} never mentions kg or reps`,
+      !/kg|reps?/i.test(cue.text) && cue.highlight === '',
+      JSON.stringify(cue.text));
+    check(`${m}/${t} says something actionable`, cue.text.length > 20 && /[.!]$/.test(cue.text));
+    check(`${m}/${t} avoids the barbell word "deload"`, !/deload/i.test(cue.trendLabel));
+  }
+}
+
+// Strength must be untouched by the fix.
+const s = coachCueFor('strength', 'up', { suggestedWeight: 22.5, suggestedReps: 8 });
+check('strength still quotes the real load', s.highlight === '22.5kg x 8 reps'.replace('x', '×'), s.highlight);
+check('strength keeps the lifting trend label', s.trendLabel === '↑ Progressing', s.trendLabel);
+check('a whole-number load has no trailing .0',
+  coachCueFor('strength', 'stable', { suggestedWeight: 20, suggestedReps: 10 }).highlight.startsWith('20kg'));
+check('the highlight is always a substring of the text',
+  ['strength','cardio','cycling','swimming'].every((m) => TRENDS.every((t) => {
+    const c = coachCueFor(m, t, { suggestedWeight: 20, suggestedReps: 10 });
+    return c.highlight === '' || c.text.includes(c.highlight);
+  })));
+check('junk suggestions never render NaN or negatives',
+  [null, undefined, NaN, -5, 'x'].every((v) => {
+    const c = coachCueFor('strength', 'stable', { suggestedWeight: v, suggestedReps: v });
+    return !/NaN|-/.test(c.highlight);
+  }));
+check('an unknown trend degrades to stable, never throws',
+  coachCueFor('cardio', 'sideways').trendLabel === '→ Maintain');
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 const total = pass + fail;
