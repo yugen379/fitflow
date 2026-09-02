@@ -20,6 +20,16 @@ jobs:
       - name: Install web deps
         run: npm ci --legacy-peer-deps
 
+      # The release string Sentry groups errors by. It CANNOT be github.ref_name:
+      # that is the tag only on a tag push, and on a workflow_dispatch (how the
+      # live production deploy actually went out, after the v1.5.3 tag run's
+      # deploy job failed) it is the branch name — so the shipped bundle carried
+      # release:"main" and every version's errors piled into one bucket.
+      # package.json holds the same number the tag is cut from, so this is
+      # correct on every trigger.
+      - name: Resolve release version
+        run: echo "RELEASE_TAG=v$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
       - name: Build web
         env:
           VITE_GEMINI_PROXY_URL: ${{ secrets.VITE_GEMINI_PROXY_URL }}
@@ -36,7 +46,7 @@ jobs:
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_ENV: production
-          VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_APP_VERSION: ${{ env.RELEASE_TAG }}
         run: npm run build
 
       - name: Install functions deps
@@ -87,6 +97,16 @@ jobs:
       - name: Install
         run: npm ci --legacy-peer-deps
 
+      # The release string Sentry groups errors by. It CANNOT be github.ref_name:
+      # that is the tag only on a tag push, and on a workflow_dispatch (how the
+      # live production deploy actually went out, after the v1.5.3 tag run's
+      # deploy job failed) it is the branch name — so the shipped bundle carried
+      # release:"main" and every version's errors piled into one bucket.
+      # package.json holds the same number the tag is cut from, so this is
+      # correct on every trigger.
+      - name: Resolve release version
+        run: echo "RELEASE_TAG=v$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
       - name: Build web (Play-safe — no external checkout, Play payments policy)
         env:
           VITE_GEMINI_PROXY_URL: ${{ secrets.VITE_GEMINI_PROXY_URL }}
@@ -101,7 +121,7 @@ jobs:
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_ENV: production
-          VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_APP_VERSION: ${{ env.RELEASE_TAG }}
         run: npm run build
 
       - name: Sync Capacitor
