@@ -500,8 +500,32 @@ const publicViewOf = (u: Record<string, any>): Record<string, any> => {
   return out;
 };
 
+/**
+ * Region of the named Firestore database (see DATABASE_ID above).
+ *
+ * A v2 Firestore trigger MUST run in the same region as the database it
+ * listens to — it cannot be deployed anywhere else. Leaving the region off
+ * does not make it "figure it out": the CLI resolves the function to the
+ * us-central1 default, then compares that against the live asia-southeast1
+ * instance, decides the real function is an orphan, and aborts every deploy
+ * with:
+ *
+ *   Error: The following functions are found in your project but do not exist
+ *   in your local source code: syncPublicProfile(asia-southeast1)
+ *
+ * which blocked ALL function deploys (v1.5.1 through v1.5.3 shipped with
+ * stale functions because of it). The tempting "fix" the CLI suggests —
+ * `firebase functions:delete syncPublicProfile` — is wrong: it deletes a
+ * correctly-placed trigger, and the replacement cannot deploy to us-central1
+ * anyway because the database is not there.
+ *
+ * Keep this in step with the database location. If the database ever moves,
+ * this moves with it.
+ */
+const DATABASE_REGION = "asia-southeast1";
+
 export const syncPublicProfile = onDocumentWritten(
-  { document: "users/{uid}", database: DATABASE_ID },
+  { document: "users/{uid}", database: DATABASE_ID, region: DATABASE_REGION },
   async (event) => {
     const uid = event.params.uid;
     const after = event.data?.after;
