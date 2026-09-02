@@ -42,3 +42,7 @@ scripts/.tmp/
 *.iml
 .revenuecat-webhook-auth.txt
 promo/
+
+# Release artifacts downloaded from GitHub Releases for manual Play upload.
+# Signed binaries — never commit them; the GitHub Release is the source of truth.
+release/

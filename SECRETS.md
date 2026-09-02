@@ -51,3 +51,43 @@ firebase functions:config:set \
 |---|---|
 | `FIREBASE_SERVICE_ACCOUNT` | Firebase Console → Project Settings → Service accounts → Generate new private key (JSON) |
 | `FIREBASE_PROJECT_ID` | Firebase Console → Project Settings → General |
+
+## Play Console upload (`PLAY_SERVICE_ACCOUNT`)
+
+This is the one release secret that has never been set, so the "Upload to Play
+Console closed-testing (alpha) track" step in `.github/workflows/deploy.yml` has
+been **skipped on every tag so far** — v1.5.0 through v1.5.3 built and signed a
+correct AAB, published it to the GitHub Release, and stopped there. Nothing
+failed loudly, because the step is guarded by `if: env.PLAY_SA != ''`. Until
+this is set, every Play upload is a manual drag-and-drop.
+
+Create it once:
+
+1. **Play Console → Setup → API access → Choose a project** — link the Play
+   developer account to a Google Cloud project (the existing
+   `gen-lang-client-0893216108` is fine).
+2. In that Cloud project: **IAM & Admin → Service Accounts → Create**, name it
+   e.g. `play-publisher`. It needs **no** Cloud IAM role — Play grants its own.
+3. On the new account: **Keys → Add key → Create new key → JSON**. Download it.
+4. Back in **Play Console → Users and permissions → Invite new user**, paste the
+   service account's email (`play-publisher@…iam.gserviceaccount.com`), scope it
+   to the **FitFlow** app, and grant **Release → Release apps to testing tracks**
+   (add *Release to production* only when you leave closed testing).
+5. Set the secret from the downloaded JSON:
+
+```bash
+gh secret set PLAY_SERVICE_ACCOUNT --repo yugen379/fitflow < ~/Downloads/play-publisher-*.json
+```
+
+Then delete the local JSON — it is a publishing credential.
+
+From the next `v*` tag on, the alpha-track upload happens automatically. Note the
+workflow uploads `packageName: com.fitflow.fitness` (the `applicationId`), not
+the `com.fitflow.app` namespace.
+
+### Uploading by hand in the meantime
+
+Play Console → FitFlow → Testing → **Closed testing** → alpha → **Create new
+release** → upload `fitflow-vX.Y.Z-play.aab` from the GitHub Release (the
+`-play` bundle, **not** the `.apk` — the APK carries the Stripe checkout that
+Play payments policy forbids).
