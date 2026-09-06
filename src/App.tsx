@@ -6,6 +6,9 @@ import { Logo } from './components/Logo';
 import { requestNotificationPermission, onMessageListener } from './lib/firebase';
 import { isNativeApp } from './lib/pushPermission';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
+import { EmailPasswordForm } from './components/EmailPasswordForm';
+import { FacebookSignInButton, AppleSignInButton } from './components/SocialSignInButtons';
+import { isProviderAvailable } from './lib/authProviders';
 import { useToast } from './hooks/useToast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { WifiOff } from 'lucide-react';
@@ -213,46 +216,96 @@ const LoginView: React.FC = () => {
     }
   }, [authError, showToast, clearAuthError]);
 
+  /*
+   * One busy flag across every sign-in route on the screen.
+   *
+   * Four ways in (email, Google, Facebook, Apple) means four ways to start a
+   * second attempt while the first is still in flight — and a redirect started
+   * underneath a popup leaves the user on a blank page with no way back.
+   */
+  const [busy, setBusy] = React.useState(false);
+  const onError = React.useCallback((msg: string) => showToast(msg, 'error'), [showToast]);
+
+  // A provider that is not enabled in the Firebase Console answers
+  // `auth/operation-not-allowed` — a developer's instruction printed on a
+  // customer's screen. Ask before rendering rather than apologising after.
+  const native = isNativeApp();
+  const showEmail = isProviderAvailable('password', native);
+  const showGoogle = isProviderAvailable('google.com', native);
+  const anySocial =
+    showGoogle ||
+    isProviderAvailable('facebook.com', native) ||
+    isProviderAvailable('apple.com', native);
+
   return (
-    <div className="h-screen w-screen flex flex-col bg-bg px-6 overflow-hidden relative">
+    /*
+     * Scrolls, and is measured in dvh rather than vh.
+     *
+     * The old screen was a fixed h-screen with nothing but a single button at
+     * the bottom. A real form does not fit that on a short phone in landscape,
+     * or with the keyboard up, or at 200% text size — and h-screen on iOS
+     * Safari is taller than the visible viewport, which would put the submit
+     * button under the browser chrome.
+     */
+    <div className="min-h-dvh w-full bg-bg px-6 py-10 overflow-y-auto relative">
       <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-accent/8 blur-[140px] rounded-full pointer-events-none" />
       <div className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-accent-3/6 blur-[140px] rounded-full pointer-events-none" />
 
-      <div className="flex-1 flex flex-col items-center justify-center text-center max-w-sm mx-auto w-full relative z-10">
-        <div className="ff-rise">
-          <Logo size="xl" showText={false} />
+      <div className="max-w-sm mx-auto w-full relative z-10">
+        <div className="flex flex-col items-center text-center">
+          <div className="ff-rise">
+            <Logo size="lg" showText={false} />
+          </div>
+
+          <h1 className="ff-rise ff-d1 font-display text-4xl font-extrabold text-white mt-5 tracking-tight leading-[0.95]">
+            Train smarter.<br/>
+            <span className="gradient-text-accent">Move farther.</span>
+          </h1>
+
+          <p className="ff-rise ff-d2 text-text-dim text-sm font-medium mt-3 max-w-[300px] leading-relaxed">
+            AI workouts, nutrition, recovery and community.
+          </p>
+
+          {/* Chips rather than the old two-column list: same four proof points,
+              roughly half the vertical space, which the form now needs. */}
+          <ul className="ff-rise ff-d3 mt-4 flex flex-wrap justify-center gap-1.5">
+            {['AI coach', 'Food scan', 'Live workouts', 'Wearable sync'].map(f => (
+              <li
+                key={f}
+                className="flex items-center gap-1.5 text-[11px] font-medium text-white/75 bg-white/[0.04] border border-white/10 rounded-full px-2.5 py-1"
+              >
+                <span className="w-1 h-1 rounded-full bg-accent shadow-[0_0_6px_var(--accent)]" />
+                {f}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <h1 className="ff-rise ff-d1 font-display text-5xl font-extrabold text-white mt-8 tracking-tight leading-[0.95]">
-          Train smarter.<br/>
-          <span className="gradient-text-accent">Move farther.</span>
-        </h1>
+        {/* Email + password first: it is the only route that needs nothing
+            from Google, Facebook or Apple to be reachable. */}
+        {showEmail && (
+          <div className="ff-rise-lg ff-d4 mt-8">
+            <EmailPasswordForm onError={onError} onBusyChange={setBusy} />
+          </div>
+        )}
 
-        <p className="ff-rise ff-d2 text-text-dim text-base font-medium mt-5 max-w-[320px] leading-relaxed">
-          AI workouts, nutrition, recovery and community.
-          One app, built to replace the rest.
-        </p>
+        {/* The divider only earns its place when there is something on both
+            sides of it. */}
+        {showEmail && anySocial && (
+          <div className="ff-rise-lg ff-d4 flex items-center gap-3 my-6" aria-hidden>
+            <span className="h-px flex-1 bg-white/10" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-mute">or continue with</span>
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
+        )}
 
-        <ul className="ff-rise ff-d3 mt-10 grid grid-cols-2 gap-2 text-left w-full max-w-[320px]">
-          {[
-            'AI coach',
-            'Food scan',
-            'Live workouts',
-            'Wearable sync',
-          ].map(f => (
-            <li key={f} className="flex items-center gap-2 text-sm text-white/80">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]" />
-              {f}
-            </li>
-          ))}
-        </ul>
-      </div>
+        <div className={`ff-rise-lg ff-d4 flex flex-col items-center gap-2.5${showEmail && anySocial ? '' : ' mt-8'}`}>
+          {showGoogle && <GoogleSignInButton onError={onError} onSigningChange={setBusy} />}
+          <FacebookSignInButton onError={onError} onSigningChange={setBusy} disabled={busy} />
+          <AppleSignInButton onError={onError} onSigningChange={setBusy} disabled={busy} />
+        </div>
 
-      <div className="ff-rise-lg ff-d4 w-full max-w-sm mx-auto pb-12 relative z-10">
-        <GoogleSignInButton
-          onError={(msg) => showToast(msg, 'error')}
-        />
-        <p className="text-center text-xs text-text-mute mt-4">
+        <p className="text-center text-xs text-text-mute mt-6 pb-6">
           By continuing you agree to our{' '}
           <a href="/terms" className="text-text-dim hover:text-accent underline-offset-2 hover:underline">Terms</a>{' '}
           and{' '}

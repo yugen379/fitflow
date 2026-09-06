@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, completeRedirectSignIn, friendlyAuthError } from '../lib/firebase';
+import { consumePendingDisplayName } from '../lib/authSession';
 import { UserProfile } from '../types';
 import { identify } from '../lib/telemetry';
 
@@ -226,9 +227,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // (A cache-only miss must not create: the real doc may exist.)
             ensuredOnce = true;
             clearWatchdog();
+            // Google and Apple deliver a name with the credential. Email
+            // sign-up cannot: updateProfile() is still in flight when this
+            // runs, so the name the user just typed comes from the sign-up
+            // form's one-shot stash instead of being lost to "Guest".
+            const typedName = user.displayName ? null : consumePendingDisplayName();
             const initialProfile: UserProfile = {
               uid: user.uid,
-              displayName: user.displayName || 'Guest',
+              displayName: user.displayName || typedName || 'Guest',
               photoURL: user.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.uid,
               subscriptionType: 'free',
               // Cardless trial (TRIAL_DAYS) starts the instant the account is created.

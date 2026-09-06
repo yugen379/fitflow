@@ -30,3 +30,40 @@ export const hasPersistedAuthSession = (): boolean => {
     return false;
   }
 };
+
+/**
+ * The name a user typed on the sign-up form, held just long enough to reach
+ * the profile document.
+ *
+ * `createUserWithEmailAndPassword` fires `onAuthStateChanged` immediately, and
+ * useAuth builds the initial Firestore profile from `user.displayName` right
+ * then — before `updateProfile()` has come back from the network. Google and
+ * Apple hand the name over with the credential so they never hit this; email
+ * sign-up otherwise produced an account permanently called "Guest".
+ *
+ * Deliberately sessionStorage, and deliberately read-once:
+ *  - sessionStorage, because this must not survive to a later sign-up in
+ *    another tab or a week from now.
+ *  - read-once, because the value is only ever correct for the account being
+ *    created in this moment.
+ */
+const PENDING_NAME_KEY = 'ff_pending_display_name';
+
+export const rememberPendingDisplayName = (name: string): void => {
+  try {
+    sessionStorage.setItem(PENDING_NAME_KEY, name.slice(0, 60));
+  } catch {
+    // Storage blocked — the name still reaches Auth via updateProfile, and the
+    // profile falls back to "Guest". Not worth failing a sign-up over.
+  }
+};
+
+export const consumePendingDisplayName = (): string | null => {
+  try {
+    const name = sessionStorage.getItem(PENDING_NAME_KEY);
+    if (name) sessionStorage.removeItem(PENDING_NAME_KEY);
+    return name || null;
+  } catch {
+    return null;
+  }
+};

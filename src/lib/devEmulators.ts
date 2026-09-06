@@ -31,9 +31,11 @@ export const connectEmulators = async (auth: Auth): Promise<void> => {
     // Already connected (an HMR re-run) — harmless.
   }
 
-  // The app offers only Google sign-in, which cannot be driven headlessly.
-  // The harness calls this instead, so useAuth and ProtectedRoute still run
-  // exactly as they do in production — only the credential source differs.
+  // The login screen now has a real email/password form, so the harness CAN
+  // drive sign-in through the UI. This hook stays because it is faster and
+  // because it is the only route for tests that need a session before the
+  // login screen has painted; useAuth and ProtectedRoute still run exactly as
+  // they do in production — only the credential source differs.
   (window as unknown as Record<string, unknown>).__e2eSignIn = (email: string, password: string) =>
     signInWithEmailAndPassword(auth, email, password);
 };

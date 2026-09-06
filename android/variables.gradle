@@ -1,4 +1,29 @@
 ext {
+    /*
+     * @capacitor-firebase/authentication provider switches.
+     *
+     * Read its android/build.gradle before changing these: every provider
+     * dependency is declared `compileOnly` unless the matching rgcfaInclude*
+     * flag is true. compileOnly means the plugin COMPILES against the classes
+     * and they are absent at runtime — so a missing flag is not a build error,
+     * it is a NoClassDefFoundError the first time a user taps the button.
+     *
+     * google: required. signInWithGoogleNative() needs play-services-auth and
+     * androidx.credentials, and nothing else in this app pulls them in.
+     *
+     * facebook: OFF until the Facebook app credentials exist. Turning it on
+     * adds com.facebook.android:facebook-login, whose auto-init ContentProvider
+     * reads @string/facebook_app_id at APP START — enabling this without
+     * adding those strings (and the manifest entries) crashes FitFlow on
+     * launch for every user, not just the ones who tap Facebook. The full
+     * checklist is in AUTH_PROVIDERS.md.
+     *
+     * Apple needs no flag: the plugin drives it through firebase-auth's own
+     * OAuthProvider web flow, which is already on the classpath.
+     */
+    rgcfaIncludeGoogle = true
+    rgcfaIncludeFacebook = false
+
     minSdkVersion = 26
     compileSdkVersion = 36
     targetSdkVersion = 36

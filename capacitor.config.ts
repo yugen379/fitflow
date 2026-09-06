@@ -19,9 +19,15 @@ const config: CapacitorConfig = {
     // src/lib/firebase.ts (signInWithGoogleNative) so the web Firebase SDK stays the
     // single source of auth truth. Requires android/app/google-services.json + the
     // app's SHA-1 registered in the Firebase Console (see RELEASES.md).
+    // The list must stay in step with android/variables.gradle (rgcfaInclude*)
+    // and with NATIVE_PROVIDERS in src/lib/authProviders.ts — those decide what
+    // is actually on the classpath and what the login screen offers. Facebook is
+    // absent from all three until the Facebook app credentials exist; see
+    // AUTH_PROVIDERS.md. Apple needs no native dependency: the plugin drives it
+    // through firebase-auth's own OAuth activity.
     FirebaseAuthentication: {
       skipNativeAuth: true,
-      providers: ['google.com'],
+      providers: ['google.com', 'apple.com'],
     },
     SplashScreen: {
       launchShowDuration: 1500,

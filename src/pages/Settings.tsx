@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, Globe, Ruler, Bell, Shield, FileText, Download, Trash2,
   LogOut, ChevronRight, X, Loader2, Mail, Camera, Mic, Check, Sparkles, Crown,
+  KeyRound, MailWarning,
 } from 'lucide-react';
 import { PermissionsPrompt } from '../components/PermissionsPrompt';
 import { useAuth } from '../hooks/useAuth';
@@ -11,7 +12,8 @@ import { useToast } from '../hooks/useToast';
 import { allFeaturesFree, getEntitlement, isPlayStoreBuild } from '../lib/billing';
 import { openBillingPortal, isPortalConfigured } from '../services/stripeService';
 import { purchaseUiAllowed } from '../services/playBillingService';
-import { app, auth } from '../lib/firebase';
+import { app, auth, resendVerificationEmail } from '../lib/firebase';
+import { friendlyAuthError, providerLabel } from '../lib/authErrors';
 import { db } from '../lib/firestore';
 import { requestPushPermission, isNativeApp, micSupported } from '../lib/pushPermission';
 import {
@@ -25,7 +27,7 @@ const TZ_OFFSET_HOURS = -new Date().getTimezoneOffset() / 60;
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { showToast } = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -255,6 +257,41 @@ export const Settings: React.FC = () => {
 
   const unit = profile?.weightUnit || 'kg';
 
+  /* ── Account / sign-in method ──────────────────────────────────────────
+   * With four ways into FitFlow, "which one did I use?" became a real
+   * question — and the wrong answer sends someone round the password-reset
+   * loop for an account that has no password.
+   */
+  const providerIds = (user?.providerData ?? []).map((p) => p.providerId);
+  const signInMethods = providerIds.length
+    ? providerIds.map((id) => providerLabel(id)).join(', ')
+    : 'email and password';
+  const [verifiedNow, setVerifiedNow] = useState(user?.emailVerified ?? true);
+  const [resending, setResending] = useState(false);
+
+  React.useEffect(() => {
+    // `emailVerified` on the cached user is a snapshot from sign-in time, so a
+    // user who has just clicked the link would still be nagged. Refresh once on
+    // open — that is the moment they come here to check.
+    if (!user || user.emailVerified) return;
+    user.reload().then(() => setVerifiedNow(auth.currentUser?.emailVerified ?? false)).catch(() => {});
+  }, [user]);
+
+  const showVerifyRow = !!user && providerIds.includes('password') && !verifiedNow;
+
+  const resendVerification = async () => {
+    if (resending) return;
+    setResending(true);
+    try {
+      await resendVerificationEmail();
+      showToast('Verification email sent — check your inbox');
+    } catch (e: any) {
+      showToast(friendlyAuthError(e?.code), 'error');
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <div className="pb-28 pt-4 px-4 min-h-screen space-y-5">
       <header className="flex items-center gap-3 pt-2">
@@ -266,6 +303,21 @@ export const Settings: React.FC = () => {
           <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">Preferences</h1>
         </div>
       </header>
+
+      <Section title="Account">
+        <Row icon={KeyRound} label="Signed in with" sub={signInMethods} />
+        {showVerifyRow && (
+          <Row icon={MailWarning} label="Email not verified" sub={user?.email || undefined}>
+            <button
+              onClick={resendVerification}
+              disabled={resending}
+              className="shrink-0 h-9 px-3 rounded-xl bg-accent/12 border border-accent/30 text-accent text-xs font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
+            >
+              {resending ? 'Sending…' : 'Resend'}
+            </button>
+          </Row>
+        )}
+      </Section>
 
       <Section title="Subscription">
         <Row icon={Crown} label="FitFlow Pro" sub={billingLabel} />

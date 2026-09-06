@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.5.3",
+  "version": "1.6.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -40,7 +40,8 @@
     "proof:ui": "firebase emulators:exec --only auth,firestore \"node scripts/ui-proof.mjs\"",
     "backfill:public-profiles": "node scripts/backfill-public-profiles.mjs",
     "proof:formcheck": "tsx scripts/formcheck-proof.mjs",
-    "proof:regressions": "tsx scripts/regressions-proof.mjs"
+    "proof:regressions": "tsx scripts/regressions-proof.mjs",
+    "proof:auth": "firebase emulators:exec --only auth \"tsx scripts/auth-proof.mjs\""
   },
   "dependencies": {
     "@capacitor-firebase/app-check": "^8.3.0",

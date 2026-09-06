@@ -3,13 +3,24 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
+  FacebookAuthProvider,
+  OAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   signInWithCredential,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  updateProfile,
   getRedirectResult,
   browserLocalPersistence,
   setPersistence,
+  type User,
+  type AuthProvider as FirebaseAuthProvider,
 } from 'firebase/auth';
+import { friendlyAuthError, normalizeEmail } from './authErrors';
+import { rememberPendingDisplayName } from './authSession';
 import type { Messaging } from 'firebase/messaging';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { Capacitor } from '@capacitor/core';
@@ -53,6 +64,22 @@ if (import.meta.env.VITE_USE_EMULATORS === 'true') {
 // `db` now lives in ./firestore so that importing auth does not drag ~80 kB of
 // Firestore onto the boot path. This module must never import it statically.
 export const googleProvider = new GoogleAuthProvider();
+
+export const facebookProvider = new FacebookAuthProvider();
+// Only what the profile actually uses. Anything beyond email + public_profile
+// puts the app into Facebook's App Review queue for permissions no screen in
+// FitFlow reads.
+facebookProvider.addScope('email');
+facebookProvider.addScope('public_profile');
+
+export const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
+// Apple releases the name ONCE, on the very first authorisation, and never
+// again — so `locale` is set to keep the consent sheet in the user's language
+// and the first sign-in is the only chance to capture displayName (handled in
+// useAuth's initial-profile write).
+appleProvider.setCustomParameters({ locale: (typeof navigator !== 'undefined' && navigator.language) || 'en' });
 
 // The Gemini proxy rejects anonymous calls; hand it a fresh ID token per
 // request. getIdToken() serves a cached token and only refreshes near expiry.
@@ -159,51 +186,190 @@ const isStandalonePWA = () =>
   (window.matchMedia?.('(display-mode: standalone)').matches ||
    (window.navigator as any).standalone === true);
 
-export const friendlyAuthError = (code?: string): string => {
-  switch (code) {
-    case 'auth/unauthorized-domain':
-      return 'This domain is not authorized. Add it in Firebase Console → Authentication → Settings → Authorized domains.';
-    case 'auth/popup-blocked':
-      return 'Popup blocked. Allow popups for this site, or reload to use redirect sign-in.';
-    case 'auth/popup-closed-by-user':
-    case 'auth/cancelled-popup-request':
-      return 'Sign-in cancelled.';
-    case 'auth/network-request-failed':
-      return 'Network error. Check your connection and try again.';
-    case 'auth/account-exists-with-different-credential':
-      return 'An account already exists with this email but a different sign-in method.';
-    case 'auth/operation-not-allowed':
-      return 'Google sign-in is disabled. Enable it in Firebase Console → Authentication → Sign-in method.';
-    case 'auth/web-storage-unsupported':
-      return 'Browser storage is disabled. Enable cookies/localStorage and try again.';
-    default:
-      return code ? `Sign-in failed (${code}).` : 'Sign-in failed. Please try again.';
-  }
-};
+/**
+ * The user-facing copy for every auth failure now lives in ./authErrors, which
+ * imports nothing from Firebase and can therefore be exercised directly by the
+ * proof harness. Re-exported here so the existing call sites (useAuth,
+ * GoogleSignInButton, …) are unchanged.
+ */
+export { friendlyAuthError, isCancellation } from './authErrors';
 
-export const signInWithGoogle = async () => {
+/**
+ * One implementation for every OAuth provider on the web.
+ *
+ * Google, Facebook and Apple differ only in which provider object they hand to
+ * the SDK — the popup-vs-redirect decision, the popup-blocked fallback and the
+ * error handling are identical, and were already duplicated once for Google.
+ * Writing the third and fourth copy of that logic is how two of them end up
+ * with the mobile redirect fix and one does not.
+ */
+const signInWithOAuthProvider = async (
+  provider: FirebaseAuthProvider,
+  label: string,
+): Promise<User | null> => {
   try {
     if (isMobile() || isStandalonePWA()) {
       // Redirect flow: completes via completeRedirectSignIn() after the page reloads
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithRedirect(auth, provider);
       return null;
     }
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (error: any) {
     // Popup blocked on desktop → fall back to redirect rather than dead-ending the user
     if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
       try {
-        await signInWithRedirect(auth, googleProvider);
+        await signInWithRedirect(auth, provider);
         return null;
       } catch (redirectErr) {
-        console.error('Redirect fallback failed:', redirectErr);
+        console.error(`${label} redirect fallback failed:`, redirectErr);
         throw redirectErr;
       }
     }
-    console.error('Google sign-in failed:', error?.code, error?.message);
+    console.error(`${label} sign-in failed:`, error?.code, error?.message);
     throw error;
   }
+};
+
+export const signInWithGoogle = async () => signInWithOAuthProvider(googleProvider, 'Google');
+
+export const signInWithFacebook = async () => signInWithOAuthProvider(facebookProvider, 'Facebook');
+
+export const signInWithApple = async () => signInWithOAuthProvider(appleProvider, 'Apple');
+
+/**
+ * Native (APK/IPA) Facebook sign-in.
+ *
+ * Same shape as signInWithGoogleNative and for the same reason: Facebook's
+ * OAuth page refuses to run inside an embedded WebView, so the app shell has to
+ * go through the native Facebook SDK. `skipNativeAuth` means the plugin returns
+ * only the credential; the web SDK stays the single source of auth truth.
+ */
+export const signInWithFacebookNative = async () => {
+  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+  const result = await FirebaseAuthentication.signInWithFacebook();
+  const accessToken = result.credential?.accessToken;
+  if (!accessToken) {
+    throw Object.assign(new Error('Native Facebook sign-in returned no access token'), {
+      code: 'auth/native-no-access-token',
+    });
+  }
+  const credential = FacebookAuthProvider.credential(accessToken);
+  const res = await signInWithCredential(auth, credential);
+  return res.user;
+};
+
+/**
+ * Native Apple sign-in.
+ *
+ * Apple's token is bound to a nonce the native layer generated, so the RAW
+ * nonce has to travel back with the ID token: exchanging the token without it
+ * fails `auth/invalid-credential`, which reads to the user as "wrong password"
+ * and is the single most common way this integration is shipped broken.
+ */
+export const signInWithAppleNative = async () => {
+  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+  const result = await FirebaseAuthentication.signInWithApple();
+  const idToken = result.credential?.idToken;
+  if (!idToken) {
+    throw Object.assign(new Error('Native Apple sign-in returned no ID token'), {
+      code: 'auth/native-no-id-token',
+    });
+  }
+  const credential = new OAuthProvider('apple.com').credential({
+    idToken,
+    rawNonce: result.credential?.nonce,
+  });
+  const res = await signInWithCredential(auth, credential);
+  return res.user;
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Email + password
+ *
+ * The manual route. It matters more than it looks: it is the only sign-in that
+ * works with no third party reachable at all — no Google Play services, no
+ * Facebook app, no Apple ID — which covers cheap Android devices, corporate
+ * managed profiles, China, and every user who simply does not want an identity
+ * provider knowing they use a fitness app.
+ *
+ * These are thin on purpose. Everything the UI needs to DECIDE (is this email
+ * shaped right, is this password strong enough, what do we tell the user when
+ * it fails) lives in ./authErrors, so it is testable without a browser.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Create an account.
+ *
+ * `displayName` is written twice on purpose. `updateProfile` is the real store,
+ * but `onAuthStateChanged` fires the instant the account exists — before that
+ * round trip lands — and useAuth creates the Firestore profile from whatever
+ * `user.displayName` says at that moment. Without the local stash, every
+ * email-created account was permanently named "Guest".
+ */
+export const signUpWithEmail = async (
+  rawEmail: string,
+  password: string,
+  displayName?: string,
+): Promise<User> => {
+  const email = normalizeEmail(rawEmail);
+  const name = (displayName || '').trim();
+  if (name) rememberPendingDisplayName(name);
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    if (name) {
+      // Non-fatal: the account exists either way, and the stashed name still
+      // reaches the Firestore profile.
+      await updateProfile(result.user, { displayName: name }).catch((e) =>
+        console.warn('Could not set displayName:', e),
+      );
+    }
+    // Fire-and-forget. A failed verification email must never block a new user
+    // out of the app — nothing in FitFlow is gated on emailVerified today, and
+    // the banner offers a resend.
+    void sendEmailVerification(result.user).catch((e) =>
+      console.warn('Verification email not sent:', e?.code),
+    );
+    return result.user;
+  } catch (error: any) {
+    console.error('Email sign-up failed:', error?.code, error?.message);
+    throw error;
+  }
+};
+
+export const signInWithEmail = async (rawEmail: string, password: string): Promise<User> => {
+  try {
+    const result = await signInWithEmailAndPassword(auth, normalizeEmail(rawEmail), password);
+    return result.user;
+  } catch (error: any) {
+    console.error('Email sign-in failed:', error?.code, error?.message);
+    throw error;
+  }
+};
+
+/**
+ * Send a reset link.
+ *
+ * Resolves even for an address that has no account. That is not sloppiness: a
+ * distinguishable response here is an account-enumeration oracle — anyone could
+ * test a list of emails against FitFlow and learn who has an account. The UI
+ * says "if that address has an account, the link is on its way" for every input.
+ */
+export const sendPasswordReset = async (rawEmail: string): Promise<void> => {
+  try {
+    await sendPasswordResetEmail(auth, normalizeEmail(rawEmail));
+  } catch (error: any) {
+    if (error?.code === 'auth/user-not-found' || error?.code === 'auth/invalid-credential') return;
+    console.error('Password reset failed:', error?.code, error?.message);
+    throw error;
+  }
+};
+
+/** Re-send the verification email for the signed-in user. */
+export const resendVerificationEmail = async (): Promise<void> => {
+  const user = auth.currentUser;
+  if (!user) throw Object.assign(new Error('Not signed in'), { code: 'auth/user-not-found' });
+  await sendEmailVerification(user);
 };
 
 // True only inside the Capacitor Android/iOS shell (the installed APK), not the PWA/browser.

@@ -251,7 +251,14 @@ const WebGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) =>
               : 'text-[11px] text-text-mute underline underline-offset-4 active:opacity-70'
           }
         >
-          {stalled ? 'Stuck on the Google screen? Sign in another way' : 'Having trouble? Sign in another way'}
+          {/*
+            Both strings name Google explicitly. They used to say "Having
+            trouble?", which was unambiguous when Google was the only way in —
+            sitting between Google, Facebook and Apple it reads as a fallback
+            for the whole group, and the thing it actually does is retry
+            GOOGLE by redirect.
+          */}
+          {stalled ? 'Stuck on the Google screen? Try the other way' : 'Trouble with Google? Try the other way'}
         </button>
       ) : null}
     </div>
