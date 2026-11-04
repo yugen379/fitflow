@@ -66,6 +66,10 @@ export const deleteUserData = async (uid: string): Promise<void> => {
   for (const p of posts.docs) await db.recursiveDelete(p.ref);
 
   // The user's comments and likes on other people's posts.
+  // No index entry is needed: the app's database is Firestore ENTERPRISE
+  // edition, where indexes are optional and which REJECTS fieldOverrides
+  // ("Enterprise Edition does not support updating field index
+  // configuration") — adding one failed the v1.6.2 deploy.
   const comments = await db.collectionGroup("comments").where("userId", "==", uid).get();
   for (const c of comments.docs) await removeFromPost(c.ref, "commentsCount");
   const likes = await db.collectionGroup("likes").where("userId", "==", uid).get();
