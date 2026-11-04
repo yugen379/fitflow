@@ -77,7 +77,7 @@ export const Wellness: React.FC = () => {
     if (!profile?.uid) return;
     setIsLogging(true);
     try {
-      await addDoc(collection(db, 'wellness_logs'), {
+      const wellnessRef = await addDoc(collection(db, 'wellness_logs'), {
         userId: profile.uid,
         mood,
         stressLevel: stress,
@@ -94,7 +94,7 @@ export const Wellness: React.FC = () => {
       // Reward points — atomic, and it keeps `level` on the curve. The previous
       // `points: profile.points + 30` overwrote whatever XP had landed since the
       // profile snapshot was taken, so recovery logging could LOWER your total.
-      await awardXp(profile.uid, 30);
+      await awardXp(profile.uid, 'wellness', wellnessRef.id);
       // "Sleep Master" (8h+ x3) and "Wellness Zen" (mood + stress 3 days
       // running) — both read the two collections written just above, so this
       // is the only place either can be detected.

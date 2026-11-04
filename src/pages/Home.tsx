@@ -219,16 +219,13 @@ export const Home: React.FC = () => {
     setWater((current) => current + amount);
     try {
       celebrateSmall();
-      await addDoc(collection(db, 'water_logs'), {
+      const waterRef = await addDoc(collection(db, 'water_logs'), {
         userId: profile.uid,
         amount,
         timestamp: serverTimestamp(),
       });
-      // Atomic, via awardXp: a bare `points: profile.points + n` is a
-      // read-modify-write against a value from a Firestore snapshot that may
-      // already be stale, so it silently ERASED any XP awarded in between —
-      // and it never recomputed `level`, leaving the XP bar off its curve.
-      await awardXp(profile.uid, Math.round(amount / 25));
+      // The server reads the amount from the log itself (1 XP per 25 ml).
+      await awardXp(profile.uid, 'water', waterRef.id);
       await checkAndAwardBadge(profile.uid, 'hydration_hero');
     } catch (error) {
       handleFirestoreError(error, 'write', 'water_logs');

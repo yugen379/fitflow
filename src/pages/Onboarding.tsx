@@ -8,7 +8,8 @@ import { LogoMark } from '../components/Logo';
 import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { requestPushPermission, micSupported } from '../lib/pushPermission';
-import { computeLevel } from '../services/missionUtils';
+import { callAwardXp } from '../services/xpService';
+import { reportSwallowed } from '../lib/telemetry';
 
 type Goal = 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic_performance';
 
@@ -103,11 +104,8 @@ export const Onboarding: React.FC = () => {
       goal: formData.goal,
       healthConditions: formData.healthConditions.length > 0 ? formData.healthConditions : ['None'],
       dietaryPreferences: formData.dietaryPreferences.length > 0 ? formData.dietaryPreferences : ['None'],
-      points: 100,
-      // 100 starter XP = Level 2 on the shared curve (see missionUtils) — the
-      // classic instant early win. Kept in sync via computeLevel, not hardcoded math.
-      level: computeLevel(100).level,
-      badges: ['pioneer'],
+      // The starter 100 XP + Pioneer badge (instant Level 2) are granted by the
+      // server below: the rules no longer accept points/level/badges from the app.
       updatedAt: serverTimestamp(),
     };
 
@@ -126,6 +124,11 @@ export const Onboarding: React.FC = () => {
           // ignore: older Firestore rules don't list goalWeight yet
         }
       }
+
+      // Once per account (server ledger), so re-running onboarding can't farm it.
+      try {
+        await callAwardXp('onboarding');
+      } catch (e) { reportSwallowed('onboarding.starterXp', e, { uid: user.uid }); }
 
       try {
         await addDoc(collection(db, 'weight_history'), {

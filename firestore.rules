@@ -28,9 +28,11 @@ service cloud.firestore {
              (!('dayTargets' in data) || data.dayTargets is map) &&
              (!('uid' in data) || data.uid == request.auth.uid) &&
              (!('streak' in data) || data.streak is number) &&
-             (!('points' in data) || data.points is number) &&
-             (!('level' in data) || data.level is number) &&
-             (!('badges' in data) || data.badges is list) &&
+             // XP is server-awarded (functions/src/xp.ts): a new account starts
+             // at zero and only the awardXp function can raise it.
+             (!('points' in data) || data.points == 0) &&
+             (!('level' in data) || data.level == 1) &&
+             (!('badges' in data) || (data.badges is list && data.badges.size() == 0)) &&
              (!('healthConditions' in data) || data.healthConditions is list) &&
              (!('dietaryPreferences' in data) || data.dietaryPreferences is list) &&
              (!('fcmToken' in data) || data.fcmToken is string) &&
@@ -237,6 +239,19 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // v1.6.1 and older apps finish onboarding by writing the starter grant
+    // (100 XP, Level 2, Pioneer) themselves. Without this, anyone signing up
+    // on an old APK would be stuck on the onboarding screen. It allows exactly
+    // that one transition, only from a zero score, so it can't be repeated or
+    // stretched. Every other XP change goes through the awardXp function.
+    function isLegacyOnboardingGrant() {
+      return existing().get('points', 0) == 0 &&
+             existing().get('badges', []).size() == 0 &&
+             incoming().points == 100 &&
+             incoming().level == 2 &&
+             incoming().badges == ['pioneer'];
+    }
+
     match /users/{userId} {
       // OWNER-ONLY. Cross-user reads go to /public_profiles above.
       allow get: if isOwner(userId);
@@ -252,7 +267,11 @@ service cloud.firestore {
         // so a client can never grant itself Pro.
         incoming().diff(existing()).affectedKeys().hasOnly([
           'displayName', 'photoURL', 'age', 'weight', 'height', 'goal', 'goalWeight',
-          'streak', 'points', 'level', 'badges',
+          // points / level / badges are NOT here: since v1.6.2 only the awardXp
+          // function writes them, so no client can put a forged score on the
+          // leaderboard. (streak stays: it is computed on-device so it works
+          // offline, and the public mirror clamps it to the account's age.)
+          'streak',
           'healthConditions', 'dietaryPreferences',
           'fcmToken', 'notificationsEnabled', 'lastReminderDate',
           // Denormalized engagement fields read by the proactive-nudge functions.
@@ -276,7 +295,13 @@ service cloud.firestore {
           'todayActivity',
           // User-owned nutrition preferences (safe for the client to set).
           'macroTargets', 'dayTargets', 'trialEndingNotifiedAt',
+          // Listed ONLY so the legacy onboarding grant below can pass; any
+          // other change to these three is refused by the clause after this.
+          'points', 'level', 'badges',
         ])
+      ) && (
+        !incoming().diff(existing()).affectedKeys().hasAny(['points', 'level', 'badges']) ||
+        isLegacyOnboardingGrant()
       );
       allow delete: if isOwner(userId);
 

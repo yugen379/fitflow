@@ -1,41 +1,56 @@
-import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../lib/firestore';
-import { computeLevel } from './missionUtils';
+import { app } from '../lib/firebase';
 import { checkProgressionBadges } from './badgeService';
 import { reportSwallowed } from '../lib/telemetry';
 
 /**
- * Award XP and keep the stored `level` in sync with the curve.
+ * XP is awarded by the SERVER (functions/src/xp.ts) since v1.6.2.
  *
- * `points` is incremented atomically (no read-modify-write races between a meal
- * log and a water tap landing together), then the authoritative total is read
- * back and `level` is rewritten only when the curve says it changed — that
- * write is what makes the Home XP bar's level-up moment fire everywhere the
- * profile is displayed. XP is a reward, never a blocker: any failure here is
- * swallowed so logging flows can't be broken by a points hiccup.
+ * The app used to `increment(points)` itself, and the rules accepted any value,
+ * so a modified client could write any score onto the shared leaderboard. The
+ * rules now reject `points`, `level` and `badges` from clients entirely.
+ *
+ * The app reports WHAT happened (the id of the meal / workout / water log /
+ * wellness log / route it just saved). The server checks the record is the
+ * caller's, works out the XP from the record itself, awards each record once
+ * and caps each activity type per day. The new total reaches the UI through
+ * the profile snapshot listener, exactly as before.
  */
-export const awardXp = async (userId: string, amount: number): Promise<void> => {
-  if (!userId || typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) return;
+export type XpReason = 'meal' | 'workout' | 'water' | 'wellness' | 'run' | 'badge' | 'onboarding';
+
+export interface XpResult {
+  awarded: number;
+  points: number;
+  level: number;
+  duplicate?: boolean;
+  capped?: boolean;
+  badgeGranted?: boolean;
+}
+
+/** The callable, loaded on first use so firebase/functions stays off the boot path. */
+export const callAwardXp = async (reason: XpReason, refId = ''): Promise<XpResult> => {
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const res = await httpsCallable<{ reason: XpReason; refId: string }, XpResult>(
+    getFunctions(app),
+    'awardXp',
+  )({ reason, refId });
+  return res.data;
+};
+
+/**
+ * Award XP for a record the user just saved. XP is a reward, never a blocker:
+ * a failure here never breaks the logging flow, but it is counted, because XP
+ * that silently fails to land is a progress bar that stops moving.
+ */
+export const awardXp = async (userId: string, reason: XpReason, refId: string): Promise<void> => {
+  if (!userId || !refId) return;
   try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, { points: increment(Math.floor(amount)) });
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) return;
-    const points = typeof snap.data().points === 'number' ? snap.data().points : 0;
-    const { level } = computeLevel(points);
-    if (snap.data().level !== level) {
-      await updateDoc(userRef, { level });
-    }
+    const { points, level } = await callAwardXp(reason, refId);
     try {
       await checkProgressionBadges(userId, points, level);
     } catch (err) {
       reportSwallowed('xpService.progressionBadges', err, { userId, points, level });
     }
   } catch (err) {
-    // XP is a reward, never a blocker — the logging flow still succeeds. But
-    // XP that silently fails to land is a progression bar that stops moving
-    // for reasons no one can see, so the failure is counted.
-    reportSwallowed('xpService.awardXp', err, { userId, amount });
-    /* swallow — see note above */
+    reportSwallowed('xpService.awardXp', err, { userId, reason });
   }
 };

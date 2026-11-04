@@ -243,10 +243,14 @@ const outsideText = [...sources.entries()]
   .map(([, t]) => t)
   .join('\n');
 
+// Since v1.6.2 the server grants the onboarding badge itself (functions/src/xp.ts),
+// so that path counts only if the server names the badge AND the app makes the call.
+const xpServerSrc = readFileSync(join(ROOT, 'functions', 'src', 'xp.ts'), 'utf8');
 const reachedBy = (id) => {
   const named = new RegExp(`'${id}'`);
   if (named.test(outsideText)) return 'call site';
   if (named.test(liveCheckerBodies)) return 'checker';
+  if (new RegExp(`badge = "${id}"`).test(xpServerSrc) && /callAwardXp\('onboarding'\)/.test(outsideText)) return 'server (onboarding)';
   return null;
 };
 const unreachable = badgeIds.filter((id) => reachedBy(id) === null);
@@ -273,7 +277,10 @@ check('a saved plan can actually be started',
 // Rules + indexes must know about the collection, or the feature 403s / hangs.
 const rules = readFileSync(join(ROOT, 'firestore.rules'), 'utf8');
 const indexes = JSON.parse(readFileSync(join(ROOT, 'firestore.indexes.json'), 'utf8'));
-const fnsSrc = readFileSync(join(ROOT, 'functions', 'src', 'index.ts'), 'utf8');
+// Every server source file: deletion lives in account.ts since v1.6.2.
+const fnsDir = join(ROOT, 'functions', 'src');
+const fnsSrc = readdirSync(fnsDir).filter((n) => n.endsWith('.ts'))
+  .map((n) => readFileSync(join(fnsDir, n), 'utf8')).join('\n');
 check('workout_plans has security rules', /match \/workout_plans\//.test(rules));
 check('workout_plans rules are owner-scoped',
   /match \/workout_plans\/[\s\S]{0,400}?request\.auth\.uid/.test(rules));

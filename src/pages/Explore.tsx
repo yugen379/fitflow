@@ -159,7 +159,7 @@ export const Explore: React.FC = () => {
     const cals = Math.round(km * 60 * (type === 'cycle' ? 0.6 : type === 'walk' ? 0.7 : 1));
 
     try {
-      await addDoc(collection(db, 'activity_routes'), {
+      const routeRef = await addDoc(collection(db, 'activity_routes'), {
         userId: profile.uid,
         type,
         path,
@@ -169,11 +169,9 @@ export const Explore: React.FC = () => {
         caloriesBurned: cals,
         timestamp: serverTimestamp(),
       });
-      // Atomic, via awardXp: a bare `points: profile.points + n` is a
-      // read-modify-write against a value from a Firestore snapshot that may
-      // already be stale, so it silently ERASED any XP awarded in between —
-      // and it never recomputed `level`, leaving the XP bar off its curve.
-      await awardXp(profile.uid, Math.floor(km * 100));
+      // The server reads distance and duration from the route (100 XP per km,
+      // and none for a speed no human reaches on that activity).
+      await awardXp(profile.uid, 'run', routeRef.id);
       if (km >= 5) await checkAndAwardBadge(profile.uid, 'marathoner');
       showToast(`Saved · ${km.toFixed(2)} km`);
     } catch {

@@ -3,32 +3,14 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
-import { getFirestore } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
 import Stripe from "stripe";
 
-admin.initializeApp();
-
-// EVERY function must talk to the app's NAMED database.
-//
-// `admin.firestore()` returns the (default) database. This project stores all
-// of its data in a named one (see firebase.json "database" and the client's
-// firestoreDatabaseId), so for the whole life of these functions the server
-// side has been reading and writing a different, near-empty database from the
-// app. Nothing errored — (default) exists, it is simply not where the data is.
-//
-// What that silently broke:
-//   • Stripe webhooks wrote entitlement into (default). A user could pay and
-//     the app, reading the named database, would never see the subscription.
-//   • Every scheduled push (streak-risk, meal, win-back, workout reminders,
-//     trial-ending) queried users from (default) and found only stubs, so no
-//     nudge has ever been delivered.
-//   • Weekly recaps were written where the app cannot read them.
-//   • deleteAccount deleted from (default), leaving the real user data intact
-//     in the named database — an account deletion that did not delete.
-const DATABASE_ID =
-  process.env.FIRESTORE_DATABASE_ID || "ai-studio-0bcd2aaf-b5da-4706-b41f-bfc7daa1974e";
-const db = getFirestore(admin.app(), DATABASE_ID);
+// The named-database client and app init live in db.ts (shared with xp.ts and
+// account.ts). Read the note there before touching it.
+import { db, DATABASE_ID } from "./db";
+export { awardXp } from "./xp";
+export { deleteAccount } from "./account";
 
 // Gemini key lives in Firebase Secret Manager (replaces the deprecated
 // functions.config() runtime config, which sunsets March 2027). Set it with:
@@ -280,46 +262,6 @@ export const stripeWebhook = functions.https.onRequest(
   });
 
 // ---------------------------------------------------------------------------
-// Account deletion — server-side cascade (more robust than client-side)
-// ---------------------------------------------------------------------------
-export const deleteAccount = functions.https.onCall(async (data: any, context: any) => {
-  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign in required");
-  const uid = context.auth.uid;
-
-  // Firestore batches cap at 500 writes — chunk so heavy users don't crash the cascade.
-  const deleteDocs = async (refs: admin.firestore.DocumentReference[]) => {
-    for (let i = 0; i < refs.length; i += 450) {
-      const batch = db.batch();
-      refs.slice(i, i + 450).forEach((r) => batch.delete(r));
-      await batch.commit();
-    }
-  };
-
-  const collections = [
-    "meals", "workouts", "water_logs", "sleep_logs", "wellness_logs",
-    "weight_history", "body_metrics", "activity_routes", "notifications",
-    "posts", "comments", "activity_days", "streak_freezes", "workout_plans",
-  ];
-  for (const c of collections) {
-    const snap = await db.collection(c).where("userId", "==", uid).get();
-    if (!snap.empty) await deleteDocs(snap.docs.map((d) => d.ref));
-  }
-
-  // Docs keyed by uid rather than a userId field: meal plan + weekly recaps.
-  await db.doc(`meal_plans/${uid}`).delete().catch(() => {});
-  const recaps = await db.collection("weekly_recaps")
-    .where(admin.firestore.FieldPath.documentId(), ">=", `${uid}_`)
-    .where(admin.firestore.FieldPath.documentId(), "<", `${uid}_`)
-    .get();
-  if (!recaps.empty) await deleteDocs(recaps.docs.map((d) => d.ref));
-
-  // recursiveDelete removes the user doc AND its subcollections (progression, blocks…).
-  await db.recursiveDelete(db.doc(`users/${uid}`)).catch(() => {});
-  await admin.auth().deleteUser(uid).catch(() => {});
-  return { deleted: true };
-});
-
-// ---------------------------------------------------------------------------
 // Gemini proxy — holds the API key server-side so it never ships in the client
 // bundle. Every Gemini-backed feature routes through here when the client has
 // VITE_GEMINI_PROXY_URL set. Mirrors the client model cascade and per-action
@@ -497,6 +439,15 @@ const PUBLIC_PROFILE_FIELDS = [
 const publicViewOf = (u: Record<string, any>): Record<string, any> => {
   const out: Record<string, any> = {};
   for (const f of PUBLIC_PROFILE_FIELDS) if (u[f] !== undefined) out[f] = u[f];
+  // The streak is still computed on the device (it has to work offline), so the
+  // client can write any number. Points and level are server-written since
+  // v1.6.2 (see xp.ts); the streak is clamped here instead: nobody can have
+  // been active on more days than their account has existed.
+  if (typeof out.streak === "number") {
+    const created = u.createdAt?.toMillis ? u.createdAt.toMillis() : null;
+    const maxDays = created ? Math.floor((Date.now() - created) / 86_400_000) + 1 : 1;
+    out.streak = Math.max(0, Math.min(Math.floor(out.streak), maxDays));
+  }
   return out;
 };
 

@@ -7,7 +7,6 @@ import { reportSwallowed } from '../lib/telemetry';
 import { saveToCatalog } from './foodCatalogService';
 import { awardXp } from './xpService';
 import { checkMacroBadge, checkSocialBadge, checkWeeklyWorkoutBadge } from './badgeService';
-import { XP_AWARDS } from './missionUtils';
 
 /**
  * Mark the user active for today and refresh their streak.
@@ -79,7 +78,7 @@ export const logMeal = async (
     try { await checkAndUpdateStreak(userId); } catch { /* streak is best-effort */ }
     // XP only on the confirmed write — the offline-queued path earns it on replay.
     // Fire-and-forget: the XP bar reacts via the profile snapshot, not this call.
-    void awardXp(userId, XP_AWARDS.meal);
+    void awardXp(userId, 'meal', docRef.id);
     // Grow the shared food catalog (#3) — best-effort, never blocks the log.
     saveToCatalog({
       name: (meal as any).name,
@@ -139,7 +138,7 @@ export const logWorkout = async (
     try { await checkAndUpdateStreak(userId); } catch { /* streak is best-effort */ }
     // XP only on the confirmed write — the offline-queued path earns it on replay.
     // Fire-and-forget: the XP bar reacts via the profile snapshot, not this call.
-    void awardXp(userId, XP_AWARDS.workout);
+    void awardXp(userId, 'workout', docRef.id);
     // "Week Warrior" — 5 workouts inside 7 days. Every completed session goes
     // through here, so this is the one place the count is always right.
     void checkWeeklyWorkoutBadge(userId);

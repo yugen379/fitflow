@@ -172,8 +172,10 @@ manual.push(
    'no UI test covers any of the 22 pages; this path has never been walked by a stranger'],
   ['Sentry issues reviewed after 48h of real traffic',
    'the point of yesterday\'s work is the signal it produces, not the code'],
-  ['Emulator-backed proofs run: npm run proof:ui and npm run test:rules:privacy',
-   'these two are the only gates that render a signed-in page and the only ones that ' +
+  ['Emulator-backed proofs run: npm run proof:ui, npm run test:rules:privacy and npm run proof:backend',
+   'proof:backend is the only gate that calls the real Cloud Functions (account deletion, ' +
+   'server-awarded XP) — the v1.6.1 deleteAccount bug shipped because nothing ever did. ' +
+   'The other two are the only gates that render a signed-in page and the only ones that ' +
    'ask the real rules engine, but they need the Firebase emulator (JDK 21+ — the system ' +
    'JDK is 19; use Android Studio: export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"). ' +
    'Kept out of the automated list so preflight stays runnable anywhere, but do not ship without them.'],

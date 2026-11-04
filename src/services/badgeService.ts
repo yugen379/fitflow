@@ -1,6 +1,6 @@
 import { db } from '../lib/firestore';
-import { collection, doc, updateDoc, arrayUnion, getDoc, getDocs, addDoc, increment, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
-import { computeLevel } from './missionUtils';
+import { collection, doc, getDoc, getDocs, addDoc, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { callAwardXp } from './xpService';
 import { daysBetweenKeys } from './retentionUtils';
 import { dayKeysOf, hasConsecutiveRun, sinceDaysAgo } from './badgeUtils';
 import { reportSwallowed } from '../lib/telemetry';
@@ -65,23 +65,11 @@ export async function checkAndAwardBadge(userId: string, badgeId: string): Promi
     const badge = ALL_BADGES.find(b => b.id === badgeId);
     if (!badge) return null;
 
-    // `arrayUnion` makes the badge itself race-free, but the 150 XP must be an
-    // atomic increment too: written as `profile.points + 150` it discarded any
-    // XP awarded between the read above and this write — and two badges earned
-    // together (which happens constantly, e.g. a workout that also breaks a
-    // streak) awarded 150 total instead of 300.
-    await updateDoc(userRef, {
-      badges: arrayUnion(badgeId),
-      points: increment(150),
-    });
-    // Re-read the authoritative total so `level` matches the curve rather than
-    // a figure computed from a stale snapshot.
-    const after = await getDoc(userRef);
-    const newPoints = typeof after.data()?.points === 'number' ? after.data()!.points : 0;
-    const newLevel = computeLevel(newPoints).level;
-    if (after.data()?.level !== newLevel) {
-      await updateDoc(userRef, { level: newLevel });
-    }
+    // The server grants the badge and its 150 XP (functions/src/xp.ts) — the
+    // rules no longer let the app write `badges` or `points`. It grants each
+    // badge once, and re-checks the ones it can verify (XP, level, streak).
+    const result = await callAwardXp('badge', badgeId);
+    if (!result.badgeGranted) return null;
 
     await addDoc(collection(db, 'notifications'), {
       userId,
