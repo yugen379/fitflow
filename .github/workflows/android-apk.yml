@@ -114,6 +114,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The default list includes the legacy "tools" package, which the
+          # cmdline-tools 16 runner image no longer carries (sdkmanager exits 1).
+          # Gradle fetches the platforms it needs itself.
+          packages: platform-tools
 
       - name: Set up signing keystore (enables a signed RELEASE build)
         id: keystore
