@@ -132,7 +132,9 @@ scenario('midday, nothing logged → workout leads', { hour: 13 }, (m) =>
   m.next !== 'workout' ? `next=${m.next}` : null);
 
 scenario('all three done → complete, no next', {
-  hour: 18, workoutsToday: 1, mealsLogged: 3, caloriesConsumed: 2200, steps: 9500,
+  // Derived from the goal: the literal 9500 silently stopped meaning "done"
+  // when the goal moved from 8,000 to 10,000.
+  hour: 18, workoutsToday: 1, mealsLogged: 3, caloriesConsumed: 2200, steps: STEPS_GOAL + 500,
 }, (m) =>
   !m.complete ? `done=${m.done}` :
   m.headline !== 'Mission complete — recover well.' ? `headline "${m.headline}"` : null);

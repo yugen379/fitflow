@@ -591,6 +591,17 @@
   @media (prefers-reduced-motion: reduce) {
     .ff-drift { animation: none; opacity: 0.3; }
   }
+
+  /* Heatmap cell entrance (StreakHeatmap) — one CSS animation instead of 91
+     motion components. Opacity + transform only, so it runs on the compositor. */
+  @keyframes ff-cell-in {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .ff-cell-in { animation: ff-cell-in 200ms ease-out both; }
+  @media (prefers-reduced-motion: reduce) {
+    .ff-cell-in { animation: none; }
+  }
 }
 
 @layer utilities {
@@ -751,6 +762,17 @@
   box-shadow:
     0 14px 40px -20px rgba(11, 18, 32, 0.30),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* The dock carries the labels people read most, so it must not rely on the
+   backdrop blur to hide what scrolls beneath it: Android WebView did not
+   render the blur, and at 78% white the card text underneath ran straight
+   through "Home" and "Fuel" (Android 16 emulator, v1.6.3 review). */
+#bottom-nav {
+  background: rgba(14, 20, 34, 0.96);
+}
+:root[data-theme="light"] #bottom-nav {
+  background: rgba(255, 255, 255, 0.96);
 }
 
 /* ── Hard-coded utility rescue ─────────────────────────────────────────── */

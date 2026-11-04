@@ -56,10 +56,12 @@ const removeFromPost = async (
 
 /** Erase everything FitFlow stores about `uid`. Idempotent. */
 export const deleteUserData = async (uid: string): Promise<void> => {
-  for (const c of USER_COLLECTIONS) {
+  // In parallel: these are independent, and run one after another they made
+  // the user wait ~15-20 s on Settings (Android 16 emulator, v1.6.3 review).
+  await Promise.all(USER_COLLECTIONS.map(async (c) => {
     const snap = await db.collection(c).where("userId", "==", uid).get();
     if (!snap.empty) await deleteRefs(snap.docs.map((d) => d.ref));
-  }
+  }));
 
   // The user's own posts, WITH everyone's comments and likes under them.
   const posts = await db.collection("posts").where("userId", "==", uid).get();

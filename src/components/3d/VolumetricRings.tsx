@@ -22,6 +22,7 @@ import type { Points as ThreePoints } from 'three';
 import { AdditiveBlending, BufferAttribute, Color, Mesh } from 'three';
 
 import { cn } from '../../lib/utils';
+import { useCanvasKey, useTabVisible } from '../layout/DockTabs';
 import { prefersReducedMotion } from '../../lib/motion';
 
 // ---------------------------------------------------------------------------
@@ -257,6 +258,7 @@ export const VolumetricRings: React.FC<{ rings: RingDatum[]; className?: string 
 }) => {
   const reduced = prefersReducedMotion();
   const [supported] = useState(hasWebGL);
+  const canvasKey = useCanvasKey();
   const [visible, setVisible] = useState(true);
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -283,12 +285,16 @@ export const VolumetricRings: React.FC<{ rings: RingDatum[]; className?: string 
     return () => observer.disconnect();
   }, []);
 
-  const animate = visible && !reduced;
+  const tabVisible = useTabVisible();
+  // Also pause inside a hidden (kept-alive) dock tab.
+  const animate = visible && !reduced && tabVisible;
 
   return (
     <div ref={hostRef} className={cn('relative aspect-square w-full max-w-[19rem] mx-auto', className)}>
       {supported && !reduced ? (
         <Canvas
+          // Fresh canvas after a kept-alive tab returns (see useCanvasKey).
+          key={canvasKey}
           // `demand` means frames are drawn only when something calls
           // invalidate(). Settled rings cost nothing.
           frameloop={animate ? 'always' : 'demand'}

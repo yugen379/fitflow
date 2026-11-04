@@ -36,6 +36,17 @@ export const connectEmulators = async (auth: Auth): Promise<void> => {
   // because it is the only route for tests that need a session before the
   // login screen has painted; useAuth and ProtectedRoute still run exactly as
   // they do in production — only the credential source differs.
+  // XP and account deletion are Cloud Functions (v1.6.2). Without this, an
+  // emulator-backed run would send its calls to the PRODUCTION functions.
+  // getFunctions(app) returns one cached instance, so this reaches every caller.
+  const { getFunctions, connectFunctionsEmulator } = await import('firebase/functions');
+  const { app } = await import('./firebase');
+  try {
+    connectFunctionsEmulator(getFunctions(app), '127.0.0.1', 5001);
+  } catch {
+    /* already connected */
+  }
+
   (window as unknown as Record<string, unknown>).__e2eSignIn = (email: string, password: string) =>
     signInWithEmailAndPassword(auth, email, password);
 };

@@ -46,3 +46,7 @@ promo/
 # Release artifacts downloaded from GitHub Releases for manual Play upload.
 # Signed binaries — never commit them; the GitHub Release is the source of truth.
 release/
+
+# Emulator-wired production build used by proof:latency
+dist-e2e/
+!.env.e2e

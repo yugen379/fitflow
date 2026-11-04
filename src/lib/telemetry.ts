@@ -25,6 +25,11 @@ export const initTelemetry = async () => {
         dsn: SENTRY_DSN,
         environment: ENV,
         release: RELEASE,
+        // Without this integration tracesSampleRate did nothing: no page-load
+        // or tap-response (INP) data ever reached Sentry. It records Web Vitals
+        // for 10% of sessions, so real phones can confirm the 200 ms tap budget
+        // that proof:latency enforces in CI.
+        integrations: [mod.browserTracingIntegration()],
         tracesSampleRate: 0.1,
         replaysSessionSampleRate: 0.05,
         replaysOnErrorSampleRate: 1.0,

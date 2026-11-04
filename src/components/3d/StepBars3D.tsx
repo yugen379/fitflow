@@ -19,6 +19,7 @@ import { Color, Mesh } from 'three';
 
 import { cn } from '../../lib/utils';
 import { prefersReducedMotion } from '../../lib/motion';
+import { useCanvasKey } from '../layout/DockTabs';
 
 export interface DayBar {
   /** "Sun", "Mon", … */
@@ -161,12 +162,15 @@ export const StepBars3D: React.FC<{ bars: DayBar[]; goal: number; className?: st
 }) => {
   const reduced = prefersReducedMotion();
   const [supported] = useState(hasWebGL);
+  const canvasKey = useCanvasKey();
 
   return (
     <div className={cn('relative w-full', className)}>
       <div className="h-44">
         {supported && !reduced ? (
           <Canvas
+            // Fresh canvas after a kept-alive tab returns (see useCanvasKey).
+            key={canvasKey}
             frameloop="demand"
             dpr={[1, 2]}
             camera={{ position: [0, 1.9, 5.4], fov: 38 }}

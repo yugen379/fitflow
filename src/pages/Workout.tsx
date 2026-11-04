@@ -138,12 +138,32 @@ export const Workout: React.FC = () => {
     }
   }, [profile?.goal]);
 
+  // Session clock, driven by the wall clock rather than by counting ticks.
+  //
+  // The Train tab is kept alive while you visit other tabs (DockTabs), and a
+  // hidden tab's effects pause. A tick counter would therefore stop while you
+  // asked the Coach something mid-workout, and the saved duration and calories
+  // would come out short. When this effect re-runs with the SAME session state
+  // it means the tab was hidden and is back, so the time away is added — it was
+  // workout time. Rest periods are excluded, exactly as before.
+  const clockRef = useRef<{ key: string; at: number } | null>(null);
   useEffect(() => {
-    let t: ReturnType<typeof setInterval>;
-    if (activeWorkout && step === 'active' && restRemaining === null) {
-      t = setInterval(() => setTimer(v => v + 1), 1000);
+    const counting = !!activeWorkout && step === 'active' && restRemaining === null;
+    if (!counting) { clockRef.current = null; return; }
+    const key = `${activeWorkout}|${step}`;
+    // `last` = the instant up to which whole seconds have been credited.
+    let last = Date.now();
+    const prev = clockRef.current?.key === key ? clockRef.current.at : null;
+    if (prev !== null) {
+      const away = Math.floor((last - prev) / 1000);
+      if (away > 0) setTimer(v => v + away);
+      last = prev + away * 1000; // carry the partial second
     }
-    return () => clearInterval(t);
+    const t = setInterval(() => {
+      const whole = Math.floor((Date.now() - last) / 1000);
+      if (whole > 0) { last += whole * 1000; setTimer(v => v + whole); }
+    }, 1000);
+    return () => { clearInterval(t); clockRef.current = { key, at: last }; };
   }, [activeWorkout, step, restRemaining]);
 
   useEffect(() => {
@@ -192,13 +212,15 @@ export const Workout: React.FC = () => {
   // a back-navigation, or a remount from a hot reload, cannot silently restart
   // the session on top of one already in progress.
   const location = useLocation();
-  const planStartedRef = useRef(false);
+  // Remembers WHICH plan was consumed, not just "one was": the Train tab now
+  // stays alive between visits, so a boolean would block every later plan.
+  const planStartedRef = useRef<unknown>(null);
   useEffect(() => {
     const plan = (location.state as any)?.startPlan;
-    if (!plan || planStartedRef.current) return;
+    if (!plan || planStartedRef.current === plan) return;
     const exercises = Array.isArray(plan.exercises) ? plan.exercises : [];
     if (!exercises.length) return;
-    planStartedRef.current = true;
+    planStartedRef.current = plan;
     navigate(location.pathname, { replace: true, state: null });
     startSession(plan.name || 'Custom Stack', exercises.map((e: any) => ({
       id: e.id,

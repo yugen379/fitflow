@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
 import { Logo } from './components/Logo';
@@ -16,6 +16,7 @@ import { LoadingBar } from './components/LoadingBar';
 import { initTelemetry, identify } from './lib/telemetry';
 import { warmLikelyRoutes } from './lib/prefetch';
 import { LiquidSkeleton, ParticleField, SpatialPageTransition } from './components/layout/SpatialPageTransition';
+import { DockTabs, type DockTab } from './components/layout/DockTabs';
 // The bottom nav is the only other eager consumer of the animation library and
 // it never renders on the signed-out first paint, so it loads a beat later
 // rather than holding up the hero.
@@ -50,6 +51,17 @@ const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
 const Steps = lazy(() => import('./pages/Steps').then(m => ({ default: m.Steps })));
 const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })));
 
+// The bottom-nav tabs. Kept alive between visits by DockTabs; must match the
+// dock's items in components/layout/FloatingDock.tsx.
+const DOCK_TABS: DockTab[] = [
+  { path: '/', Page: Home },
+  { path: '/track', Page: Track },
+  { path: '/workout', Page: Workout },
+  { path: '/coach', Page: Coach },
+  { path: '/profile', Page: Profile },
+];
+const DOCK_PATHS = new Set(DOCK_TABS.map((t) => t.path));
+
 /** Sign out without dragging the auth module onto the boot path. */
 const signOutOfApp = async () => {
   try {
@@ -61,7 +73,7 @@ const signOutOfApp = async () => {
   }
 };
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { user, profile, loading, profileUnreachable, profileErrorCode, retryProfile } = useAuth();
   const { showToast } = useToast();
   // Onboarding is a focused, full-screen flow: the dock sat on top of its
@@ -198,7 +210,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
       {/* Deliberately OUTSIDE the transition: the atmosphere is continuous
           across routes, so the screen is never actually blank between them. */}
       <ParticleField />
-      <SpatialPageTransition>{children}</SpatialPageTransition>
+      {/* The five dock tabs stay alive between visits (see DockTabs); every
+          other page mounts fresh through the transition as before. */}
+      <DockTabs tabs={DOCK_TABS} pathname={pathname} />
+      {!DOCK_PATHS.has(pathname) && <SpatialPageTransition>{children}</SpatialPageTransition>}
       {!isProfileIncomplete && pathname !== '/onboarding' && (
         <Suspense fallback={null}>
           <FloatingDock />
@@ -337,28 +352,31 @@ export default function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<ProtectedRoute>{lazyRoute(<Home />)}</ProtectedRoute>} />
-            <Route path="/track" element={<ProtectedRoute>{lazyRoute(<Track />)}</ProtectedRoute>} />
-            <Route path="/workout" element={<ProtectedRoute>{lazyRoute(<Workout />)}</ProtectedRoute>} />
-            <Route path="/community" element={<ProtectedRoute>{lazyRoute(<Community />)}</ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute>{lazyRoute(<Profile />)}</ProtectedRoute>} />
-            <Route path="/onboarding" element={<ProtectedRoute>{lazyRoute(<Onboarding />)}</ProtectedRoute>} />
-            <Route path="/wellness" element={<ProtectedRoute>{lazyRoute(<Wellness />)}</ProtectedRoute>} />
-            <Route path="/explore" element={<ProtectedRoute>{lazyRoute(<Explore />)}</ProtectedRoute>} />
-            <Route path="/library" element={<ProtectedRoute>{lazyRoute(<Library />)}</ProtectedRoute>} />
-            <Route path="/analytics" element={<ProtectedRoute>{lazyRoute(<Analytics />)}</ProtectedRoute>} />
-            <Route path="/meal-plan" element={<ProtectedRoute>{lazyRoute(<MealPlan />)}</ProtectedRoute>} />
-            <Route path="/challenges" element={<ProtectedRoute>{lazyRoute(<Challenges />)}</ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute>{lazyRoute(<Settings />)}</ProtectedRoute>} />
+            {/* ONE layout route for every signed-in page. React Router keeps a
+                layout element mounted across navigation between its children,
+                which is what lets DockTabs keep the five tabs alive. (Before,
+                each route had its own ProtectedRoute, so nothing could persist.) */}
+            <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+              {/* Dock tabs render inside ProtectedRoute via DockTabs. */}
+              {DOCK_TABS.map((t) => <Route key={t.path} path={t.path} element={null} />)}
+              <Route path="/community" element={lazyRoute(<Community />)} />
+              <Route path="/onboarding" element={lazyRoute(<Onboarding />)} />
+              <Route path="/wellness" element={lazyRoute(<Wellness />)} />
+              <Route path="/explore" element={lazyRoute(<Explore />)} />
+              <Route path="/library" element={lazyRoute(<Library />)} />
+              <Route path="/analytics" element={lazyRoute(<Analytics />)} />
+              <Route path="/meal-plan" element={lazyRoute(<MealPlan />)} />
+              <Route path="/challenges" element={lazyRoute(<Challenges />)} />
+              <Route path="/settings" element={lazyRoute(<Settings />)} />
+              <Route path="/pro" element={lazyRoute(<Pro />)} />
+              <Route path="/nutrition-goals" element={lazyRoute(<NutritionGoals />)} />
+              <Route path="/lab" element={lazyRoute(<Lab />)} />
+              <Route path="/steps" element={lazyRoute(<Steps />)} />
+              <Route path="/achievements" element={lazyRoute(<Achievements />)} />
+            </Route>
             <Route path="/privacy" element={lazyRoute(<Privacy />)} />
             <Route path="/delete-account" element={lazyRoute(<DeleteAccount />)} />
             <Route path="/terms" element={lazyRoute(<Terms />)} />
-            <Route path="/pro" element={<ProtectedRoute>{lazyRoute(<Pro />)}</ProtectedRoute>} />
-            <Route path="/coach" element={<ProtectedRoute>{lazyRoute(<Coach />)}</ProtectedRoute>} />
-            <Route path="/nutrition-goals" element={<ProtectedRoute>{lazyRoute(<NutritionGoals />)}</ProtectedRoute>} />
-            <Route path="/lab" element={<ProtectedRoute>{lazyRoute(<Lab />)}</ProtectedRoute>} />
-            <Route path="/steps" element={<ProtectedRoute>{lazyRoute(<Steps />)}</ProtectedRoute>} />
-            <Route path="/achievements" element={<ProtectedRoute>{lazyRoute(<Achievements />)}</ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

@@ -349,10 +349,18 @@ check('Settings names the provider the account actually uses',
 const capProviders = (capConfig.match(/providers:\s*\[([^\]]*)\]/)?.[1] ?? '')
   .split(',').map((s) => s.trim().replace(/['"]/g, '')).filter(Boolean);
 check('capacitor.config lists the native providers', capProviders.length > 0, capProviders.join(' '));
+// Email/password has no native half — it runs in the JS SDK inside the
+// WebView (skipNativeAuth) — so it belongs in NATIVE_PROVIDERS (the APK can
+// finish it) but NOT in the plugin's providers list (nothing native to load).
+const JS_ONLY_PROVIDERS = new Set(['password']);
+const nativeNeedingPlugin = [...NATIVE_PROVIDERS].filter((p) => !JS_ONLY_PROVIDERS.has(p));
 check('capacitor.config and lib/authProviders agree',
   capProviders.every((p) => NATIVE_PROVIDERS.has(p)) &&
-  [...NATIVE_PROVIDERS].every((p) => capProviders.includes(p)),
-  `config=[${capProviders}] code=[${[...NATIVE_PROVIDERS]}]`);
+  nativeNeedingPlugin.every((p) => capProviders.includes(p)),
+  `config=[${capProviders}] code=[${nativeNeedingPlugin}]`);
+check('email/password is offered in the Android app (no native dependency, so no reason to hide it)',
+  NATIVE_PROVIDERS.has('password') && ENABLED_PROVIDERS.has('password'),
+  'until v1.6.3 the APK showed only "Continue with Google"');
 
 check('rgcfaIncludeGoogle is ON — native Google needs those classes at RUNTIME',
   /rgcfaIncludeGoogle\s*=\s*true/.test(variablesGradle),

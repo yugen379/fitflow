@@ -2,10 +2,10 @@
  * Floating spatial navigation dock.
  *
  * A frosted glass bar that hovers above the content rather than sitting on the
- * edge of the screen, with an active pill that slides between tabs using a
- * shared `layoutId` — so the indicator physically travels rather than fading
- * out and in somewhere else. That continuity is the whole point: it tells you
- * where you came from.
+ * edge of the screen, with an active pill that slides between tabs — so the
+ * indicator physically travels rather than fading out and in somewhere else.
+ * That continuity is the whole point: it tells you where you came from. (It is
+ * a CSS transform, not a shared `layoutId`: see the note on the pill below.)
  *
  * Carried over from the previous dock because they were right:
  *   • swipe down to dismiss, swipe up (or tap the tab) to bring it back;
@@ -17,7 +17,7 @@
  */
 
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PanInfo } from 'motion/react';
 import { ChevronUp, Dumbbell, Home, Sparkles, User, Utensils } from 'lucide-react';
@@ -41,6 +41,10 @@ const navItems = [
 
 export const FloatingDock: React.FC = () => {
   const [hidden, setHidden] = useState(false);
+  const { pathname } = useLocation();
+  // Same matching as NavLink: Home only on exactly "/", the rest by prefix.
+  const activeIndex = navItems.findIndex((item) =>
+    item.path === '/' ? pathname === '/' : pathname === item.path || pathname.startsWith(`${item.path}/`));
 
   const handleDragEnd = (_event: unknown, info: PanInfo) => {
     if (info.offset.y > 28 || info.velocity.y > 400) {
@@ -76,9 +80,35 @@ export const FloatingDock: React.FC = () => {
             <nav
               id="bottom-nav"
               aria-label="Primary"
-              className="glass-spatial h-[4.25rem] px-2 flex justify-between items-center gap-0.5"
+              className="glass-spatial relative h-[4.25rem] px-2 flex justify-between items-center gap-0.5"
               style={{ borderRadius: '1.5rem' }}
             >
+              {/* The active-tab highlight: ONE element slid by a CSS transform.
+                  It used a shared-layout animation (layoutId), which made the
+                  animation library measure element boxes on every tab switch —
+                  forced synchronous layout at the exact moment the new tab was
+                  being shown. Five equal slots make the position plain
+                  arithmetic, so nothing is measured and the slide runs on the GPU. */}
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-2 top-1/2 -translate-y-1/2 h-[3.25rem]">
+                <div
+                  className="h-full relative"
+                  style={{
+                    width: 'calc((100% - 0.5rem) / 5)',
+                    transform: `translateX(calc(${Math.max(activeIndex, 0)} * (100% + 0.125rem)))`,
+                    opacity: activeIndex < 0 ? 0 : 1,
+                    transition: 'transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1.05), opacity 160ms ease-out',
+                  }}
+                >
+                  <div
+                    className="absolute inset-x-0.5 inset-y-0 rounded-2xl"
+                    style={{
+                      background: 'rgba(204,255,0,0.11)',
+                      border: '1px solid rgba(204,255,0,0.28)',
+                      boxShadow: '0 0 22px -6px rgba(204,255,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)',
+                    }}
+                  />
+                </div>
+              </div>
               {navItems.map((item) => {
                 // Both the ripple and the prefetcher want onPointerDown, and a
                 // spread would silently win over an inline handler declared
@@ -100,18 +130,6 @@ export const FloatingDock: React.FC = () => {
                 >
                   {({ isActive }) => (
                     <div className="relative flex flex-col items-center justify-center py-2 min-h-[3.25rem]">
-                      {isActive && (
-                        <motion.div
-                          layoutId="dock-pill"
-                          transition={SPRING.snap}
-                          className="absolute inset-x-0.5 inset-y-0 rounded-2xl"
-                          style={{
-                            background: 'rgba(204,255,0,0.11)',
-                            border: '1px solid rgba(204,255,0,0.28)',
-                            boxShadow: '0 0 22px -6px rgba(204,255,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)',
-                          }}
-                        />
-                      )}
                       <div
                         className={cn(
                           'relative flex flex-col items-center justify-center gap-1 transition-colors duration-200',

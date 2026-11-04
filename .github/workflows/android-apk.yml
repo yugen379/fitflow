@@ -89,6 +89,8 @@ jobs:
           # which version broke rather than just "android".
           VITE_APP_VERSION: ${{ env.RELEASE_TAG }}
           VITE_APP_ENV: production
+          # Native shell: ships a self-destroying service worker (see vite.config).
+          VITE_NATIVE_SHELL: 'true'
         run: npm run build
 
       - name: Write google-services.json from secret (optional — enables push)
@@ -175,6 +177,8 @@ jobs:
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_VERSION: ${{ env.RELEASE_TAG }}
           VITE_APP_ENV: production
+          # Native shell: ships a self-destroying service worker (see vite.config).
+          VITE_NATIVE_SHELL: 'true'
         run: npm run build
 
       - name: Sync Play-safe web → Android

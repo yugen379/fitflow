@@ -17,6 +17,7 @@ import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { computeDailyTargets } from '../lib/nutritionTargets';
 import { MacroMatrix } from '../components/3d/MacroMatrix';
+import { useTabVisible } from '../components/layout/DockTabs';
 
 export const Track: React.FC = () => {
   const { profile } = useAuth();
@@ -25,6 +26,13 @@ export const Track: React.FC = () => {
   const [search, setSearch] = useState('');
   const [aiOpen, setAiOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  // This tab stays alive while you use the others (DockTabs). A scanner left
+  // open must not keep the camera streaming in the background — close it the
+  // moment the tab is hidden, which stops the stream via the effect below.
+  const tabVisible = useTabVisible();
+  useEffect(() => {
+    if (!tabVisible) setScanOpen(false);
+  }, [tabVisible]);
   const [aiInput, setAiInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [meals, setMeals] = useState<MealRecord[]>([]);

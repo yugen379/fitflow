@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { useAuth } from '../hooks/useAuth';
@@ -7,6 +6,10 @@ import { dayKey } from '../services/retentionUtils';
 
 const WEEKS = 13; // ~3 months
 const DAYS = 7;
+
+// One formatter for all 91 cells. Calling toLocaleDateString per cell built a
+// fresh Intl formatter 91 times on EVERY render of the Profile tab.
+const CELL_DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 
 const startOfDay = (d: Date) => {
   const c = new Date(d);
@@ -55,18 +58,26 @@ export const StreakHeatmap: React.FC<Props> = ({ className }) => {
   }, [profile?.uid]);
 
   // Build grid: WEEKS columns × 7 rows. Most-recent week on the right.
-  const today = startOfDay(new Date());
-  const cells: { date: Date; key: string; col: number; row: number; count: number }[] = [];
-  // Align rightmost column to today's weekday position
-  for (let col = WEEKS - 1; col >= 0; col--) {
-    for (let row = 0; row < DAYS; row++) {
-      const offsetFromToday = (WEEKS - 1 - col) * 7 + ((today.getDay() - row + 7) % 7);
-      const date = new Date(today);
-      date.setDate(today.getDate() - offsetFromToday);
-      const key = dayKey(date);
-      cells.push({ date, key, col, row, count: counts[key] || 0 });
+  // Rebuilt only when the data or the day changes — not on every profile
+  // update (XP, steps), which re-render this component constantly.
+  const todayKey = dayKey(new Date());
+  const cells = useMemo(() => {
+    const today = startOfDay(new Date());
+    const out: { key: string; col: number; row: number; count: number; label: string }[] = [];
+    // Align rightmost column to today's weekday position
+    for (let col = WEEKS - 1; col >= 0; col--) {
+      for (let row = 0; row < DAYS; row++) {
+        const offsetFromToday = (WEEKS - 1 - col) * 7 + ((today.getDay() - row + 7) % 7);
+        const date = new Date(today);
+        date.setDate(today.getDate() - offsetFromToday);
+        const key = dayKey(date);
+        const count = counts[key] || 0;
+        out.push({ key, col, row, count, label: `${CELL_DATE.format(date)} — ${count} session${count === 1 ? '' : 's'}` });
+      }
     }
-  }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counts, todayKey]);
 
   const intensity = (n: number) => {
     if (n === 0) return 0;
@@ -116,18 +127,19 @@ export const StreakHeatmap: React.FC<Props> = ({ className }) => {
             className="grid grid-flow-col gap-1"
             style={{ gridTemplateRows: `repeat(${DAYS}, minmax(0, 1fr))`, gridTemplateColumns: `repeat(${WEEKS}, minmax(0, 1fr))` }}
           >
+            {/* Plain cells with one CSS fade-in (compositor-only). They were 91
+                separately animated motion components, each with its own
+                animation controller — the single heaviest thing on the tab. */}
             {cells.map(c => (
-              <motion.div
+              <div
                 key={c.key}
-                title={`${c.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${c.count} session${c.count === 1 ? '' : 's'}`}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, delay: (c.col / WEEKS) * 0.3 }}
-                className="aspect-square rounded-sm"
+                title={c.label}
+                className="aspect-square rounded-sm ff-cell-in"
                 style={{
                   backgroundColor: colorFor(c.count),
                   gridColumn: c.col + 1,
                   gridRow: c.row + 1,
+                  animationDelay: `${Math.round((c.col / WEEKS) * 300)}ms`,
                 }}
               />
             ))}

@@ -116,3 +116,15 @@ Easiest path = make a **Google Group** and add these, then attach the group to t
 - Who can join: **Invited only**; add the 12+ tester emails as members.
 - Back in Play Console, attach `fitflow-testers@googlegroups.com` to the Closed track.
 - Reusable for every future test — you never re-type the list.
+
+---
+
+## 6) The 48-hour Sentry review (after the first testers install)
+
+Sentry only shows what real phones hit. Do this once ~48 hours after testers start, then weekly.
+
+1. **sentry.io → Issues**, filter `release:v1.6.x` (the build sends `VITE_APP_VERSION`, so each version has its own bucket) and sort by **Users**, not Events — one tester stuck in a crash loop can produce 500 events.
+2. Anything tagged `level:error` with **2+ users** is a release blocker. Open it, read the breadcrumbs (the taps just before the crash), and reproduce on the emulator before fixing.
+3. Check the counted-but-not-crashing signals the app reports on purpose (`reportSwallowed`): `xpService.awardXp`, `dataService.logMeal.offline`, `badgeService.*`. A rising count means a feature is silently failing for real users, e.g. XP not landing.
+4. **Performance → Web Vitals**: INP (tap → screen response) should be **≤ 200 ms** at p75. `npm run proof:latency` enforces the same budget before release, but real phones are the final judge.
+5. Note what you found in this file (date, release, top 3 issues), then fix and ship.

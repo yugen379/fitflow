@@ -33,6 +33,7 @@ import { SPRING } from '../lib/motion';
 import { EMPTY_STATS, nextAchievements } from '../lib/achievements';
 import type { AchievementStats } from '../lib/achievements';
 import type { DayBar } from '../components/3d/StepBars3D';
+import { STEPS_GOAL } from '../services/missionUtils';
 
 const StepBars3D = lazy(() => import('../components/3d/StepBars3D').then((m) => ({ default: m.StepBars3D })));
 
@@ -46,7 +47,7 @@ const HORIZONS: { id: Horizon; label: string; sub: string }[] = [
 ];
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const STEP_GOAL = 10000;
+const STEP_GOAL = STEPS_GOAL;
 
 /** The dates of the current Sunday–Saturday week, oldest first. */
 const weekDates = (): Date[] => {

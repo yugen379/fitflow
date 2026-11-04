@@ -48,6 +48,10 @@ const DEFAULT_ENABLED_PROVIDERS = 'password,google.com';
 /**
  * Providers wired natively in a default build.
  *
+ * - password: no native half at all — email/password runs entirely in the
+ *   Firebase JS SDK inside the WebView. It was missing from this list until
+ *   v1.6.3, so the Android app offered ONLY Google sign-in (found on an
+ *   Android 16 emulator: the welcome screen showed a single button).
  * - google.com: rgcfaIncludeGoogle = true, plus google-services.json + SHA-1.
  * - apple.com: no native dependency at all — the plugin uses firebase-auth's
  *   own OAuth activity, so it works on Android the moment Apple is enabled.
@@ -56,7 +60,7 @@ const DEFAULT_ENABLED_PROVIDERS = 'password,google.com';
  * app credentials in strings.xml. Add it in the same change that adds those,
  * never before.
  */
-const DEFAULT_NATIVE_PROVIDERS = 'google.com,apple.com';
+const DEFAULT_NATIVE_PROVIDERS = 'password,google.com,apple.com';
 
 const envList = (name: string, fallback: string): ReadonlySet<string> => {
   const raw =

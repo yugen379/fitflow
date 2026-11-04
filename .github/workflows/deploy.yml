@@ -122,6 +122,8 @@ jobs:
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
           VITE_APP_ENV: production
           VITE_APP_VERSION: ${{ env.RELEASE_TAG }}
+          # Native shell: ships a self-destroying service worker (see vite.config).
+          VITE_NATIVE_SHELL: 'true'
         run: npm run build
 
       - name: Sync Capacitor
@@ -153,15 +155,23 @@ jobs:
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
 
-      - name: Upload to Play Console closed-testing (alpha) track
-        if: ${{ env.PLAY_SA != '' }}
+      # Never skip silently again: from v1.0 to v1.6.2 this step was guarded by
+      # `if: PLAY_SA != ''` with no secret set, so every release showed green and
+      # nothing reached Play. Now a missing secret or a missing Play Console
+      # permission is a RED step that says exactly what to fix.
+      - name: Check Play access (lists tracks; read-only)
+        run: node scripts/play-tracks.mjs
+
+      - name: Upload to Play Console closed-testing track
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ env.PLAY_SA }}
           # Play package is com.fitflow.fitness (com.fitflow.app was taken on Play).
           packageName: com.fitflow.fitness
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          # The 12-testers x 14-days production gate counts the CLOSED track (alpha),
-          # not internal testing.
-          track: alpha
+          # The 12-testers x 14-days production gate counts a CLOSED track, not
+          # internal testing. The closed test may be a custom-named track, so the
+          # name is the repo variable PLAY_TRACK (Settings -> Variables); the
+          # "Check Play access" step above prints the real track names.
+          track: ${{ vars.PLAY_TRACK || 'alpha' }}
           status: completed

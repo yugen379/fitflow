@@ -1,0 +1,20 @@
+name: Play access check
+
+# Run by hand (Actions -> Play access check -> Run workflow) after granting the
+# CI service account access in Play Console. Read-only: lists the app's Play
+# tracks and what is released on each, or explains what permission is missing.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: List Play tracks
+        env:
+          PLAY_SA: ${{ secrets.PLAY_SERVICE_ACCOUNT }}
+        run: node scripts/play-tracks.mjs

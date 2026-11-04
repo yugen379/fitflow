@@ -215,7 +215,9 @@ export const Profile: React.FC = () => {
         <button
           onClick={() => setIsEditingProfile(true)}
           className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white transition-colors"
-          aria-label="Settings"
+          // It opens the profile editor, so that is what a screen reader must
+          // announce — "Settings" sent blind users to the wrong place.
+          aria-label="Edit profile"
         >
           <Settings size={18} />
         </button>

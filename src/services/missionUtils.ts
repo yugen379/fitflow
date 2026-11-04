@@ -80,7 +80,10 @@ export const computeLevel = (points: unknown): LevelInfo => {
 
 // ─── Today's Mission ──────────────────────────────────────────────────────────
 
-export const STEPS_GOAL = 8000;
+// THE daily step goal, used everywhere steps appear. The mission used 8,000 while
+// the Steps card on the same Home screen said 10,000 (found on an Android 16
+// emulator, v1.6.3 review). One number now, the classic 10k.
+export const STEPS_GOAL = 10000;
 
 export interface MissionSnapshot {
   hour: number;                    // 0–23, user-local

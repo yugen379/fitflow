@@ -145,3 +145,9 @@ try {
 } catch {
   document.getElementById('ff-splash')?.remove();
 }
+
+// After load, so it never competes with the first screen. Website: registers
+// the PWA worker. Native app: removes any worker a previous install left.
+window.addEventListener('load', () => {
+  void import('./lib/serviceWorker').then((m) => m.setupServiceWorker()).catch(() => {});
+}, { once: true });

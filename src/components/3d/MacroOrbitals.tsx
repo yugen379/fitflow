@@ -17,6 +17,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Color, Mesh } from 'three';
 
 import { cn } from '../../lib/utils';
+import { useCanvasKey, useTabVisible } from '../layout/DockTabs';
 import { prefersReducedMotion } from '../../lib/motion';
 
 export interface MacroDatum {
@@ -195,6 +196,7 @@ export const MacroOrbitals: React.FC<{ macros: MacroDatum[]; className?: string 
 }) => {
   const reduced = prefersReducedMotion();
   const [supported] = useState(hasWebGL);
+  const canvasKey = useCanvasKey();
   const [visible, setVisible] = useState(true);
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -211,7 +213,9 @@ export const MacroOrbitals: React.FC<{ macros: MacroDatum[]; className?: string 
     return () => observer.disconnect();
   }, []);
 
-  const animate = visible && !reduced;
+  const tabVisible = useTabVisible();
+  // Also pause inside a hidden (kept-alive) dock tab.
+  const animate = visible && !reduced && tabVisible;
 
   return (
     <div ref={hostRef} className={cn('relative w-full', className)}>
@@ -220,6 +224,8 @@ export const MacroOrbitals: React.FC<{ macros: MacroDatum[]; className?: string 
       <div className="relative w-full h-40">
       {supported && !reduced ? (
         <Canvas
+          // Fresh canvas after a kept-alive tab returns (see useCanvasKey).
+          key={canvasKey}
           frameloop={animate ? 'always' : 'demand'}
           dpr={[1, 2]}
           camera={{ position: [0, 0, 3.3], fov: 40 }}

@@ -33,11 +33,11 @@ import { NotificationCenter } from '../components/ui/NotificationCenter';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { useSteps } from '../hooks/useSteps';
 import { computeDailyTargets } from '../lib/nutritionTargets';
-import { buildMission, MissionTask } from '../services/missionUtils';
+import { buildMission, MissionTask, STEPS_GOAL } from '../services/missionUtils';
 import { Sparkles as SparklesIcon } from 'lucide-react';
 
 /** Daily step goal. Matches the target the /steps page and the nudge engine use. */
-const STEP_GOAL = 10000;
+const STEP_GOAL = STEPS_GOAL;
 
 /** Daily hydration target. Was hard-coded as 3000 in three separate places. */
 const WATER_GOAL_ML = 3000;
@@ -46,6 +46,16 @@ export const Home: React.FC = () => {
   const { profile } = useAuth();
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // Matches Tailwind's `sm` breakpoint: where the water sheet's drop renders.
+  const [wideSheet, setWideSheet] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)');
+    const onChange = () => setWideSheet(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   const [water, setWater] = useState(0);
   const [sleep, setSleep] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -362,7 +372,7 @@ export const Home: React.FC = () => {
               name: profile?.displayName?.split(' ')[0],
               hour: new Date().getHours(),
               steps: liveSteps.steps,
-              stepGoal: 10000,
+              stepGoal: STEP_GOAL,
               caloriesConsumed: summary?.caloriesConsumed || 0,
               calorieTarget: nutritionTargets.calories,
               proteinG: summary?.proteinG || 0,
@@ -510,15 +520,20 @@ export const Home: React.FC = () => {
               {/* The drop lives in the space ABOVE the sheet, which was
                   previously just scrim. pointer-events-none so the whole area
                   still dismisses on tap, exactly as before. */}
+              {/* ONE drop is mounted, wherever it is actually shown. Both copies
+                  used to mount with one hidden by CSS, so every open ran two
+                  animated springs and two SVG trees for a single visible drop. */}
+              {!wideSheet && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.94, y: 10 }}
                 transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-                className="relative flex-1 flex items-center justify-center pointer-events-none sm:hidden"
+                className="relative flex-1 flex items-center justify-center pointer-events-none"
               >
                 <HydrationDrop currentMl={water} goalMl={WATER_GOAL_ML} showPresets={false} />
               </motion.div>
+              )}
               <motion.div
                 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
                 transition={{ type: 'spring', damping: 28 }}
@@ -539,9 +554,11 @@ export const Home: React.FC = () => {
 
                 {/* On a wide screen there is no tall scrim to fill, so the drop
                     rides inside the sheet instead. */}
-                <div className="hidden sm:flex justify-center">
-                  <HydrationDrop currentMl={water} goalMl={WATER_GOAL_ML} showPresets={false} />
-                </div>
+                {wideSheet && (
+                  <div className="flex justify-center">
+                    <HydrationDrop currentMl={water} goalMl={WATER_GOAL_ML} showPresets={false} />
+                  </div>
+                )}
 
                 {/* The sheet keeps the buttons. The drop reacts to `water`
                     rising, so the splash fires wherever the add came from. */}

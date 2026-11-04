@@ -757,6 +757,7 @@ export const generateDailyChallenge = async (profile: { goal?: string; streak?: 
   return direct(
     `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${profile.goal || 'general fitness'}" and a ${profile.streak || 0}-day streak.
 Pick something they can finish in a single day. Vary the category.
+Use METRIC units only (ml, litres, km, kg, minutes) — the app shows water in ml, never ounces or miles.
 Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
     fallback,
   ) as Promise<DailyChallenge>;

@@ -18,6 +18,7 @@ import { Flame } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 import { prefersReducedMotion } from '../../lib/motion';
+import { useCanvasKey } from '../layout/DockTabs';
 
 const GOLD = '#FFB800';
 const LIME = '#CCFF00';
@@ -170,6 +171,7 @@ export interface StreakMonumentProps {
 export const StreakMonument: React.FC<StreakMonumentProps> = ({ streak, bestStreak, className }) => {
   const reduced = prefersReducedMotion();
   const [supported] = useState(hasWebGL);
+  const canvasKey = useCanvasKey();
 
   const best = Math.max(bestStreak ?? 0, streak);
   // A 1- or 2-day "record" is not worth a gold trophy — celebrating it read as
@@ -184,6 +186,8 @@ export const StreakMonument: React.FC<StreakMonumentProps> = ({ streak, bestStre
         <div className="w-28 h-28 shrink-0 -my-1">
           {supported && !reduced ? (
             <Canvas
+              // Fresh canvas after a kept-alive tab returns (see useCanvasKey).
+              key={canvasKey}
               dpr={[1, 2]}
               camera={{ position: [0, 0, 4] , fov: 45 }}
               gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}

@@ -33,6 +33,7 @@ import { Color, Group, MathUtils } from 'three';
 
 import { cn } from '../../lib/utils';
 import { prefersReducedMotion } from '../../lib/motion';
+import { useCanvasKey } from '../layout/DockTabs';
 
 const LIME = '#CCFF00';
 const AQUA = '#00F5FF';
@@ -171,6 +172,7 @@ export const StepDial: React.FC<{
 }> = ({ ratio, tilt = { x: 0, y: 0 }, className }) => {
   const reduced = prefersReducedMotion();
   const [supported] = useState(hasWebGL);
+  const canvasKey = useCanvasKey();
 
   // Read straight off the attribute the theme provider sets, rather than
   // subscribing: the dial re-renders on tilt anyway, and a dark track on a
@@ -196,6 +198,8 @@ export const StepDial: React.FC<{
     <div className={cn('relative', className)} aria-hidden="true">
       {supported && !reduced ? (
         <Canvas
+          // Fresh canvas after a kept-alive tab returns (see useCanvasKey).
+          key={canvasKey}
           frameloop="demand"
           dpr={[1, 2]}
           camera={{ position: [0, 0, 4.1], fov: 40 }}

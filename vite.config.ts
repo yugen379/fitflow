@@ -51,6 +51,17 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        // Registered from src/lib/serviceWorker.ts, NOT an injected <script>:
+        // the injected one also ran inside the Android app, where the worker's
+        // cache kept serving the previous release's JS after an update.
+        injectRegister: false,
+        // Android/iOS builds (VITE_NATIVE_SHELL=true, set by the native CI build
+        // steps) ship a SELF-DESTROYING sw.js. Installs from v1.6.2 and older
+        // still have the old worker; when it checks for an update it receives
+        // this one, which unregisters itself and reloads the app onto the files
+        // that actually shipped in the APK. Found on an Android 16 emulator:
+        // the app kept running the previous release's bundle after an update.
+        selfDestroying: env.VITE_NATIVE_SHELL === 'true',
         includeAssets: ['favicon.svg', 'logo.svg', 'logo-mark.svg', 'maskable-icon.svg', 'icons/*.webp'],
         manifest: {
           name: 'FitFlow — Train smarter. Move farther.',

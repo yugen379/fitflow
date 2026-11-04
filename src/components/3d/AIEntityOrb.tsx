@@ -22,6 +22,7 @@ import { AdditiveBlending, BufferAttribute, Color, IcosahedronGeometry, Mesh, Po
 
 import { cn } from '../../lib/utils';
 import { prefersReducedMotion } from '../../lib/motion';
+import { useCanvasKey, useTabVisible } from '../layout/DockTabs';
 
 export type EntityState = 'idle' | 'listening' | 'thinking' | 'responding';
 
@@ -294,11 +295,18 @@ export const AIEntityOrb: React.FC<{ state?: EntityState; className?: string }> 
 }) => {
   const reduced = prefersReducedMotion();
   const [supported] = useState(hasWebGL);
+  const canvasKey = useCanvasKey();
+  // The Coach tab is kept alive while you use other tabs; its orb animates
+  // every frame, so it stops drawing entirely while the tab is hidden.
+  const tabVisible = useTabVisible();
 
   return (
     <div className={cn('relative aspect-square w-full', className)}>
       {supported && !reduced ? (
         <Canvas
+          // Fresh canvas after a kept-alive tab returns (see useCanvasKey).
+          key={canvasKey}
+          frameloop={tabVisible ? 'always' : 'never'}
           dpr={[1, 2]}
           camera={{ position: [0, 0, 3.5], fov: 45 }}
           gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}

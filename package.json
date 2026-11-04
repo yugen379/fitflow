@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.6.2",
+  "version": "1.6.3",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -42,7 +42,8 @@
     "proof:formcheck": "tsx scripts/formcheck-proof.mjs",
     "proof:regressions": "tsx scripts/regressions-proof.mjs",
     "proof:auth": "firebase emulators:exec --only auth \"tsx scripts/auth-proof.mjs\"",
-    "proof:backend": "npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions --project demo-fitflow \"tsx scripts/backend-proof.mjs\""
+    "proof:backend": "npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions --project demo-fitflow \"tsx scripts/backend-proof.mjs\"",
+    "proof:latency": "vite build --mode e2e --outDir dist-e2e --emptyOutDir && npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions \"node scripts/latency-proof.mjs\""
   },
   "dependencies": {
     "@capacitor-firebase/app-check": "^8.3.0",

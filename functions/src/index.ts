@@ -11,6 +11,7 @@ import Stripe from "stripe";
 import { db, DATABASE_ID } from "./db";
 export { awardXp } from "./xp";
 export { deleteAccount } from "./account";
+import { runWeeklyRecaps } from "./recaps";
 
 // Gemini key lives in Firebase Secret Manager (replaces the deprecated
 // functions.config() runtime config, which sunsets March 2027). Set it with:
@@ -665,6 +666,7 @@ Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, 
         const out = await json(
           `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${clip(p.goal, 100) || "general fitness"}" and a ${Number(p.streak) || 0}-day streak.
 Pick something they can finish in a single day. Vary the category.
+Use METRIC units only (ml, litres, km, kg, minutes) — the app shows water in ml, never ounces or miles.
 Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
           { title: "Move 30 minutes", description: "Any sustained movement — walk, lift, ride.", target: 30, unit: "minutes", category: "movement" },
         );
@@ -829,75 +831,28 @@ function isoWeek(d: Date) {
 }
 
 export const generateWeeklyRecaps = onSchedule(
-  { schedule: "every sunday 09:00", timeZone: "UTC", secrets: [geminiApiKey] },
+  {
+    // Hourly passes through Sunday morning UTC. Each pass skips recaps that
+    // already exist, so later passes only pick up whoever an earlier one did
+    // not reach (quota, time budget). One pass covers ~450 users.
+    schedule: "0 9-14 * * 0",
+    timeZone: "UTC",
+    timeoutSeconds: 1800,
+    secrets: [geminiApiKey],
+  },
   async () => {
     const apiKey = geminiApiKey.value() || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.warn("Gemini key missing; skipping weekly recap");
-      return;
-    }
-    const ai = new GoogleGenAI({ apiKey });
-    const weekId = isoWeek(new Date());
-    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-
-    const usersSnap = await db.collection("users").get();
-    const tasks = usersSnap.docs.map(async (doc) => {
-      const uid = doc.id;
-      const u = doc.data() as any;
-      const existing = await db.doc(`weekly_recaps/${uid}_${weekId}`).get();
-      if (existing.exists) return;
-
-      const [workouts, meals, water, sleep] = await Promise.all([
-        db.collection("workouts").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
-        db.collection("meals").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
-        db.collection("water_logs").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
-        db.collection("sleep_logs").where("userId", "==", uid).where("timestamp", ">=", weekAgo).get(),
-      ]);
-      const stats = {
-        workouts: workouts.size,
-        minutes: workouts.docs.reduce((a, d) => a + (d.data().duration || 0), 0),
-        calories: workouts.docs.reduce((a, d) => a + (d.data().caloriesBurned || 0), 0),
-        consumed: meals.docs.reduce((a, d) => a + (d.data().calories || 0), 0),
-        water: water.docs.reduce((a, d) => a + (d.data().amount || 0), 0),
-        sleepHours: sleep.size ? Math.round((sleep.docs.reduce((a, d) => a + (d.data().hours || 0), 0) / sleep.size) * 10) / 10 : 0,
-      };
-
-      try {
-        const result = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: `You are an elite performance coach writing a friendly weekly recap.
-Goal: ${u.goal || "general fitness"}. This week:
-- ${stats.workouts} workouts, ${stats.minutes} active minutes
-- ${stats.calories} kcal burned, ${stats.consumed} consumed
-- ${stats.water}ml water, ${stats.sleepHours} hours sleep
-- ${u.streak || 0}-day streak
-
-Return ONLY valid JSON:
-{"headline":"<≤8 word title>","highlight":"<1-2 sentence summary>","win":"<1 short positive observation>","focus":"<one thing to focus on next week>","nextStep":"<one specific action they can take Monday>"}
-Tone: warm, direct, like a real human coach. No emojis.`,
-        });
-        const text = (result.text || "{}").replace(/```json|```/g, "").trim();
-        const recap = JSON.parse(text);
-        await db.doc(`weekly_recaps/${uid}_${weekId}`).set({
-          recap, stats, generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        if (u.fcmToken && u.notificationsEnabled) {
-          await admin.messaging().send({
-            token: u.fcmToken,
-            notification: {
-              title: "Your weekly recap is ready",
-              body: recap.headline,
-            },
-            data: { type: "weekly_recap" },
-          });
-        }
-      } catch (err) {
-        console.warn("Recap generation failed for", uid, err);
-      }
+    const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+    const report = await runWeeklyRecaps({
+      weekId: isoWeek(new Date()),
+      // The same 4-model cascade as the coach; null when all are busy, and the
+      // core then writes a recap from the user's own numbers.
+      writeRecap: async (prompt) => (ai ? cascadeOnce(ai, prompt) : null),
+      sendPush: async (token, title, body) => {
+        await admin.messaging().send({ token, notification: { title, body }, data: { type: "weekly_recap" } });
+      },
     });
-
-    await Promise.all(tasks);
+    console.log("weekly recaps", JSON.stringify(report));
   });
 
 // ---------------------------------------------------------------------------

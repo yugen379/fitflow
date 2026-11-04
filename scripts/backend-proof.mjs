@@ -260,5 +260,62 @@ for (let i = 0; i < 40; i++) {
 check('a 500-day streak on a new account shows as 1 day', mirror?.streak === 1, JSON.stringify(mirror));
 check('the mirror carries server-written points', mirror?.points === expected);
 
+section('6 · Weekly recaps: batched, model-fallback, notification users only');
+const { runWeeklyRecaps } = require('./lib/recaps.js');
+const WEEK = `proof-${Date.now()}`;
+const R = (n) => `recapUser${n}_${WEEK}`;
+const recent = ts.fromMillis(Date.now() - 2 * 86_400_000);
+const seedRecapUser = async (n, { notif = true, token = true, active = true } = {}) => {
+  await adb.doc(`users/${R(n)}`).set({
+    displayName: `R${n}`, notificationsEnabled: notif, goal: 'strength', currentStreak: 4,
+    ...(token ? { fcmToken: `token-${n}` } : {}),
+  });
+  if (active) await adb.collection('meals').add({ userId: R(n), calories: 600, timestamp: recent });
+};
+for (let n = 1; n <= 6; n++) await seedRecapUser(n);
+await seedRecapUser(7, { active: false });           // nothing logged this week
+await seedRecapUser(8, { notif: false });            // can't receive the push
+await seedRecapUser(9, { token: false });            // no device to push to
+await seedRecapUser(10);                             // already has this week's recap
+await adb.doc(`weekly_recaps/${R(10)}_${WEEK}`).set({ recap: { headline: 'old' } });
+
+let live = 0, peak = 0;
+const prompts = [];
+const pushes = [];
+const writeRecap = async (prompt) => {
+  live++; peak = Math.max(peak, live);
+  // Call number taken BEFORE awaiting: concurrent calls must each get their own.
+  const k = prompts.push(prompt);
+  await new Promise((r) => setTimeout(r, 40));
+  live--;
+  if (k === 3) return null;            // every model busy
+  if (k === 4) return 'not json at all'; // a model answered with junk
+  return JSON.stringify({ headline: `AI ${k}`, highlight: 'h', win: 'w', focus: 'f', nextStep: 'n' });
+};
+const sendPush = async (token, title, body) => { pushes.push({ token, title, body }); };
+const ownRecapUsers = (rep) => rep; // report is global across the DB; assert on our docs below
+const rep1 = ownRecapUsers(await runWeeklyRecaps({ weekId: WEEK, batchSize: 3, pauseMs: 30, writeRecap, sendPush }));
+const docOf = async (n) => (await adb.doc(`weekly_recaps/${R(n)}_${WEEK}`).get()).data();
+const written = [];
+for (let n = 1; n <= 10; n++) if ((await docOf(n))?.recap && n !== 10) written.push(n);
+check('recaps written for the 6 active users with notifications', written.join(',') === '1,2,3,4,5,6', `wrote ${written}`);
+check('nobody without notifications or a device token is processed', !(await docOf(8)) && !(await docOf(9)));
+check('a user with no activity that week is skipped (no AI spend)', !(await docOf(7)));
+check('an existing recap is never regenerated', (await docOf(10))?.recap?.headline === 'old');
+check('at most one batch (3) runs at a time', peak <= 3 && peak >= 2, `peak=${peak}`);
+const sources = [];
+for (let n = 1; n <= 6; n++) sources.push((await docOf(n)).source);
+check('when every model is busy, the user still gets a recap from their numbers',
+  sources.filter((s) => s === 'fallback').length === 2 && sources.filter((s) => s === 'ai').length === 4, sources.join(','));
+const fb = (await Promise.all([1, 2, 3, 4, 5, 6].map(docOf))).find((d) => d.source === 'fallback');
+check('the fallback recap is complete and uses real numbers',
+  ['headline', 'highlight', 'win', 'focus', 'nextStep'].every((k) => fb.recap[k]) && /600 kcal/.test(fb.recap.highlight), fb?.recap?.highlight);
+const ourPushes = pushes.filter((p) => /^token-[1-6]$/.test(p.token));
+check('each of the 6 gets exactly one push with their headline', ourPushes.length === 6 && new Set(ourPushes.map((p) => p.token)).size === 6);
+const rep2 = await runWeeklyRecaps({ weekId: WEEK, batchSize: 3, pauseMs: 0, writeRecap, sendPush });
+check('a second pass the same Sunday writes nothing new (resumable)', rep2.written === 0 && rep2.skippedExisting >= 7, JSON.stringify(rep2));
+const rep3 = await runWeeklyRecaps({ weekId: `${WEEK}-b`, batchSize: 3, pauseMs: 0, budgetMs: -1, writeRecap, sendPush });
+check('a pass out of time budget stops cleanly for the next pass to finish', rep3.stoppedEarly === true && rep3.written === 0);
+
 console.log(`\n${C.b}Result: ${fail ? C.r : C.g}${pass}/${pass + fail}${C.x}${C.b} checks passed${C.x}`);
 process.exit(fail ? 1 : 0);
