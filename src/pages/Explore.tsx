@@ -9,6 +9,29 @@ import { useToast } from '../hooks/useToast';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { awardXp } from '../services/xpService';
 
+// The browser's own GeolocationPositionError.message ("User denied
+// Geolocation") used to be shown verbatim. Map the CODE to words a person can
+// act on instead.
+type GpsProblem = { title: string; hint: string };
+const gpsProblem = (err: GeolocationPositionError | null): GpsProblem => {
+  if (!err) return {
+    title: "GPS isn't available here",
+    hint: "This device or browser can't share its location. Try the FitFlow app on your phone.",
+  };
+  if (err.code === 1) return {
+    title: 'Location is turned off for FitFlow',
+    hint: "Allow location in your phone's settings (or tap the lock icon in your browser's address bar), then try again.",
+  };
+  if (err.code === 3) return {
+    title: 'Still looking for GPS',
+    hint: 'That took too long. Step outside or near a window for a clearer signal, then try again.',
+  };
+  return {
+    title: "Can't find your location",
+    hint: 'Check that location services are on and you have a GPS signal, then try again.',
+  };
+};
+
 type Coord = { lat: number; lng: number; t: number };
 type ActivityType = 'run' | 'walk' | 'cycle';
 
@@ -41,24 +64,28 @@ export const Explore: React.FC = () => {
   const [path, setPath] = useState<Coord[]>([]);
   const [distance, setDistance] = useState(0);
   const [currentPos, setCurrentPos] = useState<GeolocationPosition | null>(null);
-  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsError, setGpsError] = useState<GpsProblem | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const startedAtRef = useRef<number>(0);
 
-  // Initial location
-  useEffect(() => {
+  // Initial location — also the "Try again" action. The Start button stays
+  // disabled while there is an error, so without a retry the only way out
+  // was reloading the page.
+  const locate = () => {
     if (!navigator.geolocation) {
-      setGpsError('Geolocation not supported on this device.');
+      setGpsError(gpsProblem(null));
       return;
     }
+    setGpsError(null);
     navigator.geolocation.getCurrentPosition(
       pos => setCurrentPos(pos),
-      err => setGpsError(err.message),
+      err => setGpsError(gpsProblem(err)),
       { enableHighAccuracy: true, timeout: 8000 },
     );
-  }, []);
+  };
+  useEffect(() => { locate(); }, []);
 
   // Timer
   useEffect(() => {
@@ -99,7 +126,7 @@ export const Explore: React.FC = () => {
           return updated;
         });
       },
-      (err) => setGpsError(err.message),
+      (err) => setGpsError(gpsProblem(err)),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 },
     );
     return () => {
@@ -193,8 +220,14 @@ export const Explore: React.FC = () => {
           {gpsError && !isRecording && (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center bg-bg/80">
               <MapIcon size={32} className="text-text-dim mb-3" />
-              <p className="text-white text-sm">{gpsError}</p>
-              <p className="text-text-dim text-xs mt-2">Enable location to track your route.</p>
+              <p className="text-white text-sm font-semibold">{gpsError.title}</p>
+              <p className="text-text-dim text-xs mt-2 max-w-[260px] leading-relaxed">{gpsError.hint}</p>
+              <button
+                onClick={locate}
+                className="mt-4 h-10 px-5 rounded-full border border-accent/40 text-accent text-sm font-semibold active:scale-95 transition-transform"
+              >
+                Try again
+              </button>
             </div>
           )}
 

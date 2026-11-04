@@ -22,6 +22,8 @@ import {
 } from 'firebase/firestore';
 import { deleteUser } from 'firebase/auth';
 import { cn } from '../lib/utils';
+/** Injected by vite.config.ts from package.json. */
+declare const __APP_VERSION__: string;
 
 const TZ_OFFSET_HOURS = -new Date().getTimezoneOffset() / 60;
 
@@ -480,7 +482,7 @@ export const Settings: React.FC = () => {
       </button>
 
       <p className="text-center text-xs text-text-mute pt-2">
-        FitFlow · v1.0.0
+        FitFlow · v{__APP_VERSION__}
       </p>
 
       <PermissionsPrompt

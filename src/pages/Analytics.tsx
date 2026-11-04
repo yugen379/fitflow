@@ -19,6 +19,7 @@ import { historyDaysFor } from '../lib/features';
 import exerciseLibrary from '../data/exerciseLibrary.json';
 import { StreakHeatmap } from '../components/StreakHeatmap';
 import { RetentionCard } from '../components/RetentionCard';
+import { getRetentionStats } from '../services/analyticsService';
 
 const COLORS = ['#C6FF3D','#7DD3FC','#FF6B6B','#E7FF8C','#FFD38F','#D8B4FE'];
 const RADAR_GROUPS = ['Chest','Back','Legs','Shoulders','Arms','Core'];
@@ -72,6 +73,22 @@ export const Analytics: React.FC = () => {
   // promising it fills back in the moment they subscribe.
   const isProNow = getEntitlement(profile).isPro;
   useEffect(() => { if (profile?.uid) fetchAll(profile.uid); }, [profile?.uid, isProNow]);
+
+  // The monument used to get the CURRENT streak as its "best", so every streak
+  // — a single day included — was announced as a gold personal best. Both
+  // numbers now come from the same retention stats the Consistency card below
+  // uses; reading profile.streak instead let one page say "3 days" in the
+  // monument and "1 day streak" in the card underneath it.
+  const [streakStats, setStreakStats] = useState<{ current: number; longest: number } | null>(null);
+  useEffect(() => {
+    if (!profile?.uid) return;
+    let cancelled = false;
+    const signup = (profile as any)?.createdAt?.toDate?.() ?? null;
+    getRetentionStats(profile.uid, signup)
+      .then((s) => { if (!cancelled) setStreakStats({ current: s.currentStreak, longest: s.longestStreak }); })
+      .catch(() => { /* never throws; the monument just shows the current streak */ });
+    return () => { cancelled = true; };
+  }, [profile?.uid]);
 
   const fetchAll = async (uid: string) => {
     setLoading(true);
@@ -150,7 +167,10 @@ export const Analytics: React.FC = () => {
           {/* Streak monument — the crystal gains facets and the sparks
               intensify with the streak, so a long run visibly outweighs a
               short one instead of being the same asset with a bigger number. */}
-          <StreakMonument streak={profile?.streak ?? 0} bestStreak={profile?.streak ?? 0} />
+          <StreakMonument
+            streak={streakStats?.current ?? profile?.streak ?? 0}
+            bestStreak={streakStats?.longest}
+          />
 
           {/* Stat row */}
           <div className="grid grid-cols-3 gap-3">

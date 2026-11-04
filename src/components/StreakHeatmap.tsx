@@ -93,7 +93,9 @@ export const StreakHeatmap: React.FC<Props> = ({ className }) => {
     <div className={className}>
       <div className="flex justify-between items-end mb-3">
         <div>
-          <p className="text-eyebrow text-accent">Consistency</p>
+          {/* "Activity", not "Consistency": the RetentionCard right above it on
+              Analytics already owns that heading, so the page showed it twice. */}
+          <p className="text-eyebrow text-accent">Activity</p>
           <p className="font-display text-lg font-bold text-white tracking-tight">Last {WEEKS} weeks</p>
         </div>
         <div className="text-right">

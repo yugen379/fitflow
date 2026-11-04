@@ -35,14 +35,21 @@ interface StateProfile {
   /** Emissive strength. */
   glow: number;
   particles: number;
+  /** Body of the orb. */
   color: string;
+  /** Halo particles, rim light and fallback glow. */
+  glowColor: string;
 }
 
+// Idle — the state people see most — was neon cyan (#00F5FF), the one colour
+// on the Coach page outside the brand. It is now the app icon in 3D: a dark-ink
+// body with a lime glow, so the lime F-mark on top reads instead of fighting
+// a bright cyan ball. Active states keep their lime/amber shift.
 const PROFILES: Record<EntityState, StateProfile> = {
-  idle: { amplitude: 0.055, frequency: 1.4, spin: 0.16, glow: 0.42, particles: 26, color: '#00F5FF' },
-  listening: { amplitude: 0.16, frequency: 2.1, spin: 0.32, glow: 0.78, particles: 64, color: '#CCFF00' },
-  thinking: { amplitude: 0.115, frequency: 4.6, spin: 0.95, glow: 0.66, particles: 92, color: '#FFB800' },
-  responding: { amplitude: 0.135, frequency: 2.6, spin: 0.4, glow: 0.92, particles: 76, color: '#CCFF00' },
+  idle: { amplitude: 0.055, frequency: 1.4, spin: 0.16, glow: 0.42, particles: 26, color: '#1C2410', glowColor: '#CCFF00' },
+  listening: { amplitude: 0.16, frequency: 2.1, spin: 0.32, glow: 0.78, particles: 64, color: '#CCFF00', glowColor: '#CCFF00' },
+  thinking: { amplitude: 0.115, frequency: 4.6, spin: 0.95, glow: 0.66, particles: 92, color: '#FFB800', glowColor: '#FFB800' },
+  responding: { amplitude: 0.135, frequency: 2.6, spin: 0.4, glow: 0.92, particles: 76, color: '#CCFF00', glowColor: '#CCFF00' },
 };
 
 // ---------------------------------------------------------------------------
@@ -164,7 +171,7 @@ const Halo: React.FC<{ state: EntityState }> = ({ state }) => {
       </bufferGeometry>
       <pointsMaterial
         size={0.045}
-        color={profile.color}
+        color={profile.glowColor}
         transparent
         opacity={0.72}
         sizeAttenuation
@@ -190,7 +197,7 @@ const CssOrb: React.FC<{ state: EntityState }> = ({ state }) => {
           width: '58%',
           aspectRatio: '1',
           background: `radial-gradient(circle at 35% 30%, ${profile.color} 0%, ${profile.color}55 45%, transparent 72%)`,
-          boxShadow: `0 0 46px -6px ${profile.color}`,
+          boxShadow: `0 0 46px -6px ${profile.glowColor}`,
         }}
       />
     </div>
@@ -299,7 +306,7 @@ export const AIEntityOrb: React.FC<{ state?: EntityState; className?: string }> 
         >
           <ambientLight intensity={0.5} />
           <pointLight position={[2, 2, 3]} intensity={16} />
-          <pointLight position={[-2, -1, 2]} intensity={8} color={PROFILES[state].color} />
+          <pointLight position={[-2, -1, 2]} intensity={8} color={PROFILES[state].glowColor} />
           <Orb state={state} />
           <Halo state={state} />
         </Canvas>

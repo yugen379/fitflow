@@ -155,7 +155,7 @@ export const Coach: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-bg relative overflow-hidden">
+    <div className="flex flex-col h-dvh bg-bg relative overflow-hidden">
       {/* Atmospheric backdrop */}
       <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-accent/8 blur-[140px] rounded-full pointer-events-none" />
       <div className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-accent-3/6 blur-[140px] rounded-full pointer-events-none" />
@@ -297,7 +297,13 @@ export const Coach: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div className="px-3 pb-3 pt-2 relative z-10 border-t border-white/[0.05] bg-bg/70 backdrop-blur-xl">
+      {/* The bottom padding clears the floating dock (fixed, bottom-4, ~92px
+          tall with its grab handle). Without it the textarea and Send button
+          sat entirely underneath the dock — you could not type to the coach. */}
+      <div
+        className="px-3 pt-2 relative z-10 border-t border-white/[0.05] bg-bg/70 backdrop-blur-xl"
+        style={{ paddingBottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         {/* Gate the composer, not the page: the header, the back button and
             the transcript all stay usable, and what is locked is exactly the
             thing Pro buys. */}

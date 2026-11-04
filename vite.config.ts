@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { readFileSync } from 'fs';
 import {defineConfig, loadEnv} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -132,6 +133,9 @@ export default defineConfig(({mode}) => {
       // process.env at runtime — this define never touches those.
       // `npm run build` also runs scripts/scan-bundle-secrets.mjs as a hard gate.
       'process.env.GEMINI_API_KEY': JSON.stringify(''),
+      // Shown in Settings. Read from package.json so the label can't drift from
+      // the release again (it said v1.0.0 through every release up to 1.6.0).
+      __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8')).version),
     },
     resolve: {
       alias: {

@@ -43,7 +43,13 @@ const LiquidFill: React.FC<{ ratio: number; color: string }> = ({ ratio, color }
     <div className="absolute inset-0 overflow-hidden rounded-[24px]" aria-hidden="true">
       <div
         className="absolute inset-x-0 bottom-0 transition-[height] duration-700 ease-out"
-        style={{ height: `${clamped * 100}%`, background: `linear-gradient(180deg, ${color}33 0%, ${color}14 100%)` }}
+        // `color` is a CSS colour (a theme var), mixed rather than hex-suffixed:
+        // the old hard-coded neon #CCFF00 was tuned for the dark theme and on
+        // the light one read as a yellow wash with a hard line through the rows.
+        style={{
+          height: `${clamped * 100}%`,
+          background: `linear-gradient(180deg, color-mix(in srgb, ${color} 16%, transparent) 0%, color-mix(in srgb, ${color} 6%, transparent) 100%)`,
+        }}
       >
         {/* Surface waves sit just above the fill line. */}
         <svg
@@ -51,14 +57,14 @@ const LiquidFill: React.FC<{ ratio: number; color: string }> = ({ ratio, color }
           viewBox="0 0 200 16"
           preserveAspectRatio="none"
         >
-          <path d="M0 8 Q 25 0 50 8 T 100 8 T 150 8 T 200 8 V16 H0 Z" fill={color} opacity="0.5" />
+          <path d="M0 8 Q 25 0 50 8 T 100 8 T 150 8 T 200 8 V16 H0 Z" style={{ fill: color }} opacity="0.22" />
         </svg>
         <svg
           className="absolute -top-[5px] left-0 w-[200%] h-4 liquid-wave liquid-wave-slow"
           viewBox="0 0 200 16"
           preserveAspectRatio="none"
         >
-          <path d="M0 8 Q 25 16 50 8 T 100 8 T 150 8 T 200 8 V16 H0 Z" fill={color} opacity="0.34" />
+          <path d="M0 8 Q 25 16 50 8 T 100 8 T 150 8 T 200 8 V16 H0 Z" style={{ fill: color }} opacity="0.14" />
         </svg>
       </div>
       <span className="sr-only">{Math.round(clamped * 100)}% of target</span>
@@ -116,7 +122,7 @@ export const MacroMatrix: React.FC<MacroMatrixProps> = ({
 
   return (
     <section className={cn('glass-spatial relative overflow-hidden', className)} aria-labelledby="fuel-heading">
-      <LiquidFill ratio={ratio} color={over ? '#FF3366' : '#CCFF00'} />
+      <LiquidFill ratio={ratio} color={over ? 'var(--accent-2)' : 'var(--accent)'} />
 
       <div className="relative z-10 p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">

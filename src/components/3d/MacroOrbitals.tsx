@@ -160,8 +160,8 @@ const FlatOrbs: React.FC<{ macros: MacroDatum[] }> = ({ macros }) => (
           <div
             className="rounded-full border"
             style={{
-              width: 56,
-              height: 56,
+              width: 72,
+              height: 72,
               borderColor: `${m.color}55`,
               background: `radial-gradient(circle at 50% ${100 - ratio * 70}%, ${m.color} 0%, ${m.color}22 ${Math.max(12, ratio * 78)}%, transparent 80%)`,
             }}
@@ -214,12 +214,15 @@ export const MacroOrbitals: React.FC<{ macros: MacroDatum[]; className?: string 
   const animate = visible && !reduced;
 
   return (
-    <div ref={hostRef} className={cn('relative w-full h-32', className)}>
+    <div ref={hostRef} className={cn('relative w-full', className)}>
+      {/* Was h-32 with the camera at z=4.4, which drew each orb ~45px wide in
+          a mostly empty card. h-40 at z=3.3 makes them ~75px. */}
+      <div className="relative w-full h-40">
       {supported && !reduced ? (
         <Canvas
           frameloop={animate ? 'always' : 'demand'}
           dpr={[1, 2]}
-          camera={{ position: [0, 0, 4.4], fov: 40 }}
+          camera={{ position: [0, 0, 3.3], fov: 40 }}
           gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
           style={{ pointerEvents: 'none' }}
         >
@@ -228,6 +231,25 @@ export const MacroOrbitals: React.FC<{ macros: MacroDatum[]; className?: string 
       ) : (
         <FlatOrbs macros={macros} />
       )}
+      </div>
+
+      {/* Name every orb: three unlabelled coloured balls meant nothing until
+          you matched colours against the rows below. Columns line up with the
+          orbs (SPACING 1.55 sits within a few px of the thirds' centres). */}
+      <div className="grid grid-cols-3 -mt-1" aria-hidden="true">
+        {macros.map((m) => {
+          const pct = m.targetG > 0 ? Math.round((m.grams / m.targetG) * 100) : 0;
+          return (
+            <div key={m.id} className="flex flex-col items-center leading-none">
+              <span className="num text-sm font-bold text-white tabular-nums">{pct}%</span>
+              <span className="text-[10px] text-text-dim mt-1 inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: m.color }} />
+                {m.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
 
       <p className="sr-only">
         {macros.map((m) => `${m.label}: ${Math.round(m.grams)} of ${Math.round(m.targetG)} grams`).join('. ')}

@@ -222,6 +222,13 @@
   .btn-ghost:hover { background: rgba(255,255,255,0.08); }
   .btn-3d {
     position: relative;
+    /* Icon + label sit on one centred row. Without this, Tailwind preflight
+       makes the lucide <svg> display:block, so every primary button stacked
+       its icon above the label and pushed the text against the bottom edge. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     padding: 0.875rem 1.5rem;
     background: var(--accent);
     color: #06070A;

@@ -459,7 +459,12 @@ export const Library: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent" />
             
             <div className="absolute inset-x-3 top-3 flex justify-between">
-              <span className="text-xs font-semibold text-accent bg-accent/12 border border-accent/25 px-2 py-1 rounded-full">{ex.difficulty}</span>
+              {/* Dark frosted pill: the old accent-on-accent-tint label vanished
+                  into bright photos. #FFFFFF, not text-white, so the light-theme
+                  .text-white rescue cannot turn it dark on a dark pill — and an
+                  explicit rgba, not bg-black/60, because the light theme
+                  rewrites every `bg-black/` to a 35% modal veil. */}
+              <span className="text-xs font-semibold text-[#FFFFFF] bg-[rgba(0,0,0,0.62)] backdrop-blur-md border border-[rgba(255,255,255,0.22)] px-2.5 py-1 rounded-full">{ex.difficulty}</span>
               {isBuilderMode && (
                 <button
                   onClick={(e) => { e.stopPropagation(); addToBuilder(ex as Exercise); }}

@@ -1,19 +1,8 @@
 import React, { useState } from 'react';
 import { Exercise } from '../types';
-
-// Verified Unsplash photo IDs — these are already used elsewhere in the app
-// (the Home page Featured workouts row) so they're confirmed live.
-const HIIT_PHOTO     = '1517836357463-d25dfeac3438'; // box jump / HIIT
-const STRENGTH_PHOTO = '1541534741688-6078c6bfb5c5'; // dumbbells / strength
-
-const PHOTO_FOR_CATEGORY: Record<string, string> = {
-  Strength:    STRENGTH_PHOTO,
-  Cardio:      HIIT_PHOTO,
-  HIIT:        HIIT_PHOTO,
-  Yoga:        STRENGTH_PHOTO,
-  Flexibility: STRENGTH_PHOTO,
-  Recovery:    STRENGTH_PHOTO,
-};
+// Photo choice lives in one place: category, then (for Strength) primary
+// muscle, from a list of photos that were each opened and checked by eye.
+import { getExerciseImage } from '../lib/exerciseImage';
 
 const PALETTE: Record<string, { from: string; to: string; accent: string }> = {
   Strength:    { from: '#15181E', to: '#06070A', accent: '#C6FF3D' },
@@ -40,8 +29,7 @@ export const ExerciseImage: React.FC<Props> = ({
   width = 800,
 }) => {
   const palette = PALETTE[exercise.category] || PALETTE.Strength;
-  const photoId = PHOTO_FOR_CATEGORY[exercise.category] || STRENGTH_PHOTO;
-  const photoUrl = `https://images.unsplash.com/photo-${photoId}?w=${width}&q=80&auto=format&fit=crop`;
+  const photoUrl = getExerciseImage(exercise, width);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
 

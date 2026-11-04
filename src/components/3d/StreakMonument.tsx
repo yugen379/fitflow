@@ -158,6 +158,8 @@ const hasWebGL = (): boolean => {
   }
 };
 
+const PERSONAL_BEST_MIN = 3;
+
 export interface StreakMonumentProps {
   streak: number;
   /** Longest streak ever, so a current best can be celebrated honestly. */
@@ -170,7 +172,10 @@ export const StreakMonument: React.FC<StreakMonumentProps> = ({ streak, bestStre
   const [supported] = useState(hasWebGL);
 
   const best = Math.max(bestStreak ?? 0, streak);
-  const isBest = streak > 0 && streak >= best;
+  // A 1- or 2-day "record" is not worth a gold trophy — celebrating it read as
+  // a glitch. Gold starts at a real run of PERSONAL_BEST_MIN days; below that
+  // the card is the ordinary lime "Current streak".
+  const isBest = streak >= PERSONAL_BEST_MIN && streak >= best;
   const sparks = Math.min(120, 18 + streak * (isBest ? 3.2 : 1.7));
 
   return (
@@ -211,7 +216,10 @@ export const StreakMonument: React.FC<StreakMonumentProps> = ({ streak, bestStre
               ? 'Log a session to start a new streak.'
               : isBest
                 ? 'This is the longest run you have ever put together.'
-                : `Your best is ${best} days — ${Math.max(1, best - streak)} to go.`}
+                : streak >= best
+                  // Ahead of every past run, but too short to call a record yet.
+                  ? `Keep going — ${PERSONAL_BEST_MIN - streak} more ${PERSONAL_BEST_MIN - streak === 1 ? 'day' : 'days'} sets your first personal best.`
+                  : `Your best is ${best} days — ${best - streak} to go.`}
           </p>
         </div>
       </div>

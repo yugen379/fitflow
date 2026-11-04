@@ -20,7 +20,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ChefHat, ChevronUp, Dumbbell, Footprints, Home, Sparkles, Trophy, User, Utensils } from 'lucide-react';
+import { ChevronUp, Dumbbell, Home, Sparkles, User, Utensils } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 import { haptic } from '../../lib/haptics';
@@ -28,13 +28,14 @@ import { prefetchPathHandlers } from '../../lib/prefetch';
 import { SPRING } from '../../lib/motion';
 import { spawnRipple } from '../ui/WaterRipple';
 
+// Five tabs, not seven: at phone width seven made the labels 9.5px and the
+// targets cramped. Steps is reached from the Step Hub card on Home, Awards
+// from the Profile menu (and from the Steps page).
 const navItems = [
   { id: 'home', label: 'Home', icon: Home, path: '/' },
-  { id: 'steps', label: 'Steps', icon: Footprints, path: '/steps' },
   { id: 'track', label: 'Fuel', icon: Utensils, path: '/track' },
   { id: 'workout', label: 'Train', icon: Dumbbell, path: '/workout' },
   { id: 'coach', label: 'Coach', icon: Sparkles, path: '/coach' },
-  { id: 'awards', label: 'Awards', icon: Trophy, path: '/achievements' },
   { id: 'profile', label: 'You', icon: User, path: '/profile' },
 ];
 
@@ -117,8 +118,8 @@ export const FloatingDock: React.FC = () => {
                           isActive ? 'text-accent' : 'text-text-dim',
                         )}
                       >
-                        <item.icon size={19} strokeWidth={isActive ? 2.4 : 1.9} aria-hidden="true" />
-                        <span className="text-[9.5px] font-semibold tracking-tight leading-none">{item.label}</span>
+                        <item.icon size={21} strokeWidth={isActive ? 2.4 : 1.9} aria-hidden="true" />
+                        <span className="text-[11px] font-semibold tracking-tight leading-none">{item.label}</span>
                       </div>
                     </div>
                   )}

@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
 import { Logo } from './components/Logo';
@@ -64,6 +64,9 @@ const signOutOfApp = async () => {
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, loading, profileUnreachable, profileErrorCode, retryProfile } = useAuth();
   const { showToast } = useToast();
+  // Onboarding is a focused, full-screen flow: the dock sat on top of its
+  // Continue button, so it is hidden there even for a complete profile.
+  const { pathname } = useLocation();
 
   // Warm the bottom-nav destinations once the app is up. Deliberately after
   // auth resolves: before that the user may still be looking at a spinner, and
@@ -196,7 +199,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
           across routes, so the screen is never actually blank between them. */}
       <ParticleField />
       <SpatialPageTransition>{children}</SpatialPageTransition>
-      {!isProfileIncomplete && (
+      {!isProfileIncomplete && pathname !== '/onboarding' && (
         <Suspense fallback={null}>
           <FloatingDock />
         </Suspense>

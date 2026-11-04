@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   Settings, LogOut, Crown, ChevronRight, Weight, Activity, User as UserIcon,
-  LineChart as LineChartIcon, Plus, Loader2, Zap, Volume2, VolumeX, TrendingUp, X,
+  LineChart as LineChartIcon, Plus, Loader2, Zap, Volume2, VolumeX, TrendingUp, X, Trophy,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { WorkoutHistory } from '../components/WorkoutHistory';
@@ -439,6 +439,7 @@ export const Profile: React.FC = () => {
 
       {/* Menu */}
       <div className="space-y-2">
+        <ProfileMenuItem icon={Trophy} label="Achievements" onClick={() => navigate('/achievements')} />
         <ProfileMenuItem icon={UserIcon} label="Account info" onClick={() => setIsEditingProfile(true)} />
         <ProfileMenuItem icon={Settings} label="Settings" onClick={() => navigate('/settings')} />
         <ProfileMenuItem icon={LogOut} label="Sign out" danger onClick={signOut} />
