@@ -268,6 +268,7 @@ const recent = ts.fromMillis(Date.now() - 2 * 86_400_000);
 const seedRecapUser = async (n, { notif = true, token = true, active = true } = {}) => {
   await adb.doc(`users/${R(n)}`).set({
     displayName: `R${n}`, notificationsEnabled: notif, goal: 'strength', currentStreak: 4,
+    lastActiveDay: new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10),
     ...(token ? { fcmToken: `token-${n}` } : {}),
   });
   if (active) await adb.collection('meals').add({ userId: R(n), calories: 600, timestamp: recent });
@@ -316,6 +317,316 @@ const rep2 = await runWeeklyRecaps({ weekId: WEEK, batchSize: 3, pauseMs: 0, wri
 check('a second pass the same Sunday writes nothing new (resumable)', rep2.written === 0 && rep2.skippedExisting >= 7, JSON.stringify(rep2));
 const rep3 = await runWeeklyRecaps({ weekId: `${WEEK}-b`, batchSize: 3, pauseMs: 0, budgetMs: -1, writeRecap, sendPush });
 check('a pass out of time budget stops cleanly for the next pass to finish', rep3.stoppedEarly === true && rep3.written === 0);
+
+// Someone who has not opened the app for weeks must not even be read.
+await seedRecapUser(11);
+await adb.doc(`users/${R(11)}`).update({ lastActiveDay: '2020-01-01' });
+await runWeeklyRecaps({ weekId: WEEK, batchSize: 3, pauseMs: 0, writeRecap, sendPush });
+check('a recap pass does not read users inactive for over a week', !(await docOf(11)));
+
+const aiCallsBefore = prompts.length;
+const repNoAi = await runWeeklyRecaps({ weekId: `${WEEK}-c`, pauseMs: 0, pageSize: 2, aiBudgetMs: -1, writeRecap, sendPush });
+const cDoc = (await adb.doc(`weekly_recaps/${R(1)}_${WEEK}-c`).get()).data();
+check('past the AI budget, everyone still gets a recap from their numbers, with no AI calls',
+  prompts.length === aiCallsBefore && repNoAi.aiWritten === 0 && repNoAi.fallbackWritten >= 7 && cDoc?.source === 'fallback', JSON.stringify(repNoAi));
+const paged = [];
+for (let n = 1; n <= 6; n++) paged.push((await adb.doc(`weekly_recaps/${R(n)}_${WEEK}-c`).get()).exists);
+check('paging across small pages reaches every active user', paged.every(Boolean), paged.join(','));
+
+section('7 · Scheduled pushes: only people who could be due, a page at a time');
+const {
+  pushFieldsFor, decideNudge, runEngagementNudges, runWorkoutReminders, runTrialReminders, refreshCommunityStats,
+} = require('./lib/pushJobs.js');
+
+const pf = (tzOffsetHours, preferredWorkoutTime) => pushFieldsFor({ tzOffsetHours, preferredWorkoutTime });
+check('a +5:30 user at 08:00 gets a whole reminder hour (2.5 never matched)', pf(5.5, '08:00').pushReminderHourUtc === 2, JSON.stringify(pf(5.5, '08:00')));
+check('reminder hour wraps across midnight', pf(-4, '23:00').pushReminderHourUtc === 3 && pf(8, '02:00').pushReminderHourUtc === 18);
+check('no stored offset counts as UTC, as the jobs always did', pushFieldsFor({ preferredWorkoutTime: '08:00' }).pushTzBucket === 0);
+check('no preferred time means no reminder hour', pushFieldsFor({ tzOffsetHours: 1 }).pushReminderHourUtc === null);
+
+// The trigger keeps the fields current, and must not re-trigger itself forever.
+const trigUid = `pushTrig_${WEEK}`;
+await adb.doc(`users/${trigUid}`).set({ displayName: 'T', tzOffsetHours: 5.5, preferredWorkoutTime: '08:00' });
+let trig;
+for (let i = 0; i < 60; i++) {
+  trig = (await adb.doc(`users/${trigUid}`).get()).data();
+  if (trig.pushReminderHourUtc === 2) break;
+  await new Promise((r) => setTimeout(r, 250));
+}
+check('a user write fills in the push fields', trig.pushTzBucket === 5.5 && trig.pushReminderHourUtc === 2, JSON.stringify(trig));
+const settled = (await adb.doc(`users/${trigUid}`).get()).updateTime.toMillis();
+await new Promise((r) => setTimeout(r, 2500));
+check('that write does not re-trigger itself', (await adb.doc(`users/${trigUid}`).get()).updateTime.toMillis() === settled);
+
+// The comparison: over a whole day, the narrowed queries must select exactly
+// the people a scan of everyone would. Fields are seeded directly, in one batch.
+const NOW = Date.UTC(2026, 10, 11, 0, 7);
+const DAY = 86_400_000;
+let seed = 12345;
+const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+const pick = (a) => a[rnd(a.length)];
+const dayKey = (ms) => new Date(ms).toISOString().slice(0, 10);
+const TZS = [undefined, -11, -8, -5, -3.5, 0, 1, 3, 5.5, 5.75, 8, 9.5, 12, 12.75, 14];
+const PFX = `diff_${WEEK}_`;
+const diffUsers = [];
+for (let i = 0; i < 400; i++) {
+  const tz = pick(TZS);
+  const gap = pick([0, 1, 1, 1, 2, 3, 3, 5, 7, 7, 14, 14, 30, 30, 45]);
+  const u = {
+    notificationsEnabled: rnd(10) > 0,
+    currentStreak: pick([0, 1, 2, 5, 40]),
+    winbackLastTier: pick([0, 0, 0, 1, 3, 7]),
+    ...(rnd(12) ? { fcmToken: `t${i}` } : {}),
+    ...(tz === undefined ? {} : { tzOffsetHours: tz }),
+    ...(rnd(10) ? { lastActiveDay: dayKey(NOW - gap * DAY) } : {}),
+    ...(rnd(3) === 0 ? { lastMealAt: ts.fromMillis(NOW - rnd(2 * DAY)) } : {}),
+    ...(rnd(4) === 0 ? { mealNudgeDate: dayKey(NOW + rnd(2) * DAY) } : {}),
+    ...(rnd(4) === 0 ? { streakRiskNotifiedDate: dayKey(NOW + rnd(2) * DAY) } : {}),
+  };
+  diffUsers.push({ uid: `${PFX}${i}`, ...u, ...pushFieldsFor(u) });
+}
+for (let i = 0; i < diffUsers.length; i += 200) {
+  const b = adb.batch();
+  for (const { uid, ...u } of diffUsers.slice(i, i + 200)) b.set(adb.doc(`users/${uid}`), u);
+  await b.commit();
+}
+// The seed's own trigger runs must settle before the comparison starts.
+await new Promise((r) => setTimeout(r, 4000));
+const everyone = (await adb.collection('users').where('notificationsEnabled', '==', true).get()).docs;
+
+let mismatches = 0, expectedTotal = 0, candidatesRead = 0, fullScanReads = 0;
+const kinds = new Set();
+const noSend = async () => { throw new Error('the comparison must not send'); };
+for (let step = 0; step < 96; step++) {
+  const at = NOW + step * 30 * 60_000;
+  const expected = new Set(everyone.filter((d) => d.id.startsWith(PFX) && decideNudge(d.data(), at)).map((d) => d.id));
+  const got = new Set();
+  const rep = await runEngagementNudges({
+    now: at, send: noSend, stamp: false,
+    onDecision: (uid, push) => { if (uid.startsWith(PFX)) { got.add(uid); kinds.add(push.type); } },
+  });
+  candidatesRead += rep.candidates;
+  fullScanReads += everyone.length;
+  expectedTotal += expected.size;
+  const missed = [...expected].filter((x) => !got.has(x));
+  const extra = [...got].filter((x) => !expected.has(x));
+  if (missed.length || extra.length) {
+    mismatches++;
+    if (mismatches === 1) console.log(`    first mismatch at ${new Date(at).toISOString()}: missed ${missed.slice(0, 3)} extra ${extra.slice(0, 3)}`);
+  }
+}
+check('over 48 hours, the queries select exactly who a full scan would', mismatches === 0 && expectedTotal > 200, `${mismatches} half-hours differ, ${expectedTotal} pushes expected`);
+check('the comparison exercised all three nudge types', ['streak_risk', 'winback', 'meal_nudge'].every((k) => kinds.has(k)), [...kinds].join(','));
+const readRatio = candidatesRead / fullScanReads;
+console.log(`    ${C.d}reads over 48 h: ${candidatesRead} vs ${fullScanReads} for a full scan (${Math.round(readRatio * 100)}%)${C.x}`);
+check('those selections read well under half as many users', readRatio < 0.4, `${Math.round(readRatio * 100)}%`);
+
+const atMeal = NOW + 11 * 3_600_000; // midday in UTC+1
+const decisions = async (pageSize) => {
+  const got = [];
+  await runEngagementNudges({ now: atMeal, send: noSend, stamp: false, pageSize, onDecision: (uid) => got.push(uid) });
+  return got.sort().join();
+};
+const small = await decisions(7);
+check('page size changes nothing: nobody skipped or repeated', small.length > 0 && small === await decisions(500));
+check('a run out of time stops cleanly without sending',
+  (await runEngagementNudges({ now: atMeal, send: noSend, budgetMs: -1 })).stoppedEarly === true);
+
+// Real delivery path, with a fake sender.
+const sent = [];
+const send = async (token, push) => { sent.push({ token, type: push.type }); };
+const REM = Date.UTC(2026, 10, 11, 1, 30); // reminder target hour 02 UTC
+const remU = (id, u) => adb.doc(`users/${id}_${WEEK}`).set({ notificationsEnabled: true, fcmToken: id, ...u, ...pushFieldsFor(u) });
+await remU('remIndia', { tzOffsetHours: 5.5, preferredWorkoutTime: '08:00' });
+await remU('remOtherHour', { tzOffsetHours: 5.5, preferredWorkoutTime: '09:00' });
+await runWorkoutReminders({ now: REM, send });
+const remSent = sent.filter((p) => p.token.startsWith('rem')).map((p) => p.token);
+check('a half-hour time zone now gets its reminder, and only the right hour fires', remSent.join() === 'remIndia', remSent.join());
+await runWorkoutReminders({ now: REM + 30 * 60_000, send });
+check('the next run does not send the same reminder twice',
+  sent.filter((p) => p.token === 'remIndia').length === 1);
+const inbox = await adb.collection('notifications').where('userId', '==', `remIndia_${WEEK}`).get();
+check('the push also lands in the in-app inbox', inbox.size === 1);
+
+const TRIAL = 6;
+const trialU = (id, u) => adb.doc(`users/${id}_${WEEK}`).set({ notificationsEnabled: true, fcmToken: id, ...u });
+const started = (days) => ts.fromMillis(REM - days * DAY);
+await trialU('trialDue', { trialStartedAt: started(5.5) });
+await trialU('trialEarly', { trialStartedAt: started(2) });
+await trialU('trialOver', { trialStartedAt: started(7) });
+await trialU('trialPaid', { trialStartedAt: started(5.5), subscriptionType: 'premium' });
+await runTrialReminders({ now: REM, send, trialDays: TRIAL });
+await runTrialReminders({ now: REM, send, trialDays: TRIAL });
+const trialSent = sent.filter((p) => p.token.startsWith('trial')).map((p) => p.token);
+check('trial reminder: final day only, never paying users, never twice', trialSent.join() === 'trialDue', trialSent.join());
+
+section('8 · Community count: one stored document');
+const cBatch = adb.batch();
+for (let i = 0; i < 450; i++) cBatch.set(adb.doc(`public_profiles/cnt_${WEEK}_${i}`), { goal: 'maintenance' });
+await cBatch.commit();
+const cBatch2 = adb.batch();
+for (let i = 450; i < 600; i++) cBatch2.set(adb.doc(`public_profiles/cnt_${WEEK}_${i}`), { goal: 'maintenance' });
+await cBatch2.commit();
+const stats = await refreshCommunityStats();
+const stored = (await adb.doc('community_stats/global').get()).data();
+check('the count is no longer capped at 500', stats.byGoal.maintenance >= 600, JSON.stringify(stats));
+check('the stored document matches the count', stored.byGoal.maintenance === stats.byGoal.maintenance && stored.total >= stored.byGoal.maintenance);
+
+section('9 · AI limits: per user, app-wide, and when the models are over quota');
+const guard = require('./lib/aiGuard.js');
+const usageOf = async (uid) => (await adb.doc(`users/${uid}/private/ai_usage`).get()).data();
+const G_NOW = Date.UTC(2026, 10, 11, 12);
+const gUid = `aiFree_${WEEK}`;
+
+const burst = await Promise.all(Array.from({ length: 80 }, () => guard.takeUserAllowance(gUid, 'call', false, G_NOW)));
+const burstAllowed = burst.filter(Boolean).length;
+check('a burst of 80 parallel requests stays within the free limit, with no server error', burstAllowed >= 1 && burstAllowed <= 50, `${burstAllowed} allowed`);
+check('the stored count matches what was allowed, so none slipped through uncounted', (await usageOf(gUid)).calls === burstAllowed, JSON.stringify(await usageOf(gUid)));
+let allowedTotal = burstAllowed;
+for (let i = 0; i < 60; i++) if (await guard.takeUserAllowance(gUid, 'call', false, G_NOW)) allowedTotal++;
+check('counting on from there, exactly 50 are allowed in the day', allowedTotal === 50, String(allowedTotal));
+check('Pro users have a higher limit', (await guard.takeUserAllowance(gUid, 'call', true, G_NOW)) === true);
+check('form-check frames are counted separately', (await guard.takeUserAllowance(gUid, 'frame', false, G_NOW)) === true);
+check('the allowance resets the next day', (await guard.takeUserAllowance(gUid, 'call', false, G_NOW + DAY)) === true);
+check('...on one overwritten document that does not grow', (await usageOf(gUid)).calls === 1 && (await usageOf(gUid)).frames === 0, JSON.stringify(await usageOf(gUid)));
+
+// Ceiling: run on a far-off day so other checks can't move its count.
+process.env.AI_GLOBAL_CALLS_PER_DAY = '10';
+const C_NOW = Date.UTC(2030, 0, 1, 12);
+for (let i = 0; i < 8; i++) await guard.countGlobalCall(C_NOW);
+check('at 80% of the ceiling, free users are refused and Pro users are not',
+  (await guard.globalCeilingAllows(false, C_NOW, 0)) === false && (await guard.globalCeilingAllows(true, C_NOW, 0)) === true);
+for (let i = 0; i < 2; i++) await guard.countGlobalCall(C_NOW);
+check('at the ceiling, everyone is refused', (await guard.globalCeilingAllows(true, C_NOW, 0)) === false);
+const cUid = `aiCeil_${WEEK}`;
+check('a request refused by the ceiling names it', (await guard.checkAiAllowance(cUid, 'call', true, C_NOW, 0)) === 'global_limit');
+check('and uses none of that user\'s allowance', !(await usageOf(cUid)));
+delete process.env.AI_GLOBAL_CALLS_PER_DAY;
+const D_NOW = Date.UTC(2030, 5, 1, 12);
+check('below the limits, a request is allowed', (await guard.checkAiAllowance(cUid, 'call', true, D_NOW, 0)) === null);
+const shardTotal = (await adb.collection('ai_global_usage').get()).docs
+  .filter((d) => d.id.startsWith('2030-06-01_')).reduce((n, d) => n + d.data().calls, 0);
+check('and is counted once toward the app-wide total', shardTotal === 1, String(shardTotal));
+
+const M = ['m1', 'm2'];
+guard.resetCooldowns();
+check('a quota error is recognised, and a bad request is not',
+  guard.isQuotaError({ status: 429 }) && guard.isQuotaError(new Error('RESOURCE_EXHAUSTED')) && !guard.isQuotaError({ status: 400 }));
+guard.coolModel('m1', G_NOW);
+check('one model cooling leaves another to use', guard.modelIsCooling('m1', G_NOW) && guard.secondsUntilAnyModel(M, G_NOW) === 0);
+guard.coolModel('m2', G_NOW);
+check('all models cooling gives a wait for Retry-After', guard.secondsUntilAnyModel(M, G_NOW) === 20, String(guard.secondsUntilAnyModel(M, G_NOW)));
+check('and they are usable again afterwards', guard.secondsUntilAnyModel(M, G_NOW + 20_001) === 0);
+
+// The real endpoint, over HTTP, through the Functions emulator.
+const proxyUrl = `http://127.0.0.1:5001/${PROJECT}/us-central1/geminiProxy`;
+const hitUid = await newUser('aiproxy');
+await seedUser(hitUid);
+const token = await auth.currentUser.getIdToken();
+const hit = async (body, tok = token) => {
+  const r = await fetch(proxyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+    body: JSON.stringify(body),
+  });
+  return { status: r.status, body: await r.json().catch(() => null), retryAfter: r.headers.get('retry-after') };
+};
+check('no token: refused', (await hit({ action: 'getRecipe' }, null)).status === 401);
+check('unknown action: refused, and costs no allowance',
+  (await hit({ action: 'nope' })).status === 400 && !(await usageOf(hitUid)));
+check('oversized image: refused, and costs no allowance',
+  (await hit({ action: 'analyzeMealImage', payload: { base64Image: 'a'.repeat(10_000_001) } })).status === 413 && !(await usageOf(hitUid)));
+check('free user asking the coach: refused, and costs no allowance',
+  (await hit({ action: 'askCoach', payload: { message: 'hi' } })).status === 402 && !(await usageOf(hitUid)));
+await adb.doc(`users/${hitUid}/private/ai_usage`).set({ day: dayKey(Date.now()), calls: 50, frames: 0 });
+const limited = await hit({ action: 'getRecipe', payload: { mealName: 'x' } });
+check('over the daily limit: 429 with a reason and Retry-After',
+  limited.status === 429 && limited.body?.code === 'daily_limit' && !!limited.retryAfter, JSON.stringify(limited));
+const framesStillOpen = await hit({ action: 'analyzeFormFrame', payload: { base64Image: 'x', exerciseName: 'squat' } });
+check('form check has its own allowance, so it passes that gate', framesStillOpen.status !== 429 && (await usageOf(hitUid)).frames === 1, JSON.stringify(framesStillOpen));
+
+section('10 · Capacity: nothing runs on a default nobody chose');
+const allFns = require('./lib/index.js');
+const endpoints = Object.entries(allFns).filter(([, f]) => f?.__endpoint);
+const unbounded = endpoints.filter(([, f]) => !(f.__endpoint.maxInstances > 0) || !(f.__endpoint.timeoutSeconds > 0)).map(([n]) => n);
+check('every function sets maxInstances and a timeout', endpoints.length >= 13 && unbounded.length === 0, `${endpoints.length} functions; missing: ${unbounded}`);
+const jobs = endpoints.filter(([, f]) => f.__endpoint.scheduleTrigger);
+check('scheduled jobs run one at a time, so a slow run cannot overlap the next',
+  jobs.length === 5 && jobs.every(([, f]) => f.__endpoint.maxInstances === 1), jobs.map(([n, f]) => `${n}=${f.__endpoint.maxInstances}`).join());
+const aiEp = allFns.geminiProxy.__endpoint;
+check('the AI endpoint has a set memory, concurrency and timeout',
+  aiEp.availableMemoryMb === 1024 && aiEp.concurrency === 40 && aiEp.timeoutSeconds === 30, JSON.stringify(aiEp));
+
+section('11 · The two AI features the server was missing');
+const { readFileSync } = await import('node:fs');
+const clientSrc = readFileSync(new URL('../src/services/geminiService.ts', import.meta.url), 'utf8');
+const serverSrc = readFileSync(new URL('../functions/src/index.ts', import.meta.url), 'utf8');
+const sentByApp = [...clientSrc.matchAll(/callProxy\('(\w+)'/g)].map((m) => m[1]);
+const allowedSet = serverSrc.match(/const PROXY_ACTIONS = new Set\(\[([\s\S]*?)\]\)/)[1];
+const missingAction = sentByApp.filter((a) => !allowedSet.includes(`"${a}"`) || !serverSrc.includes(`case "${a}":`));
+check('every AI action the app sends has a server handler', sentByApp.length >= 14 && missingAction.length === 0, `missing: ${missingAction}`);
+const allowedList = [...allowedSet.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+check('and every allowed action has a case', allowedList.every((a) => serverSrc.includes(`case "${a}":`)));
+
+const { boundBriefing, sanitizePolish } = require('./lib/coachPolish.js');
+const pBase = boundBriefing({
+  headline: 'Day 12 of your streak', subtitle: 'Keep going',
+  nudges: [
+    { id: 'water', title: 'Drink water', message: 'You are at 1,200 ml of 2500 ml.' },
+    { id: 'protein', title: 'Protein', message: 'You need 40 g more.' },
+  ],
+});
+const polish = sanitizePolish(pBase, {
+  headline: '12 days strong', subtitle: 'Keep at it, 100%!',
+  nudges: [
+    { id: 'water', title: 'Hydrate', message: 'Only 1300 ml left of 2500 ml.' },
+    { id: 'protein', title: '**Protein**', message: 'Find 40 g more today.' },
+    { id: 'invented', title: 'New', message: 'Added by the model.' },
+  ],
+});
+check('rewording that keeps the numbers is accepted', polish.headline === '12 days strong' && polish.nudges[1].message === 'Find 40 g more today.');
+check('a changed number is dropped, so the original wording stays', polish.nudges[0].message === undefined, polish.nudges[0].message);
+check('an invented number is dropped', polish.subtitle === undefined, polish.subtitle);
+check('a number with a thousands comma still counts as the same number',
+  sanitizePolish(pBase, { nudges: [{ id: 'water', message: '1200 ml so far, aiming for 2,500.' }] }).nudges[0].message !== undefined);
+check('the model cannot add a nudge', polish.nudges.length === 2 && polish.nudges.every((n) => n.id !== 'invented'));
+check('markdown is stripped', polish.nudges[1].title === 'Protein');
+check('junk answers are ignored', sanitizePolish(pBase, 'nope') === null && sanitizePolish(pBase, null) === null && sanitizePolish(pBase, []) === null);
+check('an oversized briefing from a modified client is bounded',
+  boundBriefing({ headline: 'x'.repeat(9999), nudges: Array(50).fill({ id: 'a', message: 'y'.repeat(9999) }) }).nudges.length === 8
+  && boundBriefing({ headline: 'x'.repeat(9999) }).headline.length === 200);
+
+const { decidePolish, polishSlot, polishBaseKey } = await import('../src/services/briefingPolishCache.ts');
+const noon = polishSlot(new Date(2026, 10, 11, 13), 13);
+check('first request in a part of the day calls the AI', decidePolish(null, noon, 'a') === 'call');
+const usedSlot = { slot: noon, baseKey: 'a', polished: { headline: 'h', subtitle: 's', nudges: [] } };
+check('same briefing again reuses the rewrite, with no call', decidePolish(usedSlot, noon, 'a') === 'reuse');
+check('facts changed: plain text, not stale numbers and not another call', decidePolish(usedSlot, noon, 'b') === 'plain');
+check('a call that failed is not retried until the next part of the day', decidePolish({ slot: noon, baseKey: 'a', polished: null }, noon, 'a') === 'plain');
+check('the next part of the day gets a new rewrite', decidePolish(usedSlot, polishSlot(new Date(2026, 10, 11, 19), 19), 'b') === 'call');
+check('the next day gets a new rewrite', decidePolish(usedSlot, polishSlot(new Date(2026, 10, 12, 13), 13), 'a') === 'call');
+check('a changed number changes the cache key',
+  polishBaseKey({ headline: 'h', subtitle: 's', nudges: [{ id: 'w', title: 't', message: '100 ml' }] })
+  !== polishBaseKey({ headline: 'h', subtitle: 's', nudges: [{ id: 'w', title: 't', message: '200 ml' }] }));
+
+const bUid = `aiBrief_${WEEK}`;
+let briefingsAllowed = 0;
+for (let i = 0; i < 20; i++) if (await guard.takeUserAllowance(bUid, 'briefing', true, G_NOW)) briefingsAllowed++;
+check('an old app asking on every Home visit is capped at 6 briefings a day, even on Pro', briefingsAllowed === 6, String(briefingsAllowed));
+check('and that leaves their allowance for real features untouched',
+  (await usageOf(bUid)).calls === 0 && (await guard.takeUserAllowance(bUid, 'call', false, G_NOW)) === true);
+const keptBriefings = (await usageOf(bUid)).briefings;
+check('using another feature does not reset the briefing count', keptBriefings === 6, String(keptBriefings));
+
+process.env.AI_GLOBAL_CALLS_PER_DAY = '10';
+const L_NOW = Date.UTC(2031, 0, 1, 12);
+for (let i = 0; i < 5; i++) await guard.countGlobalCall(L_NOW);
+const lowUid = `aiLow_${WEEK}`;
+check('at 50% of the ceiling the cosmetic rewrite stops, without using allowance',
+  (await guard.checkAiAllowance(lowUid, 'call', true, L_NOW, 0, true)) === 'global_limit' && !(await usageOf(lowUid)));
+check('while requests people asked for still go through', (await guard.checkAiAllowance(lowUid, 'call', true, L_NOW, 0, false)) === null);
+delete process.env.AI_GLOBAL_CALLS_PER_DAY;
+check('the default app-wide limit is the agreed 1,000 a day', guard.AI_LIMITS.globalCallsPerDay === 1000, String(guard.AI_LIMITS.globalCallsPerDay));
 
 console.log(`\n${C.b}Result: ${fail ? C.r : C.g}${pass}/${pass + fail}${C.x}${C.b} checks passed${C.x}`);
 process.exit(fail ? 1 : 0);

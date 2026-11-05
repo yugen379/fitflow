@@ -1,5 +1,16 @@
 import * as functions from "firebase-functions";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { boundBriefing, briefingPrompt, sanitizePolish } from "./coachPolish";
+import {
+  checkAiAllowance, coolModel, isQuotaError, modelIsCooling, secondsUntilAnyModel,
+} from "./aiGuard";
+import {
+  AI_PROXY, INTERACTIVE, PAYMENTS, SCHEDULED_JOB, SCHEDULED_RECAP, USER_TRIGGER,
+} from "./capacity";
+import {
+  PushContent, pushFieldsFor, refreshCommunityStats,
+  runEngagementNudges, runTrialReminders, runWorkoutReminders,
+} from "./pushJobs";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -116,7 +127,7 @@ const applySubscription = async (stripe: Stripe, sub: Stripe.Subscription) => {
 };
 
 export const createCheckoutSession = functions.https.onRequest(
-  { secrets: [stripeSecret] },
+  { ...INTERACTIVE, secrets: [stripeSecret] },
   async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*");
     if (req.method === "OPTIONS") {
@@ -176,7 +187,7 @@ export const createCheckoutSession = functions.https.onRequest(
 
 // Stripe Billing Portal — lets a paying user manage/cancel their subscription.
 export const createPortalSession = functions.https.onRequest(
-  { secrets: [stripeSecret] },
+  { ...INTERACTIVE, secrets: [stripeSecret] },
   async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*");
     if (req.method === "OPTIONS") {
@@ -214,7 +225,7 @@ export const createPortalSession = functions.https.onRequest(
   });
 
 export const stripeWebhook = functions.https.onRequest(
-  { secrets: [stripeSecret, stripeWebhookSecret] },
+  { ...PAYMENTS, secrets: [stripeSecret, stripeWebhookSecret] },
   async (req, res) => {
     const stripe = getStripe();
     const webhookSecret = stripeWebhookSecret.value() || process.env.STRIPE_WEBHOOK_SECRET;
@@ -318,19 +329,28 @@ const safeJsonParse = (text: string, fallback: any) => {
 // One pass over the model cascade. Returns trimmed text, or null if every model
 // failed. Retryable (quota/transient) errors advance to the next model; hard
 // errors stop. Never throws.
-const cascadeOnce = async (ai: GoogleGenAI, contents: any): Promise<string | null> => {
+const MODEL_CALL_TIMEOUT_MS = 15_000; // a 7-day meal plan takes a while
+const cascadeOnce = async (ai: GoogleGenAI, contents: any, deadline = Infinity): Promise<string | null> => {
   for (const model of GEMINI_MODELS) {
+    if (Date.now() >= deadline) return null;
+    if (modelIsCooling(model)) continue;
     try {
       // thinkingBudget 0 skips the 2.5-family "thinking" pass — the proxy's
       // short structured tasks don't need it and it costs seconds of latency.
       const resp = await ai.models.generateContent({
-        model, contents, config: { thinkingConfig: { thinkingBudget: 0 } },
+        model, contents,
+        config: {
+          thinkingConfig: { thinkingBudget: 0 },
+          // One hung model must not hold a server slot until the function dies.
+          abortSignal: AbortSignal.timeout(Math.min(MODEL_CALL_TIMEOUT_MS, deadline - Date.now())),
+        },
       });
       const text = (resp.text || "").trim();
       if (text) return text;
     } catch (e: any) {
       console.warn(`Gemini ${model} failed:`, e?.status || "", String(e?.message || e).slice(0, 80));
-      if (!isRetryable(e)) break;
+      if (isQuotaError(e)) coolModel(model);
+      if (!isRetryable(e) && e?.name !== "TimeoutError" && e?.name !== "AbortError") break;
     }
   }
   return null;
@@ -341,10 +361,10 @@ const cascadeOnce = async (ai: GoogleGenAI, contents: any): Promise<string | nul
 const cascadeText = async (
   ai: GoogleGenAI,
   contents: any,
-  { retries = 1, minChars = 1, backoffMs = 600 }: { retries?: number; minChars?: number; backoffMs?: number } = {},
+  { retries = 1, minChars = 1, backoffMs = 600, deadline = Infinity }: { retries?: number; minChars?: number; backoffMs?: number; deadline?: number } = {},
 ): Promise<string | null> => {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const text = await cascadeOnce(ai, contents);
+    const text = await cascadeOnce(ai, contents, deadline);
     if (text && text.length >= minChars) return text;
     if (attempt < retries) await new Promise((r) => setTimeout(r, backoffMs * (attempt + 1)));
   }
@@ -477,7 +497,7 @@ const publicViewOf = (u: Record<string, any>): Record<string, any> => {
 const DATABASE_REGION = "asia-southeast1";
 
 export const syncPublicProfile = onDocumentWritten(
-  { document: "users/{uid}", database: DATABASE_ID, region: DATABASE_REGION },
+  { ...USER_TRIGGER, document: "users/{uid}", database: DATABASE_ID, region: DATABASE_REGION },
   async (event) => {
     const uid = event.params.uid;
     const after = event.data?.after;
@@ -490,7 +510,18 @@ export const syncPublicProfile = onDocumentWritten(
       return;
     }
 
-    const next = publicViewOf(after.data() as Record<string, any>);
+    const data = after.data() as Record<string, any>;
+
+    // Keep the fields the scheduled push jobs select on (see pushJobs.ts). The
+    // equality check is what stops this write re-triggering itself forever.
+    const push = pushFieldsFor(data);
+    if (data.pushTzBucket !== push.pushTzBucket || data.pushReminderHourUtc !== push.pushReminderHourUtc) {
+      await db.doc(`users/${uid}`).update(push).catch((e) => {
+        console.error("push fields update failed for", uid, e);
+      });
+    }
+
+    const next = publicViewOf(data);
     // Skip the write when nothing public changed. Without this, every step
     // sync and every meal log would rewrite the mirror and re-trigger nothing
     // useful — just cost.
@@ -505,8 +536,16 @@ export const syncPublicProfile = onDocumentWritten(
   },
 );
 
+// Keep in step with the switch in geminiProxy.
+const PROXY_ACTIONS = new Set([
+  "estimateCalories", "analyzeMealImage", "analyzeNutritionLabel", "analyzeFormFrame",
+  "generateWorkoutPlan", "generateMealPlan", "getRecipe", "swapMeal", "dailyChallenge",
+  "getAICoachInsight", "askCoach", "generateWeeklyRecap", "quickAdd", "coachBriefing",
+]);
+const MAX_IMAGE_CHARS = 10_000_000; // about 7.5 MB of image
+
 export const geminiProxy = functions.https.onRequest(
-  { secrets: [geminiApiKey] },
+  { ...AI_PROXY, secrets: [geminiApiKey] },
   async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") {
@@ -539,27 +578,61 @@ export const geminiProxy = functions.https.onRequest(
   }
 
   try {
-    const apiKey = geminiApiKey.value() || process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Gemini API key is not configured in Firebase");
-    const ai = new GoogleGenAI({ apiKey });
     const { action, payload = {} } = req.body || {};
+
+    // An unknown action costs nothing, so it must not use up anyone's allowance.
+    if (!PROXY_ACTIONS.has(action)) {
+      res.status(400).json({ error: "Invalid action" });
+      return;
+    }
+    // A photo this big is not a phone camera frame; it would only burn tokens.
+    if (typeof payload.base64Image === "string" && payload.base64Image.length > MAX_IMAGE_CHARS) {
+      res.status(413).json({ error: "Image too large" });
+      return;
+    }
+
+    // Every model just said it is over quota: answer now rather than hold a slot
+    // for a request that can't succeed. The app falls back to built-in answers.
+    const wait = secondsUntilAnyModel(GEMINI_MODELS);
+    if (wait > 0) {
+      res.set("Retry-After", String(wait));
+      res.status(503).json({ error: "AI is busy", code: "ai_busy" });
+      return;
+    }
+
+    const isPro = await isProUid(callerUid);
 
     // Coach chat is Pro-only, and it is the one action with open-ended cost:
     // a client-side gate is a UI convenience, not a spend control. Entitlement
     // is recomputed here from the user doc the webhooks own, so a modified
     // client or a replayed request cannot buy Gemini calls on the free tier.
-    if (action === "askCoach") {
-      const allowed = await isProUid(callerUid);
-      if (!allowed) {
-        res.status(402).json({ error: "Coach chat requires FitFlow Pro" });
-        return;
-      }
+    if (action === "askCoach" && !isPro) {
+      res.status(402).json({ error: "Coach chat requires FitFlow Pro" });
+      return;
     }
+
+    // After the Pro check, so a refused coach message costs no allowance.
+    const refusal = await checkAiAllowance(
+      callerUid,
+      action === "analyzeFormFrame" ? "frame" : action === "coachBriefing" ? "briefing" : "call",
+      isPro, undefined, undefined, action === "coachBriefing",
+    );
+    if (refusal) {
+      res.set("Retry-After", refusal === "global_limit" ? "3600" : "21600");
+      res.status(429).json({ error: "Today's AI limit is reached", code: refusal });
+      return;
+    }
+
+    const apiKey = geminiApiKey.value() || process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("Gemini API key is not configured in Firebase");
+    const ai = new GoogleGenAI({ apiKey });
+    // Stops retries a little before the app's own 25 s abort.
+    const deadline = Date.now() + 22_000;
 
     // Run the cascade and parse JSON, falling back to the given shape on any
     // failure so the client always receives usable structured content.
     const json = async (contents: any, fallback: any) => {
-      const text = await cascadeOnce(ai, contents);
+      const text = await cascadeOnce(ai, contents, deadline);
       return text ? safeJsonParse(text, fallback) : fallback;
     };
     const vision = (base64Image: string, mimeType: string, text: string) => ({
@@ -680,6 +753,7 @@ Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sente
           `You are an elite fitness AI. Give ONE sharp, motivational insight (max 20 words) based on:
 Calories today: ${Number(payload.calories) || 0}, Water: ${Number(payload.water) || 0}ml, Workouts: ${Number(payload.workouts) || 0}, Streak: ${Number(payload.streak) || 0} days.
 Return ONLY plain text, no JSON.`,
+          { deadline },
         );
         res.json({ text: (text || "").replace(/[*_`#]/g, "").trim() });
         return;
@@ -697,7 +771,7 @@ Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain langua
 
 ${transcript ? "Conversation so far:\n" + transcript + "\n\n" : ""}User: ${clip(payload.message, 2000)}
 Coach:`,
-          { retries: 1, minChars: 15 },
+          { retries: 1, minChars: 15, deadline },
         );
         // Strip stray markdown and apply the same substance gate the client used.
         // An empty string tells the client to use its on-device heuristic reply.
@@ -730,6 +804,28 @@ Tone: warm, direct, like a real human coach. No emojis.`,
         return;
       }
 
+      case "quickAdd": {
+        const out = await json(
+          `Parse this meal description into individual food items with realistic nutrition.
+Description: "${clip(payload.text, 500)}"
+Estimate macros for the quantity stated; default to a typical single serving when no quantity is given.
+Return ONLY a valid JSON array (no markdown):
+[{"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}]
+If you cannot parse any food, return [].`,
+          [],
+        );
+        res.json(Array.isArray(out) ? out.slice(0, 20) : []);
+        return;
+      }
+
+      case "coachBriefing": {
+        const base = boundBriefing(payload.base);
+        const text = await cascadeOnce(ai, briefingPrompt(payload.ctx?.goal, base), deadline);
+        // Null tells the app to keep its own wording.
+        res.json(text ? sanitizePolish(base, safeJsonParse(text, null)) : null);
+        return;
+      }
+
       default:
         res.status(400).json({ error: "Invalid action" });
         return;
@@ -746,72 +842,19 @@ Tone: warm, direct, like a real human coach. No emojis.`,
 // Idempotency: lastReminderDate field on user prevents duplicate same-day sends.
 // ---------------------------------------------------------------------------
 export const sendWorkoutReminders = onSchedule(
-  { schedule: "every 30 minutes", timeZone: "UTC" },
+  { ...SCHEDULED_JOB, schedule: "every 30 minutes", timeZone: "UTC" },
   async () => {
-    const now = new Date();
-    const target = new Date(now.getTime() + 30 * 60 * 1000); // 30 min from now
-    const targetHourUtc = target.getUTCHours();
-    // Keyed on the TARGET day, not the current one.
-    //
-    // This runs every 30 minutes and matches on the hour 30 minutes out, so the
-    // same reminder hour is matched by two consecutive runs; `lastReminderDate`
-    // is what stops the second one from sending. Keyed on `now`, that guard
-    // failed for exactly one hour a day: the run at 23:30 UTC (target hour 0)
-    // stamped day N, and the run at 00:00 UTC stamped day N+1, so the guard
-    // never matched and the user got the same push twice, 30 minutes apart.
-    // For a UTC+8 athlete that is an 08:00 reminder — one of the most commonly
-    // chosen times there is. The target is the same instant in both runs, so
-    // keying on it dedupes across the midnight boundary too.
-    const today = target.toISOString().slice(0, 10);
-
-    const snap = await db
-      .collection("users")
-      .where("notificationsEnabled", "==", true)
-      .get();
-
-    const messaging = admin.messaging();
-
-    const tasks = snap.docs.map(async (doc) => {
-      const u = doc.data() as any;
-      if (!u.fcmToken || !u.preferredWorkoutTime) return;
-      const [hStr] = u.preferredWorkoutTime.split(":");
-      const userHourLocal = parseInt(hStr, 10);
-      if (Number.isNaN(userHourLocal)) return;
-
-      // Apply user's UTC offset if stored, else assume UTC.
-      const offsetHours = typeof u.tzOffsetHours === "number" ? u.tzOffsetHours : 0;
-      const userHourUtc = ((userHourLocal - offsetHours) + 24) % 24;
-      if (userHourUtc !== targetHourUtc) return;
-
-      if (u.lastReminderDate === today) return;
-
-      try {
-        await messaging.send({
-          token: u.fcmToken,
-          notification: {
-            title: "Training window opens soon",
-            body: `You usually train around ${u.preferredWorkoutTime}. 30 minutes — let's go.`,
-          },
-          data: { type: "workout_reminder" },
-          android: { priority: "high", notification: { channelId: "fitflow_reminders" } },
-        });
-        await doc.ref.update({ lastReminderDate: today });
-
-        await db.collection("notifications").add({
-          userId: doc.id,
-          title: "Training window opens soon",
-          body: `You usually train around ${u.preferredWorkoutTime}.`,
-          type: "reminder",
-          read: false,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (err) {
-        console.warn("Reminder send failed for", doc.id, err);
-      }
-    });
-
-    await Promise.all(tasks);
+    console.log("workout reminders", JSON.stringify(await runWorkoutReminders({ send: pushViaFcm })));
   });
+
+const pushViaFcm = async (token: string, push: PushContent) => {
+  await admin.messaging().send({
+    token,
+    notification: { title: push.title, body: push.body },
+    data: { type: push.type },
+    android: { priority: "high", notification: { channelId: "fitflow_reminders" } },
+  });
+};
 
 // ---------------------------------------------------------------------------
 // Sunday AI weekly recap — runs every Sunday 09:00 UTC, generates a personalized
@@ -836,8 +879,8 @@ export const generateWeeklyRecaps = onSchedule(
     // already exist, so later passes only pick up whoever an earlier one did
     // not reach (quota, time budget). One pass covers ~450 users.
     schedule: "0 9-14 * * 0",
+    ...SCHEDULED_RECAP,
     timeZone: "UTC",
-    timeoutSeconds: 1800,
     secrets: [geminiApiKey],
   },
   async () => {
@@ -862,202 +905,28 @@ export const generateWeeklyRecaps = onSchedule(
 // ---------------------------------------------------------------------------
 
 export const sendTrialEndingReminders = onSchedule(
-  { schedule: "every day 16:00", timeZone: "UTC" },
+  { ...SCHEDULED_JOB, schedule: "every day 16:00", timeZone: "UTC" },
   async () => {
-    const now = Date.now();
-    const dayMs = 86_400_000;
-
-    const snap = await db
-      .collection("users")
-      .where("notificationsEnabled", "==", true)
-      .get();
-
-    const messaging = admin.messaging();
-
-    const tasks = snap.docs.map(async (doc) => {
-      const u = doc.data() as any;
-      // Skip users who already pay or never started a trial.
-      if (u.subscriptionType === "premium") return;
-      if (u.trialEndingNotifiedAt) return;
-      if (!u.fcmToken) return;
-
-      const startMs = u.trialStartedAt?.toMillis ? u.trialStartedAt.toMillis()
-        : (typeof u.trialStartedAt?._seconds === "number" ? u.trialStartedAt._seconds * 1000 : null);
-      if (startMs == null) return;
-
-      const endMs = startMs + TRIAL_DAYS * dayMs;
-      const msLeft = endMs - now;
-      // Fire only on the final day of the trial (0 < left <= 24h).
-      if (msLeft <= 0 || msLeft > dayMs) return;
-
-      try {
-        await messaging.send({
-          token: u.fcmToken,
-          notification: {
-            title: "Your free trial ends tomorrow",
-            body: "Keep your AI coach, form check & analytics — subscribe to stay Pro.",
-          },
-          data: { type: "trial_ending" },
-          android: { priority: "high", notification: { channelId: "fitflow_reminders" } },
-        });
-        await doc.ref.set(
-          { trialEndingNotifiedAt: admin.firestore.FieldValue.serverTimestamp() },
-          { merge: true },
-        );
-        await db.collection("notifications").add({
-          userId: doc.id,
-          title: "Your free trial ends tomorrow",
-          body: "Subscribe to keep FitFlow Pro.",
-          type: "system",
-          read: false,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (err) {
-        console.warn("Trial-ending reminder failed for", doc.id, err);
-      }
-    });
-
-    await Promise.all(tasks);
+    console.log("trial reminders", JSON.stringify(await runTrialReminders({ send: pushViaFcm, trialDays: TRIAL_DAYS })));
   });
 
 // ---------------------------------------------------------------------------
-// Proactive re-engagement nudges — the three highest-leverage retention pushes,
-// in ONE every-30-min scan (cost: a single users read per run). Per user we
-// evaluate all three triggers and send AT MOST ONE push (priority: streak-risk >
-// win-back > meal-nudge) so nobody gets double-pushed in a run.
-//
-// All decision logic mirrors src/services/engagementUtils.ts (proven 100% by
-// `npm run proof:engagement`). KEEP THESE CONSTANTS IN SYNC with that module.
-//   streak-risk: streak >= 2, active yesterday (not today), local hour >= 19
-//   meal-nudge : local hour 12–15, nothing logged today
-//   win-back   : exactly 1/3/7/14/30 days since last active, fired at ~10:00 local
-// Idempotency lives in user-doc fields written here via the admin SDK (which
-// bypasses Firestore rules): streakRiskNotifiedDate, mealNudgeDate, winbackLastTier.
-// The client resets winbackLastTier to 0 on every active day (analyticsService).
+// Proactive re-engagement nudges: streak-risk, win-back and meal-time, at most
+// one push per user per run. Selection and decisions live in pushJobs.ts.
 // ---------------------------------------------------------------------------
-const ENG = {
-  STREAK_RISK_MIN: 2,
-  STREAK_RISK_HOUR: 19,
-  MEAL_NUDGE_HOUR_START: 12,
-  MEAL_NUDGE_HOUR_END: 15,
-  WINBACK_TIERS: [1, 3, 7, 14, 30] as readonly number[],
-  WINBACK_HOUR: 10, // local hour to send the daily win-back check (once/day/user)
-};
-
-const WINBACK_COPY: Record<number, { title: string; body: string }> = {
-  1: { title: "Pick up where you left off", body: "A 2-minute log keeps your momentum going. You’ve got this." },
-  3: { title: "Your coach misses you", body: "Three days off is fine — jump back in and we’ll adjust your plan." },
-  7: { title: "One week — let’s restart", body: "A fresh week is the perfect reset. Log one thing to get rolling." },
-  14: { title: "Still here for you", body: "Two weeks out. Your data’s exactly where you left it — come finish what you started." },
-  30: { title: "We saved your spot", body: "A month away happens. One tap brings your whole plan back to life." },
-};
-
-// 'YYYY-MM-DD' (UTC fields of a wall-clock-shifted instant) → whole-day ordinal.
-const engDayOrdinal = (key: string): number | null => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || "");
-  if (!m) return null;
-  return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000);
-};
-
 export const sendEngagementNudges = onSchedule(
-  { schedule: "every 30 minutes", timeZone: "UTC" },
+  { ...SCHEDULED_JOB, schedule: "every 30 minutes", timeZone: "UTC" },
   async () => {
-    const now = Date.now();
-    const snap = await db
-      .collection("users")
-      .where("notificationsEnabled", "==", true)
-      .get();
-    const messaging = admin.messaging();
+    console.log("engagement nudges", JSON.stringify(await runEngagementNudges({ send: pushViaFcm })));
+  });
 
-    const tasks = snap.docs.map(async (doc) => {
-      const u = doc.data() as any;
-      if (!u.fcmToken) return;
-
-      // User-local wall clock (offsetHours = localHour - utcHour; default UTC).
-      const offsetHours = typeof u.tzOffsetHours === "number" ? u.tzOffsetHours : 0;
-      const localMs = now + offsetHours * 3600_000;
-      const local = new Date(localMs);
-      const hourLocal = local.getUTCHours();
-      const today = local.toISOString().slice(0, 10);
-      const todayOrd = engDayOrdinal(today)!;
-      const startOfTodayMs = Math.floor(localMs / 86400000) * 86400000 - offsetHours * 3600_000;
-
-      const lastActiveDay: string | null = typeof u.lastActiveDay === "string" ? u.lastActiveDay : null;
-      const lastActiveOrd = lastActiveDay ? engDayOrdinal(lastActiveDay) : null;
-      const streak = Number(u.currentStreak) || 0;
-
-      let push: { title: string; body: string; type: string; update: Record<string, any> } | null = null;
-
-      // --- 1. Streak-at-risk (highest priority) ---
-      if (
-        streak >= ENG.STREAK_RISK_MIN &&
-        lastActiveOrd !== null &&
-        todayOrd - lastActiveOrd === 1 &&
-        hourLocal >= ENG.STREAK_RISK_HOUR &&
-        u.streakRiskNotifiedDate !== today
-      ) {
-        push = {
-          title: `🔥 Your ${streak}-day streak ends at midnight`,
-          body: `Don't lose it now — a quick log keeps your ${streak}-day streak alive.`,
-          type: "streak_risk",
-          update: { streakRiskNotifiedDate: today },
-        };
-      }
-
-      // --- 2. Win-back (fired once/day at ~10:00 local) ---
-      if (!push && lastActiveOrd !== null && hourLocal === ENG.WINBACK_HOUR) {
-        const gap = todayOrd - lastActiveOrd;
-        const lastTier = Number(u.winbackLastTier) || 0;
-        if (ENG.WINBACK_TIERS.includes(gap) && gap > lastTier) {
-          const copy = WINBACK_COPY[gap];
-          push = { title: copy.title, body: copy.body, type: "winback", update: { winbackLastTier: gap } };
-        }
-      }
-
-      // --- 3. Meal-time nudge (lowest priority, midday) ---
-      if (
-        !push &&
-        hourLocal >= ENG.MEAL_NUDGE_HOUR_START &&
-        hourLocal < ENG.MEAL_NUDGE_HOUR_END &&
-        u.mealNudgeDate !== today
-      ) {
-        const lastMealMs = u.lastMealAt?.toMillis ? u.lastMealAt.toMillis()
-          : (typeof u.lastMealAt?._seconds === "number" ? u.lastMealAt._seconds * 1000 : null);
-        const loggedToday = lastMealMs != null && lastMealMs >= startOfTodayMs;
-        if (!loggedToday) {
-          push = {
-            title: "Haven't logged today?",
-            body: "Capture a meal in 2 taps — scan a barcode or just describe it.",
-            type: "meal_nudge",
-            update: { mealNudgeDate: today },
-          };
-        }
-      }
-
-      if (!push) return;
-
-      try {
-        await messaging.send({
-          token: u.fcmToken,
-          notification: { title: push.title, body: push.body },
-          data: { type: push.type },
-          android: { priority: "high", notification: { channelId: "fitflow_reminders" } },
-        });
-        await doc.ref.set(push.update, { merge: true });
-        await db.collection("notifications").add({
-          userId: doc.id,
-          title: push.title,
-          body: push.body,
-          type: "reminder",
-          read: false,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (err) {
-        console.warn("Engagement nudge failed for", doc.id, push.type, err);
-      }
-    });
-
-    await Promise.all(tasks);
+// ---------------------------------------------------------------------------
+// Community count: one stored document, so Home reads a single doc per open.
+// ---------------------------------------------------------------------------
+export const updateCommunityStats = onSchedule(
+  { ...SCHEDULED_JOB, schedule: "every 60 minutes", timeZone: "UTC" },
+  async () => {
+    console.log("community stats", JSON.stringify(await refreshCommunityStats()));
   });
 
 // ---------------------------------------------------------------------------
@@ -1074,7 +943,7 @@ export const sendEngagementNudges = onSchedule(
 // Idempotent + safe: an unknown/duplicate event simply 200s without changing state.
 // ---------------------------------------------------------------------------
 export const revenueCatWebhook = functions.https.onRequest(
-  { secrets: [revenueCatAuth] },
+  { ...PAYMENTS, secrets: [revenueCatAuth] },
   async (req, res) => {
     if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
 

@@ -67,6 +67,11 @@ await check('Alice can rank the leaderboard',
   assertSucceeds(getDocs(query(collection(alice, 'public_profiles'), orderBy('points', 'desc'), limit(10)))));
 await check('an anonymous visitor cannot read the mirror', assertFails(getDoc(doc(anon, 'public_profiles', BOB))));
 
+console.log(`\n${C.b}The community count is readable, never writable${C.x}`);
+await check('a signed-in user can read it', assertSucceeds(getDoc(doc(alice, 'community_stats', 'global'))));
+await check('an anonymous visitor cannot', assertFails(getDoc(doc(anon, 'community_stats', 'global'))));
+await check('nobody can forge it', assertFails(setDoc(doc(alice, 'community_stats', 'global'), { total: 999999 })));
+
 console.log(`\n${C.b}The mirror is server-only${C.x}`);
 await check('Alice cannot forge a leaderboard entry',
   assertFails(setDoc(doc(alice, 'public_profiles', ALICE), { displayName: 'Alice', points: 999999 })));

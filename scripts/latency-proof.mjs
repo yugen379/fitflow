@@ -134,7 +134,13 @@ if (VARIANT.has('noparticles')) css.push('.ff-drift{animation:none!important;dis
 if (VARIANT.has('nocanvas')) css.push('canvas{display:none!important}');
 if (VARIANT.has('noblur')) css.push('*{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}');
 if (VARIANT.has('noanim')) css.push('*,*::before,*::after{animation:none!important;transition:none!important}');
+if (VARIANT.has('nowash')) css.push('[class*="blur-[120px]"],[class*="blur-[130px]"]{display:none!important}');
 if (css.length) await page.addStyleTag({ content: css.join(' ') });
+// Control: freeze the main thread for 400 ms on every tap. If `ready` does not
+// rise past 400 ms under this variant, the probe cannot detect slowness.
+if (VARIANT.has('blocktap')) await page.evaluate(() => {
+  document.addEventListener('pointerdown', () => { const t = performance.now(); while (performance.now() - t < 400); }, { capture: true });
+});
 if (VARIANT.size) console.log('variant:', [...VARIANT].join(','));
 const cdp = await ctx.newCDPSession(page);
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU_SLOWDOWN });
@@ -147,22 +153,31 @@ const measure = async (label, target, readyFn, readyArg) => {
   await page.evaluate(() => { window.__lat.events = []; window.__lat.downAt = 0; });
   const loc = typeof target === 'string' ? page.locator(target).first() : target;
   await loc.waitFor({ state: 'visible', timeout: 15000 });
-  await loc.click({ timeout: 15000 });
-  const ready = await page.evaluate(([src, arg]) => new Promise((resolve) => {
+  // Arm the watcher BEFORE the tap. It used to start after Playwright's click()
+  // returned, so a screen that painted sooner could never report a lower number.
+  const alreadyTrue = await page.evaluate(([src, arg]) => {
     // eslint-disable-next-line no-new-func
     const fn = new Function('arg', `return (${src})(arg);`);
-    const deadline = performance.now() + 8000;
-    const tick = () => {
-      let ok = false;
-      try { ok = !!fn(arg); } catch { ok = false; }
-      if (ok) {
-        // The frame that shows it is the NEXT paint after the DOM is ready.
-        requestAnimationFrame(() => resolve(performance.now() - window.__lat.downAt));
-      } else if (performance.now() > deadline) resolve(-1);
-      else requestAnimationFrame(tick);
-    };
-    tick();
-  }), [readyFn.toString(), readyArg]);
+    const check = () => { try { return !!fn(arg); } catch { return false; } };
+    const before = check();
+    window.__lat.ready = new Promise((resolve) => {
+      const deadline = performance.now() + 15000;
+      const tick = () => {
+        const down = window.__lat.downAt;
+        if (down && check()) {
+          // The frame that shows it is the NEXT paint after the DOM is ready.
+          requestAnimationFrame(() => resolve(performance.now() - down));
+        } else if (performance.now() > deadline) resolve(-1);
+        else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    return before;
+  }, [readyFn.toString(), readyArg]);
+  // A condition that held before the tap would "pass" instantly and prove nothing.
+  if (alreadyTrue) throw new Error(`ready condition was already true before the tap: ${label}`);
+  await loc.click({ timeout: 15000 });
+  const ready = await page.evaluate(() => window.__lat.ready);
   await page.waitForTimeout(400); // let Event Timing entries for this tap land
   const response = await page.evaluate(() => {
     const ev = window.__lat.events;

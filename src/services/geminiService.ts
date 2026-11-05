@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { searchFood, searchLocalFoods } from "./foodService";
 import { buildBriefing, applyPolish, CoachContext, CoachBriefing } from "./coachBriefing";
 import { splitPhrases, buildResult, normalizeItem, QuickAddResult, QuickAddItem } from "./quickAddUtils";
+import { decidePolish, polishBaseKey, polishSlot, readPolish, savePolish } from "./briefingPolishCache";
 
 // Every client build sends every Gemini call through the geminiProxy Cloud
 // Function — the API key never ships in the bundle (vite.config.ts inlines ''
@@ -121,7 +122,11 @@ import type { AuthTokenSupplier } from '../lib/authToken';
 /** @deprecated Prefer setAuthTokenSupplier from lib/authToken. */
 export const setGeminiAuthTokenSupplier = (fn: AuthTokenSupplier): void => setAuthTokenSupplier(fn);
 
-const callProxy = async (action: string, payload: any) => {
+// A 503 means every model is briefly over quota. One retry, with random spread
+// so a crowd doesn't return at the same instant, then the caller's built-in
+// answer. A 429 means today's limit, which a retry can't change.
+const RETRY_MAX_WAIT_S = 5;
+const callProxy = async (action: string, payload: any, retried = false): Promise<any> => {
   if (!PROXY_URL) throw new Error('Gemini proxy not configured');
   const token = await getAuthToken();
   // Abort a hung proxy call so it can't block the UI indefinitely; the caller's
@@ -138,6 +143,14 @@ const callProxy = async (action: string, payload: any) => {
       body: JSON.stringify({ action, payload }),
       signal: ctrl.signal,
     });
+    if (res.status === 503 && !retried) {
+      const wait = Number(res.headers.get('Retry-After')) || 1;
+      if (wait <= RETRY_MAX_WAIT_S) {
+        clearTimeout(timer);
+        await new Promise((r) => setTimeout(r, wait * 1000 + Math.random() * 1500));
+        return callProxy(action, payload, true);
+      }
+    }
     if (!res.ok) throw new Error(`Gemini proxy returned ${res.status}`);
     return res.json();
   } finally {
@@ -822,8 +835,22 @@ export type { CoachContext, CoachBriefing } from "./coachBriefing";
 export const getCoachBriefing = async (ctx: CoachContext): Promise<CoachBriefing> => {
   const base = buildBriefing(ctx);
   if (useProxy) {
-    try { return applyPolish(base, await callProxy('coachBriefing', { ctx, base })); }
-    catch { return base; }
+    const slot = polishSlot(new Date(), ctx.hour);
+    const baseKey = polishBaseKey(base);
+    const stored = readPolish();
+    const decision = decidePolish(stored, slot, baseKey);
+    if (decision === 'reuse') return stored!.polished!;
+    if (decision === 'plain') return base;
+    // Saved BEFORE the call, so a rebuild while this is running, or a failed
+    // call, can't spend another request. No storage means no way to limit it.
+    if (!savePolish({ slot, baseKey, polished: null })) return base;
+    try {
+      const polished = applyPolish(base, await callProxy('coachBriefing', { ctx, base }));
+      if (polished !== base) savePolish({ slot, baseKey, polished });
+      return polished;
+    } catch {
+      return base;
+    }
   }
   if (!ai) return base;
 

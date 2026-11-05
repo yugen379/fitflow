@@ -15,6 +15,7 @@
  *    weekly-recap range was `>= uid_` AND `< uid_`, which matches nothing.
  */
 import * as admin from "firebase-admin";
+import { ACCOUNT_DELETION } from "./capacity";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { DocumentReference, FieldPath } from "firebase-admin/firestore";
 import { db } from "./db";
@@ -104,7 +105,7 @@ export const deleteUserData = async (uid: string): Promise<void> => {
   await db.doc(`public_profiles/${uid}`).delete();
 };
 
-export const deleteAccount = onCall(async (request) => {
+export const deleteAccount = onCall(ACCOUNT_DELETION, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required");
   try {

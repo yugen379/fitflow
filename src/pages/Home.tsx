@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { motion, AnimatePresence } from 'motion/react';
-import { query, collection, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, limit, orderBy } from 'firebase/firestore';
+import { query, collection, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, limit, orderBy } from 'firebase/firestore';
 import { auth, handleFirestoreError } from '../lib/firebase';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { useNavigate } from 'react-router-dom';
@@ -256,16 +256,19 @@ export const Home: React.FC = () => {
   useEffect(() => {
     if (!profile?.uid) return;
     const goal = profile.goal;
-    // public_profiles, not users: this only needs a COUNT of people sharing a
-    // goal, and /users is owner-only now. See syncPublicProfile in functions.
-    const q = goal
-      ? query(collection(db, 'public_profiles'), where('goal', '==', goal), limit(500))
-      : query(collection(db, 'public_profiles'), limit(500));
-    const unsub = onSnapshot(q,
-      (snap) => setCommunityCount(snap.size),
-      () => setCommunityCount(null),
-    );
-    return () => safeUnsubscribe(unsub);
+    // One stored document, refreshed hourly by updateCommunityStats. This used
+    // to be a live listener on up to 500 profiles per user, just to get a count.
+    let cancelled = false;
+    getDoc(doc(db, 'community_stats', 'global'))
+      .then((snap) => {
+        if (cancelled) return;
+        const stats = snap.data();
+        const count = goal ? stats?.byGoal?.[goal] ?? stats?.total : stats?.total;
+        // The count can be up to an hour old, and this user does exist.
+        setCommunityCount(typeof count === 'number' ? Math.max(count, 1) : null);
+      })
+      .catch(() => { if (!cancelled) setCommunityCount(null); });
+    return () => { cancelled = true; };
   }, [profile?.uid, profile?.goal]);
 
   /**
@@ -683,7 +686,7 @@ export const Home: React.FC = () => {
             ))}
           </div>
           {communityCount === null ? (
-            <p className="text-sm text-white/60 leading-snug">Loading community…</p>
+            <p className="text-sm text-white/80 leading-snug">Train alongside the FitFlow community.</p>
           ) : communityCount === 0 ? (
             <p className="text-sm text-white/80 leading-snug">
               You're the first one here. <button onClick={() => navigate('/community')} className="text-accent font-semibold">Make the first post</button>.

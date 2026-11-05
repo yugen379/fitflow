@@ -97,8 +97,9 @@ console.log(`\n${C.b}The app reads the mirror, not /users${C.x}`);
 check('no screen queries the users collection across accounts',
   !/collection\(db,\s*'users'\)/.test(app),
   'found a cross-user read of /users — use public_profiles');
+// Community's and Challenges' leaderboards. Home's count now reads community_stats.
 check('leaderboards read public_profiles',
-  (app.match(/collection\(db,\s*'public_profiles'\)/g) || []).length >= 3);
+  (app.match(/collection\(db,\s*'public_profiles'\)/g) || []).length >= 2);
 
 console.log(`\n${C.b}Backfill${C.x}`);
 const bf = readFileSync(join(ROOT, 'scripts/backfill-public-profiles.mjs'), 'utf8');

@@ -19,6 +19,7 @@
  * score directly.
  */
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { INTERACTIVE } from "./capacity";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./db";
 
@@ -195,7 +196,7 @@ export const awardXpFor = async (uid: string, reason: Reason, refId: string): Pr
   });
 };
 
-export const awardXp = onCall(async (request): Promise<XpResult> => {
+export const awardXp = onCall(INTERACTIVE, async (request): Promise<XpResult> => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "Sign in required");
   const { reason, refId } = (request.data || {}) as { reason?: unknown; refId?: unknown };

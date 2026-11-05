@@ -16,6 +16,10 @@
  *     cascade the coach uses,
  *   • if every model is busy, the user still gets a recap written from their
  *     own numbers instead of nothing,
+ *   • only people active in the last week are read at all, a page at a time,
+ *   • AI gets the first part of each pass; the rest of the pass writes recaps
+ *     from people's own numbers, so the free quota's ~18 a minute can't leave
+ *     most of a large user base with nothing,
  *   • a time budget: the job stops cleanly before its timeout, and the next
  *     scheduled pass (hourly through Sunday) picks up whoever is left, because
  *     an existing recap is never regenerated.
@@ -52,6 +56,10 @@ export interface RecapRunOptions {
   pauseMs?: number;
   /** Stop starting new batches after this long; the next pass continues. */
   budgetMs?: number;
+  /** After this long, recaps come from the numbers alone, at fallbackBatchSize. */
+  aiBudgetMs?: number;
+  fallbackBatchSize?: number;
+  pageSize?: number;
   writeRecap: RecapWriter;
   sendPush: PushSender;
 }
@@ -135,52 +143,74 @@ export const runWeeklyRecaps = async (opts: RecapRunOptions): Promise<RecapRunRe
     skippedInactive: 0, failed: 0, stoppedEarly: false, maxConcurrent: 0,
   };
 
-  const snap = await db.collection("users").where("notificationsEnabled", "==", true).get();
-  const users = snap.docs.filter((d) => typeof d.data().fcmToken === "string" && d.data().fcmToken);
-  report.eligible = users.length;
+  const aiBudgetMs = opts.aiBudgetMs ?? 15 * 60_000;
+  const fallbackBatchSize = opts.fallbackBatchSize ?? 20;
+  const pageSize = opts.pageSize ?? 200;
+  // One day of slack, because lastActiveDay is the user's LOCAL date.
+  const sinceDay = new Date(now - 8 * 86_400_000).toISOString().slice(0, 10);
+  const query = db.collection("users")
+    .where("notificationsEnabled", "==", true)
+    .where("lastActiveDay", ">=", sinceDay);
 
   let inFlight = 0;
-  for (let i = 0; i < users.length; i += batchSize) {
+  let last: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+  for (;;) {
     if (Date.now() - started > budgetMs) { report.stoppedEarly = true; break; }
-    const batch = users.slice(i, i + batchSize);
-    let calledAi = false;
+    const page: FirebaseFirestore.QuerySnapshot = await (last ? query.startAfter(last) : query).limit(pageSize).get();
+    const users = page.docs.filter((d) => typeof d.data().fcmToken === "string" && d.data().fcmToken);
+    report.eligible += users.length;
+    let lastBatchCalledAi = false;
 
-    await Promise.all(batch.map(async (doc) => {
-      const uid = doc.id;
-      const u = doc.data();
-      const ref = db.doc(`weekly_recaps/${uid}_${opts.weekId}`);
-      try {
-        if ((await ref.get()).exists) { report.skippedExisting++; return; }
-        const stats = await statsFor(uid, since);
-        if (!isActive(stats)) { report.skippedInactive++; return; }
-        const streak = Number(u.currentStreak ?? u.streak) || 0;
+    for (let i = 0; i < users.length;) {
+      if (Date.now() - started > budgetMs) { report.stoppedEarly = true; break; }
+      const useAi = Date.now() - started <= aiBudgetMs;
+      const size = useAi ? batchSize : fallbackBatchSize;
+      const batch = users.slice(i, i + size);
+      i += size;
+      let calledAi = false;
 
-        inFlight++;
-        report.maxConcurrent = Math.max(report.maxConcurrent, inFlight);
-        calledAi = true;
-        let recap: Recap | null;
+      await Promise.all(batch.map(async (doc) => {
+        const uid = doc.id;
+        const u = doc.data();
+        const ref = db.doc(`weekly_recaps/${uid}_${opts.weekId}`);
         try {
-          recap = parseRecap(await opts.writeRecap(promptFor(String(u.goal || ""), stats, streak)));
-        } finally {
-          inFlight--;
+          if ((await ref.get()).exists) { report.skippedExisting++; return; }
+          const stats = await statsFor(uid, since);
+          if (!isActive(stats)) { report.skippedInactive++; return; }
+          const streak = Number(u.currentStreak ?? u.streak) || 0;
+
+          let recap: Recap | null = null;
+          if (useAi) {
+            inFlight++;
+            report.maxConcurrent = Math.max(report.maxConcurrent, inFlight);
+            calledAi = true;
+            try {
+              recap = parseRecap(await opts.writeRecap(promptFor(String(u.goal || ""), stats, streak)));
+            } finally {
+              inFlight--;
+            }
+          }
+          const source = recap ? "ai" : "fallback";
+          recap ||= fallbackRecap(stats, streak);
+
+          await ref.set({ recap, stats, source, generatedAt: FieldValue.serverTimestamp() });
+          report.written++;
+          if (source === "ai") report.aiWritten++; else report.fallbackWritten++;
+          await opts.sendPush(u.fcmToken, "Your weekly recap is ready", recap.headline).catch((err) => {
+            console.warn("recap push failed for", uid, err?.code || err);
+          });
+        } catch (err) {
+          report.failed++;
+          console.warn("recap failed for", uid, err);
         }
-        const source = recap ? "ai" : "fallback";
-        recap ||= fallbackRecap(stats, streak);
+      }));
 
-        await ref.set({ recap, stats, source, generatedAt: FieldValue.serverTimestamp() });
-        report.written++;
-        if (source === "ai") report.aiWritten++; else report.fallbackWritten++;
-        await opts.sendPush(u.fcmToken, "Your weekly recap is ready", recap.headline).catch((err) => {
-          console.warn("recap push failed for", uid, err?.code || err);
-        });
-      } catch (err) {
-        report.failed++;
-        console.warn("recap failed for", uid, err);
-      }
-    }));
-
-    const more = i + batchSize < users.length;
-    if (more && calledAi && pauseMs > 0) await sleep(pauseMs);
+      lastBatchCalledAi = calledAi;
+      if (i < users.length && calledAi && pauseMs > 0) await sleep(pauseMs);
+    }
+    if (report.stoppedEarly || page.size < pageSize) break;
+    if (lastBatchCalledAi && pauseMs > 0) await sleep(pauseMs);
+    last = page.docs[page.docs.length - 1];
   }
   return report;
 };

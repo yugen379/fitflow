@@ -232,6 +232,12 @@ service cloud.firestore {
     // one line exposed every user's age, weight, healthConditions, email,
     // fcmToken and Stripe customer id to any signed-in account — to power a
     // leaderboard that needs a name and a score. Leaderboards read this instead.
+    // Written hourly by updateCommunityStats. Only totals, nothing about anyone.
+    match /community_stats/{id} {
+      allow get: if isSignedIn();
+      allow list, create, update, delete: if false;
+    }
+
     match /public_profiles/{userId} {
       allow get, list: if isSignedIn();
       // No client writes, ever. A client-writable mirror would let anyone put
