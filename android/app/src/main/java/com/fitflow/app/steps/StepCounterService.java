@@ -100,6 +100,7 @@ public class StepCounterService extends Service implements SensorEventListener {
     private static final long NOTIFICATION_MIN_INTERVAL_MS = 5_000L;
 
     private SensorManager sensorManager;
+    private Sensor stepDetector;
     private Sensor stepCounter;
     private StepStore store;
 
@@ -195,6 +196,7 @@ public class StepCounterService extends Service implements SensorEventListener {
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager != null) {
             stepCounter = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+            stepDetector = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
         }
         store = new StepStore(this);
         createChannel();
@@ -236,6 +238,11 @@ public class StepCounterService extends Service implements SensorEventListener {
         if (!listening) {
             listening = sensorManager.registerListener(
                     this, stepCounter, SensorManager.SENSOR_DELAY_NORMAL, BATCH_LATENCY_US);
+            if (listening && stepDetector != null) {
+                // Backup source for HALs whose cumulative counter resets/jumps.
+                sensorManager.registerListener(
+                        this, stepDetector, SensorManager.SENSOR_DELAY_NORMAL, BATCH_LATENCY_US);
+            }
         }
         running = listening;
 
@@ -259,7 +266,14 @@ public class StepCounterService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event == null || event.sensor == null || event.sensor.getType() != Sensor.TYPE_STEP_COUNTER) {
+        if (event == null || event.sensor == null) {
+            return;
+        }
+        if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+            store.addDetectorSteps(1L);
+            return;
+        }
+        if (event.sensor.getType() != Sensor.TYPE_STEP_COUNTER) {
             return;
         }
         if (event.values == null || event.values.length == 0) {
@@ -343,6 +357,15 @@ public class StepCounterService extends Service implements SensorEventListener {
         }
     }
 
+    /** Shown in the notification so a screenshot always says which build is running. */
+    private String appVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
     private Notification buildNotification(long steps) {
         Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
         PendingIntent pending = null;
@@ -366,7 +389,7 @@ public class StepCounterService extends Service implements SensorEventListener {
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(String.format(java.util.Locale.US, "%,d steps · %,d kcal", steps, kcal))
-                .setContentText("FitFlow is counting while you walk")
+                .setContentText("FitFlow is counting while you walk · v" + appVersion())
                 .setSmallIcon(android.R.drawable.ic_menu_directions)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)

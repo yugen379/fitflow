@@ -76,7 +76,21 @@ export interface CounterState {
   peakRaw?: number;
   /** Steps credited while the counter sat below `peakRaw` (after a drop). */
   dropSteps?: number;
+  /**
+   * TYPE_STEP_DETECTOR events (one per step) since the last counter reading.
+   * The backup source: credited only when the counter's own delta had to be
+   * rejected (reset / jump), so a misbehaving HAL loses no real walking.
+   */
+  detectorSteps?: number;
 }
+
+/** Record `n` step-detector events. Never mutates the input. */
+export const addDetectorSteps = (state: CounterState, n = 1): CounterState => {
+  const add = Number(n);
+  if (!Number.isFinite(add) || add <= 0) return state;
+  const prev = Number(state.detectorSteps);
+  return { ...state, detectorSteps: (Number.isFinite(prev) && prev > 0 ? prev : 0) + Math.floor(add) };
+};
 
 export const emptyCounterState = (): CounterState => ({
   stepsToday: 0,
@@ -167,7 +181,22 @@ export const applyRawReading = (rawValue: unknown, state: CounterState, ctx: Rea
   const raw = Number(rawValue);
   if (!Number.isFinite(raw) || raw < 0) return state;
   const clean = { ...state, stepsToday: sanitizeDaySteps(state.stepsToday) };
-  const delta = rawReadingDelta(raw, clean, ctx);
+  const counterDelta = rawReadingDelta(raw, clean, ctx);
+  const pending = Math.max(0, Number(clean.detectorSteps) || 0);
+  const baselined = clean.hasBaseline && clean.lastElapsedMs >= 0;
+
+  // Counter unchanged: the pending detector steps are not reflected yet; keep them.
+  if (baselined && counterDelta === 0 && raw === clean.lastRaw && !didReboot(clean, ctx)) {
+    return { ...clean, lastElapsedMs: ctx.elapsedMs, bootCount: ctx.bootCount, detectorSteps: pending };
+  }
+  let delta = counterDelta;
+  if (baselined && !didReboot(clean, ctx) && counterDelta === 0 && pending > 0) {
+    // The counter moved but its delta was rejected (reset / jump): fall back to
+    // the per-step detector, under the same cadence and day ceilings.
+    const ceiling = cadenceCeiling(ctx.elapsedMs - clean.lastElapsedMs);
+    const fallback = Math.min(pending, ceiling);
+    delta = clean.stepsToday + fallback <= MAX_PLAUSIBLE_DAY_STEPS ? fallback : 0;
+  }
 
   // Peak tracking: a fresh baseline or a real reboot starts a new peak.
   const fresh = !clean.hasBaseline || clean.lastElapsedMs < 0 || didReboot(clean, ctx);
@@ -182,6 +211,7 @@ export const applyRawReading = (rawValue: unknown, state: CounterState, ctx: Rea
     bootCount: ctx.bootCount,
     peakRaw,
     dropSteps,
+    detectorSteps: 0,
   };
 };
 

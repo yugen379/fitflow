@@ -311,13 +311,17 @@ export const Home: React.FC = () => {
     caloriesConsumed: summary?.caloriesConsumed || 0,
     mealsLogged: summary?.mealCount || 0,
     workoutsToday: summary?.workoutCount || 0,
-    steps: activityStatus === 'connected' && activity ? activity.steps : null,
+    // The same number the Steps card shows (background counter first), not
+    // Health Connect alone — which left the mission at 0 for everyone else.
+    steps: liveSteps.source !== 'none' ? liveSteps.steps : null,
     streak: profile?.streak || 0,
   });
 
   // Widget → DIRECT action: rows deep-link straight into the doing, never a menu.
   const onMissionAction = (task: MissionTask) => {
-    if (task.action.kind === 'steps-connect') { void connectActivity(); return; }
+    // Steps always opens the Steps page: it owns the permission/background
+    // setup. (Tapping it used to fire a Health Connect prompt and go nowhere.)
+    if (task.id === 'steps') { navigate('/steps'); return; }
     navigate(task.action.route);
   };
 

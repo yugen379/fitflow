@@ -60,6 +60,7 @@ public final class StepStore {
     private static final String KEY_BOOT_COUNT = "boot_count";
     private static final String KEY_PEAK_RAW = "peak_raw";
     private static final String KEY_DROP_STEPS = "drop_steps";
+    private static final String KEY_DETECTOR_STEPS = "detector_steps";
 
     // Plausibility guards — identical to src/services/backgroundStepPolicy.ts.
     static final long MAX_PLAUSIBLE_DELTA = 200000L;
@@ -155,6 +156,17 @@ public final class StepStore {
      * the highest raw value this boot is remembered and a return to it only
      * credits the steps walked above it.
      */
+    /**
+     * One TYPE_STEP_DETECTOR event. Held as a backup and credited only when the
+     * counter's own delta has to be rejected (reset / jump) — never on top of a
+     * healthy counter delta. Mirrors addDetectorSteps in backgroundStepPolicy.ts.
+     */
+    public synchronized void addDetectorSteps(long n) {
+        if (n <= 0) return;
+        long prev = Math.max(0L, prefs.getLong(KEY_DETECTOR_STEPS, 0L));
+        prefs.edit().putLong(KEY_DETECTOR_STEPS, prev + n).apply();
+    }
+
     synchronized long applyRawReading(long rawValue, long elapsedMs, int bootCount) {
         if (rawValue < 0) {
             // A negative cumulative counter is not physically meaningful.
@@ -172,6 +184,17 @@ public final class StepStore {
         long dropSteps = lastRaw < peak ? Math.max(0L, prefs.getLong(KEY_DROP_STEPS, 0L)) : 0L;
         boolean fresh = !hasBaseline || lastElapsed < 0
                 || didReboot(lastBoot, bootCount, lastElapsed, elapsedMs);
+        long pending = Math.max(0L, prefs.getLong(KEY_DETECTOR_STEPS, 0L));
+
+        if (!fresh && rawValue == lastRaw) {
+            // Counter unchanged: pending detector steps are not reflected yet.
+            prefs.edit()
+                    .putLong(KEY_STEPS_TODAY, stepsToday)
+                    .putLong(KEY_LAST_ELAPSED, elapsedMs)
+                    .putInt(KEY_BOOT_COUNT, bootCount)
+                    .apply();
+            return stepsToday;
+        }
 
         long delta;
         if (!hasBaseline || lastElapsed < 0) {
@@ -206,6 +229,13 @@ public final class StepStore {
             delta = 0L;
         }
 
+        if (!fresh && delta == 0L && pending > 0L) {
+            // The counter moved but its delta was rejected: use the detector,
+            // under the same cadence and day ceilings.
+            long fallback = Math.min(pending, cadenceCeiling(elapsedMs - lastElapsed));
+            delta = stepsToday + fallback <= MAX_PLAUSIBLE_DAY_STEPS ? fallback : 0L;
+        }
+
         stepsToday += delta;
 
         long nextPeak = fresh ? rawValue : Math.max(peak, rawValue);
@@ -214,6 +244,7 @@ public final class StepStore {
         prefs.edit()
                 .putLong(KEY_PEAK_RAW, nextPeak)
                 .putLong(KEY_DROP_STEPS, nextDropSteps)
+                .putLong(KEY_DETECTOR_STEPS, 0L)
                 .putLong(KEY_STEPS_TODAY, stepsToday)
                 .putLong(KEY_LAST_RAW, rawValue)
                 .putBoolean(KEY_HAS_BASELINE, true)

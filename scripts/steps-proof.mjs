@@ -64,7 +64,7 @@ const {
 const { resolveTheme } = await import('../src/hooks/useTheme.tsx');
 
 const {
-  MAX_PLAUSIBLE_DELTA, MAX_PLAUSIBLE_DAY_STEPS, applyRawReading, emptyCounterState, rawReadingDelta, rollDay,
+  MAX_PLAUSIBLE_DELTA, MAX_PLAUSIBLE_DAY_STEPS, addDetectorSteps, applyRawReading, emptyCounterState, rawReadingDelta, rollDay,
 } = await import('../src/services/backgroundStepPolicy.ts');
 
 const {
@@ -697,6 +697,39 @@ console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
     y = applyRawReading(31_000, noPeak(y), at(10_300 + 3 * 3600));
     check('REPRO 2 control: without peak tracking the same sequence inflates by ~30k',
       y.stepsToday > 30_000, `${y.stepsToday}`);
+  }
+  // Step-detector backup: credited ONLY when the counter's delta was rejected.
+  {
+    const det = (st, n) => addDetectorSteps(st, n);
+    let d = applyRawReading(40_000, emptyCounterState(), at(20_000));
+    d = applyRawReading(40_300, det(d, 300), at(20_200));
+    check('detector: a healthy counter is not double-counted by the detector',
+      d.stepsToday === 300 && d.detectorSteps === 0, `${d.stepsToday}`);
+    d = applyRawReading(12, det(d, 120), at(20_300));            // HAL reset mid-walk
+    check('detector: steps walked into a sensor reset are recovered from the detector',
+      d.stepsToday === 420, `${d.stepsToday}`);
+    const held = applyRawReading(12, det(d, 40), at(20_310));    // counter not yet updated
+    check('detector: pending steps are held while the counter has not moved',
+      held.stepsToday === 420 && held.detectorSteps === 40);
+    check('detector: a sensor jump with a huge detector backlog is still cadence-capped',
+      applyRawReading(900_000, det(d, 1_000_000), at(20_310)).stepsToday <= 420 + 10 * 5 + 60);
+    check('detector: no credit on the very first baseline reading',
+      applyRawReading(5_000, det(emptyCounterState(), 500), at(100)).stepsToday === 0);
+    // CONTROL: the same reset without detector events loses the 120 steps.
+    let c = applyRawReading(40_000, emptyCounterState(), at(20_000));
+    c = applyRawReading(40_300, c, at(20_200));
+    c = applyRawReading(12, c, at(20_300));
+    check('detector control: without the detector the reset loses those steps',
+      c.stepsToday === 300, `${c.stepsToday}`);
+    // The oscillation repro, now WITH detector events: still no inflation.
+    let o = applyRawReading(150_000, emptyCounterState(), at(10_000));
+    let ot = 10_000, oraw = 150_000, osmall = 0;
+    for (let i = 0; i < 50; i++) {
+      osmall += 10; ot += 2; o = applyRawReading(osmall, det(o, 10), at(ot));
+      oraw += 20;   ot += 2; o = applyRawReading(oraw, det(o, 10), at(ot));
+    }
+    check('detector: an oscillating sensor plus detector stays near real walking (~1,000)',
+      o.stepsToday >= 900 && o.stepsToday <= 1100, `${o.stepsToday}`);
   }
   check('a real reboot resets the peak (post-boot counting is not blocked)', (() => {
     let z = applyRawReading(80_000, emptyCounterState(), at(50_000));

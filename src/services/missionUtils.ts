@@ -199,8 +199,8 @@ export const buildMission = (snapIn: MissionSnapshot): Mission => {
     pct: stepsConnected ? pctOf(steps, STEPS_GOAL) : 0,
     state: stepsDone ? 'done' : 'pending',
     action: stepsConnected
-      ? { label: 'Take a walk', route: '/explore' }
-      : { label: 'Connect', route: '/', kind: 'steps-connect' },
+      ? { label: 'Take a walk', route: '/steps' }
+      : { label: 'Set up', route: '/steps', kind: 'steps-connect' },
   };
 
   const tasks: MissionTask[] = [workout, calories, stepsTask];
