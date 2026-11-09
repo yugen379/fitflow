@@ -36,7 +36,7 @@
 import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp } from 'firebase/firestore';
 
 import { db } from '../lib/firestore';
-import { cleanSteps, mergeDayCount, shouldWrite } from './stepSyncPolicy';
+import { cleanSteps, mergeDayCount, plausibleDaySteps, shouldWrite } from './stepSyncPolicy';
 import { reportSwallowed } from '../lib/telemetry';
 
 export interface StepDay {
@@ -67,7 +67,7 @@ export const upsertStepDay = async (
   options: { force?: boolean } = {},
 ): Promise<boolean> => {
   if (!uid || !entry?.day) return false;
-  const steps = cleanSteps(entry.steps);
+  const steps = plausibleDaySteps(entry.steps);
   if (steps <= 0) return false;
 
   const key = stepDayId(uid, entry.day);
@@ -104,7 +104,7 @@ export const upsertStepDay = async (
     let remoteSteps = 0;
     try {
       const existing = await getDoc(ref);
-      remoteSteps = existing.exists() ? cleanSteps(existing.data()?.steps) : 0;
+      remoteSteps = existing.exists() ? plausibleDaySteps(existing.data()?.steps) : 0;
     } catch (readErr) {
       reportSwallowed('stepSync.readBeforeWrite', readErr, { day: entry.day });
     }
@@ -155,7 +155,7 @@ export const fetchStepDay = async (uid: string | undefined, day: string): Promis
   if (!uid || !day) return 0;
   try {
     const snapshot = await getDoc(doc(db, 'step_days', stepDayId(uid, day)));
-    return snapshot.exists() ? cleanSteps(snapshot.data()?.steps) : 0;
+    return snapshot.exists() ? plausibleDaySteps(snapshot.data()?.steps) : 0;
   } catch {
     return 0;
   }
@@ -186,7 +186,7 @@ export const fetchStepHistory = async (
     const out: Record<string, number> = {};
     snapshot.forEach((document) => {
       const data = document.data();
-      if (typeof data?.day === 'string') out[data.day] = cleanSteps(data.steps);
+      if (typeof data?.day === 'string') out[data.day] = plausibleDaySteps(data.steps);
     });
     return out;
   } catch {

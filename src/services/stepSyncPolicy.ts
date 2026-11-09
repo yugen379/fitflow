@@ -12,6 +12,9 @@
 /** One write per day-document per this interval, at most. */
 export const WRITE_THROTTLE_MS = 90 * 1000;
 
+/** Mirrors backgroundStepPolicy / StepStore.java / firestore.rules. */
+export const MAX_PLAUSIBLE_DAY_STEPS = 100_000;
+
 /** A step count that is not a real, positive number is worth nothing. */
 export const cleanSteps = (value: unknown): number => {
   const n = Number(value);
@@ -62,7 +65,17 @@ export const shouldWrite = ({
  * so this is the client half of one rule rather than the whole of it.
  */
 export const mergeDayCount = (local: unknown, remote: unknown): number =>
-  Math.max(cleanSteps(local), cleanSteps(remote));
+  Math.max(plausibleDaySteps(local), plausibleDaySteps(remote));
+
+/**
+ * A day's step count, or 0 if it is impossible. The max() merge means one
+ * corrupt value (the pre-v1.6.4 native counter produced 1.1M) would otherwise
+ * win every merge forever and be re-synced to every device.
+ */
+export const plausibleDaySteps = (value: unknown): number => {
+  const n = cleanSteps(value);
+  return n <= MAX_PLAUSIBLE_DAY_STEPS ? n : 0;
+};
 
 /**
  * Fold a remote history map into a local one, per day, taking the higher count.

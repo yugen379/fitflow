@@ -161,7 +161,8 @@ export const readTodayBackgroundSteps = async (): Promise<number> => {
   try {
     const today = await BackgroundSteps.getToday();
     const steps = Number(today?.steps);
-    return Number.isFinite(steps) && steps > 0 ? steps : 0;
+    // 100k ceiling: never surface a count the pre-v1.6.4 native store corrupted.
+    return Number.isFinite(steps) && steps > 0 && steps <= 100_000 ? steps : 0;
   } catch {
     return 0;
   }
@@ -176,7 +177,7 @@ export const readBackgroundHistory = async (): Promise<Record<string, number>> =
     const out: Record<string, number> = {};
     for (const [day, value] of Object.entries(days)) {
       const steps = Number(value);
-      if (Number.isFinite(steps) && steps > 0) out[day] = steps;
+      if (Number.isFinite(steps) && steps > 0 && steps <= 100_000) out[day] = steps;
     }
     return out;
   } catch {

@@ -64,7 +64,7 @@ const {
 const { resolveTheme } = await import('../src/hooks/useTheme.tsx');
 
 const {
-  MAX_PLAUSIBLE_DELTA, applyRawReading, emptyCounterState, rawReadingDelta, rollDay,
+  MAX_PLAUSIBLE_DELTA, MAX_PLAUSIBLE_DAY_STEPS, applyRawReading, emptyCounterState, rawReadingDelta, rollDay,
 } = await import('../src/services/backgroundStepPolicy.ts');
 
 const {
@@ -595,57 +595,123 @@ console.log(`\n${C.b}${C.c}Part G — theme resolution${C.x}\n`);
 console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
 
 {
+  // Every reading now carries the device clock: ms since boot + the boot count.
+  // `at(s)` = a reading s seconds into the current boot (boot #7).
+  const at = (s, boot = 7) => ({ elapsedMs: s * 1000, bootCount: boot });
+
   // The first reading can only establish a baseline. Claiming it as steps would
   // hand every user a few thousand free steps on first launch, because the
   // sensor reports steps since BOOT, not since install.
   const fresh = emptyCounterState();
-  check('the first ever reading claims nothing', rawReadingDelta(53000, fresh) === 0);
-  const seeded = applyRawReading(53000, fresh);
+  check('the first ever reading claims nothing', rawReadingDelta(53000, fresh, at(1000)) === 0);
+  const seeded = applyRawReading(53000, fresh, at(1000));
   check('the first reading establishes the baseline',
     seeded.hasBaseline === true && seeded.lastRaw === 53000 && seeded.stepsToday === 0);
 
-  // The normal path.
-  check('a later reading yields the difference', rawReadingDelta(53420, seeded) === 420);
-  const walked = applyRawReading(53420, seeded);
+  // The normal path: 420 steps over 5 minutes.
+  check('a later reading yields the difference', rawReadingDelta(53420, seeded, at(1300)) === 420);
+  const walked = applyRawReading(53420, seeded, at(1300));
   check('the difference lands on today', walked.stepsToday === 420);
 
   // THE POINT OF THE WHOLE FEATURE: the hardware kept counting while the app
-  // was dead, so the first reading after a restart carries all of it.
-  const afterHoursClosed = applyRawReading(59420, walked);
+  // was dead, so the first reading after a restart carries all of it (6,000
+  // steps across 3 closed hours).
+  const afterHoursClosed = applyRawReading(59420, walked, at(1300 + 3 * 3600));
   check('steps taken while the app was CLOSED are recovered in full',
     afterHoursClosed.stepsToday === 420 + 6000, `${afterHoursClosed.stepsToday}`);
 
-  // Reboot: the counter resets to zero, so a LOWER reading is a restart and the
-  // value is itself the steps since boot. Treating it as a difference would
-  // produce a huge negative and wipe the day.
-  check('a reboot is detected as a lower reading, not as negative steps',
-    rawReadingDelta(80, afterHoursClosed) === 80);
-  const afterReboot = applyRawReading(80, afterHoursClosed);
+  // A REAL reboot (boot count 7 -> 8): the value is itself the steps since boot.
+  const reboot = at(120, 8);
+  check('a real reboot books the post-boot steps',
+    rawReadingDelta(80, afterHoursClosed, reboot) === 80);
+  const afterReboot = applyRawReading(80, afterHoursClosed, reboot);
   check('a reboot ADDS the post-boot steps rather than erasing the day',
     afterReboot.stepsToday === 420 + 6000 + 80, `${afterReboot.stepsToday}`);
   check('a reboot rebases the raw counter', afterReboot.lastRaw === 80);
   check('counting continues normally after a reboot',
-    applyRawReading(300, afterReboot).stepsToday === 420 + 6000 + 80 + 220);
+    applyRawReading(300, afterReboot, at(300, 8)).stepsToday === 420 + 6000 + 80 + 220);
+  check('a reboot is also detected without BOOT_COUNT (elapsed went backwards)',
+    rawReadingDelta(80, { ...afterHoursClosed, bootCount: -1 }, { elapsedMs: 120_000, bootCount: -1 }) === 80);
 
   // Garbage in.
   check('a negative reading changes nothing',
-    applyRawReading(-5, walked).stepsToday === walked.stepsToday);
+    applyRawReading(-5, walked, at(1400)).stepsToday === walked.stepsToday);
   check('a NaN reading changes nothing',
-    applyRawReading(NaN, walked).stepsToday === walked.stepsToday);
+    applyRawReading(NaN, walked, at(1400)).stepsToday === walked.stepsToday);
   check('an undefined reading changes nothing',
-    applyRawReading(undefined, walked).stepsToday === walked.stepsToday);
-  check('a repeated reading adds nothing', rawReadingDelta(53420, walked) === 0);
-  check('an implausible jump is rejected, not banked',
-    rawReadingDelta(53420 + MAX_PLAUSIBLE_DELTA + 1, walked) === 0);
-  check('a jump just inside the plausible bound is kept',
-    rawReadingDelta(53420 + MAX_PLAUSIBLE_DELTA, walked) === MAX_PLAUSIBLE_DELTA);
+    applyRawReading(undefined, walked, at(1400)).stepsToday === walked.stepsToday);
+  check('a repeated reading adds nothing', rawReadingDelta(53420, walked, at(1400)) === 0);
+  check('a jump beyond MAX_PLAUSIBLE_DELTA is rejected even with days of elapsed time',
+    rawReadingDelta(53420 + MAX_PLAUSIBLE_DELTA + 1, walked, at(1300 + 30 * 86400)) === 0);
+
+  // --- The guards added for the 1,103,660-step bug ---------------------------
+  check('cadence: 120 steps in 60 s is a brisk walk and is kept',
+    rawReadingDelta(53540, walked, at(1360)) === 120);
+  check('cadence: 280 steps in 60 s is a hard sprint and is still kept',
+    rawReadingDelta(53700, walked, at(1360)) === 280);
+  check('cadence: 5,000 steps in 60 s is a sensor jump and is rejected',
+    rawReadingDelta(58420, walked, at(1360)) === 0);
+  check('a drop WITHOUT a reboot is a sensor reset, not a reboot — claims nothing',
+    rawReadingDelta(5, walked, at(1301)) === 0);
+  check('the ceiling: a day can never pass MAX_PLAUSIBLE_DAY_STEPS',
+    rawReadingDelta(53420 + 5000, { ...walked, stepsToday: MAX_PLAUSIBLE_DAY_STEPS - 10 }, at(1300 + 3600)) === 0);
+  check('a stored day already above the ceiling is treated as corrupt (reset to 0)',
+    applyRawReading(53420, { ...walked, stepsToday: 1_103_660 }, at(1400)).stepsToday === 0);
+  check('a state saved before these guards (no elapsed time) re-baselines instead of guessing',
+    rawReadingDelta(60000, { stepsToday: 0, lastRaw: 50000, hasBaseline: true, lastElapsedMs: -1, bootCount: -1 }, at(500)) === 0);
+
+  // THE REPRODUCTION. A HAL that drops to a small since-registration value and
+  // later jumps back to the real cumulative total, with no reboot in between.
+  // The user genuinely walked ~10 steps per reading. Under the OLD rules each
+  // drop was booked as a reboot and each jump back as ~150k new steps.
+  let s = applyRawReading(150_000, emptyCounterState(), at(10_000));
+  let t = 10_000;
+  let raw = 150_000;
+  let small = 0;
+  for (let cycle = 0; cycle < 8; cycle++) {
+    small += 10; t += 2; s = applyRawReading(small, s, at(t));            // HAL reset
+    raw += 10;   t += 2; s = applyRawReading(raw, s, at(t));              // jumps back
+  }
+  check('REPRO: an oscillating sensor no longer manufactures a million steps',
+    s.stepsToday < 500, `${s.stepsToday}`);
+
+  // REPRO 2: the drop and the jump back are HOURS apart, so cadence alone
+  // would allow the jump (5 steps/s × 3 h = 54k). 30k raw since boot.
+  {
+    let x = applyRawReading(30_000, emptyCounterState(), at(10_000));
+    x = applyRawReading(30_200, x, at(10_100));                 // 200 real steps
+    x = applyRawReading(15, x, at(10_200));                     // HAL drop (another app registered)
+    x = applyRawReading(65, x, at(10_300));                     // 50 real steps on the small counter
+    x = applyRawReading(31_000, x, at(10_300 + 3 * 3600));      // 3 h later: back to real cumulative
+    // Real walking: 200 + 50 + (31_000 - 30_200 - 50) = 1,000 steps total.
+    check('REPRO 2: a jump back hours later is NOT booked as ~30k new steps',
+      x.stepsToday === 1000, `${x.stepsToday}`);
+    check('REPRO 2: counting continues normally after the jump back',
+      applyRawReading(31_100, x, at(10_400 + 3 * 3600)).stepsToday === 1100);
+    // CONTROL: the same sequence without peak tracking (pre-fix policy) inflates.
+    const noPeak = (st) => ({ ...st, peakRaw: -1, dropSteps: 0 });
+    let y = applyRawReading(30_000, emptyCounterState(), at(10_000));
+    y = applyRawReading(30_200, y, at(10_100));
+    y = applyRawReading(15, y, at(10_200));
+    y = applyRawReading(65, y, at(10_300));
+    y = applyRawReading(31_000, noPeak(y), at(10_300 + 3 * 3600));
+    check('REPRO 2 control: without peak tracking the same sequence inflates by ~30k',
+      y.stepsToday > 30_000, `${y.stepsToday}`);
+  }
+  check('a real reboot resets the peak (post-boot counting is not blocked)', (() => {
+    let z = applyRawReading(80_000, emptyCounterState(), at(50_000));
+    z = applyRawReading(100, z, at(300, 8));
+    z = applyRawReading(400, z, at(400, 8));
+    return z.stepsToday === 400 && z.peakRaw === 400;
+  })());
 }
 
 {
   // Day rollover. The raw baseline must survive it: the hardware counter knows
   // nothing about midnight, and resetting it would make the first reading after
   // midnight look like a reboot and gift the user a full day of steps.
-  const end = { stepsToday: 9120, lastRaw: 74000, hasBaseline: true };
+  const ctx = { elapsedMs: 50_000_000, bootCount: 3 };
+  const end = { stepsToday: 9120, lastRaw: 74000, hasBaseline: true, lastElapsedMs: 49_000_000, bootCount: 3 };
   const { state, archived } = rollDay(end, '2026-08-21', '2026-08-22');
 
   check('a new day starts at zero', state.stepsToday === 0);
@@ -654,11 +720,12 @@ console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
   check('the raw sensor baseline SURVIVES midnight', state.lastRaw === 74000);
   check('the baseline flag survives midnight', state.hasBaseline === true);
   check('the first reading after midnight is a normal difference, not a reboot',
-    rawReadingDelta(74310, state) === 310);
+    rawReadingDelta(74310, state, ctx) === 310);
   check('the same day does not roll', rollDay(end, '2026-08-22', '2026-08-22').archived === null);
   check('an empty finished day is not archived',
-    rollDay({ stepsToday: 0, lastRaw: 74000, hasBaseline: true }, '2026-08-21', '2026-08-22')
-      .archived === null);
+    rollDay({ ...end, stepsToday: 0 }, '2026-08-21', '2026-08-22').archived === null);
+  check('a corrupt (>ceiling) finished day is NOT archived',
+    rollDay({ ...end, stepsToday: 1_103_660 }, '2026-08-21', '2026-08-22').archived === null);
 }
 
 {
@@ -669,16 +736,17 @@ console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
   let day = '2026-08-20';
   const archive = {};
 
-  // Baseline established at 40,000 steps since boot.
-  state = applyRawReading(40000, state);
+  // Baseline established at 40,000 steps since boot (boot #1, 10h in).
+  state = applyRawReading(40000, state, { elapsedMs: 36_000_000, bootCount: 1 });
 
+  const H = 3_600_000;
   const timeline = [
-    { raw: 43000, day: '2026-08-20' }, //  3,000 walked
-    { raw: 46500, day: '2026-08-20' }, //  3,500 while app closed
-    { raw: 48000, day: '2026-08-21' }, //  1,500 lands on the 21st
-    { raw: 52000, day: '2026-08-21' }, //  4,000
-    { raw: 150, day: '2026-08-21' },   //    150 after a reboot
-    { raw: 900, day: '2026-08-22' },   //    750 lands on the 22nd
+    { raw: 43000, day: '2026-08-20', elapsedMs: 38 * H / 3.6, bootCount: 1 }, //  3,000 walked (~1h)
+    { raw: 46500, day: '2026-08-20', elapsedMs: 16 * H, bootCount: 1 },       //  3,500 while app closed
+    { raw: 48000, day: '2026-08-21', elapsedMs: 25 * H, bootCount: 1 },       //  1,500 lands on the 21st
+    { raw: 52000, day: '2026-08-21', elapsedMs: 30 * H, bootCount: 1 },       //  4,000
+    { raw: 150, day: '2026-08-21', elapsedMs: 10 * 60_000, bootCount: 2 },    //    150 after a reboot
+    { raw: 900, day: '2026-08-22', elapsedMs: 5 * H, bootCount: 2 },          //    750 lands on the 22nd
   ];
 
   for (const tick of timeline) {
@@ -686,7 +754,7 @@ console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
     if (rolled.archived) archive[rolled.archived.day] = rolled.archived.steps;
     state = rolled.state;
     day = tick.day;
-    state = applyRawReading(tick.raw, state);
+    state = applyRawReading(tick.raw, state, tick);
   }
 
   check('day 1 totals the steps actually walked', archive['2026-08-20'] === 6500,
@@ -709,7 +777,8 @@ console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
     return seed / 2147483648;
   };
 
-  let state = applyRawReading(1000, emptyCounterState());
+  let fuzzT = 1000;
+  let state = applyRawReading(1000, emptyCounterState(), { elapsedMs: fuzzT * 1000, bootCount: 1 });
   let previous = state.stepsToday;
   let violations = 0;
   let throws = 0;
@@ -724,7 +793,8 @@ console.log(`\n${C.b}${C.c}Part H — background step counter${C.x}\n`);
       : roll < 0.4 ? Math.floor(rnd() * 50)
       : state.lastRaw + Math.floor(rnd() * 500);
     try {
-      state = applyRawReading(raw, state);
+      fuzzT += 1 + Math.floor(rnd() * 600);
+      state = applyRawReading(raw, state, { elapsedMs: fuzzT * 1000, bootCount: 1 });
       if (!Number.isFinite(state.stepsToday)) { violations++; break; }
       if (state.stepsToday < 0) { violations++; break; }
       if (state.stepsToday < previous) { violations++; break; }

@@ -141,7 +141,7 @@ service cloud.firestore {
       return data.keys().hasAll(['userId', 'day', 'steps']) &&
              data.userId == request.auth.uid &&
              data.day is string && data.day.size() <= 10 &&
-             data.steps is number && data.steps >= 0 && data.steps <= 200000 &&
+             data.steps is number && data.steps >= 0 && data.steps <= 100000 &&
              (!('distanceKm' in data) || (data.distanceKm is number && data.distanceKm >= 0)) &&
              (!('calories' in data) || (data.calories is number && data.calories >= 0)) &&
              (!('activeMs' in data) || (data.activeMs is number && data.activeMs >= 0)) &&

@@ -2,6 +2,8 @@ package com.fitflow.app.steps;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.SystemClock;
+import android.provider.Settings;
 
 import org.json.JSONObject;
 
@@ -54,6 +56,16 @@ public final class StepStore {
     private static final String KEY_HAS_BASELINE = "has_baseline";
     private static final String KEY_HISTORY = "history";
     private static final String KEY_WEIGHT_KG = "weight_kg";
+    private static final String KEY_LAST_ELAPSED = "last_elapsed_ms";
+    private static final String KEY_BOOT_COUNT = "boot_count";
+    private static final String KEY_PEAK_RAW = "peak_raw";
+    private static final String KEY_DROP_STEPS = "drop_steps";
+
+    // Plausibility guards — identical to src/services/backgroundStepPolicy.ts.
+    static final long MAX_PLAUSIBLE_DELTA = 200000L;
+    static final long MAX_STEPS_PER_SECOND = 5L;
+    static final long CADENCE_SLACK_STEPS = 60L;
+    static final long MAX_PLAUSIBLE_DAY_STEPS = 100000L;
 
     /**
      * Calorie constants, kept identical to src/lib/stepFormulas.ts. The
@@ -68,8 +80,10 @@ public final class StepStore {
     private static final int HISTORY_LIMIT = 400;
 
     private final SharedPreferences prefs;
+    private final Context appContext;
 
     public StepStore(Context context) {
+        this.appContext = context.getApplicationContext();
         this.prefs = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
@@ -86,7 +100,7 @@ public final class StepStore {
 
     public synchronized long getStepsToday() {
         rollDayIfNeeded();
-        return prefs.getLong(KEY_STEPS_TODAY, 0L);
+        return sanitizeDaySteps(prefs.getLong(KEY_STEPS_TODAY, 0L));
     }
 
     public synchronized String getDay() {
@@ -124,6 +138,24 @@ public final class StepStore {
      * @return today's total after applying the reading
      */
     public synchronized long applyRawReading(long rawValue) {
+        return applyRawReading(rawValue, SystemClock.elapsedRealtime(), readBootCount());
+    }
+
+    /**
+     * The arithmetic, with the device clock passed in. Mirrors
+     * src/services/backgroundStepPolicy.ts line for line — change both.
+     *
+     * The 1,103,660-step bug: some OEM HALs drop TYPE_STEP_COUNTER to a small
+     * value WITHOUT a reboot (e.g. when another listener registers) and later
+     * jump back to the real cumulative total. The old "lower reading = reboot"
+     * rule booked every drop as a reboot and every jump back as ~150k new
+     * steps. Now: a reboot must be real, a rise must be walkable in the time
+     * elapsed, and a day can never pass MAX_PLAUSIBLE_DAY_STEPS. Because a
+     * drop and its jump back can be hours apart (beating the cadence check),
+     * the highest raw value this boot is remembered and a return to it only
+     * credits the steps walked above it.
+     */
+    synchronized long applyRawReading(long rawValue, long elapsedMs, int bootCount) {
         if (rawValue < 0) {
             // A negative cumulative counter is not physically meaningful.
             return getStepsToday();
@@ -131,40 +163,91 @@ public final class StepStore {
 
         rollDayIfNeeded();
 
-        long stepsToday = prefs.getLong(KEY_STEPS_TODAY, 0L);
+        long stepsToday = sanitizeDaySteps(prefs.getLong(KEY_STEPS_TODAY, 0L));
         long lastRaw = prefs.getLong(KEY_LAST_RAW, 0L);
         boolean hasBaseline = prefs.getBoolean(KEY_HAS_BASELINE, false);
+        long lastElapsed = prefs.getLong(KEY_LAST_ELAPSED, -1L);
+        int lastBoot = prefs.getInt(KEY_BOOT_COUNT, -1);
+        long peak = Math.max(prefs.getLong(KEY_PEAK_RAW, -1L), lastRaw);
+        long dropSteps = lastRaw < peak ? Math.max(0L, prefs.getLong(KEY_DROP_STEPS, 0L)) : 0L;
+        boolean fresh = !hasBaseline || lastElapsed < 0
+                || didReboot(lastBoot, bootCount, lastElapsed, elapsedMs);
 
         long delta;
-        if (!hasBaseline) {
-            // First reading ever: establish the baseline, claim nothing.
+        if (!hasBaseline || lastElapsed < 0) {
+            // First reading ever, or state saved before these guards existed:
+            // establish the baseline, claim nothing.
             delta = 0L;
-        } else if (rawValue >= lastRaw) {
+        } else if (didReboot(lastBoot, bootCount, lastElapsed, elapsedMs)) {
+            // A REAL reboot: the counter restarted from zero, so the value is
+            // the steps since boot — if it could have been walked since boot.
+            delta = rawValue <= cadenceCeiling(elapsedMs) ? rawValue : 0L;
+        } else if (rawValue < lastRaw) {
+            // Dropped without a reboot: a sensor reset, not walking.
+            delta = 0L;
+        } else if (lastRaw < peak && rawValue >= peak) {
+            // Jump back to the real cumulative value after a drop. Only steps
+            // above the old peak are new, less what the drop already credited.
+            delta = rawValue - peak - dropSteps;
+            if (delta > cadenceCeiling(elapsedMs - lastElapsed)) {
+                delta = 0L;
+            }
+        } else {
             // The normal path. Covers time the process was dead, because the
             // hardware counter kept incrementing regardless.
             delta = rawValue - lastRaw;
-        } else {
-            // Counter went backwards: the device rebooted and the sensor
-            // restarted from zero, so the new value IS the steps since boot.
-            delta = rawValue;
+            if (delta > cadenceCeiling(elapsedMs - lastElapsed)) {
+                delta = 0L; // faster than a human can walk: a sensor jump
+            }
         }
 
-        // A single reading cannot plausibly carry more than a few days of
-        // walking. Anything larger is a sensor glitch or a counter that wrapped,
-        // and folding it in would permanently corrupt the day.
-        if (delta > 200000L) {
+        if (delta < 0 || delta > MAX_PLAUSIBLE_DELTA
+                || stepsToday + delta > MAX_PLAUSIBLE_DAY_STEPS) {
             delta = 0L;
         }
 
         stepsToday += delta;
 
+        long nextPeak = fresh ? rawValue : Math.max(peak, rawValue);
+        long nextDropSteps = rawValue < nextPeak ? dropSteps + delta : 0L;
+
         prefs.edit()
+                .putLong(KEY_PEAK_RAW, nextPeak)
+                .putLong(KEY_DROP_STEPS, nextDropSteps)
                 .putLong(KEY_STEPS_TODAY, stepsToday)
                 .putLong(KEY_LAST_RAW, rawValue)
                 .putBoolean(KEY_HAS_BASELINE, true)
+                .putLong(KEY_LAST_ELAPSED, elapsedMs)
+                .putInt(KEY_BOOT_COUNT, bootCount)
                 .apply();
 
         return stepsToday;
+    }
+
+    static boolean didReboot(int lastBoot, int bootCount, long lastElapsed, long elapsedMs) {
+        if (lastBoot >= 0 && bootCount >= 0) {
+            return bootCount != lastBoot;
+        }
+        // No boot counter on this OEM: elapsed-since-boot only grows within a boot.
+        return lastElapsed >= 0 && elapsedMs < lastElapsed;
+    }
+
+    /** Most steps a person could take in {@code elapsedMs}. */
+    static long cadenceCeiling(long elapsedMs) {
+        return (Math.max(0L, elapsedMs) / 1000L) * MAX_STEPS_PER_SECOND + CADENCE_SLACK_STEPS;
+    }
+
+    /** A stored day above the ceiling is corrupt: treat it as zero, never display it. */
+    static long sanitizeDaySteps(long steps) {
+        return steps > 0 && steps <= MAX_PLAUSIBLE_DAY_STEPS ? steps : 0L;
+    }
+
+    private int readBootCount() {
+        try {
+            return Settings.Global.getInt(appContext.getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     /**
@@ -184,7 +267,7 @@ public final class StepStore {
             return;
         }
 
-        long finished = prefs.getLong(KEY_STEPS_TODAY, 0L);
+        long finished = sanitizeDaySteps(prefs.getLong(KEY_STEPS_TODAY, 0L));
         if (finished > 0) {
             writeHistory(stored, finished);
         }
@@ -211,7 +294,16 @@ public final class StepStore {
     private JSONObject readHistoryObject() {
         try {
             String raw = prefs.getString(KEY_HISTORY, null);
-            return raw == null ? new JSONObject() : new JSONObject(raw);
+            JSONObject history = raw == null ? new JSONObject() : new JSONObject(raw);
+            // Days banked by the pre-v1.6.4 counter can hold impossible totals
+            // (1.1M seen in the wild). Never surface them.
+            List<String> corrupt = new ArrayList<>();
+            for (Iterator<String> it = history.keys(); it.hasNext(); ) {
+                String day = it.next();
+                if (sanitizeDaySteps(history.optLong(day, 0L)) == 0L) corrupt.add(day);
+            }
+            for (String day : corrupt) history.remove(day);
+            return history;
         } catch (Exception e) {
             return new JSONObject();
         }
@@ -238,7 +330,7 @@ public final class StepStore {
         rollDayIfNeeded();
         JSONObject history = readHistoryObject();
         try {
-            history.put(prefs.getString(KEY_DAY, todayKey()), prefs.getLong(KEY_STEPS_TODAY, 0L));
+            history.put(prefs.getString(KEY_DAY, todayKey()), sanitizeDaySteps(prefs.getLong(KEY_STEPS_TODAY, 0L)));
         } catch (Exception ignored) {
             // Fall through with whatever archived days we have.
         }
