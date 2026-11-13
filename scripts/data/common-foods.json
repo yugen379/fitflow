@@ -12,11 +12,127 @@
     "brand": "100Plus"
   },
   {
+    "name": "7-Eleven Onigiri Tuna Mayo (1)",
+    "calories": 210,
+    "protein": 6,
+    "carbs": 36,
+    "fats": 5,
+    "aliases": [
+      "onigiri tuna mayo",
+      "7 eleven onigiri"
+    ],
+    "brand": "7-Eleven"
+  },
+  {
+    "name": "A&W Coney Dog",
+    "calories": 340,
+    "protein": 12,
+    "carbs": 30,
+    "fats": 19,
+    "aliases": [
+      "coney dog",
+      "a&w coney",
+      "aw coney"
+    ],
+    "brand": "A&W"
+  },
+  {
+    "name": "A&W Root Beer Float",
+    "calories": 290,
+    "protein": 3,
+    "carbs": 54,
+    "fats": 7,
+    "aliases": [
+      "rb float",
+      "root beer float",
+      "a&w float"
+    ],
+    "brand": "A&W"
+  },
+  {
+    "name": "ABC Special (1 bowl)",
+    "calories": 340,
+    "protein": 5,
+    "carbs": 66,
+    "fats": 7,
+    "aliases": [
+      "abc special",
+      "ais kacang special"
+    ]
+  },
+  {
+    "name": "Acar Timun (1 serving)",
+    "calories": 60,
+    "protein": 1,
+    "carbs": 12,
+    "fats": 1,
+    "aliases": [
+      "acar",
+      "acar rampai",
+      "pickled cucumber"
+    ]
+  },
+  {
+    "name": "Air Asam Jawa (1 glass)",
+    "calories": 100,
+    "protein": 0,
+    "carbs": 26,
+    "fats": 0,
+    "aliases": [
+      "asam jawa",
+      "air asam"
+    ]
+  },
+  {
+    "name": "Air Jagung (1 glass)",
+    "calories": 170,
+    "protein": 3,
+    "carbs": 34,
+    "fats": 3,
+    "aliases": [
+      "air jagung",
+      "corn drink"
+    ]
+  },
+  {
+    "name": "Air Kacang Soya Kurang Manis (1 glass)",
+    "calories": 90,
+    "protein": 6,
+    "carbs": 9,
+    "fats": 4,
+    "aliases": [
+      "soya kurang manis",
+      "air soya kurang manis"
+    ]
+  },
+  {
+    "name": "Air Katira (1 glass)",
+    "calories": 220,
+    "protein": 4,
+    "carbs": 38,
+    "fats": 6,
+    "aliases": [
+      "katira",
+      "air katira ramadan"
+    ]
+  },
+  {
     "name": "Air Kelapa (coconut water)",
     "calories": 60,
     "protein": 1,
     "carbs": 14,
     "fats": 0
+  },
+  {
+    "name": "Air Kelapa Muda with Flesh (1 coconut)",
+    "calories": 140,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 4,
+    "aliases": [
+      "kelapa muda",
+      "young coconut"
+    ]
   },
   {
     "name": "Air Mata Kucing (1 glass)",
@@ -110,6 +226,17 @@
     "fats": 11
   },
   {
+    "name": "Apam Balik Nipis (1 piece)",
+    "calories": 180,
+    "protein": 3,
+    "carbs": 30,
+    "fats": 6,
+    "aliases": [
+      "apam balik rangup",
+      "apam balik crispy"
+    ]
+  },
+  {
     "name": "Appam (1 piece)",
     "calories": 120,
     "protein": 2,
@@ -143,6 +270,17 @@
     "protein": 2,
     "carbs": 43,
     "fats": 14
+  },
+  {
+    "name": "Asam Boi (5 pieces)",
+    "calories": 30,
+    "protein": 0,
+    "carbs": 7,
+    "fats": 0,
+    "aliases": [
+      "asam boi",
+      "preserved plum"
+    ]
   },
   {
     "name": "Asam Laksa",
@@ -188,6 +326,27 @@
     "fats": 16
   },
   {
+    "name": "Ayam Bakar (1 piece)",
+    "calories": 250,
+    "protein": 28,
+    "carbs": 4,
+    "fats": 13,
+    "aliases": [
+      "grilled chicken malay",
+      "ayam panggang madu"
+    ]
+  },
+  {
+    "name": "Ayam Golek (quarter)",
+    "calories": 310,
+    "protein": 32,
+    "carbs": 4,
+    "fats": 18,
+    "aliases": [
+      "ayam golek pasar malam"
+    ]
+  },
+  {
     "name": "Ayam Goreng Berempah",
     "calories": 390,
     "protein": 28,
@@ -195,6 +354,17 @@
     "fats": 26,
     "aliases": [
       "spiced fried chicken"
+    ]
+  },
+  {
+    "name": "Ayam Goreng Kunyit (1 serving)",
+    "calories": 300,
+    "protein": 26,
+    "carbs": 8,
+    "fats": 18,
+    "aliases": [
+      "ayam kunyit",
+      "turmeric chicken"
     ]
   },
   {
@@ -211,6 +381,18 @@
     "brand": "McDonald's"
   },
   {
+    "name": "Ayam Gunting (1 piece)",
+    "calories": 480,
+    "protein": 26,
+    "carbs": 32,
+    "fats": 28,
+    "aliases": [
+      "ayam gunting",
+      "uncle bob",
+      "crispy chicken cutlet pasar malam"
+    ]
+  },
+  {
     "name": "Ayam Kicap (1 serving)",
     "calories": 310,
     "protein": 26,
@@ -222,11 +404,43 @@
     ]
   },
   {
+    "name": "Ayam Masak Kari Kentang (1 serving)",
+    "calories": 320,
+    "protein": 24,
+    "carbs": 14,
+    "fats": 19,
+    "aliases": [
+      "kari ayam kentang"
+    ]
+  },
+  {
+    "name": "Ayam Masak Lemak Cili Api (1 piece)",
+    "calories": 310,
+    "protein": 24,
+    "carbs": 5,
+    "fats": 22,
+    "aliases": [
+      "ayam masak lemak",
+      "masak lemak ayam",
+      "gulai lemak ayam"
+    ]
+  },
+  {
     "name": "Ayam Masak Merah",
     "calories": 380,
     "protein": 27,
     "carbs": 14,
     "fats": 24
+  },
+  {
+    "name": "Ayam Paprik (1 serving)",
+    "calories": 290,
+    "protein": 26,
+    "carbs": 12,
+    "fats": 15,
+    "aliases": [
+      "paprik ayam"
+    ]
   },
   {
     "name": "Ayam Penyet with Rice",
@@ -245,6 +459,38 @@
     "protein": 30,
     "carbs": 9,
     "fats": 20
+  },
+  {
+    "name": "Ayam Percik Kelantan (quarter)",
+    "calories": 380,
+    "protein": 32,
+    "carbs": 12,
+    "fats": 23,
+    "aliases": [
+      "ayam percik kelantan"
+    ]
+  },
+  {
+    "name": "Ayam Rendang (1 piece)",
+    "calories": 330,
+    "protein": 25,
+    "carbs": 7,
+    "fats": 23,
+    "aliases": [
+      "rendang ayam",
+      "chicken rendang"
+    ]
+  },
+  {
+    "name": "Ayam Sambal (1 piece)",
+    "calories": 310,
+    "protein": 24,
+    "carbs": 10,
+    "fats": 19,
+    "aliases": [
+      "sambal ayam",
+      "ayam masak sambal"
+    ]
   },
   {
     "name": "Bacon",
@@ -275,6 +521,16 @@
     "fats": 1,
     "aliases": [
       "french bread"
+    ]
+  },
+  {
+    "name": "Bahulu Kemboja (1 piece)",
+    "calories": 140,
+    "protein": 3,
+    "carbs": 20,
+    "fats": 5,
+    "aliases": [
+      "kuih kemboja"
     ]
   },
   {
@@ -555,6 +811,52 @@
     "brand": "McDonald's"
   },
   {
+    "name": "Bihun Goreng Singapore",
+    "calories": 480,
+    "protein": 16,
+    "carbs": 70,
+    "fats": 15,
+    "aliases": [
+      "bihun singapore",
+      "singapore noodles"
+    ]
+  },
+  {
+    "name": "Bihun Sup",
+    "calories": 300,
+    "protein": 16,
+    "carbs": 44,
+    "fats": 7,
+    "aliases": [
+      "bihun sup ayam",
+      "mee hoon soup malay"
+    ]
+  },
+  {
+    "name": "Bihun Tomyam",
+    "calories": 420,
+    "protein": 20,
+    "carbs": 56,
+    "fats": 13,
+    "aliases": [
+      "bihun tom yam",
+      "mee hoon tomyam"
+    ]
+  },
+  {
+    "name": "Biskut Raya (3 pieces)",
+    "calories": 150,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 8,
+    "aliases": [
+      "biskut raya",
+      "kuih raya",
+      "biskut mazola",
+      "biskut suji"
+    ]
+  },
+  {
     "name": "Black Beans",
     "calories": 227,
     "protein": 15,
@@ -632,6 +934,18 @@
     "fats": 2
   },
   {
+    "name": "Brown Sugar Boba Milk (1 cup)",
+    "calories": 380,
+    "protein": 6,
+    "carbs": 64,
+    "fats": 11,
+    "aliases": [
+      "brown sugar milk tea",
+      "gula apong boba",
+      "tiger sugar"
+    ]
+  },
+  {
     "name": "Brownie",
     "calories": 240,
     "protein": 3,
@@ -675,6 +989,59 @@
     "protein": 3,
     "carbs": 42,
     "fats": 8
+  },
+  {
+    "name": "Bubur Kacang Hijau (1 bowl)",
+    "calories": 230,
+    "protein": 8,
+    "carbs": 38,
+    "fats": 5,
+    "aliases": [
+      "bubur kacang",
+      "green bean porridge"
+    ]
+  },
+  {
+    "name": "Bubur Lambuk (1 bowl)",
+    "calories": 280,
+    "protein": 12,
+    "carbs": 40,
+    "fats": 8,
+    "aliases": [
+      "bubur lambuk ramadan"
+    ]
+  },
+  {
+    "name": "Bubur Nasi with Ikan Bilis (1 bowl)",
+    "calories": 220,
+    "protein": 10,
+    "carbs": 34,
+    "fats": 5,
+    "aliases": [
+      "bubur ikan bilis",
+      "bubur berlauk"
+    ]
+  },
+  {
+    "name": "Bubur Pulut Hitam (1 bowl)",
+    "calories": 260,
+    "protein": 5,
+    "carbs": 46,
+    "fats": 7,
+    "aliases": [
+      "pulut hitam",
+      "black glutinous rice porridge"
+    ]
+  },
+  {
+    "name": "Budu (1 tbsp)",
+    "calories": 15,
+    "protein": 2,
+    "carbs": 1,
+    "fats": 0,
+    "aliases": [
+      "sos budu"
+    ]
   },
   {
     "name": "Buffalo Wings (6 pieces)",
@@ -873,6 +1240,19 @@
     ]
   },
   {
+    "name": "Cekodok Pisang (4 pieces)",
+    "calories": 260,
+    "protein": 3,
+    "carbs": 42,
+    "fats": 9,
+    "aliases": [
+      "cekodok",
+      "jemput jemput",
+      "kuih kodok",
+      "jemput pisang"
+    ]
+  },
+  {
     "name": "Celery (2 stalks)",
     "calories": 13,
     "protein": 1,
@@ -890,6 +1270,17 @@
     ]
   },
   {
+    "name": "Cendol Pulut (1 bowl)",
+    "calories": 380,
+    "protein": 5,
+    "carbs": 64,
+    "fats": 12,
+    "aliases": [
+      "cendol pulut",
+      "cendol durian"
+    ]
+  },
+  {
     "name": "Century Egg Porridge",
     "calories": 230,
     "protein": 12,
@@ -898,6 +1289,18 @@
     "aliases": [
       "pork porridge",
       "pei dan chok"
+    ]
+  },
+  {
+    "name": "Cham Ais (1 glass)",
+    "calories": 150,
+    "protein": 3,
+    "carbs": 25,
+    "fats": 4,
+    "aliases": [
+      "cham",
+      "cham peng",
+      "kopi cham"
     ]
   },
   {
@@ -968,6 +1371,17 @@
     "protein": 6,
     "carbs": 44,
     "fats": 5
+  },
+  {
+    "name": "Chee Cheong Fun with Sweet Sauce (1 plate)",
+    "calories": 260,
+    "protein": 6,
+    "carbs": 50,
+    "fats": 4,
+    "aliases": [
+      "ccf",
+      "chee cheong fun penang"
+    ]
   },
   {
     "name": "Cheese Naan (1 piece)",
@@ -1412,6 +1826,18 @@
     ]
   },
   {
+    "name": "Cincau Ais (1 glass)",
+    "calories": 110,
+    "protein": 0,
+    "carbs": 28,
+    "fats": 0,
+    "aliases": [
+      "cincau",
+      "air cincau",
+      "grass jelly drink"
+    ]
+  },
+  {
     "name": "Claypot Chicken Rice",
     "calories": 620,
     "protein": 28,
@@ -1659,6 +2085,18 @@
     ]
   },
   {
+    "name": "Cucur Bawang (4 pieces)",
+    "calories": 240,
+    "protein": 4,
+    "carbs": 32,
+    "fats": 11,
+    "aliases": [
+      "cucur",
+      "cucur ikan bilis",
+      "jemput bawang"
+    ]
+  },
+  {
     "name": "Cucur Udang (2 pieces)",
     "calories": 200,
     "protein": 6,
@@ -1687,6 +2125,16 @@
     "protein": 3,
     "carbs": 44,
     "fats": 12
+  },
+  {
+    "name": "Curry Chee Cheong Fun",
+    "calories": 380,
+    "protein": 9,
+    "carbs": 54,
+    "fats": 14,
+    "aliases": [
+      "chee cheong fun kari"
+    ]
   },
   {
     "name": "Curry Gravy (1/2 cup)",
@@ -1726,6 +2174,37 @@
     "aliases": [
       "karipap",
       "epok epok"
+    ]
+  },
+  {
+    "name": "Daging Dendeng (1 serving)",
+    "calories": 340,
+    "protein": 28,
+    "carbs": 14,
+    "fats": 19,
+    "aliases": [
+      "dendeng daging"
+    ]
+  },
+  {
+    "name": "Daging Goreng Kunyit (1 serving)",
+    "calories": 300,
+    "protein": 27,
+    "carbs": 6,
+    "fats": 19,
+    "aliases": [
+      "daging kunyit"
+    ]
+  },
+  {
+    "name": "Daging Masak Hitam (1 serving)",
+    "calories": 320,
+    "protein": 26,
+    "carbs": 12,
+    "fats": 18,
+    "aliases": [
+      "daging hitam",
+      "daging masak kicap"
     ]
   },
   {
@@ -1775,6 +2254,28 @@
     "protein": 12,
     "carbs": 16,
     "fats": 10
+  },
+  {
+    "name": "Dodol (2 pieces)",
+    "calories": 150,
+    "protein": 1,
+    "carbs": 30,
+    "fats": 3,
+    "aliases": [
+      "dodol durian"
+    ]
+  },
+  {
+    "name": "Domino's Pepperoni Pizza (2 slices, regular)",
+    "calories": 420,
+    "protein": 18,
+    "carbs": 48,
+    "fats": 17,
+    "aliases": [
+      "dominos pepperoni",
+      "dominos pizza"
+    ],
+    "brand": "Domino's"
   },
   {
     "name": "Doner Kebab (1 wrap)",
@@ -1841,6 +2342,41 @@
     "protein": 2,
     "carbs": 32,
     "fats": 6
+  },
+  {
+    "name": "Durian Crepe (1 piece)",
+    "calories": 190,
+    "protein": 2,
+    "carbs": 20,
+    "fats": 11,
+    "aliases": [
+      "crepe durian"
+    ]
+  },
+  {
+    "name": "Dutch Lady Chocolate Milk (200ml)",
+    "calories": 150,
+    "protein": 6,
+    "carbs": 20,
+    "fats": 5,
+    "aliases": [
+      "dutch lady coklat",
+      "susu coklat kotak"
+    ],
+    "brand": "Dutch Lady"
+  },
+  {
+    "name": "Dutch Lady Full Cream Milk (200ml)",
+    "calories": 130,
+    "protein": 7,
+    "carbs": 10,
+    "fats": 7,
+    "aliases": [
+      "dutch lady",
+      "susu kotak",
+      "susu full cream"
+    ],
+    "brand": "Dutch Lady"
   },
   {
     "name": "Economy Rice (rice, 1 meat, 2 veg)",
@@ -1975,11 +2511,60 @@
     ]
   },
   {
+    "name": "F&N Orange (325ml can)",
+    "calories": 150,
+    "protein": 0,
+    "carbs": 38,
+    "fats": 0,
+    "aliases": [
+      "f&n oren",
+      "fn orange",
+      "oren tin"
+    ],
+    "brand": "F&N"
+  },
+  {
     "name": "Falafel (4 pieces)",
     "calories": 230,
     "protein": 9,
     "carbs": 22,
     "fats": 12
+  },
+  {
+    "name": "Family Mart Oden (5 pieces)",
+    "calories": 220,
+    "protein": 16,
+    "carbs": 22,
+    "fats": 8,
+    "aliases": [
+      "oden",
+      "familymart oden"
+    ],
+    "brand": "FamilyMart"
+  },
+  {
+    "name": "Family Mart Sofuto Ice Cream (1 cone)",
+    "calories": 190,
+    "protein": 4,
+    "carbs": 28,
+    "fats": 7,
+    "aliases": [
+      "sofuto",
+      "familymart ice cream"
+    ],
+    "brand": "FamilyMart"
+  },
+  {
+    "name": "Farm Fresh Fresh Milk (200ml)",
+    "calories": 130,
+    "protein": 7,
+    "carbs": 10,
+    "fats": 7,
+    "aliases": [
+      "farm fresh",
+      "farm fresh milk"
+    ],
+    "brand": "Farm Fresh"
   },
   {
     "name": "Filet-O-Fish",
@@ -2218,6 +2803,29 @@
     ]
   },
   {
+    "name": "Gardenia Butterscotch Bread (2 slices)",
+    "calories": 180,
+    "protein": 5,
+    "carbs": 32,
+    "fats": 4,
+    "aliases": [
+      "gardenia butterscotch",
+      "roti butterscotch"
+    ],
+    "brand": "Gardenia"
+  },
+  {
+    "name": "Gardenia Twiggies (1 pack)",
+    "calories": 160,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 6,
+    "aliases": [
+      "twiggies"
+    ],
+    "brand": "Gardenia"
+  },
+  {
     "name": "Garlic Bread (2 slices)",
     "calories": 190,
     "protein": 4,
@@ -2409,6 +3017,17 @@
     "fats": 10
   },
   {
+    "name": "Gulai Daging (1 serving)",
+    "calories": 330,
+    "protein": 25,
+    "carbs": 8,
+    "fats": 22,
+    "aliases": [
+      "kari daging",
+      "beef curry"
+    ]
+  },
+  {
     "name": "Gummy Bears (10 pieces)",
     "calories": 87,
     "protein": 2,
@@ -2435,6 +3054,16 @@
     "aliases": [
       "beef bowl",
       "beef don"
+    ]
+  },
+  {
+    "name": "Hakka Mee",
+    "calories": 460,
+    "protein": 20,
+    "carbs": 60,
+    "fats": 15,
+    "aliases": [
+      "hakka noodles"
     ]
   },
   {
@@ -2493,6 +3122,18 @@
     ]
   },
   {
+    "name": "High 5 Wholemeal Bread (2 slices)",
+    "calories": 140,
+    "protein": 6,
+    "carbs": 24,
+    "fats": 2,
+    "aliases": [
+      "high 5 bread",
+      "roti high 5"
+    ],
+    "brand": "High 5"
+  },
+  {
     "name": "High-Protein Yogurt (150g)",
     "calories": 100,
     "protein": 15,
@@ -2529,6 +3170,17 @@
     "aliases": [
       "honeydew melon",
       "tembikai susu"
+    ]
+  },
+  {
+    "name": "Horlicks Panas (1 cup)",
+    "calories": 150,
+    "protein": 5,
+    "carbs": 26,
+    "fats": 3,
+    "aliases": [
+      "horlicks",
+      "horlicks ais"
     ]
   },
   {
@@ -2655,6 +3307,96 @@
     ]
   },
   {
+    "name": "Ikan Keli Goreng (1 fish)",
+    "calories": 290,
+    "protein": 24,
+    "carbs": 4,
+    "fats": 20,
+    "aliases": [
+      "keli goreng",
+      "pecel lele",
+      "fried catfish"
+    ]
+  },
+  {
+    "name": "Ikan Masak Asam Pedas (1 piece)",
+    "calories": 210,
+    "protein": 24,
+    "carbs": 8,
+    "fats": 9,
+    "aliases": [
+      "asam pedas",
+      "asam pedas ikan pari",
+      "ikan asam pedas"
+    ]
+  },
+  {
+    "name": "Ikan Masak Lemak (1 piece)",
+    "calories": 270,
+    "protein": 23,
+    "carbs": 5,
+    "fats": 18,
+    "aliases": [
+      "gulai ikan masak lemak",
+      "ikan masak lemak cili api"
+    ]
+  },
+  {
+    "name": "Ikan Masin Goreng (20g)",
+    "calories": 60,
+    "protein": 9,
+    "carbs": 0,
+    "fats": 3,
+    "aliases": [
+      "ikan masin",
+      "salted fish"
+    ]
+  },
+  {
+    "name": "Ikan Pari Bakar (1 serving)",
+    "calories": 210,
+    "protein": 30,
+    "carbs": 3,
+    "fats": 9,
+    "aliases": [
+      "pari bakar",
+      "grilled stingray"
+    ]
+  },
+  {
+    "name": "Ikan Siakap Stim Limau (1 serving)",
+    "calories": 220,
+    "protein": 32,
+    "carbs": 5,
+    "fats": 8,
+    "aliases": [
+      "siakap stim",
+      "siakap steam limau"
+    ]
+  },
+  {
+    "name": "Ikan Tiga Rasa (1 serving)",
+    "calories": 330,
+    "protein": 26,
+    "carbs": 22,
+    "fats": 15,
+    "aliases": [
+      "ikan 3 rasa",
+      "ikan siakap tiga rasa"
+    ]
+  },
+  {
+    "name": "Indomie Goreng Telur (stall)",
+    "calories": 520,
+    "protein": 16,
+    "carbs": 62,
+    "fats": 23,
+    "aliases": [
+      "indomie goreng telur",
+      "indomie telur"
+    ]
+  },
+  {
     "name": "Indomie Mi Goreng (1 pack)",
     "calories": 380,
     "protein": 8,
@@ -2758,11 +3500,100 @@
     ]
   },
   {
+    "name": "Julie's Peanut Butter Sandwich (1 pack)",
+    "calories": 140,
+    "protein": 3,
+    "carbs": 16,
+    "fats": 7,
+    "aliases": [
+      "julies biscuit",
+      "julies peanut butter"
+    ],
+    "brand": "Julie's"
+  },
+  {
+    "name": "Jus Epal Susu (1 glass)",
+    "calories": 190,
+    "protein": 3,
+    "carbs": 36,
+    "fats": 4,
+    "aliases": [
+      "jus epal susu",
+      "apple milk juice"
+    ]
+  },
+  {
+    "name": "Jus Lobak Susu (1 glass)",
+    "calories": 180,
+    "protein": 3,
+    "carbs": 32,
+    "fats": 4,
+    "aliases": [
+      "jus lobak susu",
+      "carrot milk juice",
+      "carrot susu"
+    ]
+  },
+  {
+    "name": "Jus Mangga Susu (1 glass)",
+    "calories": 210,
+    "protein": 3,
+    "carbs": 40,
+    "fats": 4,
+    "aliases": [
+      "jus mangga susu",
+      "mango milk juice"
+    ]
+  },
+  {
+    "name": "Jus Oren (1 glass)",
+    "calories": 130,
+    "protein": 1,
+    "carbs": 31,
+    "fats": 0,
+    "aliases": [
+      "jus oren",
+      "fresh orange juice"
+    ]
+  },
+  {
+    "name": "Jus Tembikai (1 glass)",
+    "calories": 110,
+    "protein": 1,
+    "carbs": 27,
+    "fats": 0,
+    "aliases": [
+      "jus tembikai",
+      "watermelon juice"
+    ]
+  },
+  {
+    "name": "Kacang Panjang Goreng (1 serving)",
+    "calories": 110,
+    "protein": 4,
+    "carbs": 9,
+    "fats": 7,
+    "aliases": [
+      "kacang panjang goreng telur"
+    ]
+  },
+  {
     "name": "Kale (1 cup)",
     "calories": 33,
     "protein": 3,
     "carbs": 6,
     "fats": 1
+  },
+  {
+    "name": "Kambing Masak Kurma (1 serving)",
+    "calories": 360,
+    "protein": 24,
+    "carbs": 10,
+    "fats": 25,
+    "aliases": [
+      "kurma kambing",
+      "mutton kurma"
+    ]
   },
   {
     "name": "Kangkung Belacan (1 serving)",
@@ -2809,11 +3640,34 @@
     ]
   },
   {
+    "name": "Kerang Rebus (1 plate)",
+    "calories": 120,
+    "protein": 18,
+    "carbs": 6,
+    "fats": 2,
+    "aliases": [
+      "kerang",
+      "cockles",
+      "kerang bakar"
+    ]
+  },
+  {
     "name": "Keropok Lekor",
     "calories": 220,
     "protein": 8,
     "carbs": 28,
     "fats": 9
+  },
+  {
+    "name": "Keropok Lekor Goreng (5 pieces)",
+    "calories": 250,
+    "protein": 9,
+    "carbs": 32,
+    "fats": 10,
+    "aliases": [
+      "lekor goreng",
+      "keropok lekor losong"
+    ]
   },
   {
     "name": "Ketchup (1 tbsp)",
@@ -2834,12 +3688,68 @@
     "fats": 1
   },
   {
+    "name": "Ketupat Palas (2 pieces)",
+    "calories": 280,
+    "protein": 5,
+    "carbs": 54,
+    "fats": 5,
+    "aliases": [
+      "ketupat palas",
+      "ketupat daun palas"
+    ]
+  },
+  {
+    "name": "Ketupat with Kuah Kacang (1 serving)",
+    "calories": 360,
+    "protein": 9,
+    "carbs": 52,
+    "fats": 13,
+    "aliases": [
+      "ketupat kuah kacang",
+      "nasi impit kuah kacang"
+    ]
+  },
+  {
     "name": "KFC Coleslaw",
     "calories": 170,
     "protein": 1,
     "carbs": 14,
     "fats": 12,
     "brand": "KFC"
+  },
+  {
+    "name": "KFC Dinner Plate (2 pieces)",
+    "calories": 780,
+    "protein": 44,
+    "carbs": 62,
+    "fats": 39,
+    "aliases": [
+      "kfc dinner plate",
+      "kfc 2 piece combo"
+    ],
+    "brand": "KFC"
+  },
+  {
+    "name": "KFC Snack Plate (2 pieces)",
+    "calories": 620,
+    "protein": 40,
+    "carbs": 36,
+    "fats": 35,
+    "aliases": [
+      "kfc snack plate"
+    ],
+    "brand": "KFC"
+  },
+  {
+    "name": "Kickapoo (325ml can)",
+    "calories": 150,
+    "protein": 0,
+    "carbs": 38,
+    "fats": 0,
+    "aliases": [
+      "kickapoo"
+    ],
+    "brand": "Kickapoo"
   },
   {
     "name": "Kidney Beans (1 cup)",
@@ -2924,6 +3834,17 @@
     ]
   },
   {
+    "name": "Kobis Goreng (1 serving)",
+    "calories": 110,
+    "protein": 3,
+    "carbs": 9,
+    "fats": 7,
+    "aliases": [
+      "kubis goreng",
+      "fried cabbage"
+    ]
+  },
+  {
     "name": "Kombucha (1 cup)",
     "calories": 30,
     "protein": 0,
@@ -2949,6 +3870,40 @@
     "fats": 3
   },
   {
+    "name": "Kopi C Ais (1 glass)",
+    "calories": 130,
+    "protein": 3,
+    "carbs": 20,
+    "fats": 4,
+    "aliases": [
+      "kopi c ais",
+      "kopi c peng"
+    ]
+  },
+  {
+    "name": "Kopi Kenangan Latte (regular)",
+    "calories": 180,
+    "protein": 5,
+    "carbs": 26,
+    "fats": 6,
+    "aliases": [
+      "kopi kenangan",
+      "kenangan latte"
+    ],
+    "brand": "Kopi Kenangan"
+  },
+  {
+    "name": "Kopi Kurang Manis (1 cup)",
+    "calories": 100,
+    "protein": 3,
+    "carbs": 14,
+    "fats": 4,
+    "aliases": [
+      "kopi kurang manis",
+      "kopi susu kurang manis"
+    ]
+  },
+  {
     "name": "Kopi O",
     "calories": 35,
     "protein": 0,
@@ -2957,6 +3912,28 @@
     "aliases": [
       "kopi o kosong",
       "local black coffee"
+    ]
+  },
+  {
+    "name": "Kopi O Ais (1 glass)",
+    "calories": 70,
+    "protein": 0,
+    "carbs": 18,
+    "fats": 0,
+    "aliases": [
+      "kopi o ais",
+      "kopi o peng"
+    ]
+  },
+  {
+    "name": "Kopi O Kosong (1 cup)",
+    "calories": 5,
+    "protein": 0,
+    "carbs": 1,
+    "fats": 0,
+    "aliases": [
+      "kopi kosong",
+      "black coffee kosong"
     ]
   },
   {
@@ -2986,6 +3963,51 @@
     ]
   },
   {
+    "name": "Kuey Teow Goreng Basah",
+    "calories": 600,
+    "protein": 20,
+    "carbs": 76,
+    "fats": 24,
+    "aliases": [
+      "kuey teow basah",
+      "kuetiau goreng basah"
+    ]
+  },
+  {
+    "name": "Kuey Teow Kerang",
+    "calories": 680,
+    "protein": 22,
+    "carbs": 78,
+    "fats": 31,
+    "aliases": [
+      "char kuey teow kerang",
+      "kuetiau kerang"
+    ]
+  },
+  {
+    "name": "Kuey Teow Sup Ayam",
+    "calories": 360,
+    "protein": 20,
+    "carbs": 50,
+    "fats": 9,
+    "aliases": [
+      "kuey teow sup",
+      "koay teow sup ayam"
+    ]
+  },
+  {
+    "name": "Kuih Apam (2 pieces)",
+    "calories": 150,
+    "protein": 3,
+    "carbs": 30,
+    "fats": 2,
+    "aliases": [
+      "apam",
+      "apam gula hangus",
+      "apam beras"
+    ]
+  },
+  {
     "name": "Kuih Bahulu (3 pieces)",
     "calories": 120,
     "protein": 3,
@@ -2993,6 +4015,80 @@
     "fats": 2,
     "aliases": [
       "bahulu"
+    ]
+  },
+  {
+    "name": "Kuih Bakar (1 piece)",
+    "calories": 170,
+    "protein": 3,
+    "carbs": 26,
+    "fats": 6,
+    "aliases": [
+      "kuih bakar pandan"
+    ]
+  },
+  {
+    "name": "Kuih Bingka Ubi (1 piece)",
+    "calories": 190,
+    "protein": 2,
+    "carbs": 32,
+    "fats": 6,
+    "aliases": [
+      "bingka ubi",
+      "bingka"
+    ]
+  },
+  {
+    "name": "Kuih Cara Berlauk (3 pieces)",
+    "calories": 150,
+    "protein": 5,
+    "carbs": 18,
+    "fats": 6,
+    "aliases": [
+      "cara berlauk"
+    ]
+  },
+  {
+    "name": "Kuih Cara Manis (3 pieces)",
+    "calories": 140,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 4,
+    "aliases": [
+      "cara manis"
+    ]
+  },
+  {
+    "name": "Kuih Kapit (5 pieces)",
+    "calories": 110,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 4,
+    "aliases": [
+      "love letters",
+      "kuih kapit raya"
+    ]
+  },
+  {
+    "name": "Kuih Kasui (2 pieces)",
+    "calories": 130,
+    "protein": 1,
+    "carbs": 28,
+    "fats": 2,
+    "aliases": [
+      "kasui",
+      "kosui"
+    ]
+  },
+  {
+    "name": "Kuih Keria (1 piece)",
+    "calories": 160,
+    "protein": 2,
+    "carbs": 28,
+    "fats": 5,
+    "aliases": [
+      "keria",
+      "keria gula melaka"
     ]
   },
   {
@@ -3007,11 +4103,65 @@
     ]
   },
   {
+    "name": "Kuih Koci (1 piece)",
+    "calories": 140,
+    "protein": 2,
+    "carbs": 26,
+    "fats": 3,
+    "aliases": [
+      "koci",
+      "kuih koci pulut hitam"
+    ]
+  },
+  {
     "name": "Kuih Lapis",
     "calories": 130,
     "protein": 1,
     "carbs": 22,
     "fats": 4
+  },
+  {
+    "name": "Kuih Lopes (1 piece)",
+    "calories": 180,
+    "protein": 2,
+    "carbs": 36,
+    "fats": 3,
+    "aliases": [
+      "lopes",
+      "lupis"
+    ]
+  },
+  {
+    "name": "Kuih Makmur (2 pieces)",
+    "calories": 160,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 9,
+    "aliases": [
+      "makmur",
+      "biskut makmur"
+    ]
+  },
+  {
+    "name": "Kuih Putu Bambu (2 pieces)",
+    "calories": 180,
+    "protein": 2,
+    "carbs": 36,
+    "fats": 3,
+    "aliases": [
+      "putu bambu",
+      "putu buluh"
+    ]
+  },
+  {
+    "name": "Kuih Putu Piring (2 pieces)",
+    "calories": 190,
+    "protein": 2,
+    "carbs": 40,
+    "fats": 2,
+    "aliases": [
+      "putu piring"
+    ]
   },
   {
     "name": "Kuih Seri Muka (1 piece)",
@@ -3021,6 +4171,27 @@
     "fats": 5,
     "aliases": [
       "seri muka"
+    ]
+  },
+  {
+    "name": "Kuih Talam (1 piece)",
+    "calories": 150,
+    "protein": 2,
+    "carbs": 26,
+    "fats": 4,
+    "aliases": [
+      "talam",
+      "kuih talam pandan"
+    ]
+  },
+  {
+    "name": "Kuih Tepung Pelita (2 pieces)",
+    "calories": 150,
+    "protein": 1,
+    "carbs": 24,
+    "fats": 6,
+    "aliases": [
+      "tepung pelita"
     ]
   },
   {
@@ -3046,6 +4217,37 @@
     "protein": 22,
     "carbs": 66,
     "fats": 22
+  },
+  {
+    "name": "Laksa Kedah",
+    "calories": 420,
+    "protein": 18,
+    "carbs": 62,
+    "fats": 11,
+    "aliases": [
+      "laksa utara",
+      "laksa perlis"
+    ]
+  },
+  {
+    "name": "Laksa Sarawak",
+    "calories": 560,
+    "protein": 24,
+    "carbs": 58,
+    "fats": 26,
+    "aliases": [
+      "sarawak laksa"
+    ]
+  },
+  {
+    "name": "Laksam",
+    "calories": 430,
+    "protein": 16,
+    "carbs": 58,
+    "fats": 15,
+    "aliases": [
+      "laksam kelantan"
+    ]
   },
   {
     "name": "Lamb Chop (100g)",
@@ -3094,6 +4296,16 @@
     "fats": 6
   },
   {
+    "name": "Lemang with Rendang (1 serving)",
+    "calories": 560,
+    "protein": 24,
+    "carbs": 46,
+    "fats": 31,
+    "aliases": [
+      "lemang rendang"
+    ]
+  },
+  {
     "name": "Lemon (1 fruit)",
     "calories": 17,
     "protein": 1,
@@ -3102,6 +4314,28 @@
     "aliases": [
       "lime",
       "limau"
+    ]
+  },
+  {
+    "name": "Lempeng (1 piece)",
+    "calories": 180,
+    "protein": 4,
+    "carbs": 30,
+    "fats": 5,
+    "aliases": [
+      "lempeng kelapa",
+      "lempeng pisang"
+    ]
+  },
+  {
+    "name": "Leng Chee Kang (1 bowl)",
+    "calories": 180,
+    "protein": 2,
+    "carbs": 42,
+    "fats": 1,
+    "aliases": [
+      "leng chee kang",
+      "lin chee kang"
     ]
   },
   {
@@ -3130,6 +4364,17 @@
     "fats": 0
   },
   {
+    "name": "Limau Kasturi Ais (1 glass)",
+    "calories": 90,
+    "protein": 0,
+    "carbs": 23,
+    "fats": 0,
+    "aliases": [
+      "kasturi ais",
+      "calamansi juice"
+    ]
+  },
+  {
     "name": "Lo Mai Gai",
     "calories": 330,
     "protein": 12,
@@ -3138,6 +4383,28 @@
     "aliases": [
       "glutinous rice chicken",
       "loh mai kai"
+    ]
+  },
+  {
+    "name": "Loh Shu Fun (claypot)",
+    "calories": 520,
+    "protein": 20,
+    "carbs": 62,
+    "fats": 21,
+    "aliases": [
+      "lou shu fun",
+      "rat noodles"
+    ]
+  },
+  {
+    "name": "Lok Lok (5 sticks)",
+    "calories": 220,
+    "protein": 14,
+    "carbs": 16,
+    "fats": 11,
+    "aliases": [
+      "lok lok",
+      "steamboat sticks"
     ]
   },
   {
@@ -3156,6 +4423,17 @@
     "protein": 11,
     "carbs": 52,
     "fats": 19
+  },
+  {
+    "name": "Lontong Kuah Lodeh",
+    "calories": 480,
+    "protein": 13,
+    "carbs": 58,
+    "fats": 22,
+    "aliases": [
+      "lontong sayur",
+      "lontong kering"
+    ]
   },
   {
     "name": "Lor Mee",
@@ -3214,6 +4492,17 @@
     "fats": 24
   },
   {
+    "name": "Maggi Goreng Mamak with Egg",
+    "calories": 640,
+    "protein": 20,
+    "carbs": 76,
+    "fats": 28,
+    "aliases": [
+      "maggi goreng telur",
+      "maggi goreng telur mata"
+    ]
+  },
+  {
     "name": "Maggi Kari (1 pack)",
     "calories": 351,
     "protein": 8,
@@ -3224,6 +4513,29 @@
       "maggi kari letup"
     ],
     "brand": "Maggi"
+  },
+  {
+    "name": "Maggi Sup Telur",
+    "calories": 430,
+    "protein": 14,
+    "carbs": 54,
+    "fats": 17,
+    "aliases": [
+      "maggi sup telur",
+      "maggi kuah telur"
+    ]
+  },
+  {
+    "name": "Mamee Monster (1 pack)",
+    "calories": 110,
+    "protein": 2,
+    "carbs": 16,
+    "fats": 4,
+    "aliases": [
+      "mamee",
+      "mamee monster"
+    ],
+    "brand": "Mamee"
   },
   {
     "name": "Mango",
@@ -3294,6 +4606,30 @@
     "fats": 18
   },
   {
+    "name": "Marrybrown Fried Chicken (1 piece)",
+    "calories": 310,
+    "protein": 20,
+    "carbs": 12,
+    "fats": 20,
+    "aliases": [
+      "marrybrown chicken",
+      "mb chicken"
+    ],
+    "brand": "Marrybrown"
+  },
+  {
+    "name": "Marrybrown Hotouch Burger",
+    "calories": 470,
+    "protein": 22,
+    "carbs": 44,
+    "fats": 23,
+    "aliases": [
+      "hotouch burger",
+      "marrybrown burger"
+    ],
+    "brand": "Marrybrown"
+  },
+  {
     "name": "Masala Chai (1 cup)",
     "calories": 90,
     "protein": 3,
@@ -3340,6 +4676,18 @@
     ]
   },
   {
+    "name": "Massimo Wheat Germ Bread (2 slices)",
+    "calories": 150,
+    "protein": 6,
+    "carbs": 28,
+    "fats": 2,
+    "aliases": [
+      "massimo bread",
+      "roti massimo"
+    ],
+    "brand": "Massimo"
+  },
+  {
     "name": "Matcha Latte (grande)",
     "calories": 240,
     "protein": 12,
@@ -3369,6 +4717,42 @@
     "fats": 21,
     "aliases": [
       "mc chicken"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "McD Ayam Goreng Spicy (2 pieces)",
+    "calories": 660,
+    "protein": 44,
+    "carbs": 24,
+    "fats": 44,
+    "aliases": [
+      "ayam goreng mcd 2 ketul",
+      "mcd ayam goreng spicy"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "McD Nasi Lemak",
+    "calories": 520,
+    "protein": 18,
+    "carbs": 62,
+    "fats": 22,
+    "aliases": [
+      "mcd nasi lemak",
+      "mcdonalds nasi lemak"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "McD Spicy Chicken McDeluxe",
+    "calories": 530,
+    "protein": 24,
+    "carbs": 46,
+    "fats": 28,
+    "aliases": [
+      "spicy chicken mcdeluxe",
+      "mcdeluxe"
     ],
     "brand": "McDonald's"
   },
@@ -3434,6 +4818,26 @@
     "fats": 18
   },
   {
+    "name": "Mee Celup",
+    "calories": 430,
+    "protein": 18,
+    "carbs": 58,
+    "fats": 14,
+    "aliases": [
+      "mee celup kelantan"
+    ]
+  },
+  {
+    "name": "Mee Goreng Basah",
+    "calories": 560,
+    "protein": 18,
+    "carbs": 74,
+    "fats": 21,
+    "aliases": [
+      "mi goreng basah"
+    ]
+  },
+  {
     "name": "Mee Goreng Mamak",
     "calories": 660,
     "protein": 20,
@@ -3445,6 +4849,17 @@
     ]
   },
   {
+    "name": "Mee Goreng Mamak with Egg",
+    "calories": 720,
+    "protein": 24,
+    "carbs": 84,
+    "fats": 31,
+    "aliases": [
+      "mee goreng telur",
+      "mee goreng mamak telur"
+    ]
+  },
+  {
     "name": "Mee Hoon Sup",
     "calories": 310,
     "protein": 16,
@@ -3453,6 +4868,29 @@
     "aliases": [
       "bihun sup",
       "bee hoon soup"
+    ]
+  },
+  {
+    "name": "Mee Kari Ayam",
+    "calories": 620,
+    "protein": 26,
+    "carbs": 64,
+    "fats": 29,
+    "aliases": [
+      "mee kari",
+      "kari mee ayam"
+    ]
+  },
+  {
+    "name": "Mee Kolok",
+    "calories": 480,
+    "protein": 20,
+    "carbs": 62,
+    "fats": 17,
+    "aliases": [
+      "kolo mee",
+      "mee kolo",
+      "sarawak kolo mee"
     ]
   },
   {
@@ -3468,6 +4906,39 @@
     "protein": 12,
     "carbs": 68,
     "fats": 14
+  },
+  {
+    "name": "Mee Sup Ayam",
+    "calories": 390,
+    "protein": 20,
+    "carbs": 54,
+    "fats": 10,
+    "aliases": [
+      "mee sup",
+      "mi sup"
+    ]
+  },
+  {
+    "name": "Mee Tomyam",
+    "calories": 480,
+    "protein": 22,
+    "carbs": 60,
+    "fats": 17,
+    "aliases": [
+      "mee tom yam",
+      "mi tomyam"
+    ]
+  },
+  {
+    "name": "Mee Udang (1 bowl)",
+    "calories": 540,
+    "protein": 26,
+    "carbs": 64,
+    "fats": 20,
+    "aliases": [
+      "mee udang banjir",
+      "mi udang"
+    ]
   },
   {
     "name": "Mie Ayam",
@@ -3529,6 +5000,17 @@
     ]
   },
   {
+    "name": "Milo Ais Kurang Manis (1 glass)",
+    "calories": 160,
+    "protein": 5,
+    "carbs": 26,
+    "fats": 5,
+    "aliases": [
+      "milo kurang manis",
+      "milo ais kurang manis"
+    ]
+  },
+  {
     "name": "Milo Dinosaur (1 glass)",
     "calories": 340,
     "protein": 8,
@@ -3536,6 +5018,29 @@
     "fats": 10,
     "aliases": [
       "milo dino"
+    ]
+  },
+  {
+    "name": "Milo Kosong (1 cup)",
+    "calories": 90,
+    "protein": 4,
+    "carbs": 14,
+    "fats": 2,
+    "aliases": [
+      "milo kosong",
+      "milo o kosong"
+    ]
+  },
+  {
+    "name": "Milo Panas (1 cup)",
+    "calories": 150,
+    "protein": 5,
+    "carbs": 24,
+    "fats": 4,
+    "aliases": [
+      "milo panas",
+      "hot milo",
+      "milo o"
     ]
   },
   {
@@ -3555,6 +5060,17 @@
     "protein": 3,
     "carbs": 5,
     "fats": 1
+  },
+  {
+    "name": "Mister Potato Chips (1 small pack)",
+    "calories": 150,
+    "protein": 2,
+    "carbs": 16,
+    "fats": 9,
+    "aliases": [
+      "mister potato"
+    ],
+    "brand": "Mister Potato"
   },
   {
     "name": "Mixed Nuts (30g)",
@@ -3606,6 +5122,18 @@
     "fats": 9
   },
   {
+    "name": "Munchy's Lexus Sandwich Biscuit (1 pack)",
+    "calories": 190,
+    "protein": 3,
+    "carbs": 24,
+    "fats": 9,
+    "aliases": [
+      "lexus biscuit",
+      "munchys lexus"
+    ],
+    "brand": "Munchy's"
+  },
+  {
     "name": "Murtabak",
     "calories": 560,
     "protein": 24,
@@ -3613,6 +5141,27 @@
     "fats": 28,
     "aliases": [
       "martabak"
+    ]
+  },
+  {
+    "name": "Murtabak Ayam (1 piece)",
+    "calories": 520,
+    "protein": 26,
+    "carbs": 50,
+    "fats": 24,
+    "aliases": [
+      "murtabak ayam",
+      "martabak ayam"
+    ]
+  },
+  {
+    "name": "Murtabak Daging (1 piece)",
+    "calories": 580,
+    "protein": 28,
+    "carbs": 50,
+    "fats": 30,
+    "aliases": [
+      "murtabak daging"
     ]
   },
   {
@@ -3662,11 +5211,35 @@
     ]
   },
   {
+    "name": "myBurgerLab Classic Beef Burger",
+    "calories": 620,
+    "protein": 32,
+    "carbs": 44,
+    "fats": 35,
+    "aliases": [
+      "myburgerlab",
+      "burger lab"
+    ],
+    "brand": "myBurgerLab"
+  },
+  {
     "name": "Naan",
     "calories": 260,
     "protein": 8,
     "carbs": 45,
     "fats": 5
+  },
+  {
+    "name": "Naan with Tandoori Chicken (set)",
+    "calories": 620,
+    "protein": 40,
+    "carbs": 58,
+    "fats": 24,
+    "aliases": [
+      "naan tandoori",
+      "nan tandoori",
+      "roti nan tandoori"
+    ]
   },
   {
     "name": "Nachos with Cheese (1 serving)",
@@ -3676,6 +5249,61 @@
     "fats": 19,
     "aliases": [
       "nachos"
+    ]
+  },
+  {
+    "name": "Nando's Quarter Chicken (leg)",
+    "calories": 330,
+    "protein": 34,
+    "carbs": 2,
+    "fats": 20,
+    "aliases": [
+      "nandos quarter chicken",
+      "nandos peri peri chicken"
+    ],
+    "brand": "Nando's"
+  },
+  {
+    "name": "Nasi Ambeng (1 portion)",
+    "calories": 820,
+    "protein": 34,
+    "carbs": 96,
+    "fats": 33,
+    "aliases": [
+      "nasi ambang"
+    ]
+  },
+  {
+    "name": "Nasi Ayam Goreng Kunyit",
+    "calories": 690,
+    "protein": 30,
+    "carbs": 84,
+    "fats": 26,
+    "aliases": [
+      "nasi ayam kunyit",
+      "nasi goreng kunyit ayam"
+    ]
+  },
+  {
+    "name": "Nasi Ayam Madu",
+    "calories": 700,
+    "protein": 30,
+    "carbs": 88,
+    "fats": 25,
+    "aliases": [
+      "nasi ayam bakar",
+      "nasi ayam panggang"
+    ]
+  },
+  {
+    "name": "Nasi Berlauk",
+    "calories": 560,
+    "protein": 22,
+    "carbs": 72,
+    "fats": 20,
+    "aliases": [
+      "nasi berlauk ayam",
+      "nasi berlauk ikan"
     ]
   },
   {
@@ -3692,6 +5320,17 @@
     ]
   },
   {
+    "name": "Nasi Bujang",
+    "calories": 480,
+    "protein": 14,
+    "carbs": 78,
+    "fats": 12,
+    "aliases": [
+      "nasi telur kicap",
+      "nasi telur mata"
+    ]
+  },
+  {
     "name": "Nasi Campur",
     "calories": 620,
     "protein": 24,
@@ -3704,6 +5343,17 @@
     "protein": 22,
     "carbs": 74,
     "fats": 26
+  },
+  {
+    "name": "Nasi Dalca",
+    "calories": 640,
+    "protein": 22,
+    "carbs": 88,
+    "fats": 22,
+    "aliases": [
+      "nasi dalcha",
+      "dalca"
+    ]
   },
   {
     "name": "Nasi Goreng",
@@ -3727,11 +5377,61 @@
     ]
   },
   {
+    "name": "Nasi Goreng Belacan",
+    "calories": 650,
+    "protein": 20,
+    "carbs": 84,
+    "fats": 26,
+    "aliases": [
+      "nasi goreng sambal belacan"
+    ]
+  },
+  {
+    "name": "Nasi Goreng Cina",
+    "calories": 590,
+    "protein": 18,
+    "carbs": 80,
+    "fats": 22,
+    "aliases": [
+      "nasi goreng cina ayam",
+      "chinese fried rice malay"
+    ]
+  },
+  {
+    "name": "Nasi Goreng Daging",
+    "calories": 720,
+    "protein": 30,
+    "carbs": 86,
+    "fats": 28,
+    "aliases": [
+      "nasi goreng daging merah",
+      "beef fried rice"
+    ]
+  },
+  {
+    "name": "Nasi Goreng Ikan Masin",
+    "calories": 640,
+    "protein": 20,
+    "carbs": 84,
+    "fats": 25,
+    "aliases": [
+      "nasi goreng ikan bilis",
+      "salted fish fried rice"
+    ]
+  },
+  {
     "name": "Nasi Goreng Kampung",
     "calories": 590,
     "protein": 18,
     "carbs": 78,
     "fats": 22
+  },
+  {
+    "name": "Nasi Goreng Mamak",
+    "calories": 680,
+    "protein": 22,
+    "carbs": 86,
+    "fats": 27
   },
   {
     "name": "Nasi Goreng Pattaya",
@@ -3744,11 +5444,43 @@
     ]
   },
   {
+    "name": "Nasi Goreng Seafood",
+    "calories": 680,
+    "protein": 26,
+    "carbs": 86,
+    "fats": 25,
+    "aliases": [
+      "nasi goreng udang",
+      "seafood fried rice"
+    ]
+  },
+  {
+    "name": "Nasi Goreng Tomyam",
+    "calories": 660,
+    "protein": 22,
+    "carbs": 86,
+    "fats": 25,
+    "aliases": [
+      "nasi goreng tom yam"
+    ]
+  },
+  {
     "name": "Nasi Goreng USA",
     "calories": 820,
     "protein": 34,
     "carbs": 90,
     "fats": 36
+  },
+  {
+    "name": "Nasi Hujan Panas",
+    "calories": 560,
+    "protein": 12,
+    "carbs": 88,
+    "fats": 17,
+    "aliases": [
+      "nasi minyak",
+      "nasi hujan panas kenduri"
+    ]
   },
   {
     "name": "Nasi Impit (100g)",
@@ -3759,6 +5491,16 @@
     "aliases": [
       "compressed rice",
       "rice cubes"
+    ]
+  },
+  {
+    "name": "Nasi Kak Wok",
+    "calories": 700,
+    "protein": 28,
+    "carbs": 84,
+    "fats": 28,
+    "aliases": [
+      "nasi kak wok kelantan"
     ]
   },
   {
@@ -3774,6 +5516,16 @@
     "protein": 20,
     "carbs": 72,
     "fats": 17
+  },
+  {
+    "name": "Nasi Kerabu with Ayam Bakar",
+    "calories": 700,
+    "protein": 34,
+    "carbs": 82,
+    "fats": 26,
+    "aliases": [
+      "nasi kerabu ayam"
+    ]
   },
   {
     "name": "Nasi Kukus Ayam Berempah",
@@ -3809,6 +5561,38 @@
     ]
   },
   {
+    "name": "Nasi Lemak Kukus Ayam Goreng",
+    "calories": 860,
+    "protein": 34,
+    "carbs": 90,
+    "fats": 40,
+    "aliases": [
+      "nasi lemak kukus",
+      "nasi lemak ayam goreng berempah"
+    ]
+  },
+  {
+    "name": "Nasi Lemak Sotong",
+    "calories": 760,
+    "protein": 28,
+    "carbs": 86,
+    "fats": 33,
+    "aliases": [
+      "nasi lemak sambal sotong"
+    ]
+  },
+  {
+    "name": "Nasi Lemak Telur Goreng",
+    "calories": 520,
+    "protein": 15,
+    "carbs": 62,
+    "fats": 23,
+    "aliases": [
+      "nasi lemak telur",
+      "nasi lemak telur mata"
+    ]
+  },
+  {
     "name": "Nasi Lemak with Fried Chicken",
     "calories": 890,
     "protein": 34,
@@ -3836,6 +5620,17 @@
       "mandi rice",
       "chicken mandi",
       "nasi mandy"
+    ]
+  },
+  {
+    "name": "Nasi Minyak with Ayam Masak Merah",
+    "calories": 780,
+    "protein": 32,
+    "carbs": 92,
+    "fats": 31,
+    "aliases": [
+      "nasi minyak ayam",
+      "nasi kenduri"
     ]
   },
   {
@@ -3882,6 +5677,58 @@
     ]
   },
   {
+    "name": "Nasi Tumpang",
+    "calories": 520,
+    "protein": 20,
+    "carbs": 74,
+    "fats": 16
+  },
+  {
+    "name": "Nasi Ulam",
+    "calories": 420,
+    "protein": 12,
+    "carbs": 70,
+    "fats": 10,
+    "aliases": [
+      "nasi ulam kelantan"
+    ]
+  },
+  {
+    "name": "Nescafe Ais (1 glass)",
+    "calories": 150,
+    "protein": 3,
+    "carbs": 25,
+    "fats": 4,
+    "aliases": [
+      "nescafe ais",
+      "nescafe tarik",
+      "nes ais"
+    ]
+  },
+  {
+    "name": "Nescafe Original Can (240ml)",
+    "calories": 110,
+    "protein": 2,
+    "carbs": 20,
+    "fats": 2,
+    "aliases": [
+      "nescafe tin",
+      "nescafe can"
+    ],
+    "brand": "Nescafe"
+  },
+  {
+    "name": "Neslo Ais (1 glass)",
+    "calories": 210,
+    "protein": 5,
+    "carbs": 34,
+    "fats": 6,
+    "aliases": [
+      "neslo",
+      "neslo ais"
+    ]
+  },
+  {
     "name": "Oat Milk (1 cup)",
     "calories": 120,
     "protein": 3,
@@ -3906,6 +5753,30 @@
       "bendi",
       "ladies finger"
     ]
+  },
+  {
+    "name": "OldTown Nasi Lemak with Fried Chicken",
+    "calories": 780,
+    "protein": 30,
+    "carbs": 88,
+    "fats": 34,
+    "aliases": [
+      "oldtown nasi lemak"
+    ],
+    "brand": "OldTown"
+  },
+  {
+    "name": "OldTown White Coffee (1 cup)",
+    "calories": 150,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 5,
+    "aliases": [
+      "oldtown white coffee",
+      "white coffee",
+      "ipoh white coffee"
+    ],
+    "brand": "OldTown"
   },
   {
     "name": "Olive Oil (1 tbsp)",
@@ -4168,6 +6039,17 @@
     ]
   },
   {
+    "name": "PappaRich Roti Canai with Curry Chicken",
+    "calories": 560,
+    "protein": 24,
+    "carbs": 54,
+    "fats": 27,
+    "aliases": [
+      "papparich roti canai"
+    ],
+    "brand": "PappaRich"
+  },
+  {
     "name": "Paratha (1 piece)",
     "calories": 260,
     "protein": 5,
@@ -4184,6 +6066,17 @@
     "protein": 2,
     "carbs": 0,
     "fats": 1
+  },
+  {
+    "name": "Pasembur (1 plate)",
+    "calories": 520,
+    "protein": 16,
+    "carbs": 62,
+    "fats": 23,
+    "aliases": [
+      "rojak mamak",
+      "rojak pasembor"
+    ]
   },
   {
     "name": "Pasta",
@@ -4282,6 +6175,17 @@
     ]
   },
   {
+    "name": "Pengat Pisang (1 bowl)",
+    "calories": 280,
+    "protein": 2,
+    "carbs": 48,
+    "fats": 9,
+    "aliases": [
+      "pengat",
+      "serawa pisang"
+    ]
+  },
+  {
     "name": "Pepperoni Pizza (2 slices)",
     "calories": 600,
     "protein": 24,
@@ -4338,6 +6242,17 @@
     ]
   },
   {
+    "name": "Pisang Goreng Cheese (1 serving)",
+    "calories": 420,
+    "protein": 7,
+    "carbs": 56,
+    "fats": 19,
+    "aliases": [
+      "pisang cheese",
+      "pisang goreng coklat cheese"
+    ]
+  },
+  {
     "name": "Pistachios (28g)",
     "calories": 159,
     "protein": 6,
@@ -4354,6 +6269,18 @@
       "pitta",
       "roti arab"
     ]
+  },
+  {
+    "name": "Pizza Hut Hawaiian Chicken (2 slices, pan)",
+    "calories": 480,
+    "protein": 20,
+    "carbs": 56,
+    "fats": 19,
+    "aliases": [
+      "pizza hut hawaiian",
+      "pizza hut"
+    ],
+    "brand": "Pizza Hut"
   },
   {
     "name": "Pizza Slice",
@@ -4504,6 +6431,49 @@
     "fats": 2
   },
   {
+    "name": "Pucuk Ubi Masak Lemak (1 serving)",
+    "calories": 170,
+    "protein": 5,
+    "carbs": 10,
+    "fats": 13,
+    "aliases": [
+      "pucuk ubi",
+      "masak lemak pucuk ubi"
+    ]
+  },
+  {
+    "name": "Pulut Inti (1 piece)",
+    "calories": 200,
+    "protein": 3,
+    "carbs": 38,
+    "fats": 4,
+    "aliases": [
+      "pulut inti"
+    ]
+  },
+  {
+    "name": "Pulut Kuning with Rendang (1 serving)",
+    "calories": 520,
+    "protein": 20,
+    "carbs": 62,
+    "fats": 21,
+    "aliases": [
+      "pulut kuning",
+      "pulut kuning rendang"
+    ]
+  },
+  {
+    "name": "Pulut Panggang (1 piece)",
+    "calories": 190,
+    "protein": 5,
+    "carbs": 30,
+    "fats": 6,
+    "aliases": [
+      "pulut panggang",
+      "rempah udang"
+    ]
+  },
+  {
     "name": "Pumpkin (1 cup cooked)",
     "calories": 49,
     "protein": 2,
@@ -4543,6 +6513,16 @@
       "string hoppers",
       "idiyappam",
       "putu mayong"
+    ]
+  },
+  {
+    "name": "Putu Mayam with Gula Merah (1 serving)",
+    "calories": 260,
+    "protein": 3,
+    "carbs": 54,
+    "fats": 4,
+    "aliases": [
+      "putu mayam gula merah"
     ]
   },
   {
@@ -4675,6 +6655,27 @@
     ]
   },
   {
+    "name": "Rendang Tok (1 serving)",
+    "calories": 420,
+    "protein": 28,
+    "carbs": 8,
+    "fats": 31,
+    "aliases": [
+      "rendang tok perak"
+    ]
+  },
+  {
+    "name": "Ribena (200ml packet)",
+    "calories": 100,
+    "protein": 0,
+    "carbs": 25,
+    "fats": 0,
+    "aliases": [
+      "ribena"
+    ],
+    "brand": "Ribena"
+  },
+  {
     "name": "Rice Cakes (2 pieces)",
     "calories": 70,
     "protein": 1,
@@ -4714,6 +6715,17 @@
     ]
   },
   {
+    "name": "Rojak Buah (1 plate)",
+    "calories": 280,
+    "protein": 5,
+    "carbs": 48,
+    "fats": 8,
+    "aliases": [
+      "rojak buah",
+      "fruit rojak"
+    ]
+  },
+  {
     "name": "Rolled Oats (1/2 cup dry)",
     "calories": 150,
     "protein": 5,
@@ -4722,6 +6734,29 @@
     "aliases": [
       "oats dry",
       "quaker oats"
+    ]
+  },
+  {
+    "name": "Roti Arab with Dhal (1 piece)",
+    "calories": 360,
+    "protein": 10,
+    "carbs": 56,
+    "fats": 10,
+    "aliases": [
+      "roti nan",
+      "roti naan dhal"
+    ]
+  },
+  {
+    "name": "Roti Bakar with Half-Boiled Eggs (set)",
+    "calories": 380,
+    "protein": 18,
+    "carbs": 34,
+    "fats": 19,
+    "aliases": [
+      "set roti bakar",
+      "kopitiam breakfast set",
+      "roti bakar telur separuh masak"
     ]
   },
   {
@@ -4744,6 +6779,16 @@
     ]
   },
   {
+    "name": "Roti Canai Telur Bawang (1 piece)",
+    "calories": 440,
+    "protein": 13,
+    "carbs": 44,
+    "fats": 23,
+    "aliases": [
+      "roti telur bawang"
+    ]
+  },
+  {
     "name": "Roti Canai with Dhal (1 piece)",
     "calories": 400,
     "protein": 10,
@@ -4755,11 +6800,69 @@
     ]
   },
   {
+    "name": "Roti Cheese (1 piece)",
+    "calories": 430,
+    "protein": 12,
+    "carbs": 42,
+    "fats": 23,
+    "aliases": [
+      "roti canai cheese",
+      "roti keju"
+    ]
+  },
+  {
+    "name": "Roti Jala with Kari Ayam (1 serving)",
+    "calories": 420,
+    "protein": 18,
+    "carbs": 44,
+    "fats": 19,
+    "aliases": [
+      "roti jala"
+    ]
+  },
+  {
     "name": "Roti John",
     "calories": 540,
     "protein": 24,
     "carbs": 52,
     "fats": 26
+  },
+  {
+    "name": "Roti Kahwin (1 set)",
+    "calories": 300,
+    "protein": 6,
+    "carbs": 38,
+    "fats": 14,
+    "aliases": [
+      "roti kahwin butter kaya"
+    ]
+  },
+  {
+    "name": "Roti Kaya (1 piece)",
+    "calories": 400,
+    "protein": 7,
+    "carbs": 58,
+    "fats": 15,
+    "aliases": [
+      "roti canai kaya"
+    ]
+  },
+  {
+    "name": "Roti Milo (1 piece)",
+    "calories": 440,
+    "protein": 8,
+    "carbs": 60,
+    "fats": 19
+  },
+  {
+    "name": "Roti Pisang (1 piece)",
+    "calories": 420,
+    "protein": 7,
+    "carbs": 60,
+    "fats": 17,
+    "aliases": [
+      "roti banana"
+    ]
   },
   {
     "name": "Roti Planta (1 piece)",
@@ -4802,6 +6905,17 @@
       "roast chicken",
       "ayam panggang",
       "ayam golek"
+    ]
+  },
+  {
+    "name": "Sago Gula Melaka (1 serving)",
+    "calories": 240,
+    "protein": 1,
+    "carbs": 44,
+    "fats": 7,
+    "aliases": [
+      "sago gula melaka",
+      "sagu gula melaka"
     ]
   },
   {
@@ -4862,6 +6976,40 @@
     ]
   },
   {
+    "name": "Sambal Petai Udang (1 serving)",
+    "calories": 260,
+    "protein": 17,
+    "carbs": 14,
+    "fats": 15,
+    "aliases": [
+      "petai",
+      "sambal petai",
+      "udang petai"
+    ]
+  },
+  {
+    "name": "Sambal Sotong (1 serving)",
+    "calories": 240,
+    "protein": 20,
+    "carbs": 12,
+    "fats": 12,
+    "aliases": [
+      "sotong sambal",
+      "sotong masak sambal"
+    ]
+  },
+  {
+    "name": "Sambal Telur (1 egg)",
+    "calories": 150,
+    "protein": 7,
+    "carbs": 6,
+    "fats": 11,
+    "aliases": [
+      "telur sambal",
+      "sambal tumis telur"
+    ]
+  },
+  {
     "name": "Sambal Udang",
     "calories": 300,
     "protein": 22,
@@ -4897,6 +7045,18 @@
     ]
   },
   {
+    "name": "Sarsi (325ml can)",
+    "calories": 150,
+    "protein": 0,
+    "carbs": 38,
+    "fats": 0,
+    "aliases": [
+      "sarsi",
+      "root beer can"
+    ],
+    "brand": "F&N"
+  },
+  {
     "name": "Satay Ayam (5 sticks)",
     "calories": 280,
     "protein": 26,
@@ -4916,6 +7076,17 @@
     "fats": 19
   },
   {
+    "name": "Satay Kajang with Kuah Kacang (10 sticks)",
+    "calories": 720,
+    "protein": 54,
+    "carbs": 30,
+    "fats": 43,
+    "aliases": [
+      "satay kajang",
+      "sate kajang"
+    ]
+  },
+  {
     "name": "Sausage McMuffin with Egg",
     "calories": 480,
     "protein": 21,
@@ -4925,6 +7096,29 @@
       "sausage mcmuffin"
     ],
     "brand": "McDonald's"
+  },
+  {
+    "name": "Sayur Bayam Masak Air (1 serving)",
+    "calories": 60,
+    "protein": 4,
+    "carbs": 6,
+    "fats": 2,
+    "aliases": [
+      "bayam",
+      "sup bayam",
+      "spinach soup malay"
+    ]
+  },
+  {
+    "name": "Sayur Kailan Ikan Masin (1 serving)",
+    "calories": 150,
+    "protein": 8,
+    "carbs": 8,
+    "fats": 10,
+    "aliases": [
+      "kailan ikan masin",
+      "kailan"
+    ]
   },
   {
     "name": "Sayur Lodeh (1 serving)",
@@ -4952,6 +7146,29 @@
     "aliases": [
       "nori",
       "rumpai laut"
+    ]
+  },
+  {
+    "name": "Secret Recipe Chocolate Indulgence (1 slice)",
+    "calories": 420,
+    "protein": 6,
+    "carbs": 46,
+    "fats": 24,
+    "aliases": [
+      "secret recipe cake",
+      "chocolate indulgence"
+    ],
+    "brand": "Secret Recipe"
+  },
+  {
+    "name": "Serunding Daging (2 tbsp)",
+    "calories": 110,
+    "protein": 8,
+    "carbs": 6,
+    "fats": 6,
+    "aliases": [
+      "serunding",
+      "meat floss"
     ]
   },
   {
@@ -4998,6 +7215,17 @@
     "protein": 3,
     "carbs": 34,
     "fats": 4
+  },
+  {
+    "name": "Sirap Limau Ais (1 glass)",
+    "calories": 110,
+    "protein": 0,
+    "carbs": 28,
+    "fats": 0,
+    "aliases": [
+      "sirap limau",
+      "sirap limau ais"
+    ]
   },
   {
     "name": "Sirloin Steak",
@@ -5088,6 +7316,18 @@
     "fats": 0
   },
   {
+    "name": "Sosej Goreng Cheese (1 stick)",
+    "calories": 220,
+    "protein": 8,
+    "carbs": 14,
+    "fats": 15,
+    "aliases": [
+      "sosej cheese",
+      "sosej pasar malam",
+      "cheese sausage stick"
+    ]
+  },
+  {
     "name": "Soto Ayam",
     "calories": 310,
     "protein": 22,
@@ -5095,6 +7335,17 @@
     "fats": 12,
     "aliases": [
       "soto"
+    ]
+  },
+  {
+    "name": "Soto Ayam with Nasi Impit",
+    "calories": 420,
+    "protein": 24,
+    "carbs": 48,
+    "fats": 14,
+    "aliases": [
+      "soto nasi impit",
+      "soto ayam nasi impit"
     ]
   },
   {
@@ -5189,6 +7440,30 @@
     ]
   },
   {
+    "name": "Sprite (325ml can)",
+    "calories": 130,
+    "protein": 0,
+    "carbs": 33,
+    "fats": 0,
+    "aliases": [
+      "sprite can",
+      "7up"
+    ],
+    "brand": "Sprite"
+  },
+  {
+    "name": "Spritzer Tinge (500ml)",
+    "calories": 60,
+    "protein": 0,
+    "carbs": 15,
+    "fats": 0,
+    "aliases": [
+      "tinge",
+      "flavoured water"
+    ],
+    "brand": "Spritzer"
+  },
+  {
     "name": "Starfruit (1 fruit)",
     "calories": 28,
     "protein": 1,
@@ -5233,6 +7508,17 @@
     "aliases": [
       "strawberry"
     ]
+  },
+  {
+    "name": "Subway Chicken Slice Sub (6 inch)",
+    "calories": 300,
+    "protein": 20,
+    "carbs": 42,
+    "fats": 6,
+    "aliases": [
+      "subway chicken slice"
+    ],
+    "brand": "Subway"
   },
   {
     "name": "Sugar (1 tsp)",
@@ -5284,6 +7570,53 @@
       "chicken soup malay",
       "sup ayam kampung"
     ]
+  },
+  {
+    "name": "Sup Daging (1 bowl)",
+    "calories": 190,
+    "protein": 20,
+    "carbs": 8,
+    "fats": 9,
+    "aliases": [
+      "sup tulang",
+      "beef soup",
+      "sup gearbox"
+    ]
+  },
+  {
+    "name": "Sup Kambing (1 bowl)",
+    "calories": 250,
+    "protein": 22,
+    "carbs": 8,
+    "fats": 14,
+    "aliases": [
+      "mutton soup",
+      "sup kambing mamak"
+    ]
+  },
+  {
+    "name": "Super Ring (1 small pack)",
+    "calories": 160,
+    "protein": 2,
+    "carbs": 17,
+    "fats": 9,
+    "aliases": [
+      "super ring",
+      "cheese rings"
+    ],
+    "brand": "Oriental"
+  },
+  {
+    "name": "Sushi King Salmon Sushi (2 pieces)",
+    "calories": 120,
+    "protein": 6,
+    "carbs": 17,
+    "fats": 3,
+    "aliases": [
+      "sushi king",
+      "sushi king salmon"
+    ],
+    "brand": "Sushi King"
   },
   {
     "name": "Sushi Roll (6 pieces)",
@@ -5373,6 +7706,16 @@
     "fats": 12
   },
   {
+    "name": "Takoyaki Pasar Malam (6 pieces)",
+    "calories": 300,
+    "protein": 9,
+    "carbs": 36,
+    "fats": 13,
+    "aliases": [
+      "takoyaki pasar malam"
+    ]
+  },
+  {
     "name": "Tandoori Chicken (1 leg quarter)",
     "calories": 260,
     "protein": 30,
@@ -5419,6 +7762,16 @@
     ]
   },
   {
+    "name": "Tauhu Sumbat (2 pieces)",
+    "calories": 190,
+    "protein": 9,
+    "carbs": 12,
+    "fats": 12,
+    "aliases": [
+      "stuffed tofu"
+    ]
+  },
+  {
     "name": "Tea with Milk and Sugar (1 cup)",
     "calories": 60,
     "protein": 1,
@@ -5441,6 +7794,29 @@
     ]
   },
   {
+    "name": "Teh Ais Boba (1 cup)",
+    "calories": 300,
+    "protein": 3,
+    "carbs": 60,
+    "fats": 5,
+    "aliases": [
+      "teh boba",
+      "milk tea boba medium",
+      "tealive",
+      "chatime"
+    ]
+  },
+  {
+    "name": "Teh Ais Kurang Manis (1 glass)",
+    "calories": 110,
+    "protein": 3,
+    "carbs": 16,
+    "fats": 4,
+    "aliases": [
+      "teh ais kurang manis"
+    ]
+  },
+  {
     "name": "Teh C (1 cup)",
     "calories": 110,
     "protein": 2,
@@ -5448,6 +7824,51 @@
     "fats": 3,
     "aliases": [
       "teh c panas"
+    ]
+  },
+  {
+    "name": "Teh C Ais (1 glass)",
+    "calories": 130,
+    "protein": 3,
+    "carbs": 20,
+    "fats": 4,
+    "aliases": [
+      "teh c ais",
+      "teh c peng"
+    ]
+  },
+  {
+    "name": "Teh C Kosong (1 cup)",
+    "calories": 40,
+    "protein": 2,
+    "carbs": 3,
+    "fats": 2,
+    "aliases": [
+      "teh c kosong"
+    ]
+  },
+  {
+    "name": "Teh Halia (1 glass)",
+    "calories": 130,
+    "protein": 3,
+    "carbs": 20,
+    "fats": 4,
+    "aliases": [
+      "teh halia",
+      "ginger tea",
+      "teh tarik halia"
+    ]
+  },
+  {
+    "name": "Teh Limau Ais (1 glass)",
+    "calories": 90,
+    "protein": 0,
+    "carbs": 23,
+    "fats": 0,
+    "aliases": [
+      "teh limau",
+      "teh o limau",
+      "lemon tea ais"
     ]
   },
   {
@@ -5459,6 +7880,29 @@
     "aliases": [
       "teh o panas",
       "black tea with sugar"
+    ]
+  },
+  {
+    "name": "Teh O Ais (1 glass)",
+    "calories": 80,
+    "protein": 0,
+    "carbs": 20,
+    "fats": 0,
+    "aliases": [
+      "teh o ais",
+      "iced tea",
+      "teh o ais manis"
+    ]
+  },
+  {
+    "name": "Teh O Ais Kosong (1 glass)",
+    "calories": 3,
+    "protein": 0,
+    "carbs": 1,
+    "fats": 0,
+    "aliases": [
+      "teh o ais kosong",
+      "teh o kosong ais"
     ]
   },
   {
@@ -5480,6 +7924,27 @@
     ]
   },
   {
+    "name": "Teh Tarik Kurang Manis (1 glass)",
+    "calories": 90,
+    "protein": 3,
+    "carbs": 12,
+    "fats": 4,
+    "aliases": [
+      "teh tarik kurang manis",
+      "teh kurang manis"
+    ]
+  },
+  {
+    "name": "Telur Bungkus (1 serving)",
+    "calories": 280,
+    "protein": 16,
+    "carbs": 8,
+    "fats": 20,
+    "aliases": [
+      "telur bungkus daging"
+    ]
+  },
+  {
     "name": "Telur Dadar (omelette)",
     "calories": 200,
     "protein": 12,
@@ -5487,6 +7952,39 @@
     "fats": 16,
     "aliases": [
       "malay omelette"
+    ]
+  },
+  {
+    "name": "Telur Masak Kicap (1 egg)",
+    "calories": 130,
+    "protein": 7,
+    "carbs": 5,
+    "fats": 9,
+    "aliases": [
+      "telur kicap"
+    ]
+  },
+  {
+    "name": "Telur Masin (1 egg)",
+    "calories": 130,
+    "protein": 9,
+    "carbs": 1,
+    "fats": 10,
+    "aliases": [
+      "salted egg",
+      "telur asin"
+    ]
+  },
+  {
+    "name": "Tempe Goreng Sambal (1 serving)",
+    "calories": 240,
+    "protein": 13,
+    "carbs": 14,
+    "fats": 15,
+    "aliases": [
+      "sambal tempe",
+      "tempe sambal",
+      "sambal goreng tempe"
     ]
   },
   {
@@ -5510,6 +8008,16 @@
     ]
   },
   {
+    "name": "Tempoyak (1 tbsp)",
+    "calories": 30,
+    "protein": 0,
+    "carbs": 6,
+    "fats": 1,
+    "aliases": [
+      "sambal tempoyak"
+    ]
+  },
+  {
     "name": "Tempura (5 pieces)",
     "calories": 300,
     "protein": 8,
@@ -5521,6 +8029,41 @@
     ]
   },
   {
+    "name": "Terung Sambal (1 serving)",
+    "calories": 150,
+    "protein": 2,
+    "carbs": 12,
+    "fats": 11,
+    "aliases": [
+      "sambal terung",
+      "terung goreng sambal"
+    ]
+  },
+  {
+    "name": "Texas Chicken Original (1 piece)",
+    "calories": 320,
+    "protein": 21,
+    "carbs": 13,
+    "fats": 21,
+    "aliases": [
+      "texas chicken",
+      "texas fried chicken"
+    ],
+    "brand": "Texas Chicken"
+  },
+  {
+    "name": "Texas Honey-Butter Biscuit (1)",
+    "calories": 230,
+    "protein": 3,
+    "carbs": 26,
+    "fats": 12,
+    "aliases": [
+      "texas biscuit",
+      "honey butter biscuit"
+    ],
+    "brand": "Texas Chicken"
+  },
+  {
     "name": "Thai Iced Tea (1 glass)",
     "calories": 200,
     "protein": 2,
@@ -5530,6 +8073,18 @@
       "cha yen",
       "thai milk tea"
     ]
+  },
+  {
+    "name": "The Chicken Rice Shop Set (roasted)",
+    "calories": 660,
+    "protein": 32,
+    "carbs": 78,
+    "fats": 24,
+    "aliases": [
+      "chicken rice shop",
+      "tcrs"
+    ],
+    "brand": "The Chicken Rice Shop"
   },
   {
     "name": "Thosai",
@@ -5592,6 +8147,17 @@
     "fats": 2
   },
   {
+    "name": "Tong Sui Red Bean (1 bowl)",
+    "calories": 200,
+    "protein": 7,
+    "carbs": 40,
+    "fats": 1,
+    "aliases": [
+      "red bean soup",
+      "tong sui"
+    ]
+  },
+  {
     "name": "Tonkotsu Ramen (1 bowl)",
     "calories": 650,
     "protein": 28,
@@ -5614,6 +8180,28 @@
     "aliases": [
       "nacho chips",
       "doritos"
+    ]
+  },
+  {
+    "name": "Tosai Rawa (1 piece)",
+    "calories": 230,
+    "protein": 5,
+    "carbs": 36,
+    "fats": 7,
+    "aliases": [
+      "rava dosa",
+      "thosai rawa"
+    ]
+  },
+  {
+    "name": "Tosai Telur (1 piece)",
+    "calories": 260,
+    "protein": 11,
+    "carbs": 32,
+    "fats": 10,
+    "aliases": [
+      "thosai telur",
+      "egg dosa"
     ]
   },
   {
@@ -5691,6 +8279,26 @@
     "brand": "Subway"
   },
   {
+    "name": "Udang Goreng Kunyit (1 serving)",
+    "calories": 230,
+    "protein": 22,
+    "carbs": 6,
+    "fats": 13,
+    "aliases": [
+      "udang kunyit"
+    ]
+  },
+  {
+    "name": "Udang Masak Lemak (1 serving)",
+    "calories": 280,
+    "protein": 20,
+    "carbs": 6,
+    "fats": 20,
+    "aliases": [
+      "udang masak lemak nenas"
+    ]
+  },
+  {
     "name": "Udon Noodles (1 cup cooked)",
     "calories": 190,
     "protein": 6,
@@ -5706,6 +8314,18 @@
     "aliases": [
       "kitsune udon",
       "udon"
+    ]
+  },
+  {
+    "name": "Ulam with Sambal Belacan (1 serving)",
+    "calories": 60,
+    "protein": 3,
+    "carbs": 9,
+    "fats": 2,
+    "aliases": [
+      "ulam",
+      "ulam raja",
+      "ulam ulaman"
     ]
   },
   {
@@ -5737,6 +8357,17 @@
     ]
   },
   {
+    "name": "Vitagen (125ml)",
+    "calories": 70,
+    "protein": 1,
+    "carbs": 16,
+    "fats": 0,
+    "aliases": [
+      "vitagen less sugar"
+    ],
+    "brand": "Vitagen"
+  },
+  {
     "name": "Vodka (1 shot)",
     "calories": 97,
     "protein": 0,
@@ -5753,6 +8384,16 @@
     "protein": 6,
     "carbs": 25,
     "fats": 11
+  },
+  {
+    "name": "Wajik (1 piece)",
+    "calories": 190,
+    "protein": 2,
+    "carbs": 40,
+    "fats": 3,
+    "aliases": [
+      "wajid"
+    ]
   },
   {
     "name": "Walnuts",
@@ -5869,6 +8510,18 @@
     "brand": "Burger King"
   },
   {
+    "name": "Wonda Kopi Tarik (240ml can)",
+    "calories": 130,
+    "protein": 2,
+    "carbs": 22,
+    "fats": 3,
+    "aliases": [
+      "wonda",
+      "wonda coffee"
+    ],
+    "brand": "Wonda"
+  },
+  {
     "name": "Wonton Soup (6 pieces)",
     "calories": 230,
     "protein": 14,
@@ -5898,6 +8551,28 @@
     "fats": 9
   },
   {
+    "name": "Yau Char Kwai with Soy Milk (set)",
+    "calories": 330,
+    "protein": 10,
+    "carbs": 42,
+    "fats": 14,
+    "aliases": [
+      "youtiao soy milk",
+      "cakoi air soya"
+    ]
+  },
+  {
+    "name": "Yee Mee Sup",
+    "calories": 450,
+    "protein": 18,
+    "carbs": 56,
+    "fats": 17,
+    "aliases": [
+      "yee mee",
+      "claypot yee mee"
+    ]
+  },
+  {
     "name": "Yellow Noodles (1 cup cooked)",
     "calories": 220,
     "protein": 7,
@@ -5907,6 +8582,31 @@
       "mee kuning",
       "egg noodles"
     ]
+  },
+  {
+    "name": "Yeo's Chrysanthemum Tea (250ml)",
+    "calories": 80,
+    "protein": 0,
+    "carbs": 20,
+    "fats": 0,
+    "aliases": [
+      "teh bunga",
+      "chrysanthemum tea",
+      "yeos chrysanthemum"
+    ],
+    "brand": "Yeo's"
+  },
+  {
+    "name": "Yeo's Soya Bean Drink (250ml)",
+    "calories": 130,
+    "protein": 5,
+    "carbs": 20,
+    "fats": 3,
+    "aliases": [
+      "yeos soya",
+      "soya kotak"
+    ],
+    "brand": "Yeo's"
   },
   {
     "name": "Yogurt",
@@ -5955,5 +8655,18 @@
     "aliases": [
       "courgette"
     ]
+  },
+  {
+    "name": "ZUS Spanish Latte (regular)",
+    "calories": 210,
+    "protein": 6,
+    "carbs": 30,
+    "fats": 7,
+    "aliases": [
+      "zus coffee",
+      "spanish latte",
+      "zus spanish latte"
+    ],
+    "brand": "ZUS Coffee"
   }
 ]

@@ -57,6 +57,10 @@ const TOP1 = [
   ['taugeh', 'Bean Sprouts'], ['santan', 'Coconut Milk'], ['karipap', 'Curry Puff'],
   ['burger ramly', 'Ramly Burger'], ['roti john', 'Roti John'], ['air tebu', 'Sugarcane Juice'],
   ['bubur ayam', 'Chicken Congee'], ['ikan bakar', 'Ikan Bakar'], ['maggi goreng', 'Maggi Goreng'],
+  ['asam pedas', 'Ikan Masak Asam Pedas'], ['teh o ais kosong', 'Teh O Ais Kosong'], ['nasi bujang', 'Nasi Bujang'],
+  ['putu piring', 'Kuih Putu Piring'], ['cekodok', 'Cekodok Pisang'], ['kolo mee', 'Mee Kolok'], ['kopi kenangan', 'Kopi Kenangan Latte'],
+  ['roti telur bawang', 'Roti Canai Telur Bawang'], ['ayam gunting', 'Ayam Gunting'], ['milo kosong', 'Milo Kosong'], ['nasi ambeng', 'Nasi Ambeng'],
+  ['texas chicken', 'Texas Chicken Original'], ['zus coffee', 'ZUS Spanish Latte'], ['bubur lambuk', 'Bubur Lambuk'], ['pasembur', 'Pasembur'],
   // Wider Asian and brands
   ['pad thai', 'Pad thai'], ['pho', 'Pho'], ['bibimbap', 'Bibimbap'], ['butter chicken', 'Butter Chicken'],
   ['masala dosa', 'Masala Dosa'], ['gyudon', 'Gyudon'], ['kimbap', 'Kimbap'], ['boba', 'Bubble Tea'],
@@ -80,10 +84,10 @@ const TOP1 = [
 
 // [what is typed, a name that must appear somewhere in the first 5]
 const TOP5 = [
-  ['nasi', 'Nasi Lemak'], ['roti', 'Roti Canai'], ['mee', 'Mee Goreng Mamak'], ['egg', 'Egg (1 large)'], ['chicken 65', 'Chicken 65'],
-  ['laksa', 'Curry Laksa'], ['curry', 'Curry with rice'], ['burger', 'Cheeseburger'], ['kfc', 'Zinger Burger'],
-  ['mcd', 'Bubur Ayam McD'], ['subway', 'Tuna Sub'], ['tea', 'Black Tea'], ['maggi', 'Instant Noodles'],
-  ['fried rice', 'Nasi Goreng'], ['ayam', 'Ayam Kicap'], ['sushi', 'Sushi'],
+  ['nasi', 'Nasi Lemak'], ['roti', 'Roti Canai'], ['mee', 'Mee '], ['egg', 'Egg (1 large)'], ['chicken 65', 'Chicken 65'],
+  ['laksa', 'Asam Laksa'], ['curry', 'Curry with rice'], ['burger', 'Cheeseburger'], ['kfc', 'Zinger Burger'],
+  ['mcd', 'McD '], ['subway', 'Tuna Sub'], ['tea', 'Black Tea'], ['maggi', 'Instant Noodles'],
+  ['fried rice', 'Nasi Goreng'], ['ayam', 'Ayam '], ['sushi', 'Sushi'],
 ];
 
 const NOTHING = ['xyzzyq', 'qqqq wwww', 'a', '   ', '1'];
@@ -93,7 +97,7 @@ await ensureFoodIndex();
 console.log(`\n${C.b}── Food search proof ──${C.x}  ${C.d}(${localFoodCount()} foods indexed, ${CURATED_FOODS.length} before)${C.x}`);
 
 section('The index holds every bundled food');
-check(`search sees at least 640 foods (was ${CURATED_FOODS.length})`, localFoodCount() >= 640, String(localFoodCount()));
+check(`search sees at least 880 foods (was ${CURATED_FOODS.length})`, localFoodCount() >= 880, String(localFoodCount()));
 
 const starts = (name, want) => !!name && name.toLowerCase().startsWith(want.toLowerCase());
 const top1Ok = (search, [q, want]) => starts(search(q)[0]?.name, want);

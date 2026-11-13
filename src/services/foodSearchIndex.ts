@@ -163,10 +163,18 @@ export const searchFoodIndex = (index: FoodIndex, query: string, limit = 8): Foo
     let score = sum + (matched === qTokens.length ? 20 : 0);
     // The whole phrase is worth far more than its words: "rice" is White Rice,
     // not Chicken Rice; "nasi lemak" is Nasi Lemak, not Nasi Lemak with Rendang.
+    //
+    // Below an exact match, where the typed text sits matters more than that it
+    // appears: a NAME that begins with it beats another name for the food that
+    // begins with it, and both beat a name that merely contains it. The prefix
+    // test has no word boundary on purpose: "roti ca" is someone halfway
+    // through typing Roti Canai, and must not lose to "PappaRich Roti Canai…",
+    // which contains " roti ca" in the middle (it did, once the list grew).
     if (e.phrases[0] === qPhrase) score += 100;
     else if (e.phrases.includes(qPhrase)) score += 90;
-    else if (e.phrases[0].startsWith(qPhrase + ' ')) score += 40;
-    else if (e.phrases.some((p) => p.startsWith(qPhrase + ' ') || p.includes(' ' + qPhrase))) score += 25;
+    else if (e.phrases[0].startsWith(qPhrase)) score += 40;
+    else if (e.phrases.some((p) => p.startsWith(qPhrase))) score += 30;
+    else if (e.phrases.some((p) => p.includes(' ' + qPhrase))) score += 15;
     // Among equals, the plainer food first.
     score -= Math.max(0, e.nameTokenCount - qTokens.length) * 1.5;
     hits.push({ food: e.food, score });
