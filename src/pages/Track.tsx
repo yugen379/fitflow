@@ -511,6 +511,19 @@ export const Track: React.FC = () => {
     setIsAnalyzing(false);
   };
 
+  // When search results appear, bring the search field to the top of the screen
+  // so the list under it is visible. Only on the change from none to some: once
+  // the list is open the user is free to scroll without being pulled back.
+  const searchBox = useRef<HTMLDivElement>(null);
+  const hadSuggestions = useRef(false);
+  useEffect(() => {
+    const has = aiSuggestions.length > 0;
+    if (has && !hadSuggestions.current) {
+      searchBox.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+    hadSuggestions.current = has;
+  }, [aiSuggestions.length]);
+
   // Search as the user types: the bundled food list first (offline), then USDA.
   useEffect(() => {
     const term = search.trim();
@@ -689,8 +702,12 @@ export const Track: React.FC = () => {
         fatsTargetG={targets.fatsG}
       />
 
-      {/* Search */}
-      <div className="relative">
+      {/* Search. The field sits low on the page and its results open beneath
+          it — which, left alone, is behind the dock, and on a phone behind the
+          keyboard. `searchBox` lets the results effect bring the field to the
+          top of the screen so the list is in view (scroll-mt keeps it off the
+          very edge). */}
+      <div className="relative scroll-mt-4" ref={searchBox}>
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-dim" size={16} />
         <input
           value={search}
@@ -1077,7 +1094,7 @@ export const Track: React.FC = () => {
             <motion.div
               initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
               transition={{ type: 'spring', damping: 28 }}
-              className="relative bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 space-y-4 border border-white/[0.06]"
+              className="relative bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 space-y-4 border border-white/[0.06] max-h-[92dvh] overflow-y-auto overscroll-contain"
             >
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -1136,7 +1153,7 @@ export const Track: React.FC = () => {
             <motion.div
               initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
               transition={{ type: 'spring', damping: 28 }}
-              className="relative bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 space-y-4 border border-white/[0.06]"
+              className="relative bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 space-y-4 border border-white/[0.06] max-h-[92dvh] overflow-y-auto overscroll-contain"
             >
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -1144,8 +1161,8 @@ export const Track: React.FC = () => {
                     <Pencil size={16} className="text-white/85" />
                   </div>
                   <div>
-                    <p className="text-eyebrow text-accent">Manual log</p>
-                    <p className="text-white font-medium text-sm">Type the numbers yourself</p>
+                    <p className="text-eyebrow text-accent">{manualBase ? 'Packaged food' : 'Manual log'}</p>
+                    <p className="text-white font-medium text-sm">{manualBase ? 'Set how much you had' : 'Type the numbers yourself'}</p>
                   </div>
                 </div>
                 <button onClick={() => setManualOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">

@@ -167,7 +167,7 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 30, opacity: 0 }}
             transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-            className="relative bg-surface border border-white/[0.06] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5"
+            className="relative bg-surface border border-white/[0.06] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 max-h-[92dvh] overflow-y-auto overscroll-contain"
           >
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">

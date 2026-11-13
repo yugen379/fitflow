@@ -88,7 +88,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="relative bg-surface w-full max-w-md sm:rounded-3xl rounded-t-3xl border border-white/[0.06] p-6 space-y-6 overflow-hidden"
+              className="relative bg-surface w-full max-w-md sm:rounded-3xl rounded-t-3xl border border-white/[0.06] p-6 space-y-6 max-h-[92dvh] overflow-x-hidden overflow-y-auto overscroll-contain"
             >
               <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-accent/8 blur-[120px] rounded-full pointer-events-none" />
               <button onClick={() => setShowModal(false)} className="absolute top-5 right-5 w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white z-10" aria-label="Close">

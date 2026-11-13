@@ -44,7 +44,7 @@ export const ReportModal: React.FC<{
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28 }}
-        className="relative w-full max-w-lg bg-surface border border-white/[0.06] sm:rounded-3xl rounded-t-3xl flex flex-col"
+        className="relative w-full max-w-lg bg-surface border border-white/[0.06] sm:rounded-3xl rounded-t-3xl flex flex-col max-h-[92dvh] overflow-y-auto overscroll-contain"
       >
         <div className="flex justify-between items-center p-5 border-b border-white/[0.06]">
           <div className="flex items-center gap-2.5">

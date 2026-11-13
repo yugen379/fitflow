@@ -99,7 +99,8 @@ const mealNamed = (prefix) => async () => {
 };
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 412, height: 915 } });
+// A small phone (360x640): the size at which a list that opens low on the page is actually hidden.
+const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
 const page = await ctx.newPage();
 const pageErrors = [];
 const denied = [];
@@ -133,13 +134,22 @@ const rowNames = await rows.locator('p.text-sm').allInnerTexts().catch(() => [])
 check('a misspelt "nasi lemka" offers Nasi Lemak first', (rowNames[0] || '').startsWith('Nasi Lemak'), rowNames.slice(0, 3).join(' | ') || '(no results)');
 check('the list offers several matches', rowNames.length >= 3, `${rowNames.length} rows`);
 
+// The results open under a field that sits low on the page. Without help they
+// are behind the dock (and the keyboard, on a phone): the page must bring the
+// field up so the first results are on screen without the user scrolling.
+await page.waitForTimeout(900); // the smooth scroll
+const firstBox = await rows.first().boundingBox().catch(() => null);
+const dockTop = await page.evaluate(() => document.querySelector('nav[aria-label="Primary"]')?.getBoundingClientRect().top ?? window.innerHeight);
+check('the first result is on screen and above the dock, with no scrolling by the user',
+  !!firstBox && firstBox.y >= 0 && firstBox.y + firstBox.height <= dockTop, `row ${JSON.stringify(firstBox)} dock top ${Math.round(dockTop)}`);
+
 // Every row must be reachable inside the viewport, and the list must not push
 // the page sideways.
 const lastRow = rows.last();
 await lastRow.scrollIntoViewIfNeeded().catch(() => {});
 const box = await lastRow.boundingBox().catch(() => null);
 const sideways = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-check('the last result can be brought on screen', !!box && box.y >= 0 && box.y + box.height <= 915, JSON.stringify(box));
+check('the last result can be brought on screen', !!box && box.y >= 0 && box.y + box.height <= 640, JSON.stringify(box));
 check('the results do not cause sideways scrolling', sideways <= 1, `${sideways}px wider than the screen`);
 
 await rows.first().scrollIntoViewIfNeeded().catch(() => {});
@@ -196,6 +206,17 @@ const kcalField = page.locator('label', { hasText: 'Calories (kcal)' }).locator(
 check('tapping it opens the entry sheet at 100 g / 540 kcal instead of logging',
   (await amount.inputValue().catch(() => '')) === '100' && (await kcalField.inputValue().catch(() => '')) === '540'
   && !(await mealNamed('ZZBrand')()), `amount ${await amount.inputValue().catch(() => '?')}, kcal ${await kcalField.inputValue().catch(() => '?')}`);
+// With the keyboard up a phone has about 420 px of height left. A bottom sheet
+// with no height limit grows upward off the screen there, taking its name field
+// and close button with it. It must stay inside the screen and scroll instead.
+await page.setViewportSize({ width: 360, height: 420 });
+await page.waitForTimeout(400);
+const sheetBox = await amount.locator('xpath=ancestor::div[contains(@class,"rounded-t-3xl")][1]').boundingBox().catch(() => null);
+check('with the keyboard up (420 px tall) the entry sheet stays on screen and scrolls',
+  !!sheetBox && sheetBox.y >= 0 && sheetBox.height <= 420, JSON.stringify(sheetBox));
+await page.setViewportSize({ width: 360, height: 640 });
+await page.waitForTimeout(300);
+
 const servingBtn = page.locator('button', { hasText: '1 serving · 1 portion (15 g)' });
 await servingBtn.waitFor({ timeout: 10000 }).catch(() => {});
 check('the pack\'s own serving is offered ("1 portion (15 g)"), looked up once by barcode',
@@ -227,6 +248,14 @@ const myPost = await until(async () => {
   const s = await db.collection('posts').where('userId', '==', UID).get();
   return s.docs.find((d) => d.data().content === MY_TEXT) || null;
 });
+if (!myPost) {
+  // Say what was on screen: "no post written" alone does not tell a refused
+  // write from a page that never rendered or a button that was never reached.
+  const seen = (await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 400);
+  console.log(`    ${C.d}on screen: ${seen}${C.x}`);
+  console.log(`    ${C.d}url: ${page.url()}  refused: ${denied.slice(0, 2).join(' | ') || 'none'}  page errors: ${pageErrors.slice(0, 2).join(' | ') || 'none'}${C.x}`);
+  if (process.env.FLOWS_SHOT_DIR) await page.screenshot({ path: `${process.env.FLOWS_SHOT_DIR}/flows-community-fail.png` }).catch(() => {});
+}
 check('a new post is written under the author\'s own name, with zero counts',
   !!myPost && myPost.data().username === NAME && myPost.data().likesCount === 0 && myPost.data().commentsCount === 0,
   myPost ? JSON.stringify({ u: myPost.data().username, l: myPost.data().likesCount }) : 'no post written');
@@ -268,6 +297,41 @@ await editor.fill(EDITED);
 await page.locator('button.btn-3d', { hasText: 'Save' }).click();
 const edited = myPost ? await until(async () => (await myPost.ref.get()).data()?.content === EDITED, 10000) : false;
 check('the author can edit their post', edited === true, myPost ? `content is "${(await myPost.ref.get()).data()?.content}"` : 'no post to edit');
+
+// ── A reload straight after signing in ───────────────────────────────────────
+// The profile listen can go out before Firestore has picked up the restored
+// sign-in; the rules then see nobody and refuse it. That used to strand the user
+// on "Can't reach your data" until they pressed Try again. Three fresh accounts,
+// each reloaded the instant sign-in returns, must all reach Home by themselves.
+section('Reloading the instant after sign-in');
+const stranded = [];
+for (let i = 1; i <= 3; i++) {
+  const email = `reload-${i}-${Date.now()}@fitflow.test`;
+  const made = await fetch(`http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${cfg.apiKey}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: PASSWORD, returnSecureToken: true }),
+  }).then((r) => r.json());
+  await db.doc(`users/${made.localId}`).set({
+    uid: made.localId, displayName: `Reload ${i}`, photoURL: '', subscriptionType: 'free', trialStartedAt: now,
+    age: 30, weight: 70, height: 175, goal: 'fat_loss', healthConditions: ['None'], dietaryPreferences: ['None'],
+    streak: 1, badges: ['pioneer'], points: 100, level: 2, createdAt: now, notificationsEnabled: false, activeChallenges: [],
+  });
+  const c2 = await browser.newContext({ viewport: { width: 360, height: 640 } });
+  const p2 = await c2.newPage();
+  await p2.goto(BASE, { waitUntil: 'load', timeout: 45000 });
+  await p2.waitForFunction(() => typeof window.__e2eSignIn === 'function', { timeout: 30000 });
+  await p2.evaluate(async ([e, p]) => { await window.__e2eSignIn(e, p); }, [email, PASSWORD]);
+  await p2.goto(BASE + '/', { waitUntil: 'load', timeout: 45000 }); // no settle time, on purpose
+  const outcome = await p2.waitForFunction(() => {
+    const t = document.body.innerText;
+    // The error screen is only "final" if it is still there after the retries could have run.
+    return t.includes('MISSION') ? 'home' : null;
+  }, null, { timeout: 15000 }).then(() => 'home').catch(async () =>
+    (await p2.locator('body').innerText().catch(() => '')).includes("Can't reach your data") ? 'stranded' : 'blank');
+  if (outcome !== 'home') stranded.push(`account ${i}: ${outcome}`);
+  await c2.close();
+}
+check('all three reach Home without pressing anything', stranded.length === 0, stranded.join('; '));
 
 section('Nothing was refused or thrown along the way');
 // In the control run the refused edit is the point, so it is reported, not hidden.

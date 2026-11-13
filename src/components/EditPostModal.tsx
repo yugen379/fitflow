@@ -45,7 +45,7 @@ export const EditPostModal: React.FC<{ isOpen: boolean; onClose: () => void; pos
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28 }}
-        className="relative w-full max-w-lg bg-surface border border-white/[0.06] sm:rounded-3xl rounded-t-3xl p-5 space-y-4"
+        className="relative w-full max-w-lg bg-surface border border-white/[0.06] sm:rounded-3xl rounded-t-3xl p-5 space-y-4 max-h-[92dvh] overflow-y-auto overscroll-contain"
       >
         <div className="flex justify-between items-center">
           <h2 className="font-display text-xl font-bold text-white tracking-tight">Edit post</h2>

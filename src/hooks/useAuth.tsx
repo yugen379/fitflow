@@ -58,6 +58,8 @@ const PROFILE_TIMEOUT_MS = 12000;
  * actually waits.
  */
 const BOOT_TIMEOUT_MS = 12000;
+/** How many times a refused profile read is silently asked again before it is shown. */
+const MAX_PROFILE_RETRIES = 2;
 
 /*
  * Why 6s and not something more cautious: being early is cheap. If the profile
@@ -78,6 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resolvedRef = useRef(false);
   /** Bumped to re-run the auth/profile effect on an explicit retry. */
   const [retryToken, setRetryToken] = useState(0);
+  /** Silent re-asks after a refused profile read; reset once a profile arrives. */
+  const autoRetries = useRef(0);
 
   /**
    * The hard ceiling. Runs from mount, in parallel with auth restore, the
@@ -107,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let unsubscribeProfile: (() => void) | undefined;
     let disposed = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     // Bumped on every auth event. An await inside the callback means a slow
     // Firestore chunk could otherwise let a listener for a previous user attach
     // after the next sign-in has already been handled.
@@ -211,6 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               subscriptionType: data.subscriptionType,
             });
             clearWatchdog();
+            autoRetries.current = 0;
             setProfileUnreachable(false);
             setProfileErrorCode(null);
             resolvedRef.current = true;
@@ -255,6 +261,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         }, (error: any) => {
+          // A signed-in user being refused their OWN profile is almost never
+          // real. It happens when the page is reloaded moments after a write or
+          // a sign-in: the profile listen can go out before Firestore has picked
+          // up the restored credentials, the rules see nobody, and the listener
+          // is dead for good. The user was left on "Can't reach your data" until
+          // they found the button. Ask again, quietly, with a fresh token; only
+          // if that also fails is it shown.
+          const refused = error?.code === 'permission-denied' || error?.code === 'unauthenticated';
+          if (refused && autoRetries.current < MAX_PROFILE_RETRIES) {
+            const attempt = ++autoRetries.current;
+            console.warn(`Profile refused (${error?.code}); retry ${attempt}/${MAX_PROFILE_RETRIES}`);
+            void user.getIdToken(true).catch(() => {});
+            retryTimer = setTimeout(() => { if (!disposed) setRetryToken((n) => n + 1); }, 600 * attempt);
+            return;
+          }
           console.error('Profile sync error:', error);
           setProfileErrorCode(
             [error?.code, error?.message].filter(Boolean).join(' — ').slice(0, 160) || 'unknown',
@@ -277,6 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       disposed = true;
+      clearTimeout(retryTimer);
       clearWatchdog();
       unsubscribeAuth();
       safeUnsubscribe(unsubscribeProfile);
@@ -290,6 +312,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = () => auth.signOut();
 
   const retryProfile = () => {
+    autoRetries.current = 0;
     setProfileUnreachable(false);
     setProfileErrorCode(null);
     setLoading(true);

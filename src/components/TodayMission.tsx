@@ -152,9 +152,14 @@ const MissionRow: React.FC<{
       }`}
       aria-label={`${task.label}: ${task.action.label}`}
     >
-      <div className="flex items-center gap-2">
+      {/* The label is never cut short. On a 360 px phone "Calories" beside
+          "1341/1,800" does not fit this column, and truncating turned the label
+          into "C…". The row wraps instead: the numbers drop to a second line. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
         <span className="text-sm leading-none">{task.icon}</span>
-        <span className="text-xs font-medium text-white/85 flex-1 truncate">{task.label}</span>
+        <span className="text-xs font-medium text-white/85 flex-1 min-w-max">{task.label}</span>
+        {/* Numbers and status mark travel together, so a wrap never strands the arrow alone. */}
+        <span className="ml-auto flex items-center gap-2 shrink-0">
         <span className={`num text-[11px] font-semibold ${isOver ? 'text-accent-2' : 'text-text-dim'}`}>
           {task.id === 'calories' || task.id === 'steps' ? (
             <>
@@ -192,6 +197,7 @@ const MissionRow: React.FC<{
               </motion.span>
             )}
           </AnimatePresence>
+        </span>
         </span>
       </div>
 

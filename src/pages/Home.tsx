@@ -544,7 +544,7 @@ export const Home: React.FC = () => {
               <motion.div
                 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
                 transition={{ type: 'spring', damping: 28 }}
-                className="relative bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-white/[0.06] space-y-5"
+                className="relative bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border border-white/[0.06] space-y-5 max-h-[92dvh] overflow-y-auto overscroll-contain"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent-3/12 border border-accent-3/25 flex items-center justify-center text-lg">💧</div>
