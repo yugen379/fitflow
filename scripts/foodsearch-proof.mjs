@@ -165,6 +165,15 @@ check('no amount typed: the result is returned untouched', scaleToPhrase('banana
 const unscaledWrong = QTY.filter(([, , want]) => !near(1, want)).length;
 check('control: "always one serving" (the old behaviour) gets these wrong', unscaledWrong >= 10, `${unscaledWrong} of ${QTY.length}`);
 
+section('Serving sizes of packaged products');
+const { toServing } = await import('../src/services/remoteFoodSearch.ts');
+const sv = (p) => JSON.stringify(toServing(p));
+check('a stated serving is used as the pack words it', sv({ serving_quantity: 20, serving_size: '1 portion (20 g)' }) === '{"grams":20,"label":"1 portion (20 g)"}', sv({ serving_quantity: 20, serving_size: '1 portion (20 g)' }));
+check('a serving given as text ("330") still counts, with a label made for it', sv({ serving_quantity: '330' }) === '{"grams":330,"label":"330 g"}', sv({ serving_quantity: '330' }));
+check('no serving, a pinch, a whole tub or nonsense: no serving offered',
+  [undefined, null, {}, { serving_quantity: 2 }, { serving_quantity: 5000 }, { serving_quantity: 'abc' }, { serving_quantity: -30 }].every((p) => toServing(p) === null));
+check('markup in a serving label is stripped', !toServing({ serving_quantity: 30, serving_size: '<b>30g</b>' }).label.includes('<'));
+
 section('The pieces');
 check('editDistance: one transposition is 1', editDistance('lemka', 'lemak', 2) === 1);
 check('editDistance: one missing letter is 1', editDistance('chiken', 'chicken', 2) === 1);

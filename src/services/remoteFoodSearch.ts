@@ -41,3 +41,53 @@ export const searchBrandedFoods = async (query: string): Promise<FoodProduct[]> 
     return [];
   }
 };
+
+export interface ProductServing {
+  /** Grams (or millilitres) in one serving. */
+  grams: number;
+  /** The serving as the pack words it, e.g. "1 portion (20 g)". */
+  label: string;
+}
+
+const servings = new Map<string, ProductServing | null>();
+
+/**
+ * One serving of a packaged product, by barcode, or null when the product
+ * states none. The search results do not carry serving sizes; the product
+ * record does, and (unlike search) it may be read straight from the app.
+ * Never throws: with no answer the entry sheet simply stays on 100 g.
+ */
+export const fetchProductServing = async (code: string | undefined): Promise<ProductServing | null> => {
+  if (!code || !/^\d{6,14}$/.test(code)) return null;
+  if (servings.has(code)) return servings.get(code) ?? null;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 5000);
+    let body: any;
+    try {
+      const res = await fetch(
+        `https://world.openfoodfacts.org/api/v2/product/${code}?fields=serving_size,serving_quantity`,
+        { signal: ctl.signal },
+      );
+      if (!res.ok) return null;
+      body = await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+    const serving = toServing(body?.product);
+    servings.set(code, serving);
+    return serving;
+  } catch {
+    return null; // not remembered: a bad connection should be asked again
+  }
+};
+
+/** Pure: the serving a product record states, if it is a believable amount. */
+export const toServing = (product: any): ProductServing | null => {
+  const grams = Number(product?.serving_quantity);
+  // Under 5 g is a pinch and over 1 kg is a whole tub: neither is a serving.
+  if (!Number.isFinite(grams) || grams < 5 || grams > 1000) return null;
+  const rounded = Math.round(grams);
+  const label = String(product?.serving_size ?? '').replace(/[<>\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 30);
+  return { grams: rounded, label: label || `${rounded} g` };
+};

@@ -7,7 +7,8 @@ import { logMeal } from '../services/dataService';
 import { analyzeMealImage, analyzeNutritionLabel, parseQuickAdd } from '../services/geminiService';
 import { searchFood, lookupBarcode, resolveLocalFood } from '../services/foodService';
 import { lookupCatalog } from '../services/foodCatalogService';
-import { searchBrandedFoods } from '../services/remoteFoodSearch';
+import { searchBrandedFoods, fetchProductServing } from '../services/remoteFoodSearch';
+import { cn } from '../lib/utils';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { MealRecord } from '../types';
 import { db, safeUnsubscribe } from '../lib/firestore';
@@ -60,7 +61,11 @@ export const Track: React.FC = () => {
   // inherits it.
   const [manualBase, setManualBase] = useState<null | { name: string; calories: number; protein: number; carbs: number; fats: number }>(null);
   const [manualGrams, setManualGrams] = useState(100);
-  useEffect(() => { if (!manualOpen) setManualBase(null); }, [manualOpen]);
+  // One serving of that product, when its pack states one (looked up by barcode
+  // after the sheet opens; the search results only carry per-100 g values).
+  const [manualServing, setManualServing] = useState<null | { grams: number; label: string }>(null);
+  const servingFor = useRef('');
+  useEffect(() => { if (!manualOpen) { setManualBase(null); setManualServing(null); servingFor.current = ''; } }, [manualOpen]);
   const setAmount = (grams: number) => {
     setManualGrams(grams);
     if (!manualBase) return;
@@ -588,7 +593,17 @@ export const Track: React.FC = () => {
       setManualCals(Math.round(s.calories)); setManualP(Math.round(s.protein));
       setManualC(Math.round(s.carbs)); setManualF(Math.round(s.fats));
       setSearch(''); setAiSuggestions([]);
+      setManualServing(null);
       setManualOpen(true);
+      // Ask for its serving size in the background. The answer is dropped if
+      // the sheet has moved on to another product (or closed) by then.
+      const code = typeof s.code === 'string' ? s.code : '';
+      servingFor.current = code;
+      if (code) {
+        void fetchProductServing(code).then((serving) => {
+          if (serving && servingFor.current === code) setManualServing(serving);
+        });
+      }
       return;
     }
     await logMeal(profile.uid, {
@@ -1155,6 +1170,26 @@ export const Track: React.FC = () => {
                     placeholder="100"
                     className="w-full glass rounded-2xl h-12 px-4 num text-lg font-semibold text-white text-center focus:outline-none focus:border-accent/40"
                   />
+                  {manualServing && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAmount(manualServing.grams)}
+                        className={cn('flex-1 h-10 rounded-xl text-xs font-medium border transition-colors truncate px-2',
+                          manualGrams === manualServing.grams ? 'border-accent/50 text-accent bg-accent/10' : 'border-white/[0.08] text-text-dim')}
+                      >
+                        1 serving · {manualServing.label}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAmount(100)}
+                        className={cn('h-10 px-4 rounded-xl text-xs font-medium border transition-colors',
+                          manualGrams === 100 ? 'border-accent/50 text-accent bg-accent/10' : 'border-white/[0.08] text-text-dim')}
+                      >
+                        100 g
+                      </button>
+                    </div>
+                  )}
                   <p className="text-[10px] text-text-dim ml-1">
                     {Math.round(manualBase.calories)} kcal per 100 g, from Open Food Facts. Check it against the label.
                   </p>

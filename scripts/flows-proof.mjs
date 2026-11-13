@@ -175,7 +175,14 @@ check('"3 eggs" is logged as three eggs (234 kcal), not the listed two', !!three
 section('Track: a packaged product from Open Food Facts');
 await db.doc('food_search_cache/zzbrand-spread').set({
   q: 'zzbrand-spread', at: Date.now(),
-  foods: [{ name: 'ZZBrand Hazelnut Spread (100g)', calories: 540, protein: 6, carbs: 58, fats: 31, brand: 'ZZBrand', source: 'OFF' }],
+  foods: [{ name: 'ZZBrand Hazelnut Spread (100g)', calories: 540, protein: 6, carbs: 58, fats: 31, brand: 'ZZBrand', code: '1234567890123', source: 'OFF' }],
+});
+// The serving size comes from Open Food Facts' product record, read by the app
+// itself. Answered here, so the gate does not depend on their service.
+let servingLookups = 0;
+await page.route('**/world.openfoodfacts.org/api/v2/product/**', (route) => {
+  servingLookups++;
+  return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ product: { serving_size: '1 portion (15 g)', serving_quantity: 15 } }) });
 });
 await search.fill('zzbrand spread');
 const brandedRow = rows.filter({ hasText: 'ZZBrand Hazelnut Spread' });
@@ -189,6 +196,14 @@ const kcalField = page.locator('label', { hasText: 'Calories (kcal)' }).locator(
 check('tapping it opens the entry sheet at 100 g / 540 kcal instead of logging',
   (await amount.inputValue().catch(() => '')) === '100' && (await kcalField.inputValue().catch(() => '')) === '540'
   && !(await mealNamed('ZZBrand')()), `amount ${await amount.inputValue().catch(() => '?')}, kcal ${await kcalField.inputValue().catch(() => '?')}`);
+const servingBtn = page.locator('button', { hasText: '1 serving · 1 portion (15 g)' });
+await servingBtn.waitFor({ timeout: 10000 }).catch(() => {});
+check('the pack\'s own serving is offered ("1 portion (15 g)"), looked up once by barcode',
+  (await servingBtn.count()) === 1 && servingLookups === 1, `${await servingBtn.count()} button(s), ${servingLookups} lookup(s)`);
+await servingBtn.click().catch(() => {});
+check('one tap on it sets 15 g and 81 kcal',
+  (await amount.inputValue().catch(() => '')) === '15' && (await kcalField.inputValue().catch(() => '')) === '81',
+  `amount ${await amount.inputValue().catch(() => '?')}, kcal ${await kcalField.inputValue().catch(() => '?')}`);
 await amount.fill('30');
 check('changing the amount to 30 g rescales the calories to 162', (await kcalField.inputValue().catch(() => '')) === '162', await kcalField.inputValue().catch(() => '?'));
 await page.locator('button.btn-3d', { hasText: 'Log meal' }).click().catch(() => {});
