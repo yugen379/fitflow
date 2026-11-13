@@ -88,7 +88,8 @@ export const Privacy: React.FC = () => {
             'Google Play Billing / RevenueCat — subscription billing in the Android app.',
             'Sentry — error and crash reporting.',
             'PostHog — product analytics (only if enabled).',
-            'OpenFoodFacts — barcode lookup (no account data is shared, only the scanned barcode number).',
+            'Open Food Facts — barcode lookup, packaged-food search and serving sizes. Only the barcode number or the food name you typed is sent; no account data. Food names you search are sent through our server, which keeps a copy of the results (not of who searched) for up to 30 days so repeat searches are faster.',
+            'USDA FoodData Central — food search. Only the food name you typed is sent, directly from your device; no account data.',
           ]} />
           <p>
             We may disclose data when required by law, court order, or to protect

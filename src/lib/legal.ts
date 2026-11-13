@@ -60,7 +60,7 @@ export const LEGAL: LegalIdentity = {
   privacyEmail: 'fitflow2000@gmail.com',
   dataProtectionEmail: 'fitflow2000@gmail.com',
   supportEmail: 'fitflow2000@gmail.com',
-  lastUpdated: '2026-08-27',
+  lastUpdated: '2026-11-13',
 };
 
 /** True while any required field is still a placeholder. */

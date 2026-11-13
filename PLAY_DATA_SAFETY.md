@@ -20,9 +20,15 @@ Package: `com.fitflow.app` · Category: Health & Fitness · Privacy policy URL r
 
 > **"Shared" note:** Google defines *sharing* as transferring data to a **third party for
 > their own use**. FitFlow's vendors (Firebase, Google Gemini, Stripe, RevenueCat, Sentry,
-> PostHog, OpenFoodFacts) all act as **service providers/processors on FitFlow's behalf**,
+> PostHog, Open Food Facts, USDA FoodData Central) all act as **service providers/processors on FitFlow's behalf**,
 > which Google explicitly **excludes** from "sharing." Therefore **Shared = No** for every
 > data type below. (You still list them as *collected*.)
+
+> **Food search (added v1.6.7):** when a user searches for a food, the text they typed is sent to
+> Open Food Facts (through FitFlow's server) and to USDA FoodData Central (from the device). No
+> account identifier goes with it, and FitFlow stores only the search results, not who searched.
+> A food name is not one of Play's user data types, so this adds **nothing** to the declarations
+> below; it is disclosed in the privacy policy (section 4).
 
 ---
 

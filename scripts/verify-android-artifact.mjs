@@ -49,6 +49,10 @@ const jsFiles = listing.filter((p) => p.startsWith(`${root}assets/public/assets/
 check('the web app is bundled inside', jsFiles.length > 5, `${jsFiles.length} JS files`);
 const js = Buffer.concat(jsFiles.map(entry)).toString('latin1');
 check(`web bundle carries version ${pkg.version}`, js.includes(pkg.version), 'the app would report a different version');
+// A build with no Sentry key reports nothing: a tester's crash is never heard of.
+// (v1.6.5–v1.6.7's first local builds had none; the key was only in GitHub's secrets.)
+check('crash reporting is configured (Sentry key inside)', /https:\/\/[0-9a-f]{32}@[a-z0-9.-]*sentry\.io\/\d+/.test(js),
+  'set VITE_SENTRY_DSN in .env before building');
 check('the offline food list is bundled', listing.some((p) => /assets\/public\/assets\/common-foods-.*\.js$/.test(p)));
 
 // Dex class names are plain strings too.
