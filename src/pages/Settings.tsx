@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAfterFirstPaint } from '../hooks/useAfterFirstPaint';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, Globe, Ruler, Bell, Shield, FileText, Download, Trash2,
@@ -28,6 +29,7 @@ declare const __APP_VERSION__: string;
 const TZ_OFFSET_HOURS = -new Date().getTimezoneOffset() / 60;
 
 export const Settings: React.FC = () => {
+  const showRest = useAfterFirstPaint();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { showToast } = useToast();
@@ -371,6 +373,10 @@ export const Settings: React.FC = () => {
         </Row>
       </Section>
 
+      {/* Everything from here down is below the first screen. It is built just
+          after the first paint, so opening Settings shows its top at once
+          instead of waiting for eight sections to be laid out and painted. */}
+      {showRest && (<>
       <Section title="Notifications">
         <button onClick={toggleNotifications} className="w-full text-left">
           <Row
@@ -484,6 +490,7 @@ export const Settings: React.FC = () => {
       <p className="text-center text-xs text-text-mute pt-2">
         FitFlow · v{__APP_VERSION__}
       </p>
+      </>)}
 
       <PermissionsPrompt
         open={permsPromptOpen}

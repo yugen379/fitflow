@@ -33,8 +33,8 @@ import type { AchievementCategory, AchievementProgress, AchievementStats } from 
 
 type Filter = 'all' | AchievementCategory;
 
-/** About two screens' worth. The rest are built just after the first paint. */
-const CARDS_IN_FIRST_PAINT = 12;
+/** What fits on the first screen. The rest are built just after the first paint. */
+const CARDS_IN_FIRST_PAINT = 6;
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
