@@ -119,10 +119,51 @@ const named = async (q) => (await resolveLocalFood(q))?.name ?? null;
 check('"nasi lemak" is Nasi Lemak', starts(await named('nasi lemak'), 'Nasi Lemak'), String(await named('nasi lemak')));
 check('a typo still names it ("nasi lemka")', starts(await named('nasi lemka'), 'Nasi Lemak'), String(await named('nasi lemka')));
 check('another name for it works ("telur mata")', starts(await named('telur mata'), 'Fried Egg'), String(await named('telur mata')));
+check('an amount is left to the parser ("3 eggs" is not one serving of eggs)', (await named('3 eggs')) === null, String(await named('3 eggs')));
+check('so is a worded amount ("two bananas", "half a pizza")',
+  (await named('two bananas')) === null && (await named('half a pizza')) === null, `${await named('two bananas')} / ${await named('half a pizza')}`);
+check('a list is not one food ("eggs and toast")', (await named('eggs and toast')) === null, String(await named('eggs and toast')));
+check('a near-miss is not guessed across a phrase ("egg toast" is not Egg Tart)', (await named('egg toast')) === null, String(await named('egg toast')));
+check('but a food whose NAME has "and" in it still resolves ("fish and chips")',
+  starts(await named('fish and chips'), 'Fish and Chips'), String(await named('fish and chips')));
 check('a sentence about several foods is NOT taken as one food',
   (await named('chicken rice with extra chilli and a fried egg')) === null, String(await named('chicken rice with extra chilli and a fried egg')));
 check('a food we do not have is not guessed at', (await named('grandma special casserole')) === null, String(await named('grandma special casserole')));
 check('sharing one word with a food is not naming it ("rice pudding")', (await named('rice pudding')) === null, String(await named('rice pudding')));
+
+section('Amounts scale the listed serving (the offline quick-add fallback)');
+const { quantityFactor, scaleToPhrase } = await import('../src/services/foodSearchIndex.ts');
+const near = (a, b) => Math.abs(a - b) < 0.011;
+const QTY = [
+  ['3 eggs', 'Eggs (2 large eggs)', 1.5],
+  ['an egg', 'Eggs (2 large eggs)', 1],            // "a" is not an amount
+  ['200g chicken breast', 'Chicken breast (100g cooked)', 2],
+  ['2 chicken breast', 'Chicken breast (100g cooked)', 2],
+  ['6 nuggets', 'Chicken McNuggets (6 pieces)', 1],
+  ['12 nuggets', 'Chicken McNuggets (6 pieces)', 2],
+  ['2 sushi rolls', 'Sushi roll (8 pieces)', 2],
+  ['4 pieces of sushi', 'Sushi roll (8 pieces)', 0.5],
+  ['2 cups of rice', 'White rice (1 cup cooked)', 2],
+  ['two bananas', 'Banana (1 medium)', 2],
+  ['10 satay', 'Satay Ayam (5 sticks)', 2],
+  ['2 big mac', 'Big Mac', 2],
+  ['500ml milk', 'Milk (240ml)', 2.08],
+  ['1 kg rice', 'Basmati Rice (100g)', 10],
+  ['banana', 'Banana (1 medium)', 1],
+  ['nasi lemak', 'Nasi Lemak', 1],
+  ['100g rice', 'White rice (1 cup cooked)', 1],     // weight vs cup: cannot convert
+  ['999 eggs', 'Eggs (2 large eggs)', 20],           // capped
+];
+const wrongQty = QTY.filter(([p, n, want]) => !near(quantityFactor(p, n), want));
+for (const [p, n, want] of wrongQty) console.log(`    ${C.d}"${p}" vs ${n} → ${quantityFactor(p, n)}   wanted ${want}${C.x}`);
+check(`${QTY.length} phrases scale to the right number of servings`, wrongQty.length === 0, `${wrongQty.length} wrong`);
+const eggs = scaleToPhrase('3 eggs', { name: 'Eggs (2 large eggs)', calories: 156, protein: 13, carbs: 1, fats: 11 });
+check('"3 eggs" logs 234 kcal, named as typed', eggs.calories === 234 && eggs.protein === 20 && eggs.name === '3 eggs', JSON.stringify(eggs));
+const same = { name: 'Banana (1 medium)', calories: 105, protein: 1, carbs: 27, fats: 0 };
+check('no amount typed: the result is returned untouched', scaleToPhrase('banana', same) === same);
+// Control: without scaling, every phrase that states an amount is one serving.
+const unscaledWrong = QTY.filter(([, , want]) => !near(1, want)).length;
+check('control: "always one serving" (the old behaviour) gets these wrong', unscaledWrong >= 10, `${unscaledWrong} of ${QTY.length}`);
 
 section('The pieces');
 check('editDistance: one transposition is 1', editDistance('lemka', 'lemak', 2) === 1);

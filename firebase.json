@@ -39,12 +39,8 @@
             "value": "max-age=31536000; includeSubDomains"
           },
           {
-            "key": "X-Frame-Options",
-            "value": "SAMEORIGIN"
-          },
-          {
             "key": "Content-Security-Policy",
-            "value": "frame-ancestors 'self'; object-src 'none'; base-uri 'self'"
+            "value": "frame-ancestors 'self' https://gen-lang-client-0893216108.web.app https://gen-lang-client-0893216108.firebaseapp.com https://localhost capacitor://localhost; object-src 'none'; base-uri 'self'"
           },
           {
             "key": "Permissions-Policy",

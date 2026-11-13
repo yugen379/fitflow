@@ -504,14 +504,14 @@
     "fats": 10
   },
   {
-    "name": "Beer (1 pint)",
-    "calories": 208,
-    "protein": 2,
-    "carbs": 18,
+    "name": "Beer (330ml can)",
+    "calories": 142,
+    "protein": 1,
+    "carbs": 11,
     "fats": 0,
     "aliases": [
-      "pint of beer",
       "lager",
+      "can of beer",
       "draught beer"
     ]
   },

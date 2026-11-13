@@ -298,7 +298,9 @@ const NEW = [
   F('Coconut Shake (1 glass)', 350, 4, 48, 16, ['kelapa shake']),
   F('Avocado Juice (1 glass)', 300, 4, 38, 15, ['jus alpukat', 'avocado shake']),
   F('Kombucha (1 cup)', 30, 0, 7, 0),
-  A('Beer (1 pint)', 208, 2, 18, 0, ['pint of beer', 'lager', 'draught beer']),
+  // A can, not a pint: at a pint the alcohol calories alone put it outside the
+  // macro check every food in this file must pass (proof:library).
+  A('Beer (330ml can)', 142, 1, 11, 0, ['lager', 'can of beer', 'draught beer']),
   A('Whisky (1 shot)', 105, 0, 0, 0, ['whiskey', 'brandy', 'rum']),
   A('Vodka (1 shot)', 97, 0, 0, 0, ['gin', 'tequila']),
   A('Gin and Tonic (1 glass)', 171, 0, 14, 0, ['g&t']),

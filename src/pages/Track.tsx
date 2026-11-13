@@ -488,7 +488,7 @@ export const Track: React.FC = () => {
     setIsAnalyzing(false);
   };
 
-  // Search the USDA food database as the user types, so they can pick a real-numbers food instantly.
+  // Search as the user types: the bundled food list first (offline), then USDA.
   useEffect(() => {
     const term = search.trim();
     if (term.length < 2) { setAiSuggestions([]); return; }
@@ -646,8 +646,10 @@ export const Track: React.FC = () => {
           <Loader2 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-dim animate-spin" />
         )}
         {aiSuggestions.length > 0 && (
-          <div className="absolute z-30 left-0 right-0 top-full mt-2 bg-surface border border-white/[0.06] rounded-2xl overflow-hidden shadow-2xl">
-            <p className="px-4 py-2 text-eyebrow text-accent border-b border-white/[0.04]">Tap to log instantly</p>
+          // Up to eight rows now: the list scrolls inside a capped height, so the
+          // last results stay reachable above the on-screen keyboard.
+          <div className="absolute z-30 left-0 right-0 top-full mt-2 bg-surface border border-white/[0.06] rounded-2xl overflow-y-auto overscroll-contain max-h-[42vh] shadow-2xl">
+            <p className="sticky top-0 z-10 bg-surface px-4 py-2 text-eyebrow text-accent border-b border-white/[0.04]">Tap to log instantly</p>
             {aiSuggestions.map((s, i) => (
               <button
                 key={i}
@@ -656,7 +658,7 @@ export const Track: React.FC = () => {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-white truncate">{s.name}</p>
-                  <p className="num text-[10px] text-text-dim mt-0.5">P{Math.round(s.protein)} · C{Math.round(s.carbs)} · F{Math.round(s.fats)}</p>
+                  <p className="num text-[10px] text-text-dim mt-0.5 truncate">{s.brand ? `${s.brand} · ` : ''}P{Math.round(s.protein)} · C{Math.round(s.carbs)} · F{Math.round(s.fats)}</p>
                 </div>
                 <span className="num text-sm text-accent font-semibold shrink-0 ml-2">{Math.round(s.calories)}</span>
               </button>

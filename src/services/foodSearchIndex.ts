@@ -182,14 +182,105 @@ export const searchFoodIndex = (index: FoodIndex, query: string, limit = 8): Foo
  * Used to log "nasi lemak" instantly, offline, without asking the AI.
  */
 export const resolveFoodPhrase = (index: FoodIndex, phrase: string): IndexedFood | null => {
+  // An amount is not one food at its listed serving: "3 eggs" is not
+  // "Eggs (2 large)". Those go to the parser, which understands quantities.
+  if (/\d/.test(phrase) || AMOUNT.test(phrase)) return null;
   const top = searchFoodIndex(index, phrase, 1)[0];
   if (!top) return null;
   const q = phraseOf(phrase);
-  const budget = Math.min(2, typoBudget(q.replace(/ /g, '').length));
+  // Something joined with "and" may be a list ("eggs and toast") or a name
+  // ("fish and chips"). Only an exact name settles it; no typo guessing.
+  const joined = /[,&+/]/.test(phrase) || JOIN.test(phrase);
+  // Tighter than search even for a plain phrase: two edits turn "egg toast"
+  // into "egg tart". One typo for an ordinary name, two only for a long one.
+  const letters = q.replace(/ /g, '').length;
+  const budget = joined ? 0 : letters >= 12 ? 2 : letters >= 6 ? 1 : 0;
   const names = index.entries.find((e) => e.food === top.food)!.phrases;
-  return names.some((p) => p === q || (budget > 0 && editDistance(p, q, budget) <= budget)) ? top.food : null;
+  const words = q.split(' ').length;
+  return names.some((p) =>
+    p === q || (budget > 0 && p.split(' ').length === words && editDistance(p, q, budget) <= budget),
+  ) ? top.food : null;
 };
+
+const AMOUNT = /\b(one|two|three|four|five|six|seven|eight|nine|ten|half|quarter|double|triple|dozen|couple|few|extra|x)\b/i;
+const JOIN = /\b(and|with|plus)\b/i;
 
 /** What to show in a result row. */
 export const displayName = (f: IndexedFood): string =>
   f.serving && !f.name.includes('(') ? `${f.name} (${f.serving})` : f.name;
+
+// --- Quantities ------------------------------------------------------------
+//
+// The offline fallback used to log the listed serving whatever was typed: with
+// the AI unavailable, "3 eggs" became "Eggs (2 large eggs)" and "200g chicken
+// breast" became 100 g. This works out how many listed servings a phrase asks
+// for. It handles counts and weights; anything it cannot read stays at 1.
+
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  dozen: 12, couple: 2, double: 2, triple: 3,
+};
+// Grams for weights, millilitres for volumes.
+const WEIGHT: Record<string, number> = { g: 1, gram: 1, grams: 1, kg: 1000, oz: 28.35 };
+const VOLUME: Record<string, number> = { ml: 1, l: 1000, litre: 1000, liter: 1000 };
+// "2 rolls", "3 bowls": the number counts whole servings, not the pieces inside one.
+const CONTAINER = /\b(rolls?|bowls?|plates?|cups?|glass(es)?|packs?|packets?|cans?|bottles?|servings?|portions?|box(es)?|bags?|sets?|orders?)\b/i;
+
+interface Amount { n: number; kind: 'count' | 'weight' | 'volume'; }
+
+const leadingAmount = (text: string): Amount | null => {
+  const t = text.trim().toLowerCase();
+  const m = /^(\d+(?:\.\d+)?)\s*([a-z]+)?/.exec(t);
+  if (m) {
+    const n = Number(m[1]);
+    const unit = m[2] || '';
+    if (!(n > 0)) return null;
+    if (unit in WEIGHT) return { n: n * WEIGHT[unit], kind: 'weight' };
+    if (unit in VOLUME) return { n: n * VOLUME[unit], kind: 'volume' };
+    return { n, kind: 'count' };
+  }
+  const word = t.split(/[^a-z]+/)[0];
+  return word in NUMBER_WORDS ? { n: NUMBER_WORDS[word], kind: 'count' } : null;
+};
+
+/** The serving a result row states: the text inside its first bracket. */
+const servingOf = (name: string): string => {
+  const open = name.indexOf('(');
+  const close = name.lastIndexOf(')');
+  return open >= 0 && close > open ? name.slice(open + 1, close) : '';
+};
+
+/** How many listed servings `phrase` asks for. 1 when it states no amount. */
+export const quantityFactor = (phrase: string, resultName: string): number => {
+  const asked = leadingAmount(phrase);
+  if (!asked) return 1;
+  const serving = leadingAmount(servingOf(resultName)) || { n: 1, kind: 'count' as const };
+  let factor = 1;
+  if (asked.kind === 'count') {
+    // "2 chicken breast" against "100g": two servings. "3 eggs" against
+    // "2 large eggs": one and a half. "2 rolls" against "8 pieces": two.
+    factor = serving.kind !== 'count' || CONTAINER.test(phrase) ? asked.n : asked.n / serving.n;
+  } else if (asked.kind === serving.kind) {
+    factor = asked.n / serving.n;
+  }
+  // A weight asked of a serving given by count (or the reverse) cannot be
+  // converted without knowing what one piece weighs: leave it at one serving.
+  return Math.min(20, Math.max(0.1, factor));
+};
+
+/** A result scaled to the amount the phrase asks for, named as it was typed. */
+export const scaleToPhrase = <T extends { name: string; calories: number; protein: number; carbs: number; fats: number }>(
+  phrase: string, item: T,
+): T => {
+  const k = quantityFactor(phrase, item.name);
+  if (k === 1) return item;
+  const label = phrase.trim().replace(/\s+/g, ' ');
+  return {
+    ...item,
+    name: label.charAt(0).toUpperCase() + label.slice(1, 100),
+    calories: Math.round(item.calories * k),
+    protein: Math.round(item.protein * k),
+    carbs: Math.round(item.carbs * k),
+    fats: Math.round(item.fats * k),
+  };
+};

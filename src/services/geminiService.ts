@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { searchFood, searchLocalFoods, ensureFoodIndex } from "./foodService";
+import { scaleToPhrase } from "./foodSearchIndex";
 import { buildBriefing, applyPolish, CoachContext, CoachBriefing } from "./coachBriefing";
 import { splitPhrases, buildResult, normalizeItem, QuickAddResult, QuickAddItem } from "./quickAddUtils";
 import { decidePolish, polishBaseKey, polishSlot, readPolish, savePolish } from "./briefingPolishCache";
@@ -922,7 +923,8 @@ If you cannot parse any food, return [].`;
 
     const local = searchLocalFoods(phrase);
     if (local.length > 0 && local[0].calories > 0) {
-      items.push(normalizeItem({ ...local[0], source: 'local' }));
+      // Scaled to the amount typed: "3 eggs" is not the listed "2 large eggs".
+      items.push(normalizeItem({ ...scaleToPhrase(phrase, local[0]), source: 'local' }));
       continue;
     }
     try {
