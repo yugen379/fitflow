@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { logMeal } from '../services/dataService';
 import { analyzeMealImage, analyzeNutritionLabel, parseQuickAdd } from '../services/geminiService';
-import { searchFood, lookupBarcode } from '../services/foodService';
+import { searchFood, lookupBarcode, resolveLocalFood } from '../services/foodService';
 import { lookupCatalog } from '../services/foodCatalogService';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { MealRecord } from '../types';
@@ -439,7 +439,8 @@ export const Track: React.FC = () => {
 
     // Fast path: someone already resolved this exact food — instant, no AI call.
     try {
-      const cat = await lookupCatalog(phrase);
+      // The bundled list first (offline, instant), then the shared catalog.
+      const cat = (await resolveLocalFood(phrase)) || (await lookupCatalog(phrase));
       if (cat && cat.calories > 0) {
         await logMeal(profile.uid, { name: cat.name, calories: cat.calories, protein: cat.protein, carbs: cat.carbs, fats: cat.fats, mealType: 'snack' });
         logged = 1;
@@ -490,13 +491,13 @@ export const Track: React.FC = () => {
   // Search the USDA food database as the user types, so they can pick a real-numbers food instantly.
   useEffect(() => {
     const term = search.trim();
-    if (term.length < 3) { setAiSuggestions([]); return; }
+    if (term.length < 2) { setAiSuggestions([]); return; }
     let cancelled = false;
     setAiSearching(true);
     const t = setTimeout(async () => {
       try {
         const results = await searchFood(term);
-        if (!cancelled) setAiSuggestions(results.filter(r => r.calories > 0).slice(0, 5));
+        if (!cancelled) setAiSuggestions(results.filter(r => r.calories > 0).slice(0, 8));
       } finally {
         if (!cancelled) setAiSearching(false);
       }

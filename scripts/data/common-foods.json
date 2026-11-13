@@ -1,5 +1,17 @@
 [
   {
+    "name": "100Plus (325ml can)",
+    "calories": 88,
+    "protein": 0,
+    "carbs": 21,
+    "fats": 0,
+    "aliases": [
+      "100 plus",
+      "isotonic can"
+    ],
+    "brand": "100Plus"
+  },
+  {
     "name": "Air Kelapa (coconut water)",
     "calories": 60,
     "protein": 1,
@@ -7,11 +19,39 @@
     "fats": 0
   },
   {
+    "name": "Air Mata Kucing (1 glass)",
+    "calories": 120,
+    "protein": 0,
+    "carbs": 30,
+    "fats": 0,
+    "aliases": [
+      "longan drink",
+      "mata kucing"
+    ]
+  },
+  {
+    "name": "Air Sirap (1 glass)",
+    "calories": 100,
+    "protein": 0,
+    "carbs": 25,
+    "fats": 0,
+    "aliases": [
+      "sirap",
+      "rose syrup",
+      "sirap ais"
+    ]
+  },
+  {
     "name": "Ais Kacang",
     "calories": 260,
     "protein": 4,
     "carbs": 52,
-    "fats": 5
+    "fats": 5,
+    "aliases": [
+      "abc",
+      "air batu campur",
+      "ice kacang"
+    ]
   },
   {
     "name": "Almond Butter",
@@ -35,11 +75,50 @@
     "fats": 14
   },
   {
+    "name": "Aloo Gobi (1 cup)",
+    "calories": 170,
+    "protein": 4,
+    "carbs": 20,
+    "fats": 9,
+    "aliases": [
+      "potato cauliflower curry"
+    ]
+  },
+  {
+    "name": "Aloo Paratha (1 piece)",
+    "calories": 300,
+    "protein": 6,
+    "carbs": 44,
+    "fats": 11
+  },
+  {
+    "name": "Ang Ku Kueh (1 piece)",
+    "calories": 120,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 2,
+    "aliases": [
+      "angku",
+      "kuih angku"
+    ]
+  },
+  {
     "name": "Apam Balik",
     "calories": 300,
     "protein": 6,
     "carbs": 45,
     "fats": 11
+  },
+  {
+    "name": "Appam (1 piece)",
+    "calories": 120,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 2,
+    "aliases": [
+      "apom",
+      "hoppers"
+    ]
   },
   {
     "name": "Apple",
@@ -49,24 +128,38 @@
     "fats": 0
   },
   {
-    "name": "Apple Juice",
+    "name": "Apple Juice (1 cup)",
     "calories": 114,
     "protein": 0,
     "carbs": 28,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "jus epal"
+    ]
+  },
+  {
+    "name": "Apple Pie (1 slice)",
+    "calories": 296,
+    "protein": 2,
+    "carbs": 43,
+    "fats": 14
   },
   {
     "name": "Asam Laksa",
     "calories": 380,
     "protein": 18,
     "carbs": 55,
-    "fats": 9
+    "fats": 9,
+    "aliases": [
+      "penang laksa",
+      "laksa"
+    ]
   },
   {
-    "name": "Asparagus",
-    "calories": 27,
-    "protein": 3,
-    "carbs": 5,
+    "name": "Asparagus (6 spears)",
+    "calories": 20,
+    "protein": 2,
+    "carbs": 4,
     "fats": 0
   },
   {
@@ -75,6 +168,17 @@
     "protein": 3,
     "carbs": 13,
     "fats": 22
+  },
+  {
+    "name": "Avocado Juice (1 glass)",
+    "calories": 300,
+    "protein": 4,
+    "carbs": 38,
+    "fats": 15,
+    "aliases": [
+      "jus alpukat",
+      "avocado shake"
+    ]
   },
   {
     "name": "Avocado Toast",
@@ -88,7 +192,34 @@
     "calories": 390,
     "protein": 28,
     "carbs": 12,
-    "fats": 26
+    "fats": 26,
+    "aliases": [
+      "spiced fried chicken"
+    ]
+  },
+  {
+    "name": "Ayam Goreng McD (1 piece)",
+    "calories": 330,
+    "protein": 22,
+    "carbs": 12,
+    "fats": 22,
+    "aliases": [
+      "ayam goreng mcd",
+      "mcd fried chicken",
+      "spicy chicken mcd"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "Ayam Kicap (1 serving)",
+    "calories": 310,
+    "protein": 26,
+    "carbs": 10,
+    "fats": 18,
+    "aliases": [
+      "soy sauce chicken",
+      "ayam masak kicap"
+    ]
   },
   {
     "name": "Ayam Masak Merah",
@@ -96,6 +227,17 @@
     "protein": 27,
     "carbs": 14,
     "fats": 24
+  },
+  {
+    "name": "Ayam Penyet with Rice",
+    "calories": 760,
+    "protein": 36,
+    "carbs": 80,
+    "fats": 32,
+    "aliases": [
+      "ayam penyet",
+      "nasi ayam penyet"
+    ]
   },
   {
     "name": "Ayam Percik",
@@ -126,11 +268,46 @@
     "fats": 12
   },
   {
+    "name": "Baguette (quarter loaf)",
+    "calories": 185,
+    "protein": 6,
+    "carbs": 36,
+    "fats": 1,
+    "aliases": [
+      "french bread"
+    ]
+  },
+  {
+    "name": "Bak Chang (1 dumpling)",
+    "calories": 380,
+    "protein": 14,
+    "carbs": 54,
+    "fats": 12,
+    "aliases": [
+      "zongzi",
+      "rice dumpling",
+      "chang"
+    ]
+  },
+  {
     "name": "Bak Kut Teh",
     "calories": 430,
     "protein": 34,
     "carbs": 12,
-    "fats": 26
+    "fats": 26,
+    "aliases": [
+      "bkt"
+    ]
+  },
+  {
+    "name": "Baked Beans (1/2 cup)",
+    "calories": 119,
+    "protein": 6,
+    "carbs": 27,
+    "fats": 0,
+    "aliases": [
+      "kacang panggang"
+    ]
   },
   {
     "name": "Baked Potato with Butter",
@@ -140,11 +317,61 @@
     "fats": 9
   },
   {
+    "name": "Baklava (1 piece)",
+    "calories": 230,
+    "protein": 4,
+    "carbs": 26,
+    "fats": 13
+  },
+  {
+    "name": "Bakso (1 bowl)",
+    "calories": 370,
+    "protein": 22,
+    "carbs": 40,
+    "fats": 13,
+    "aliases": [
+      "meatball soup",
+      "bakso sapi"
+    ]
+  },
+  {
     "name": "Banana",
     "calories": 105,
     "protein": 1,
     "carbs": 27,
     "fats": 0
+  },
+  {
+    "name": "Banana Bread (1 slice)",
+    "calories": 196,
+    "protein": 3,
+    "carbs": 33,
+    "fats": 6,
+    "aliases": [
+      "banana cake",
+      "kek pisang"
+    ]
+  },
+  {
+    "name": "Banana Chips (28g)",
+    "calories": 147,
+    "protein": 1,
+    "carbs": 17,
+    "fats": 10,
+    "aliases": [
+      "kerepek pisang"
+    ]
+  },
+  {
+    "name": "Banana Leaf Rice (vegetarian set)",
+    "calories": 700,
+    "protein": 18,
+    "carbs": 110,
+    "fats": 20,
+    "aliases": [
+      "banana leaf",
+      "nasi daun pisang"
+    ]
   },
   {
     "name": "Banh Mi",
@@ -154,11 +381,66 @@
     "fats": 18
   },
   {
+    "name": "Barley Drink (1 glass)",
+    "calories": 110,
+    "protein": 1,
+    "carbs": 27,
+    "fats": 0,
+    "aliases": [
+      "air barli",
+      "barli ais"
+    ]
+  },
+  {
     "name": "Basmati Rice (1 cup)",
     "calories": 205,
     "protein": 4,
     "carbs": 45,
     "fats": 0
+  },
+  {
+    "name": "BBQ Sauce (1 tbsp)",
+    "calories": 29,
+    "protein": 0,
+    "carbs": 7,
+    "fats": 0,
+    "aliases": [
+      "barbecue sauce"
+    ]
+  },
+  {
+    "name": "Bean Sprouts (1 cup)",
+    "calories": 31,
+    "protein": 3,
+    "carbs": 6,
+    "fats": 0,
+    "aliases": [
+      "taugeh",
+      "tauge"
+    ]
+  },
+  {
+    "name": "Bee Hoon (1 cup cooked)",
+    "calories": 192,
+    "protein": 2,
+    "carbs": 44,
+    "fats": 0,
+    "aliases": [
+      "rice vermicelli",
+      "mihun",
+      "meehoon",
+      "bihun"
+    ]
+  },
+  {
+    "name": "Beef Bacon (3 slices)",
+    "calories": 161,
+    "protein": 12,
+    "carbs": 0,
+    "fats": 12,
+    "aliases": [
+      "bacon"
+    ]
   },
   {
     "name": "Beef Burger with Cheese",
@@ -168,11 +450,44 @@
     "fats": 36
   },
   {
+    "name": "Beef Hor Fun",
+    "calories": 640,
+    "protein": 26,
+    "carbs": 80,
+    "fats": 23,
+    "aliases": [
+      "wat tan hor",
+      "hor fun",
+      "kuey teow kungfu"
+    ]
+  },
+  {
+    "name": "Beef Jerky (28g)",
+    "calories": 116,
+    "protein": 9,
+    "carbs": 3,
+    "fats": 7,
+    "aliases": [
+      "dendeng"
+    ]
+  },
+  {
     "name": "Beef Noodle Soup",
     "calories": 480,
     "protein": 30,
     "carbs": 56,
     "fats": 14
+  },
+  {
+    "name": "Beef Sausage (1 link)",
+    "calories": 170,
+    "protein": 8,
+    "carbs": 1,
+    "fats": 15,
+    "aliases": [
+      "sausage",
+      "sosej"
+    ]
   },
   {
     "name": "Beef Steak (200g sirloin)",
@@ -182,18 +497,44 @@
     "fats": 23
   },
   {
-    "name": "Beer",
-    "calories": 154,
-    "protein": 2,
-    "carbs": 13,
-    "fats": 0
+    "name": "Beef Stew (1 cup)",
+    "calories": 240,
+    "protein": 20,
+    "carbs": 18,
+    "fats": 10
   },
   {
-    "name": "Bell Pepper",
+    "name": "Beer (1 pint)",
+    "calories": 208,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 0,
+    "aliases": [
+      "pint of beer",
+      "lager",
+      "draught beer"
+    ]
+  },
+  {
+    "name": "Beetroot (1 cup)",
+    "calories": 58,
+    "protein": 2,
+    "carbs": 13,
+    "fats": 0,
+    "aliases": [
+      "beet"
+    ]
+  },
+  {
+    "name": "Bell Pepper (1 medium)",
     "calories": 31,
     "protein": 1,
-    "carbs": 6,
-    "fats": 0
+    "carbs": 7,
+    "fats": 0,
+    "aliases": [
+      "capsicum",
+      "lada benggala"
+    ]
   },
   {
     "name": "Bibimbap",
@@ -203,6 +544,17 @@
     "fats": 18
   },
   {
+    "name": "Big Mac",
+    "calories": 550,
+    "protein": 25,
+    "carbs": 45,
+    "fats": 30,
+    "aliases": [
+      "bigmac"
+    ],
+    "brand": "McDonald's"
+  },
+  {
     "name": "Black Beans",
     "calories": 227,
     "protein": 15,
@@ -210,11 +562,60 @@
     "fats": 1
   },
   {
-    "name": "Blueberries",
+    "name": "Black Tea (unsweetened)",
+    "calories": 2,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 0,
+    "aliases": [
+      "teh o kosong",
+      "plain tea",
+      "tea"
+    ]
+  },
+  {
+    "name": "Blueberries (1 cup)",
     "calories": 84,
     "protein": 1,
     "carbs": 21,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "blueberry"
+    ]
+  },
+  {
+    "name": "Blueberry Muffin (1 large)",
+    "calories": 385,
+    "protein": 5,
+    "carbs": 54,
+    "fats": 16,
+    "aliases": [
+      "muffin"
+    ]
+  },
+  {
+    "name": "Boiled Dumplings (6 pieces)",
+    "calories": 270,
+    "protein": 14,
+    "carbs": 32,
+    "fats": 9,
+    "aliases": [
+      "jiaozi",
+      "sui kow",
+      "dumplings"
+    ]
+  },
+  {
+    "name": "Bok Choy (1 cup cooked)",
+    "calories": 20,
+    "protein": 3,
+    "carbs": 3,
+    "fats": 0,
+    "aliases": [
+      "pak choy",
+      "sawi",
+      "choy sum"
+    ]
   },
   {
     "name": "Broccoli",
@@ -238,18 +639,35 @@
     "fats": 12
   },
   {
-    "name": "Brussels Sprouts",
-    "calories": 38,
-    "protein": 3,
-    "carbs": 8,
-    "fats": 0
+    "name": "Brussels Sprouts (1 cup)",
+    "calories": 56,
+    "protein": 4,
+    "carbs": 11,
+    "fats": 1
   },
   {
     "name": "Bubble Tea (regular)",
     "calories": 340,
     "protein": 3,
     "carbs": 68,
-    "fats": 6
+    "fats": 6,
+    "aliases": [
+      "boba",
+      "pearl milk tea",
+      "boba tea"
+    ]
+  },
+  {
+    "name": "Bubur Ayam McD",
+    "calories": 180,
+    "protein": 9,
+    "carbs": 24,
+    "fats": 5,
+    "aliases": [
+      "mcd porridge",
+      "chicken porridge mcd"
+    ],
+    "brand": "McDonald's"
   },
   {
     "name": "Bubur Cha Cha",
@@ -259,6 +677,37 @@
     "fats": 8
   },
   {
+    "name": "Buffalo Wings (6 pieces)",
+    "calories": 430,
+    "protein": 36,
+    "carbs": 2,
+    "fats": 31,
+    "aliases": [
+      "hot wings",
+      "spicy wings"
+    ]
+  },
+  {
+    "name": "Bulgogi (150g)",
+    "calories": 300,
+    "protein": 26,
+    "carbs": 12,
+    "fats": 16,
+    "aliases": [
+      "korean bbq beef"
+    ]
+  },
+  {
+    "name": "Burger Bun (1 bun)",
+    "calories": 140,
+    "protein": 4,
+    "carbs": 26,
+    "fats": 2,
+    "aliases": [
+      "roti burger"
+    ]
+  },
+  {
     "name": "Burrito",
     "calories": 445,
     "protein": 18,
@@ -266,18 +715,34 @@
     "fats": 17
   },
   {
-    "name": "Butter",
+    "name": "Butter (1 tbsp)",
     "calories": 102,
     "protein": 0,
     "carbs": 0,
-    "fats": 12
+    "fats": 12,
+    "aliases": [
+      "mentega"
+    ]
   },
   {
     "name": "Butter Chicken",
     "calories": 520,
     "protein": 30,
     "carbs": 16,
-    "fats": 37
+    "fats": 37,
+    "aliases": [
+      "murgh makhani"
+    ]
+  },
+  {
+    "name": "Cabbage (1 cup)",
+    "calories": 22,
+    "protein": 1,
+    "carbs": 5,
+    "fats": 0,
+    "aliases": [
+      "kobis"
+    ]
   },
   {
     "name": "Caesar Dressing (2 tbsp)",
@@ -294,18 +759,83 @@
     "fats": 14
   },
   {
+    "name": "Caffe Americano (grande)",
+    "calories": 15,
+    "protein": 1,
+    "carbs": 2,
+    "fats": 0,
+    "aliases": [
+      "starbucks americano",
+      "long black"
+    ],
+    "brand": "Starbucks"
+  },
+  {
+    "name": "Caffe Latte (grande)",
+    "calories": 190,
+    "protein": 13,
+    "carbs": 19,
+    "fats": 7,
+    "aliases": [
+      "starbucks latte"
+    ],
+    "brand": "Starbucks"
+  },
+  {
+    "name": "Cantaloupe (1 cup)",
+    "calories": 54,
+    "protein": 1,
+    "carbs": 13,
+    "fats": 0,
+    "aliases": [
+      "rockmelon",
+      "melon"
+    ]
+  },
+  {
     "name": "Capati",
     "calories": 150,
     "protein": 5,
     "carbs": 24,
-    "fats": 4
+    "fats": 4,
+    "aliases": [
+      "chapati",
+      "chapatti"
+    ]
   },
   {
     "name": "Cappuccino",
     "calories": 74,
     "protein": 4,
     "carbs": 6,
-    "fats": 4
+    "fats": 4,
+    "aliases": [
+      "starbucks cappuccino"
+    ]
+  },
+  {
+    "name": "Caramel Frappuccino (grande)",
+    "calories": 380,
+    "protein": 5,
+    "carbs": 54,
+    "fats": 16,
+    "aliases": [
+      "frappuccino",
+      "frappe",
+      "starbucks frappuccino"
+    ],
+    "brand": "Starbucks"
+  },
+  {
+    "name": "Caramel Macchiato (grande)",
+    "calories": 250,
+    "protein": 10,
+    "carbs": 35,
+    "fats": 7,
+    "aliases": [
+      "starbucks caramel macchiato"
+    ],
+    "brand": "Starbucks"
   },
   {
     "name": "Carbonara",
@@ -322,17 +852,31 @@
     "fats": 0
   },
   {
-    "name": "Cashews",
+    "name": "Cashews (28g)",
     "calories": 157,
     "protein": 5,
     "carbs": 9,
-    "fats": 12
+    "fats": 12,
+    "aliases": [
+      "cashew nuts",
+      "gajus"
+    ]
   },
   {
-    "name": "Cauliflower",
+    "name": "Cauliflower (1 cup)",
     "calories": 27,
     "protein": 2,
     "carbs": 5,
+    "fats": 0,
+    "aliases": [
+      "bunga kobis"
+    ]
+  },
+  {
+    "name": "Celery (2 stalks)",
+    "calories": 13,
+    "protein": 1,
+    "carbs": 2,
     "fats": 0
   },
   {
@@ -340,14 +884,58 @@
     "calories": 290,
     "protein": 3,
     "carbs": 46,
-    "fats": 11
+    "fats": 11,
+    "aliases": [
+      "chendol"
+    ]
+  },
+  {
+    "name": "Century Egg Porridge",
+    "calories": 230,
+    "protein": 12,
+    "carbs": 34,
+    "fats": 5,
+    "aliases": [
+      "pork porridge",
+      "pei dan chok"
+    ]
+  },
+  {
+    "name": "Chana Masala (1 cup)",
+    "calories": 270,
+    "protein": 12,
+    "carbs": 36,
+    "fats": 9,
+    "aliases": [
+      "chole",
+      "chickpea curry",
+      "kari kacang kuda"
+    ]
   },
   {
     "name": "Char Kway Teow",
     "calories": 742,
     "protein": 23,
     "carbs": 76,
-    "fats": 38
+    "fats": 38,
+    "aliases": [
+      "char kuey teow",
+      "ckt",
+      "kuey teow goreng",
+      "fried kway teow",
+      "char koay teow"
+    ]
+  },
+  {
+    "name": "Char Siu (100g)",
+    "calories": 250,
+    "protein": 22,
+    "carbs": 12,
+    "fats": 12,
+    "aliases": [
+      "bbq pork",
+      "char siew"
+    ]
   },
   {
     "name": "Char Siu Bao",
@@ -355,6 +943,17 @@
     "protein": 7,
     "carbs": 33,
     "fats": 6
+  },
+  {
+    "name": "Char Siu Rice",
+    "calories": 630,
+    "protein": 26,
+    "carbs": 80,
+    "fats": 22,
+    "aliases": [
+      "bbq pork rice",
+      "char siew rice"
+    ]
   },
   {
     "name": "Cheddar Cheese",
@@ -371,11 +970,66 @@
     "fats": 5
   },
   {
+    "name": "Cheese Naan (1 piece)",
+    "calories": 370,
+    "protein": 12,
+    "carbs": 48,
+    "fats": 14,
+    "aliases": [
+      "naan cheese",
+      "roti nan cheese"
+    ]
+  },
+  {
+    "name": "Cheese Slice (1 slice)",
+    "calories": 60,
+    "protein": 3,
+    "carbs": 2,
+    "fats": 5,
+    "aliases": [
+      "processed cheese",
+      "cheddar slice",
+      "keju"
+    ]
+  },
+  {
     "name": "Cheeseburger",
     "calories": 303,
     "protein": 15,
     "carbs": 30,
     "fats": 14
+  },
+  {
+    "name": "Cheesecake (1 slice)",
+    "calories": 320,
+    "protein": 6,
+    "carbs": 26,
+    "fats": 22,
+    "aliases": [
+      "kek keju"
+    ]
+  },
+  {
+    "name": "Cheezy Wedges",
+    "calories": 270,
+    "protein": 5,
+    "carbs": 32,
+    "fats": 14,
+    "aliases": [
+      "kfc wedges",
+      "potato wedges"
+    ],
+    "brand": "KFC"
+  },
+  {
+    "name": "Cherries (1 cup)",
+    "calories": 87,
+    "protein": 1,
+    "carbs": 22,
+    "fats": 0,
+    "aliases": [
+      "cherry"
+    ]
   },
   {
     "name": "Chia Pudding",
@@ -385,11 +1039,28 @@
     "fats": 12
   },
   {
-    "name": "Chia Seeds",
-    "calories": 138,
-    "protein": 5,
+    "name": "Chia Seeds (1 tbsp)",
+    "calories": 58,
+    "protein": 2,
+    "carbs": 5,
+    "fats": 4
+  },
+  {
+    "name": "Chicken 65 (1 serving)",
+    "calories": 310,
+    "protein": 26,
     "carbs": 12,
-    "fats": 9
+    "fats": 18
+  },
+  {
+    "name": "Chicken Adobo (1 serving)",
+    "calories": 340,
+    "protein": 28,
+    "carbs": 6,
+    "fats": 22,
+    "aliases": [
+      "adobo"
+    ]
   },
   {
     "name": "Chicken Breast",
@@ -399,6 +1070,28 @@
     "fats": 4
   },
   {
+    "name": "Chicken Breast and Rice (meal prep)",
+    "calories": 450,
+    "protein": 42,
+    "carbs": 50,
+    "fats": 7,
+    "aliases": [
+      "chicken and rice",
+      "chicken rice meal prep"
+    ]
+  },
+  {
+    "name": "Chicken Burrito Bowl",
+    "calories": 630,
+    "protein": 40,
+    "carbs": 62,
+    "fats": 24,
+    "aliases": [
+      "burrito bowl",
+      "chipotle bowl"
+    ]
+  },
+  {
     "name": "Chicken Caesar Salad",
     "calories": 470,
     "protein": 30,
@@ -406,11 +1099,61 @@
     "fats": 33
   },
   {
+    "name": "Chicken Chop with Fries (1 plate)",
+    "calories": 750,
+    "protein": 42,
+    "carbs": 60,
+    "fats": 38,
+    "aliases": [
+      "chicken chop",
+      "grilled chicken chop"
+    ]
+  },
+  {
     "name": "Chicken Congee",
     "calories": 250,
     "protein": 14,
     "carbs": 38,
-    "fats": 4
+    "fats": 4,
+    "aliases": [
+      "bubur ayam",
+      "chicken porridge"
+    ]
+  },
+  {
+    "name": "Chicken Curry (1 serving)",
+    "calories": 280,
+    "protein": 25,
+    "carbs": 8,
+    "fats": 16,
+    "aliases": [
+      "kari ayam",
+      "ayam kari",
+      "gulai ayam"
+    ]
+  },
+  {
+    "name": "Chicken Drumstick (1, roasted)",
+    "calories": 150,
+    "protein": 18,
+    "carbs": 0,
+    "fats": 8,
+    "aliases": [
+      "drumstick",
+      "peha ayam"
+    ]
+  },
+  {
+    "name": "Chicken Frankfurter (1 piece)",
+    "calories": 120,
+    "protein": 6,
+    "carbs": 3,
+    "fats": 9,
+    "aliases": [
+      "hot dog sausage",
+      "chicken sausage",
+      "sosej ayam"
+    ]
   },
   {
     "name": "Chicken Katsu Curry",
@@ -420,11 +1163,38 @@
     "fats": 30
   },
   {
-    "name": "Chicken Nuggets",
-    "calories": 297,
-    "protein": 15,
-    "carbs": 18,
-    "fats": 18
+    "name": "Chicken Kebab Skewers (2)",
+    "calories": 240,
+    "protein": 30,
+    "carbs": 4,
+    "fats": 11,
+    "aliases": [
+      "shish tawook",
+      "shish kebab",
+      "chicken skewers"
+    ]
+  },
+  {
+    "name": "Chicken Liver (100g)",
+    "calories": 167,
+    "protein": 24,
+    "carbs": 1,
+    "fats": 7,
+    "aliases": [
+      "hati ayam"
+    ]
+  },
+  {
+    "name": "Chicken McNuggets (6 pieces)",
+    "calories": 250,
+    "protein": 14,
+    "carbs": 15,
+    "fats": 15,
+    "aliases": [
+      "mcnuggets",
+      "nuggets mcd"
+    ],
+    "brand": "McDonald's"
   },
   {
     "name": "Chicken Nuggets (6 pieces)",
@@ -434,11 +1204,71 @@
     "fats": 17
   },
   {
+    "name": "Chicken Quesadilla",
+    "calories": 530,
+    "protein": 29,
+    "carbs": 40,
+    "fats": 28,
+    "aliases": [
+      "quesadilla"
+    ]
+  },
+  {
     "name": "Chicken Rice",
     "calories": 607,
     "protein": 28,
     "carbs": 73,
-    "fats": 22
+    "fats": 22,
+    "aliases": [
+      "nasi ayam",
+      "hainanese chicken rice",
+      "nasi ayam hainan"
+    ]
+  },
+  {
+    "name": "Chicken Shawarma Wrap",
+    "calories": 450,
+    "protein": 30,
+    "carbs": 40,
+    "fats": 19,
+    "aliases": [
+      "shawarma",
+      "shawarma ayam"
+    ]
+  },
+  {
+    "name": "Chicken Tenders (3 pieces)",
+    "calories": 330,
+    "protein": 24,
+    "carbs": 18,
+    "fats": 18,
+    "aliases": [
+      "chicken strips",
+      "chicken fingers"
+    ]
+  },
+  {
+    "name": "Chicken Teriyaki Sub (6 inch)",
+    "calories": 350,
+    "protein": 26,
+    "carbs": 50,
+    "fats": 5,
+    "aliases": [
+      "subway chicken teriyaki",
+      "subway teriyaki"
+    ],
+    "brand": "Subway"
+  },
+  {
+    "name": "Chicken Teriyaki with Rice",
+    "calories": 580,
+    "protein": 32,
+    "carbs": 78,
+    "fats": 14,
+    "aliases": [
+      "teriyaki chicken",
+      "chicken teriyaki don"
+    ]
   },
   {
     "name": "Chicken Thigh",
@@ -455,6 +1285,17 @@
     "fats": 32
   },
   {
+    "name": "Chicken Wings (2, roasted)",
+    "calories": 172,
+    "protein": 16,
+    "carbs": 0,
+    "fats": 12,
+    "aliases": [
+      "chicken wing",
+      "kepak ayam"
+    ]
+  },
+  {
     "name": "Chicken Wrap",
     "calories": 450,
     "protein": 28,
@@ -469,11 +1310,117 @@
     "fats": 4
   },
   {
+    "name": "Chili con Carne (1 cup)",
+    "calories": 280,
+    "protein": 20,
+    "carbs": 22,
+    "fats": 12,
+    "aliases": [
+      "chili",
+      "chilli con carne"
+    ]
+  },
+  {
+    "name": "Chilli Pan Mee",
+    "calories": 580,
+    "protein": 24,
+    "carbs": 68,
+    "fats": 23,
+    "aliases": [
+      "dry chilli pan mee"
+    ]
+  },
+  {
+    "name": "Chilli Sauce (1 tbsp)",
+    "calories": 20,
+    "protein": 0,
+    "carbs": 5,
+    "fats": 0,
+    "aliases": [
+      "sos cili",
+      "sweet chilli sauce"
+    ]
+  },
+  {
+    "name": "Chocolate Cake (1 slice)",
+    "calories": 352,
+    "protein": 5,
+    "carbs": 51,
+    "fats": 15,
+    "aliases": [
+      "kek coklat",
+      "cake"
+    ]
+  },
+  {
     "name": "Chocolate Chip Cookie",
     "calories": 160,
     "protein": 2,
     "carbs": 21,
     "fats": 8
+  },
+  {
+    "name": "Chocolate Hazelnut Spread (1 tbsp)",
+    "calories": 100,
+    "protein": 1,
+    "carbs": 11,
+    "fats": 6,
+    "aliases": [
+      "nutella"
+    ]
+  },
+  {
+    "name": "Chocolate Milk (1 cup)",
+    "calories": 208,
+    "protein": 8,
+    "carbs": 26,
+    "fats": 8,
+    "aliases": [
+      "susu coklat"
+    ]
+  },
+  {
+    "name": "Chocolate Milkshake (350ml)",
+    "calories": 400,
+    "protein": 10,
+    "carbs": 60,
+    "fats": 13,
+    "aliases": [
+      "milkshake"
+    ]
+  },
+  {
+    "name": "Chow Mein (1 plate)",
+    "calories": 520,
+    "protein": 18,
+    "carbs": 66,
+    "fats": 20,
+    "aliases": [
+      "fried noodles",
+      "mee goreng cina"
+    ]
+  },
+  {
+    "name": "Ciku (1 fruit)",
+    "calories": 141,
+    "protein": 1,
+    "carbs": 34,
+    "fats": 2,
+    "aliases": [
+      "sapodilla",
+      "chikoo"
+    ]
+  },
+  {
+    "name": "Claypot Chicken Rice",
+    "calories": 620,
+    "protein": 28,
+    "carbs": 78,
+    "fats": 21,
+    "aliases": [
+      "claypot rice",
+      "nasi ayam claypot"
+    ]
   },
   {
     "name": "Club Sandwich",
@@ -483,18 +1430,81 @@
     "fats": 17
   },
   {
-    "name": "Coconut Oil",
-    "calories": 121,
+    "name": "Coca-Cola (330ml can)",
+    "calories": 139,
     "protein": 0,
-    "carbs": 0,
-    "fats": 14
+    "carbs": 35,
+    "fats": 0,
+    "aliases": [
+      "coke can"
+    ],
+    "brand": "Coca-Cola"
   },
   {
-    "name": "Cod",
+    "name": "Coca-Cola Zero (330ml can)",
+    "calories": 1,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 0,
+    "aliases": [
+      "coke zero",
+      "diet coke",
+      "zero sugar cola"
+    ],
+    "brand": "Coca-Cola"
+  },
+  {
+    "name": "Coconut Flesh (45g piece)",
+    "calories": 159,
+    "protein": 1,
+    "carbs": 7,
+    "fats": 15,
+    "aliases": [
+      "coconut meat",
+      "isi kelapa"
+    ]
+  },
+  {
+    "name": "Coconut Milk (1/4 cup)",
+    "calories": 110,
+    "protein": 1,
+    "carbs": 2,
+    "fats": 11,
+    "aliases": [
+      "santan"
+    ]
+  },
+  {
+    "name": "Coconut Oil (1 tbsp)",
+    "calories": 117,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 14,
+    "aliases": [
+      "minyak kelapa"
+    ]
+  },
+  {
+    "name": "Coconut Shake (1 glass)",
+    "calories": 350,
+    "protein": 4,
+    "carbs": 48,
+    "fats": 16,
+    "aliases": [
+      "kelapa shake"
+    ]
+  },
+  {
+    "name": "Cod (100g cooked)",
     "calories": 105,
     "protein": 23,
     "carbs": 0,
-    "fats": 1
+    "fats": 1,
+    "aliases": [
+      "white fish fillet",
+      "dory",
+      "ikan dori"
+    ]
   },
   {
     "name": "Coffee",
@@ -511,11 +1521,42 @@
     "fats": 0
   },
   {
+    "name": "Coleslaw (1/2 cup)",
+    "calories": 150,
+    "protein": 1,
+    "carbs": 13,
+    "fats": 11
+  },
+  {
+    "name": "Condensed Milk (1 tbsp)",
+    "calories": 62,
+    "protein": 2,
+    "carbs": 10,
+    "fats": 2,
+    "aliases": [
+      "susu pekat",
+      "sweetened condensed milk"
+    ]
+  },
+  {
     "name": "Cookie",
     "calories": 148,
     "protein": 2,
     "carbs": 20,
     "fats": 7
+  },
+  {
+    "name": "Cooking Oil (1 tbsp)",
+    "calories": 120,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 14,
+    "aliases": [
+      "vegetable oil",
+      "minyak masak",
+      "palm oil",
+      "sunflower oil"
+    ]
   },
   {
     "name": "Corn",
@@ -525,18 +1566,26 @@
     "fats": 1
   },
   {
-    "name": "Cornflakes",
+    "name": "Corn on the Cob (1 ear)",
+    "calories": 88,
+    "protein": 3,
+    "carbs": 19,
+    "fats": 1,
+    "aliases": [
+      "jagung",
+      "jagung rebus",
+      "corn"
+    ]
+  },
+  {
+    "name": "Cornflakes (1 cup, dry)",
     "calories": 100,
     "protein": 2,
     "carbs": 24,
-    "fats": 0
-  },
-  {
-    "name": "Cottage Cheese",
-    "calories": 98,
-    "protein": 11,
-    "carbs": 3,
-    "fats": 4
+    "fats": 0,
+    "aliases": [
+      "corn flakes dry"
+    ]
   },
   {
     "name": "Cottage Cheese (100g)",
@@ -546,18 +1595,51 @@
     "fats": 4
   },
   {
-    "name": "Couscous",
+    "name": "Couscous (1 cup cooked)",
     "calories": 176,
     "protein": 6,
     "carbs": 36,
     "fats": 0
   },
   {
-    "name": "Cream Cheese",
+    "name": "Crab (100g)",
+    "calories": 97,
+    "protein": 19,
+    "carbs": 0,
+    "fats": 2,
+    "aliases": [
+      "ketam"
+    ]
+  },
+  {
+    "name": "Cream Cheese (2 tbsp)",
     "calories": 99,
     "protein": 2,
     "carbs": 2,
     "fats": 10
+  },
+  {
+    "name": "Cream Crackers (3 pieces)",
+    "calories": 110,
+    "protein": 2,
+    "carbs": 17,
+    "fats": 4,
+    "aliases": [
+      "crackers",
+      "biskut kering",
+      "jacobs"
+    ]
+  },
+  {
+    "name": "Cream of Mushroom Soup (1 bowl)",
+    "calories": 190,
+    "protein": 4,
+    "carbs": 15,
+    "fats": 13,
+    "aliases": [
+      "mushroom soup",
+      "sup cendawan"
+    ]
   },
   {
     "name": "Croissant",
@@ -567,11 +1649,55 @@
     "fats": 12
   },
   {
-    "name": "Cucumber",
+    "name": "Cucumber (1 cup sliced)",
     "calories": 16,
     "protein": 1,
     "carbs": 4,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "timun"
+    ]
+  },
+  {
+    "name": "Cucur Udang (2 pieces)",
+    "calories": 200,
+    "protein": 6,
+    "carbs": 24,
+    "fats": 9,
+    "aliases": [
+      "prawn fritters",
+      "jemput udang"
+    ]
+  },
+  {
+    "name": "Cultured Milk Drink (80ml)",
+    "calories": 50,
+    "protein": 1,
+    "carbs": 12,
+    "fats": 0,
+    "aliases": [
+      "yakult",
+      "vitagen",
+      "probiotic drink"
+    ]
+  },
+  {
+    "name": "Cupcake (1 frosted)",
+    "calories": 290,
+    "protein": 3,
+    "carbs": 44,
+    "fats": 12
+  },
+  {
+    "name": "Curry Gravy (1/2 cup)",
+    "calories": 120,
+    "protein": 2,
+    "carbs": 6,
+    "fats": 10,
+    "aliases": [
+      "kuah kari",
+      "kuah banjir"
+    ]
   },
   {
     "name": "Curry Laksa",
@@ -585,14 +1711,22 @@
     "calories": 605,
     "protein": 22,
     "carbs": 62,
-    "fats": 30
+    "fats": 30,
+    "aliases": [
+      "mee kari",
+      "kari mee"
+    ]
   },
   {
-    "name": "Dark Chocolate",
-    "calories": 170,
-    "protein": 2,
-    "carbs": 13,
-    "fats": 12
+    "name": "Curry Puff (1 piece)",
+    "calories": 150,
+    "protein": 3,
+    "carbs": 15,
+    "fats": 9,
+    "aliases": [
+      "karipap",
+      "epok epok"
+    ]
   },
   {
     "name": "Dark Chocolate (30g)",
@@ -602,11 +1736,38 @@
     "fats": 12
   },
   {
+    "name": "Dates (2 Medjool)",
+    "calories": 133,
+    "protein": 1,
+    "carbs": 36,
+    "fats": 0,
+    "aliases": [
+      "kurma",
+      "date"
+    ]
+  },
+  {
     "name": "Dhal Curry",
     "calories": 210,
     "protein": 11,
     "carbs": 28,
-    "fats": 6
+    "fats": 6,
+    "aliases": [
+      "dal",
+      "dhal",
+      "dalca"
+    ]
+  },
+  {
+    "name": "Digestive Biscuits (2 pieces)",
+    "calories": 142,
+    "protein": 2,
+    "carbs": 19,
+    "fats": 6,
+    "aliases": [
+      "digestives",
+      "mcvities"
+    ]
   },
   {
     "name": "Dim Sum Siew Mai (4 pieces)",
@@ -616,11 +1777,56 @@
     "fats": 10
   },
   {
+    "name": "Doner Kebab (1 wrap)",
+    "calories": 550,
+    "protein": 30,
+    "carbs": 50,
+    "fats": 25,
+    "aliases": [
+      "kebab",
+      "doner",
+      "kebab wrap"
+    ]
+  },
+  {
     "name": "Donut",
     "calories": 253,
     "protein": 4,
     "carbs": 31,
     "fats": 14
+  },
+  {
+    "name": "Double Cheeseburger",
+    "calories": 450,
+    "protein": 25,
+    "carbs": 34,
+    "fats": 24,
+    "brand": "McDonald's"
+  },
+  {
+    "name": "Dragon Fruit (half, 150g)",
+    "calories": 90,
+    "protein": 2,
+    "carbs": 20,
+    "fats": 0,
+    "aliases": [
+      "pitaya",
+      "buah naga"
+    ]
+  },
+  {
+    "name": "Dried Apricots (5 pieces)",
+    "calories": 84,
+    "protein": 1,
+    "carbs": 22,
+    "fats": 0
+  },
+  {
+    "name": "Dry Wantan Mee (1 plate)",
+    "calories": 512,
+    "protein": 24,
+    "carbs": 66,
+    "fats": 17
   },
   {
     "name": "Duck Rice",
@@ -630,25 +1836,162 @@
     "fats": 30
   },
   {
-    "name": "Edamame",
-    "calories": 188,
-    "protein": 18,
-    "carbs": 14,
-    "fats": 8
+    "name": "Durian (3 seeds, 120g)",
+    "calories": 176,
+    "protein": 2,
+    "carbs": 32,
+    "fats": 6
   },
   {
-    "name": "Egg",
+    "name": "Economy Rice (rice, 1 meat, 2 veg)",
+    "calories": 600,
+    "protein": 24,
+    "carbs": 76,
+    "fats": 22,
+    "aliases": [
+      "mixed rice",
+      "chap fan",
+      "nasi campur cina",
+      "economy rice"
+    ]
+  },
+  {
+    "name": "Edamame (1/2 cup shelled)",
+    "calories": 94,
+    "protein": 9,
+    "carbs": 7,
+    "fats": 4
+  },
+  {
+    "name": "Egg (1 large)",
     "calories": 78,
     "protein": 6,
     "carbs": 1,
-    "fats": 5
+    "fats": 5,
+    "aliases": [
+      "telur",
+      "boiled egg",
+      "hard boiled egg",
+      "telur rebus"
+    ]
   },
   {
-    "name": "Egg White",
+    "name": "Egg Drop Soup (1 bowl)",
+    "calories": 75,
+    "protein": 5,
+    "carbs": 5,
+    "fats": 4,
+    "aliases": [
+      "sup telur"
+    ]
+  },
+  {
+    "name": "Egg McMuffin",
+    "calories": 310,
+    "protein": 17,
+    "carbs": 30,
+    "fats": 13,
+    "aliases": [
+      "mcmuffin"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "Egg Sandwich",
+    "calories": 330,
+    "protein": 14,
+    "carbs": 30,
+    "fats": 17,
+    "aliases": [
+      "egg mayo sandwich",
+      "sandwich telur"
+    ]
+  },
+  {
+    "name": "Egg Tart (1 piece)",
+    "calories": 210,
+    "protein": 4,
+    "carbs": 23,
+    "fats": 12,
+    "aliases": [
+      "tart telur",
+      "dan tat",
+      "portuguese tart"
+    ]
+  },
+  {
+    "name": "Egg White (1 large)",
     "calories": 17,
     "protein": 4,
     "carbs": 0,
+    "fats": 0,
+    "aliases": [
+      "egg whites",
+      "putih telur"
+    ]
+  },
+  {
+    "name": "Egg White Omelette (4 whites)",
+    "calories": 120,
+    "protein": 20,
+    "carbs": 2,
+    "fats": 3
+  },
+  {
+    "name": "Eggplant (1 cup cooked)",
+    "calories": 35,
+    "protein": 1,
+    "carbs": 9,
+    "fats": 0,
+    "aliases": [
+      "aubergine",
+      "terung",
+      "brinjal"
+    ]
+  },
+  {
+    "name": "English Muffin (1 muffin)",
+    "calories": 134,
+    "protein": 5,
+    "carbs": 26,
+    "fats": 1
+  },
+  {
+    "name": "Espresso (1 shot)",
+    "calories": 3,
+    "protein": 0,
+    "carbs": 0,
     "fats": 0
+  },
+  {
+    "name": "Evaporated Milk (2 tbsp)",
+    "calories": 42,
+    "protein": 2,
+    "carbs": 3,
+    "fats": 2,
+    "aliases": [
+      "susu cair",
+      "susu sejat"
+    ]
+  },
+  {
+    "name": "Falafel (4 pieces)",
+    "calories": 230,
+    "protein": 9,
+    "carbs": 22,
+    "fats": 12
+  },
+  {
+    "name": "Filet-O-Fish",
+    "calories": 390,
+    "protein": 16,
+    "carbs": 39,
+    "fats": 19,
+    "aliases": [
+      "fillet o fish",
+      "fish burger"
+    ],
+    "brand": "McDonald's"
   },
   {
     "name": "Fish and Chips",
@@ -658,6 +2001,58 @@
     "fats": 38
   },
   {
+    "name": "Fish Balls (5 pieces)",
+    "calories": 78,
+    "protein": 9,
+    "carbs": 6,
+    "fats": 2,
+    "aliases": [
+      "bebola ikan",
+      "fishball"
+    ]
+  },
+  {
+    "name": "Fish Curry (1 serving)",
+    "calories": 240,
+    "protein": 22,
+    "carbs": 7,
+    "fats": 14,
+    "aliases": [
+      "kari ikan",
+      "gulai ikan",
+      "asam pedas ikan"
+    ]
+  },
+  {
+    "name": "Fish Fingers (4 pieces)",
+    "calories": 220,
+    "protein": 11,
+    "carbs": 18,
+    "fats": 11,
+    "aliases": [
+      "fish sticks"
+    ]
+  },
+  {
+    "name": "Flat White (1 cup)",
+    "calories": 110,
+    "protein": 6,
+    "carbs": 9,
+    "fats": 6
+  },
+  {
+    "name": "Flavoured Yogurt (150g)",
+    "calories": 150,
+    "protein": 6,
+    "carbs": 26,
+    "fats": 2,
+    "aliases": [
+      "fruit yogurt",
+      "yoghurt",
+      "strawberry yogurt"
+    ]
+  },
+  {
     "name": "Flax Seeds",
     "calories": 150,
     "protein": 5,
@@ -665,11 +2060,25 @@
     "fats": 12
   },
   {
+    "name": "Flaxseed (1 tbsp)",
+    "calories": 55,
+    "protein": 2,
+    "carbs": 3,
+    "fats": 4,
+    "aliases": [
+      "linseed"
+    ]
+  },
+  {
     "name": "French Fries",
     "calories": 312,
     "protein": 4,
     "carbs": 41,
-    "fats": 15
+    "fats": 15,
+    "aliases": [
+      "mcd fries",
+      "medium fries"
+    ]
   },
   {
     "name": "French Toast (2 slices)",
@@ -679,18 +2088,184 @@
     "fats": 15
   },
   {
+    "name": "Fresh Spring Rolls (2 pieces)",
+    "calories": 170,
+    "protein": 8,
+    "carbs": 28,
+    "fats": 3,
+    "aliases": [
+      "goi cuon",
+      "summer rolls",
+      "vietnamese rolls"
+    ]
+  },
+  {
+    "name": "Fried Bee Hoon (1 plate)",
+    "calories": 450,
+    "protein": 12,
+    "carbs": 68,
+    "fats": 14,
+    "aliases": [
+      "bihun goreng",
+      "mee hoon goreng",
+      "fried vermicelli"
+    ]
+  },
+  {
+    "name": "Fried Chicken (1 piece)",
+    "calories": 290,
+    "protein": 19,
+    "carbs": 10,
+    "fats": 19,
+    "aliases": [
+      "ayam goreng",
+      "crispy chicken"
+    ]
+  },
+  {
+    "name": "Fried Egg (1 egg)",
+    "calories": 90,
+    "protein": 6,
+    "carbs": 0,
+    "fats": 7,
+    "aliases": [
+      "telur mata",
+      "telur goreng",
+      "sunny side up",
+      "bullseye egg"
+    ]
+  },
+  {
+    "name": "Fried Mackerel (1 fish)",
+    "calories": 220,
+    "protein": 21,
+    "carbs": 2,
+    "fats": 14,
+    "aliases": [
+      "ikan kembung",
+      "ikan kembung goreng",
+      "mackerel"
+    ]
+  },
+  {
     "name": "Fried Rice",
     "calories": 333,
     "protein": 9,
     "carbs": 52,
-    "fats": 10
+    "fats": 10,
+    "aliases": [
+      "nasi goreng cina",
+      "egg fried rice"
+    ]
   },
   {
-    "name": "Fried Rice (Chinese)",
-    "calories": 560,
+    "name": "Fried Squid (100g)",
+    "calories": 175,
+    "protein": 18,
+    "carbs": 8,
+    "fats": 7,
+    "aliases": [
+      "sotong goreng",
+      "calamari",
+      "sotong"
+    ]
+  },
+  {
+    "name": "Fried Tofu (2 pieces)",
+    "calories": 160,
+    "protein": 10,
+    "carbs": 5,
+    "fats": 11,
+    "aliases": [
+      "tauhu goreng",
+      "tau pok",
+      "tahu goreng"
+    ]
+  },
+  {
+    "name": "Frozen Yogurt (1/2 cup)",
+    "calories": 110,
+    "protein": 3,
+    "carbs": 22,
+    "fats": 2,
+    "aliases": [
+      "froyo",
+      "llaollao"
+    ]
+  },
+  {
+    "name": "Fruit Salad (1 cup)",
+    "calories": 110,
+    "protein": 1,
+    "carbs": 28,
+    "fats": 0,
+    "aliases": [
+      "mixed fruit",
+      "buah potong",
+      "cut fruit"
+    ]
+  },
+  {
+    "name": "Gado-Gado",
+    "calories": 400,
     "protein": 16,
-    "carbs": 78,
-    "fats": 20
+    "carbs": 32,
+    "fats": 24,
+    "aliases": [
+      "gado gado",
+      "pecal",
+      "pecel"
+    ]
+  },
+  {
+    "name": "Garlic Bread (2 slices)",
+    "calories": 190,
+    "protein": 4,
+    "carbs": 24,
+    "fats": 9
+  },
+  {
+    "name": "Ghee (1 tbsp)",
+    "calories": 112,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 13,
+    "aliases": [
+      "minyak sapi"
+    ]
+  },
+  {
+    "name": "Gin and Tonic (1 glass)",
+    "calories": 171,
+    "protein": 0,
+    "carbs": 14,
+    "fats": 0,
+    "aliases": [
+      "g&t"
+    ]
+  },
+  {
+    "name": "Glass Noodles (1 cup cooked)",
+    "calories": 160,
+    "protein": 0,
+    "carbs": 39,
+    "fats": 0,
+    "aliases": [
+      "tang hoon",
+      "suhun",
+      "cellophane noodles"
+    ]
+  },
+  {
+    "name": "Glutinous Rice (1 cup)",
+    "calories": 169,
+    "protein": 4,
+    "carbs": 37,
+    "fats": 0,
+    "aliases": [
+      "pulut",
+      "sticky rice"
+    ]
   },
   {
     "name": "Granola",
@@ -700,6 +2275,13 @@
     "fats": 20
   },
   {
+    "name": "Grapefruit (half)",
+    "calories": 52,
+    "protein": 1,
+    "carbs": 13,
+    "fats": 0
+  },
+  {
     "name": "Grapes",
     "calories": 104,
     "protein": 1,
@@ -707,11 +2289,11 @@
     "fats": 0
   },
   {
-    "name": "Greek Yogurt",
-    "calories": 100,
-    "protein": 17,
-    "carbs": 6,
-    "fats": 1
+    "name": "Greek Salad (1 bowl)",
+    "calories": 230,
+    "protein": 7,
+    "carbs": 12,
+    "fats": 18
   },
   {
     "name": "Greek Yogurt (170g)",
@@ -721,11 +2303,17 @@
     "fats": 0
   },
   {
-    "name": "Green Beans",
+    "name": "Green Beans (1 cup)",
     "calories": 31,
     "protein": 2,
     "carbs": 7,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "long beans",
+      "kacang panjang",
+      "french beans",
+      "kacang buncis"
+    ]
   },
   {
     "name": "Green Curry with Rice",
@@ -735,11 +2323,27 @@
     "fats": 28
   },
   {
+    "name": "Green Peas (1/2 cup)",
+    "calories": 62,
+    "protein": 4,
+    "carbs": 11,
+    "fats": 0,
+    "aliases": [
+      "peas",
+      "kacang pis"
+    ]
+  },
+  {
     "name": "Green Tea",
     "calories": 2,
     "protein": 0,
     "carbs": 0,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "teh hijau",
+      "matcha tea",
+      "ocha"
+    ]
   },
   {
     "name": "Grilled Cheese",
@@ -747,6 +2351,17 @@
     "protein": 10,
     "carbs": 28,
     "fats": 16
+  },
+  {
+    "name": "Grilled Cheese Sandwich",
+    "calories": 380,
+    "protein": 14,
+    "carbs": 30,
+    "fats": 23,
+    "aliases": [
+      "cheese toastie",
+      "cheese sandwich"
+    ]
   },
   {
     "name": "Grilled Chicken Sandwich",
@@ -770,11 +2385,39 @@
     "fats": 15
   },
   {
-    "name": "Guacamole",
-    "calories": 90,
+    "name": "Guacamole (2 tbsp)",
+    "calories": 45,
     "protein": 1,
-    "carbs": 5,
-    "fats": 8
+    "carbs": 2,
+    "fats": 4
+  },
+  {
+    "name": "Guava (1 fruit)",
+    "calories": 37,
+    "protein": 1,
+    "carbs": 8,
+    "fats": 1,
+    "aliases": [
+      "jambu batu"
+    ]
+  },
+  {
+    "name": "Gulab Jamun (2 pieces)",
+    "calories": 290,
+    "protein": 4,
+    "carbs": 48,
+    "fats": 10
+  },
+  {
+    "name": "Gummy Bears (10 pieces)",
+    "calories": 87,
+    "protein": 2,
+    "carbs": 20,
+    "fats": 0,
+    "aliases": [
+      "gummies",
+      "gula gula"
+    ]
   },
   {
     "name": "Gyoza (5 pieces)",
@@ -784,11 +2427,36 @@
     "fats": 10
   },
   {
+    "name": "Gyudon",
+    "calories": 670,
+    "protein": 26,
+    "carbs": 90,
+    "fats": 22,
+    "aliases": [
+      "beef bowl",
+      "beef don"
+    ]
+  },
+  {
     "name": "Half-Boiled Eggs (2)",
     "calories": 140,
     "protein": 12,
     "carbs": 1,
-    "fats": 10
+    "fats": 10,
+    "aliases": [
+      "telur separuh masak",
+      "soft boiled eggs"
+    ]
+  },
+  {
+    "name": "Halo-Halo",
+    "calories": 320,
+    "protein": 6,
+    "carbs": 62,
+    "fats": 6,
+    "aliases": [
+      "halo halo"
+    ]
   },
   {
     "name": "Hamburger",
@@ -805,6 +2473,37 @@
     "fats": 5
   },
   {
+    "name": "Hash Brown (1 patty)",
+    "calories": 140,
+    "protein": 1,
+    "carbs": 15,
+    "fats": 9,
+    "aliases": [
+      "hashbrown"
+    ]
+  },
+  {
+    "name": "Hawaiian Pizza (2 slices)",
+    "calories": 520,
+    "protein": 24,
+    "carbs": 64,
+    "fats": 18,
+    "aliases": [
+      "hawaiian chicken pizza"
+    ]
+  },
+  {
+    "name": "High-Protein Yogurt (150g)",
+    "calories": 100,
+    "protein": 15,
+    "carbs": 8,
+    "fats": 1,
+    "aliases": [
+      "protein yogurt",
+      "skyr"
+    ]
+  },
+  {
     "name": "Hokkien Mee",
     "calories": 620,
     "protein": 24,
@@ -812,25 +2511,84 @@
     "fats": 27
   },
   {
-    "name": "Honey",
+    "name": "Honey (1 tbsp)",
     "calories": 64,
     "protein": 0,
     "carbs": 17,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "madu"
+    ]
   },
   {
-    "name": "Hot Dog",
+    "name": "Honeydew (1 cup)",
+    "calories": 61,
+    "protein": 1,
+    "carbs": 15,
+    "fats": 0,
+    "aliases": [
+      "honeydew melon",
+      "tembikai susu"
+    ]
+  },
+  {
+    "name": "Hot and Sour Soup (1 bowl)",
+    "calories": 95,
+    "protein": 6,
+    "carbs": 10,
+    "fats": 3
+  },
+  {
+    "name": "Hot Chocolate (1 cup)",
+    "calories": 190,
+    "protein": 9,
+    "carbs": 27,
+    "fats": 6,
+    "aliases": [
+      "coklat panas",
+      "cocoa"
+    ]
+  },
+  {
+    "name": "Hot Dog (1)",
     "calories": 290,
     "protein": 10,
-    "carbs": 23,
-    "fats": 18
+    "carbs": 24,
+    "fats": 17,
+    "aliases": [
+      "hotdog"
+    ]
   },
   {
-    "name": "Hummus",
-    "calories": 166,
+    "name": "Hot Dog Bun (1 bun)",
+    "calories": 120,
+    "protein": 4,
+    "carbs": 21,
+    "fats": 2
+  },
+  {
+    "name": "Hot Fudge Sundae",
+    "calories": 330,
     "protein": 8,
-    "carbs": 14,
-    "fats": 10
+    "carbs": 53,
+    "fats": 10,
+    "aliases": [
+      "sundae",
+      "sundae coklat"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "Hotcakes (3, with syrup and butter)",
+    "calories": 580,
+    "protein": 9,
+    "carbs": 101,
+    "fats": 15,
+    "aliases": [
+      "mcd hotcakes",
+      "mcd pancakes"
+    ],
+    "brand": "McDonald's"
   },
   {
     "name": "Hummus (2 tbsp)",
@@ -840,18 +2598,23 @@
     "fats": 5
   },
   {
-    "name": "Ice Cream",
-    "calories": 207,
-    "protein": 4,
-    "carbs": 24,
-    "fats": 11
-  },
-  {
     "name": "Ice Cream (1 scoop)",
     "calories": 140,
     "protein": 2,
     "carbs": 17,
     "fats": 7
+  },
+  {
+    "name": "Ice Lolly (1 piece)",
+    "calories": 45,
+    "protein": 0,
+    "carbs": 11,
+    "fats": 0,
+    "aliases": [
+      "popsicle",
+      "aiskrim potong",
+      "ice pop"
+    ]
   },
   {
     "name": "Idli (2 pieces)",
@@ -865,28 +2628,185 @@
     "calories": 260,
     "protein": 34,
     "carbs": 3,
-    "fats": 12
+    "fats": 12,
+    "aliases": [
+      "grilled fish"
+    ]
+  },
+  {
+    "name": "Ikan Bilis Goreng (30g)",
+    "calories": 140,
+    "protein": 16,
+    "carbs": 0,
+    "fats": 8,
+    "aliases": [
+      "fried anchovies",
+      "anchovies"
+    ]
   },
   {
     "name": "Ikan Goreng",
     "calories": 310,
     "protein": 30,
     "carbs": 6,
-    "fats": 19
+    "fats": 19,
+    "aliases": [
+      "fried fish"
+    ]
   },
   {
-    "name": "Kale",
+    "name": "Indomie Mi Goreng (1 pack)",
+    "calories": 380,
+    "protein": 8,
+    "carbs": 54,
+    "fats": 14,
+    "aliases": [
+      "indomie",
+      "mi goreng instant"
+    ],
+    "brand": "Indomie"
+  },
+  {
+    "name": "Instant Noodles (1 pack, cooked)",
+    "calories": 380,
+    "protein": 8,
+    "carbs": 52,
+    "fats": 14,
+    "aliases": [
+      "maggi",
+      "mi segera",
+      "maggi sup",
+      "instant mee",
+      "ramen packet"
+    ]
+  },
+  {
+    "name": "Isotonic Drink (500ml)",
+    "calories": 125,
+    "protein": 0,
+    "carbs": 31,
+    "fats": 0,
+    "aliases": [
+      "sports drink",
+      "gatorade",
+      "pocari sweat",
+      "revive"
+    ]
+  },
+  {
+    "name": "Italian B.M.T. (6 inch)",
+    "calories": 410,
+    "protein": 20,
+    "carbs": 46,
+    "fats": 16,
+    "aliases": [
+      "subway bmt",
+      "italian bmt"
+    ],
+    "brand": "Subway"
+  },
+  {
+    "name": "Jackfruit (1 cup)",
+    "calories": 157,
+    "protein": 3,
+    "carbs": 38,
+    "fats": 1,
+    "aliases": [
+      "nangka",
+      "cempedak"
+    ]
+  },
+  {
+    "name": "Jam (1 tbsp)",
+    "calories": 56,
+    "protein": 0,
+    "carbs": 14,
+    "fats": 0,
+    "aliases": [
+      "jem",
+      "strawberry jam",
+      "marmalade"
+    ]
+  },
+  {
+    "name": "Japchae (1 serving)",
+    "calories": 290,
+    "protein": 6,
+    "carbs": 48,
+    "fats": 8
+  },
+  {
+    "name": "Java Chip Frappuccino (grande)",
+    "calories": 440,
+    "protein": 6,
+    "carbs": 66,
+    "fats": 18,
+    "aliases": [
+      "java chip"
+    ],
+    "brand": "Starbucks"
+  },
+  {
+    "name": "Jelly (1 cup)",
+    "calories": 80,
+    "protein": 1,
+    "carbs": 19,
+    "fats": 0,
+    "aliases": [
+      "agar agar",
+      "jello"
+    ]
+  },
+  {
+    "name": "Kale (1 cup)",
     "calories": 33,
     "protein": 3,
     "carbs": 6,
     "fats": 1
   },
   {
+    "name": "Kangkung Belacan (1 serving)",
+    "calories": 120,
+    "protein": 4,
+    "carbs": 8,
+    "fats": 8,
+    "aliases": [
+      "kangkong",
+      "water spinach",
+      "morning glory"
+    ]
+  },
+  {
+    "name": "Katsudon",
+    "calories": 780,
+    "protein": 32,
+    "carbs": 96,
+    "fats": 28,
+    "aliases": [
+      "chicken katsu don"
+    ]
+  },
+  {
+    "name": "Kaya (1 tbsp)",
+    "calories": 45,
+    "protein": 1,
+    "carbs": 8,
+    "fats": 1,
+    "aliases": [
+      "coconut jam",
+      "seri kaya"
+    ]
+  },
+  {
     "name": "Kaya Toast",
     "calories": 230,
     "protein": 6,
     "carbs": 32,
-    "fats": 9
+    "fats": 9,
+    "aliases": [
+      "roti bakar",
+      "roti kaya"
+    ]
   },
   {
     "name": "Keropok Lekor",
@@ -896,6 +2816,17 @@
     "fats": 9
   },
   {
+    "name": "Ketchup (1 tbsp)",
+    "calories": 17,
+    "protein": 0,
+    "carbs": 5,
+    "fats": 0,
+    "aliases": [
+      "tomato sauce",
+      "sos tomato"
+    ]
+  },
+  {
     "name": "Ketupat",
     "calories": 160,
     "protein": 3,
@@ -903,11 +2834,34 @@
     "fats": 1
   },
   {
-    "name": "Kidney Beans",
+    "name": "KFC Coleslaw",
+    "calories": 170,
+    "protein": 1,
+    "carbs": 14,
+    "fats": 12,
+    "brand": "KFC"
+  },
+  {
+    "name": "Kidney Beans (1 cup)",
     "calories": 225,
     "protein": 15,
     "carbs": 40,
-    "fats": 1
+    "fats": 1,
+    "aliases": [
+      "rajma",
+      "red beans",
+      "kacang merah"
+    ]
+  },
+  {
+    "name": "Kimbap (1 roll)",
+    "calories": 350,
+    "protein": 11,
+    "carbs": 58,
+    "fats": 8,
+    "aliases": [
+      "gimbap"
+    ]
   },
   {
     "name": "Kimchi",
@@ -917,18 +2871,93 @@
     "fats": 0
   },
   {
-    "name": "Kiwi",
+    "name": "Kimchi Fried Rice",
+    "calories": 500,
+    "protein": 14,
+    "carbs": 72,
+    "fats": 17,
+    "aliases": [
+      "kimchi bokkeumbap"
+    ]
+  },
+  {
+    "name": "Kimchi Jjigae",
+    "calories": 240,
+    "protein": 18,
+    "carbs": 12,
+    "fats": 13,
+    "aliases": [
+      "kimchi stew"
+    ]
+  },
+  {
+    "name": "KitKat (4 fingers)",
+    "calories": 213,
+    "protein": 3,
+    "carbs": 27,
+    "fats": 11,
+    "aliases": [
+      "kit kat"
+    ],
+    "brand": "Nestle"
+  },
+  {
+    "name": "Kiwi (1 medium)",
     "calories": 42,
     "protein": 1,
     "carbs": 10,
+    "fats": 0,
+    "aliases": [
+      "kiwifruit"
+    ]
+  },
+  {
+    "name": "Koay Teow Soup",
+    "calories": 370,
+    "protein": 20,
+    "carbs": 50,
+    "fats": 10,
+    "aliases": [
+      "koay teow th'ng",
+      "kuey teow soup",
+      "kuey teow sup"
+    ]
+  },
+  {
+    "name": "Kombucha (1 cup)",
+    "calories": 30,
+    "protein": 0,
+    "carbs": 7,
     "fats": 0
+  },
+  {
+    "name": "Kopi Ais (1 glass)",
+    "calories": 160,
+    "protein": 3,
+    "carbs": 27,
+    "fats": 5,
+    "aliases": [
+      "iced coffee",
+      "kopi ais susu"
+    ]
+  },
+  {
+    "name": "Kopi C (1 cup)",
+    "calories": 110,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 3
   },
   {
     "name": "Kopi O",
     "calories": 35,
     "protein": 0,
     "carbs": 9,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "kopi o kosong",
+      "local black coffee"
+    ]
   },
   {
     "name": "Kopi Susu",
@@ -945,11 +2974,54 @@
     "fats": 28
   },
   {
+    "name": "Kuey Teow (1 cup cooked)",
+    "calories": 190,
+    "protein": 2,
+    "carbs": 42,
+    "fats": 0,
+    "aliases": [
+      "flat rice noodles",
+      "kway teow",
+      "hor fun plain"
+    ]
+  },
+  {
+    "name": "Kuih Bahulu (3 pieces)",
+    "calories": 120,
+    "protein": 3,
+    "carbs": 22,
+    "fats": 2,
+    "aliases": [
+      "bahulu"
+    ]
+  },
+  {
+    "name": "Kuih Ketayap (1 piece)",
+    "calories": 120,
+    "protein": 2,
+    "carbs": 20,
+    "fats": 4,
+    "aliases": [
+      "kuih dadar",
+      "ketayap"
+    ]
+  },
+  {
     "name": "Kuih Lapis",
     "calories": 130,
     "protein": 1,
     "carbs": 22,
     "fats": 4
+  },
+  {
+    "name": "Kuih Seri Muka (1 piece)",
+    "calories": 160,
+    "protein": 2,
+    "carbs": 28,
+    "fats": 5,
+    "aliases": [
+      "seri muka"
+    ]
   },
   {
     "name": "Kung Pao Chicken",
@@ -959,11 +3031,53 @@
     "fats": 25
   },
   {
+    "name": "Ladoo (1 piece)",
+    "calories": 185,
+    "protein": 3,
+    "carbs": 24,
+    "fats": 9,
+    "aliases": [
+      "laddu"
+    ]
+  },
+  {
     "name": "Laksa Johor",
     "calories": 550,
     "protein": 22,
     "carbs": 66,
     "fats": 22
+  },
+  {
+    "name": "Lamb Chop (100g)",
+    "calories": 294,
+    "protein": 25,
+    "carbs": 0,
+    "fats": 21,
+    "aliases": [
+      "lamb",
+      "kambing"
+    ]
+  },
+  {
+    "name": "Large French Fries (McDonald's)",
+    "calories": 480,
+    "protein": 7,
+    "carbs": 65,
+    "fats": 23,
+    "aliases": [
+      "large fries"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "Lasagna (1 piece)",
+    "calories": 360,
+    "protein": 22,
+    "carbs": 34,
+    "fats": 15,
+    "aliases": [
+      "lasagne"
+    ]
   },
   {
     "name": "Latte",
@@ -973,6 +3087,24 @@
     "fats": 7
   },
   {
+    "name": "Lemang (1 slice, 100g)",
+    "calories": 210,
+    "protein": 4,
+    "carbs": 36,
+    "fats": 6
+  },
+  {
+    "name": "Lemon (1 fruit)",
+    "calories": 17,
+    "protein": 1,
+    "carbs": 5,
+    "fats": 0,
+    "aliases": [
+      "lime",
+      "limau"
+    ]
+  },
+  {
     "name": "Lentils",
     "calories": 230,
     "protein": 18,
@@ -980,11 +3112,15 @@
     "fats": 1
   },
   {
-    "name": "Lettuce",
-    "calories": 5,
-    "protein": 0,
-    "carbs": 1,
-    "fats": 0
+    "name": "Lettuce (1 cup)",
+    "calories": 8,
+    "protein": 1,
+    "carbs": 2,
+    "fats": 0,
+    "aliases": [
+      "salad leaves",
+      "romaine"
+    ]
   },
   {
     "name": "Limau Ais",
@@ -992,6 +3128,27 @@
     "protein": 0,
     "carbs": 18,
     "fats": 0
+  },
+  {
+    "name": "Lo Mai Gai",
+    "calories": 330,
+    "protein": 12,
+    "carbs": 48,
+    "fats": 10,
+    "aliases": [
+      "glutinous rice chicken",
+      "loh mai kai"
+    ]
+  },
+  {
+    "name": "Longan (20 fruits)",
+    "calories": 60,
+    "protein": 1,
+    "carbs": 15,
+    "fats": 0,
+    "aliases": [
+      "mata kucing fruit"
+    ]
   },
   {
     "name": "Lontong",
@@ -1008,11 +3165,46 @@
     "fats": 18
   },
   {
-    "name": "Mac and Cheese",
-    "calories": 310,
+    "name": "Low-Fat Milk (1 cup)",
+    "calories": 102,
+    "protein": 8,
+    "carbs": 12,
+    "fats": 2,
+    "aliases": [
+      "semi skimmed milk",
+      "susu rendah lemak"
+    ]
+  },
+  {
+    "name": "Lumpia (3 pieces)",
+    "calories": 240,
+    "protein": 8,
+    "carbs": 24,
+    "fats": 12,
+    "aliases": [
+      "lumpiang shanghai"
+    ]
+  },
+  {
+    "name": "Lychee (10 fruits)",
+    "calories": 63,
+    "protein": 1,
+    "carbs": 16,
+    "fats": 0,
+    "aliases": [
+      "laici"
+    ]
+  },
+  {
+    "name": "Mac and Cheese (1 cup)",
+    "calories": 350,
     "protein": 11,
-    "carbs": 40,
-    "fats": 12
+    "carbs": 47,
+    "fats": 13,
+    "aliases": [
+      "macaroni and cheese",
+      "macaroni cheese"
+    ]
   },
   {
     "name": "Maggi Goreng",
@@ -1022,6 +3214,18 @@
     "fats": 24
   },
   {
+    "name": "Maggi Kari (1 pack)",
+    "calories": 351,
+    "protein": 8,
+    "carbs": 49,
+    "fats": 14,
+    "aliases": [
+      "maggi curry",
+      "maggi kari letup"
+    ],
+    "brand": "Maggi"
+  },
+  {
     "name": "Mango",
     "calories": 99,
     "protein": 1,
@@ -1029,11 +3233,51 @@
     "fats": 1
   },
   {
-    "name": "Maple Syrup",
+    "name": "Mango Juice (1 cup)",
+    "calories": 128,
+    "protein": 0,
+    "carbs": 32,
+    "fats": 0,
+    "aliases": [
+      "jus mangga"
+    ]
+  },
+  {
+    "name": "Mango Lassi (1 glass)",
+    "calories": 230,
+    "protein": 6,
+    "carbs": 40,
+    "fats": 5
+  },
+  {
+    "name": "Mango Sticky Rice",
+    "calories": 410,
+    "protein": 5,
+    "carbs": 74,
+    "fats": 11,
+    "aliases": [
+      "pulut mangga"
+    ]
+  },
+  {
+    "name": "Mangosteen (3 fruits)",
+    "calories": 66,
+    "protein": 0,
+    "carbs": 16,
+    "fats": 1,
+    "aliases": [
+      "manggis"
+    ]
+  },
+  {
+    "name": "Maple Syrup (1 tbsp)",
     "calories": 52,
     "protein": 0,
     "carbs": 13,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "pancake syrup"
+    ]
   },
   {
     "name": "Mapo Tofu",
@@ -1050,11 +3294,166 @@
     "fats": 18
   },
   {
+    "name": "Masala Chai (1 cup)",
+    "calories": 90,
+    "protein": 3,
+    "carbs": 13,
+    "fats": 3,
+    "aliases": [
+      "chai",
+      "teh masala",
+      "teh halia"
+    ]
+  },
+  {
+    "name": "Masala Dosa (1 piece)",
+    "calories": 350,
+    "protein": 8,
+    "carbs": 54,
+    "fats": 11,
+    "aliases": [
+      "thosai masala",
+      "masala thosai",
+      "dosa"
+    ]
+  },
+  {
+    "name": "Mashed Potato (1 cup)",
+    "calories": 214,
+    "protein": 4,
+    "carbs": 35,
+    "fats": 7,
+    "aliases": [
+      "mash",
+      "kentang lenyek",
+      "mashed potatoes"
+    ]
+  },
+  {
+    "name": "Massaman Curry with Rice",
+    "calories": 700,
+    "protein": 26,
+    "carbs": 76,
+    "fats": 32,
+    "aliases": [
+      "massaman"
+    ]
+  },
+  {
+    "name": "Matcha Latte (grande)",
+    "calories": 240,
+    "protein": 12,
+    "carbs": 34,
+    "fats": 7,
+    "aliases": [
+      "green tea latte",
+      "starbucks matcha"
+    ],
+    "brand": "Starbucks"
+  },
+  {
+    "name": "Mayonnaise (1 tbsp)",
+    "calories": 94,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 10,
+    "aliases": [
+      "mayo"
+    ]
+  },
+  {
+    "name": "McChicken",
+    "calories": 400,
+    "protein": 14,
+    "carbs": 39,
+    "fats": 21,
+    "aliases": [
+      "mc chicken"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "McDonald's Apple Pie",
+    "calories": 230,
+    "protein": 2,
+    "carbs": 33,
+    "fats": 11,
+    "aliases": [
+      "mcd apple pie"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "McDonald's Cheeseburger",
+    "calories": 300,
+    "protein": 15,
+    "carbs": 33,
+    "fats": 12,
+    "aliases": [
+      "mcd cheeseburger"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "McFlurry Oreo (regular)",
+    "calories": 510,
+    "protein": 12,
+    "carbs": 80,
+    "fats": 16,
+    "aliases": [
+      "mcflurry"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "Meatball Marinara (6 inch)",
+    "calories": 460,
+    "protein": 21,
+    "carbs": 56,
+    "fats": 18,
+    "aliases": [
+      "subway meatball"
+    ],
+    "brand": "Subway"
+  },
+  {
+    "name": "Meatballs (4 pieces)",
+    "calories": 260,
+    "protein": 16,
+    "carbs": 8,
+    "fats": 18,
+    "aliases": [
+      "bebola daging"
+    ]
+  },
+  {
+    "name": "Mee Bandung",
+    "calories": 510,
+    "protein": 22,
+    "carbs": 66,
+    "fats": 18
+  },
+  {
     "name": "Mee Goreng Mamak",
     "calories": 660,
     "protein": 20,
     "carbs": 82,
-    "fats": 27
+    "fats": 27,
+    "aliases": [
+      "mee goreng",
+      "mi goreng"
+    ]
+  },
+  {
+    "name": "Mee Hoon Sup",
+    "calories": 310,
+    "protein": 16,
+    "carbs": 46,
+    "fats": 7,
+    "aliases": [
+      "bihun sup",
+      "bee hoon soup"
+    ]
   },
   {
     "name": "Mee Rebus",
@@ -1071,6 +3470,16 @@
     "fats": 14
   },
   {
+    "name": "Mie Ayam",
+    "calories": 440,
+    "protein": 20,
+    "carbs": 60,
+    "fats": 13,
+    "aliases": [
+      "mee ayam"
+    ]
+  },
+  {
     "name": "Milk",
     "calories": 122,
     "protein": 8,
@@ -1085,11 +3494,67 @@
     "fats": 8
   },
   {
+    "name": "Milk Chocolate Bar (43g)",
+    "calories": 235,
+    "protein": 3,
+    "carbs": 26,
+    "fats": 13,
+    "aliases": [
+      "chocolate bar",
+      "cadbury",
+      "coklat"
+    ]
+  },
+  {
+    "name": "Milo (200ml packet)",
+    "calories": 127,
+    "protein": 5,
+    "carbs": 19,
+    "fats": 4,
+    "aliases": [
+      "milo kotak",
+      "milo uht"
+    ],
+    "brand": "Nestle"
+  },
+  {
     "name": "Milo Ais",
     "calories": 220,
     "protein": 6,
     "carbs": 36,
-    "fats": 6
+    "fats": 6,
+    "aliases": [
+      "iced milo",
+      "milo"
+    ]
+  },
+  {
+    "name": "Milo Dinosaur (1 glass)",
+    "calories": 340,
+    "protein": 8,
+    "carbs": 54,
+    "fats": 10,
+    "aliases": [
+      "milo dino"
+    ]
+  },
+  {
+    "name": "Minced Chicken (100g)",
+    "calories": 143,
+    "protein": 17,
+    "carbs": 0,
+    "fats": 8,
+    "aliases": [
+      "ground chicken",
+      "ayam cincang"
+    ]
+  },
+  {
+    "name": "Miso Soup (1 bowl)",
+    "calories": 40,
+    "protein": 3,
+    "carbs": 5,
+    "fats": 1
   },
   {
     "name": "Mixed Nuts (30g)",
@@ -1099,7 +3564,35 @@
     "fats": 16
   },
   {
-    "name": "Mozzarella",
+    "name": "Mocha (350ml)",
+    "calories": 290,
+    "protein": 10,
+    "carbs": 35,
+    "fats": 12,
+    "aliases": [
+      "cafe mocha",
+      "caffe mocha"
+    ]
+  },
+  {
+    "name": "Mochi (1 piece)",
+    "calories": 96,
+    "protein": 1,
+    "carbs": 22,
+    "fats": 0
+  },
+  {
+    "name": "Mooncake (quarter)",
+    "calories": 180,
+    "protein": 3,
+    "carbs": 26,
+    "fats": 7,
+    "aliases": [
+      "kuih bulan"
+    ]
+  },
+  {
+    "name": "Mozzarella (28g)",
     "calories": 85,
     "protein": 6,
     "carbs": 1,
@@ -1117,14 +3610,56 @@
     "calories": 560,
     "protein": 24,
     "carbs": 52,
-    "fats": 28
+    "fats": 28,
+    "aliases": [
+      "martabak"
+    ]
   },
   {
-    "name": "Mushrooms",
-    "calories": 22,
+    "name": "Murukku (30g)",
+    "calories": 150,
     "protein": 3,
-    "carbs": 3,
-    "fats": 0
+    "carbs": 17,
+    "fats": 8,
+    "aliases": [
+      "muruku"
+    ]
+  },
+  {
+    "name": "Mushrooms (1 cup)",
+    "calories": 15,
+    "protein": 2,
+    "carbs": 2,
+    "fats": 0,
+    "aliases": [
+      "cendawan",
+      "button mushroom",
+      "shiitake"
+    ]
+  },
+  {
+    "name": "Mutton Biryani (1 plate)",
+    "calories": 780,
+    "protein": 34,
+    "carbs": 84,
+    "fats": 33,
+    "aliases": [
+      "briyani kambing",
+      "lamb biryani",
+      "nasi briyani kambing"
+    ]
+  },
+  {
+    "name": "Mutton Curry (1 serving)",
+    "calories": 320,
+    "protein": 24,
+    "carbs": 8,
+    "fats": 21,
+    "aliases": [
+      "kari kambing",
+      "gulai kambing",
+      "lamb curry"
+    ]
   },
   {
     "name": "Naan",
@@ -1134,11 +3669,27 @@
     "fats": 5
   },
   {
+    "name": "Nachos with Cheese (1 serving)",
+    "calories": 350,
+    "protein": 9,
+    "carbs": 36,
+    "fats": 19,
+    "aliases": [
+      "nachos"
+    ]
+  },
+  {
     "name": "Nasi Briyani with Chicken",
     "calories": 830,
     "protein": 33,
     "carbs": 96,
-    "fats": 33
+    "fats": 33,
+    "aliases": [
+      "chicken biryani",
+      "nasi briyani ayam",
+      "biryani",
+      "briyani"
+    ]
   },
   {
     "name": "Nasi Campur",
@@ -1159,7 +3710,21 @@
     "calories": 637,
     "protein": 19,
     "carbs": 84,
-    "fats": 24
+    "fats": 24,
+    "aliases": [
+      "malay fried rice"
+    ]
+  },
+  {
+    "name": "Nasi Goreng Ayam",
+    "calories": 690,
+    "protein": 28,
+    "carbs": 86,
+    "fats": 26,
+    "aliases": [
+      "chicken fried rice",
+      "nasi goreng biasa"
+    ]
   },
   {
     "name": "Nasi Goreng Kampung",
@@ -1167,6 +3732,34 @@
     "protein": 18,
     "carbs": 78,
     "fats": 22
+  },
+  {
+    "name": "Nasi Goreng Pattaya",
+    "calories": 760,
+    "protein": 26,
+    "carbs": 88,
+    "fats": 34,
+    "aliases": [
+      "pattaya"
+    ]
+  },
+  {
+    "name": "Nasi Goreng USA",
+    "calories": 820,
+    "protein": 34,
+    "carbs": 90,
+    "fats": 36
+  },
+  {
+    "name": "Nasi Impit (100g)",
+    "calories": 115,
+    "protein": 2,
+    "carbs": 26,
+    "fats": 0,
+    "aliases": [
+      "compressed rice",
+      "rice cubes"
+    ]
   },
   {
     "name": "Nasi Kandar",
@@ -1183,11 +3776,37 @@
     "fats": 17
   },
   {
+    "name": "Nasi Kukus Ayam Berempah",
+    "calories": 740,
+    "protein": 34,
+    "carbs": 84,
+    "fats": 30,
+    "aliases": [
+      "nasi kukus",
+      "nasi kukus ayam"
+    ]
+  },
+  {
     "name": "Nasi Lemak",
     "calories": 644,
     "protein": 17,
     "carbs": 82,
-    "fats": 27
+    "fats": 27,
+    "aliases": [
+      "coconut rice"
+    ]
+  },
+  {
+    "name": "Nasi Lemak Bungkus (small packet)",
+    "calories": 380,
+    "protein": 9,
+    "carbs": 52,
+    "fats": 15,
+    "aliases": [
+      "nasi lemak biasa",
+      "nasi lemak daun pisang",
+      "nasi lemak kosong"
+    ]
   },
   {
     "name": "Nasi Lemak with Fried Chicken",
@@ -1197,7 +3816,73 @@
     "fats": 42
   },
   {
-    "name": "Oat Milk",
+    "name": "Nasi Lemak with Rendang",
+    "calories": 760,
+    "protein": 30,
+    "carbs": 84,
+    "fats": 34,
+    "aliases": [
+      "nasi lemak rendang"
+    ]
+  },
+  {
+    "name": "Nasi Mandi Ayam (1 plate)",
+    "calories": 820,
+    "protein": 40,
+    "carbs": 96,
+    "fats": 30,
+    "aliases": [
+      "nasi arab",
+      "mandi rice",
+      "chicken mandi",
+      "nasi mandy"
+    ]
+  },
+  {
+    "name": "Nasi Padang (1 plate)",
+    "calories": 780,
+    "protein": 30,
+    "carbs": 86,
+    "fats": 35,
+    "aliases": [
+      "padang rice"
+    ]
+  },
+  {
+    "name": "Nasi Paprik",
+    "calories": 680,
+    "protein": 28,
+    "carbs": 84,
+    "fats": 26,
+    "aliases": [
+      "nasi paprik ayam",
+      "paprik"
+    ]
+  },
+  {
+    "name": "Nasi Putih (1 plate)",
+    "calories": 260,
+    "protein": 5,
+    "carbs": 57,
+    "fats": 0,
+    "aliases": [
+      "plain rice",
+      "nasi kosong",
+      "steamed rice plate"
+    ]
+  },
+  {
+    "name": "Nasi Tomato with Ayam Masak Merah",
+    "calories": 720,
+    "protein": 30,
+    "carbs": 88,
+    "fats": 27,
+    "aliases": [
+      "nasi tomato"
+    ]
+  },
+  {
+    "name": "Oat Milk (1 cup)",
     "calories": 120,
     "protein": 3,
     "carbs": 16,
@@ -1211,11 +3896,16 @@
     "fats": 3
   },
   {
-    "name": "Olive Oil",
-    "calories": 119,
-    "protein": 0,
-    "carbs": 0,
-    "fats": 14
+    "name": "Okra (1 cup)",
+    "calories": 33,
+    "protein": 2,
+    "carbs": 7,
+    "fats": 0,
+    "aliases": [
+      "lady fingers",
+      "bendi",
+      "ladies finger"
+    ]
   },
   {
     "name": "Olive Oil (1 tbsp)",
@@ -1239,11 +3929,24 @@
     "fats": 7
   },
   {
-    "name": "Onion",
+    "name": "Onigiri (1 piece)",
+    "calories": 180,
+    "protein": 4,
+    "carbs": 38,
+    "fats": 1,
+    "aliases": [
+      "rice ball"
+    ]
+  },
+  {
+    "name": "Onion (1 medium)",
     "calories": 44,
     "protein": 1,
     "carbs": 10,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "bawang"
+    ]
   },
   {
     "name": "Onion Rings",
@@ -1267,6 +3970,52 @@
     "fats": 0
   },
   {
+    "name": "Oreo (3 cookies)",
+    "calories": 160,
+    "protein": 1,
+    "carbs": 25,
+    "fats": 7,
+    "aliases": [
+      "oreos"
+    ],
+    "brand": "Oreo"
+  },
+  {
+    "name": "Original Recipe Chicken Breast",
+    "calories": 390,
+    "protein": 39,
+    "carbs": 11,
+    "fats": 21,
+    "aliases": [
+      "kfc breast",
+      "kfc original"
+    ],
+    "brand": "KFC"
+  },
+  {
+    "name": "Original Recipe Drumstick",
+    "calories": 130,
+    "protein": 12,
+    "carbs": 4,
+    "fats": 8,
+    "aliases": [
+      "kfc drumstick"
+    ],
+    "brand": "KFC"
+  },
+  {
+    "name": "Original Recipe Thigh",
+    "calories": 280,
+    "protein": 19,
+    "carbs": 8,
+    "fats": 19,
+    "aliases": [
+      "kfc thigh",
+      "kfc chicken"
+    ],
+    "brand": "KFC"
+  },
+  {
     "name": "Otak-Otak",
     "calories": 120,
     "protein": 8,
@@ -1281,11 +4030,64 @@
     "fats": 10
   },
   {
+    "name": "Oyakodon",
+    "calories": 600,
+    "protein": 30,
+    "carbs": 80,
+    "fats": 16,
+    "aliases": [
+      "chicken egg rice bowl"
+    ]
+  },
+  {
+    "name": "Oyster Omelette",
+    "calories": 430,
+    "protein": 16,
+    "carbs": 26,
+    "fats": 29,
+    "aliases": [
+      "oh chien",
+      "or chien",
+      "orh luak"
+    ]
+  },
+  {
+    "name": "Pad Krapow with Rice",
+    "calories": 590,
+    "protein": 30,
+    "carbs": 70,
+    "fats": 20,
+    "aliases": [
+      "thai basil chicken",
+      "pad kra pao",
+      "nasi ayam thai basil"
+    ]
+  },
+  {
+    "name": "Pad See Ew",
+    "calories": 610,
+    "protein": 24,
+    "carbs": 78,
+    "fats": 22
+  },
+  {
     "name": "Pad Thai",
     "calories": 660,
     "protein": 24,
     "carbs": 82,
     "fats": 26
+  },
+  {
+    "name": "Pakora (4 pieces)",
+    "calories": 230,
+    "protein": 6,
+    "carbs": 22,
+    "fats": 13,
+    "aliases": [
+      "bhaji",
+      "onion bhaji",
+      "pakoda"
+    ]
   },
   {
     "name": "Palak Paneer",
@@ -1295,11 +4097,15 @@
     "fats": 29
   },
   {
-    "name": "Pancakes",
-    "calories": 175,
-    "protein": 5,
-    "carbs": 22,
-    "fats": 7
+    "name": "Pan Mee Soup",
+    "calories": 470,
+    "protein": 22,
+    "carbs": 60,
+    "fats": 15,
+    "aliases": [
+      "pan mee",
+      "ban mian"
+    ]
   },
   {
     "name": "Pancakes (3)",
@@ -1309,11 +4115,75 @@
     "fats": 12
   },
   {
-    "name": "Parmesan",
-    "calories": 110,
-    "protein": 10,
-    "carbs": 1,
-    "fats": 7
+    "name": "Pancit Canton (1 plate)",
+    "calories": 390,
+    "protein": 14,
+    "carbs": 54,
+    "fats": 13,
+    "aliases": [
+      "pancit"
+    ]
+  },
+  {
+    "name": "Paneer (100g)",
+    "calories": 290,
+    "protein": 18,
+    "carbs": 4,
+    "fats": 22,
+    "aliases": [
+      "cottage cheese indian"
+    ]
+  },
+  {
+    "name": "Paneer Butter Masala (1 serving)",
+    "calories": 400,
+    "protein": 14,
+    "carbs": 14,
+    "fats": 32,
+    "aliases": [
+      "paneer makhani",
+      "shahi paneer"
+    ]
+  },
+  {
+    "name": "Papadum (2 pieces)",
+    "calories": 90,
+    "protein": 4,
+    "carbs": 10,
+    "fats": 4,
+    "aliases": [
+      "papadam",
+      "poppadom",
+      "appalam"
+    ]
+  },
+  {
+    "name": "Papaya (1 cup)",
+    "calories": 62,
+    "protein": 1,
+    "carbs": 16,
+    "fats": 0,
+    "aliases": [
+      "betik"
+    ]
+  },
+  {
+    "name": "Paratha (1 piece)",
+    "calories": 260,
+    "protein": 5,
+    "carbs": 36,
+    "fats": 10,
+    "aliases": [
+      "parotta",
+      "plain paratha"
+    ]
+  },
+  {
+    "name": "Parmesan (1 tbsp)",
+    "calories": 22,
+    "protein": 2,
+    "carbs": 0,
+    "fats": 1
   },
   {
     "name": "Pasta",
@@ -1337,18 +4207,11 @@
     "fats": 4
   },
   {
-    "name": "Peach",
+    "name": "Peach (1 medium)",
     "calories": 59,
     "protein": 1,
     "carbs": 14,
     "fats": 0
-  },
-  {
-    "name": "Peanut Butter",
-    "calories": 188,
-    "protein": 8,
-    "carbs": 6,
-    "fats": 16
   },
   {
     "name": "Peanut Butter (2 tbsp)",
@@ -1358,14 +4221,41 @@
     "fats": 16
   },
   {
-    "name": "Peanuts",
+    "name": "Peanut Butter and Jelly Sandwich",
+    "calories": 380,
+    "protein": 12,
+    "carbs": 48,
+    "fats": 16,
+    "aliases": [
+      "pbj",
+      "pb&j",
+      "peanut butter sandwich"
+    ]
+  },
+  {
+    "name": "Peanut Sauce (2 tbsp)",
+    "calories": 90,
+    "protein": 3,
+    "carbs": 5,
+    "fats": 7,
+    "aliases": [
+      "kuah kacang",
+      "satay sauce"
+    ]
+  },
+  {
+    "name": "Peanuts (28g)",
     "calories": 161,
     "protein": 7,
     "carbs": 5,
-    "fats": 14
+    "fats": 14,
+    "aliases": [
+      "kacang tanah",
+      "groundnuts"
+    ]
   },
   {
-    "name": "Pear",
+    "name": "Pear (1 medium)",
     "calories": 101,
     "protein": 1,
     "carbs": 27,
@@ -1379,6 +4269,19 @@
     "fats": 0
   },
   {
+    "name": "Penang Prawn Mee",
+    "calories": 470,
+    "protein": 22,
+    "carbs": 58,
+    "fats": 16,
+    "aliases": [
+      "prawn mee",
+      "har mee",
+      "penang hokkien mee",
+      "mee udang"
+    ]
+  },
+  {
     "name": "Pepperoni Pizza (2 slices)",
     "calories": 600,
     "protein": 24,
@@ -1390,7 +4293,21 @@
     "calories": 420,
     "protein": 26,
     "carbs": 60,
-    "fats": 8
+    "fats": 8,
+    "aliases": [
+      "beef pho"
+    ]
+  },
+  {
+    "name": "Pho Ga",
+    "calories": 370,
+    "protein": 26,
+    "carbs": 52,
+    "fats": 6,
+    "aliases": [
+      "chicken pho",
+      "pho"
+    ]
   },
   {
     "name": "Pineapple",
@@ -1400,11 +4317,43 @@
     "fats": 0
   },
   {
+    "name": "Pineapple Tarts (2 pieces)",
+    "calories": 160,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 7,
+    "aliases": [
+      "tart nenas"
+    ]
+  },
+  {
     "name": "Pisang Goreng (3 pieces)",
     "calories": 280,
     "protein": 3,
     "carbs": 42,
-    "fats": 12
+    "fats": 12,
+    "aliases": [
+      "banana fritters",
+      "goreng pisang"
+    ]
+  },
+  {
+    "name": "Pistachios (28g)",
+    "calories": 159,
+    "protein": 6,
+    "carbs": 8,
+    "fats": 13
+  },
+  {
+    "name": "Pita Bread (1 piece)",
+    "calories": 165,
+    "protein": 5,
+    "carbs": 33,
+    "fats": 1,
+    "aliases": [
+      "pitta",
+      "roti arab"
+    ]
   },
   {
     "name": "Pizza Slice",
@@ -1414,11 +4363,65 @@
     "fats": 10
   },
   {
-    "name": "Popcorn",
-    "calories": 31,
-    "protein": 1,
-    "carbs": 6,
+    "name": "Plain Porridge (1 bowl)",
+    "calories": 140,
+    "protein": 3,
+    "carbs": 30,
+    "fats": 1,
+    "aliases": [
+      "bubur",
+      "bubur nasi",
+      "congee",
+      "rice porridge"
+    ]
+  },
+  {
+    "name": "Plum (1 fruit)",
+    "calories": 30,
+    "protein": 0,
+    "carbs": 8,
     "fats": 0
+  },
+  {
+    "name": "Pomegranate (1/2 cup arils)",
+    "calories": 72,
+    "protein": 1,
+    "carbs": 16,
+    "fats": 1,
+    "aliases": [
+      "delima"
+    ]
+  },
+  {
+    "name": "Pomelo (1 cup)",
+    "calories": 72,
+    "protein": 1,
+    "carbs": 18,
+    "fats": 0,
+    "aliases": [
+      "limau bali"
+    ]
+  },
+  {
+    "name": "Popcorn (3 cups, air-popped)",
+    "calories": 93,
+    "protein": 3,
+    "carbs": 19,
+    "fats": 1,
+    "aliases": [
+      "bertih jagung"
+    ]
+  },
+  {
+    "name": "Popcorn Chicken (regular)",
+    "calories": 290,
+    "protein": 17,
+    "carbs": 18,
+    "fats": 17,
+    "aliases": [
+      "kfc popcorn chicken"
+    ],
+    "brand": "KFC"
   },
   {
     "name": "Popiah",
@@ -1442,17 +4445,41 @@
     "fats": 0
   },
   {
-    "name": "Potato Chips",
+    "name": "Potato Chips (28g)",
     "calories": 152,
     "protein": 2,
     "carbs": 15,
-    "fats": 10
+    "fats": 10,
+    "aliases": [
+      "crisps",
+      "kerepek kentang",
+      "lays",
+      "pringles"
+    ]
   },
   {
-    "name": "Pretzels",
+    "name": "Potato Salad (1/2 cup)",
+    "calories": 180,
+    "protein": 3,
+    "carbs": 14,
+    "fats": 12
+  },
+  {
+    "name": "Prawn Crackers (28g)",
+    "calories": 150,
+    "protein": 1,
+    "carbs": 17,
+    "fats": 9,
+    "aliases": [
+      "keropok",
+      "keropok udang"
+    ]
+  },
+  {
+    "name": "Pretzels (28g)",
     "calories": 108,
     "protein": 3,
-    "carbs": 22,
+    "carbs": 23,
     "fats": 1
   },
   {
@@ -1463,11 +4490,11 @@
     "fats": 7
   },
   {
-    "name": "Protein Shake",
-    "calories": 160,
-    "protein": 30,
-    "carbs": 5,
-    "fats": 2
+    "name": "Protein Pancakes (2)",
+    "calories": 250,
+    "protein": 22,
+    "carbs": 24,
+    "fats": 7
   },
   {
     "name": "Protein Shake (1 scoop)",
@@ -1477,11 +4504,89 @@
     "fats": 2
   },
   {
+    "name": "Pumpkin (1 cup cooked)",
+    "calories": 49,
+    "protein": 2,
+    "carbs": 12,
+    "fats": 0,
+    "aliases": [
+      "labu"
+    ]
+  },
+  {
+    "name": "Pumpkin Seeds (28g)",
+    "calories": 151,
+    "protein": 7,
+    "carbs": 5,
+    "fats": 13,
+    "aliases": [
+      "pepitas"
+    ]
+  },
+  {
+    "name": "Puri (2 pieces)",
+    "calories": 240,
+    "protein": 4,
+    "carbs": 28,
+    "fats": 12,
+    "aliases": [
+      "poori"
+    ]
+  },
+  {
+    "name": "Putu Mayam (2 pieces)",
+    "calories": 200,
+    "protein": 3,
+    "carbs": 42,
+    "fats": 3,
+    "aliases": [
+      "string hoppers",
+      "idiyappam",
+      "putu mayong"
+    ]
+  },
+  {
+    "name": "Quarter Pounder with Cheese",
+    "calories": 520,
+    "protein": 30,
+    "carbs": 42,
+    "fats": 26,
+    "aliases": [
+      "quarter pounder"
+    ],
+    "brand": "McDonald's"
+  },
+  {
     "name": "Quinoa",
     "calories": 222,
     "protein": 8,
     "carbs": 39,
     "fats": 4
+  },
+  {
+    "name": "Raisins (small box, 43g)",
+    "calories": 129,
+    "protein": 1,
+    "carbs": 34,
+    "fats": 0,
+    "aliases": [
+      "kismis",
+      "sultanas"
+    ]
+  },
+  {
+    "name": "Raita (1/2 cup)",
+    "calories": 65,
+    "protein": 3,
+    "carbs": 6,
+    "fats": 3
+  },
+  {
+    "name": "Rambutan (5 fruits)",
+    "calories": 62,
+    "protein": 1,
+    "carbs": 16,
+    "fats": 0
   },
   {
     "name": "Ramen",
@@ -1491,18 +4596,65 @@
     "fats": 14
   },
   {
-    "name": "Ramen (Tonkotsu)",
-    "calories": 650,
-    "protein": 28,
-    "carbs": 72,
-    "fats": 27
+    "name": "Ramly Burger (beef)",
+    "calories": 430,
+    "protein": 18,
+    "carbs": 36,
+    "fats": 24,
+    "aliases": [
+      "burger ramly",
+      "burger daging",
+      "street burger"
+    ],
+    "brand": "Ramly"
   },
   {
-    "name": "Raspberries",
+    "name": "Ramly Burger Special (with egg)",
+    "calories": 520,
+    "protein": 24,
+    "carbs": 37,
+    "fats": 31,
+    "aliases": [
+      "burger special",
+      "burger ramly special",
+      "burger telur"
+    ],
+    "brand": "Ramly"
+  },
+  {
+    "name": "Ranch Dressing (2 tbsp)",
+    "calories": 129,
+    "protein": 0,
+    "carbs": 2,
+    "fats": 13
+  },
+  {
+    "name": "Rasam (1 cup)",
+    "calories": 50,
+    "protein": 2,
+    "carbs": 8,
+    "fats": 1
+  },
+  {
+    "name": "Raspberries (1 cup)",
     "calories": 64,
     "protein": 1,
     "carbs": 15,
-    "fats": 1
+    "fats": 1,
+    "aliases": [
+      "raspberry"
+    ]
+  },
+  {
+    "name": "Red Bull (250ml can)",
+    "calories": 110,
+    "protein": 0,
+    "carbs": 28,
+    "fats": 0,
+    "aliases": [
+      "energy drink"
+    ],
+    "brand": "Red Bull"
   },
   {
     "name": "Red Wine",
@@ -1516,7 +4668,21 @@
     "calories": 470,
     "protein": 28,
     "carbs": 10,
-    "fats": 36
+    "fats": 36,
+    "aliases": [
+      "beef rendang",
+      "rendang"
+    ]
+  },
+  {
+    "name": "Rice Cakes (2 pieces)",
+    "calories": 70,
+    "protein": 1,
+    "carbs": 15,
+    "fats": 0,
+    "aliases": [
+      "puffed rice cake"
+    ]
   },
   {
     "name": "Roast Chicken Rice",
@@ -1526,18 +4692,91 @@
     "fats": 25
   },
   {
+    "name": "Roast Duck (100g)",
+    "calories": 337,
+    "protein": 19,
+    "carbs": 0,
+    "fats": 28,
+    "aliases": [
+      "itik panggang",
+      "siu ngap"
+    ]
+  },
+  {
     "name": "Rojak",
     "calories": 320,
     "protein": 9,
     "carbs": 40,
-    "fats": 15
+    "fats": 15,
+    "aliases": [
+      "pasembur",
+      "rojak buah"
+    ]
+  },
+  {
+    "name": "Rolled Oats (1/2 cup dry)",
+    "calories": 150,
+    "protein": 5,
+    "carbs": 27,
+    "fats": 3,
+    "aliases": [
+      "oats dry",
+      "quaker oats"
+    ]
+  },
+  {
+    "name": "Roti Bom (1 piece)",
+    "calories": 460,
+    "protein": 7,
+    "carbs": 56,
+    "fats": 23
   },
   {
     "name": "Roti Canai",
     "calories": 301,
     "protein": 6,
     "carbs": 38,
-    "fats": 14
+    "fats": 14,
+    "aliases": [
+      "roti kosong",
+      "roti prata",
+      "prata"
+    ]
+  },
+  {
+    "name": "Roti Canai with Dhal (1 piece)",
+    "calories": 400,
+    "protein": 10,
+    "carbs": 52,
+    "fats": 17,
+    "aliases": [
+      "roti canai banjir",
+      "roti kosong dhal"
+    ]
+  },
+  {
+    "name": "Roti John",
+    "calories": 540,
+    "protein": 24,
+    "carbs": 52,
+    "fats": 26
+  },
+  {
+    "name": "Roti Planta (1 piece)",
+    "calories": 430,
+    "protein": 7,
+    "carbs": 44,
+    "fats": 25
+  },
+  {
+    "name": "Roti Sardin (1 piece)",
+    "calories": 410,
+    "protein": 15,
+    "carbs": 42,
+    "fats": 20,
+    "aliases": [
+      "roti sardine"
+    ]
   },
   {
     "name": "Roti Telur",
@@ -1554,11 +4793,73 @@
     "fats": 17
   },
   {
+    "name": "Rotisserie Chicken (100g)",
+    "calories": 190,
+    "protein": 24,
+    "carbs": 0,
+    "fats": 10,
+    "aliases": [
+      "roast chicken",
+      "ayam panggang",
+      "ayam golek"
+    ]
+  },
+  {
     "name": "Salmon",
     "calories": 208,
     "protein": 20,
     "carbs": 0,
     "fats": 13
+  },
+  {
+    "name": "Salmon Nigiri (2 pieces)",
+    "calories": 120,
+    "protein": 6,
+    "carbs": 16,
+    "fats": 3,
+    "aliases": [
+      "nigiri",
+      "salmon sushi"
+    ]
+  },
+  {
+    "name": "Salmon Sashimi (5 slices)",
+    "calories": 155,
+    "protein": 15,
+    "carbs": 0,
+    "fats": 10,
+    "aliases": [
+      "sashimi"
+    ]
+  },
+  {
+    "name": "Salsa (2 tbsp)",
+    "calories": 10,
+    "protein": 0,
+    "carbs": 2,
+    "fats": 0
+  },
+  {
+    "name": "Sambal (1 tbsp)",
+    "calories": 30,
+    "protein": 0,
+    "carbs": 3,
+    "fats": 2,
+    "aliases": [
+      "sambal belacan",
+      "sambal tumis",
+      "chilli paste"
+    ]
+  },
+  {
+    "name": "Sambal Ikan Bilis (2 tbsp)",
+    "calories": 100,
+    "protein": 6,
+    "carbs": 5,
+    "fats": 6,
+    "aliases": [
+      "sambal bilis"
+    ]
   },
   {
     "name": "Sambal Udang",
@@ -1568,6 +4869,16 @@
     "fats": 18
   },
   {
+    "name": "Sambar (1 cup)",
+    "calories": 140,
+    "protein": 7,
+    "carbs": 20,
+    "fats": 3,
+    "aliases": [
+      "sambhar"
+    ]
+  },
+  {
     "name": "Samosa (2 pieces)",
     "calories": 300,
     "protein": 6,
@@ -1575,11 +4886,27 @@
     "fats": 16
   },
   {
+    "name": "Sardines (1 can, 92g)",
+    "calories": 191,
+    "protein": 23,
+    "carbs": 0,
+    "fats": 11,
+    "aliases": [
+      "sardin",
+      "canned sardines"
+    ]
+  },
+  {
     "name": "Satay Ayam (5 sticks)",
     "calories": 280,
     "protein": 26,
     "carbs": 10,
-    "fats": 15
+    "fats": 15,
+    "aliases": [
+      "chicken satay",
+      "sate ayam",
+      "satay"
+    ]
   },
   {
     "name": "Satay Daging (5 sticks)",
@@ -1589,11 +4916,74 @@
     "fats": 19
   },
   {
+    "name": "Sausage McMuffin with Egg",
+    "calories": 480,
+    "protein": 21,
+    "carbs": 30,
+    "fats": 31,
+    "aliases": [
+      "sausage mcmuffin"
+    ],
+    "brand": "McDonald's"
+  },
+  {
+    "name": "Sayur Lodeh (1 serving)",
+    "calories": 190,
+    "protein": 5,
+    "carbs": 12,
+    "fats": 14,
+    "aliases": [
+      "lodeh"
+    ]
+  },
+  {
     "name": "Scrambled Eggs (2 eggs)",
     "calories": 200,
     "protein": 13,
     "carbs": 2,
     "fats": 15
+  },
+  {
+    "name": "Seaweed Snack (1 pack)",
+    "calories": 30,
+    "protein": 1,
+    "carbs": 1,
+    "fats": 2,
+    "aliases": [
+      "nori",
+      "rumpai laut"
+    ]
+  },
+  {
+    "name": "Shakshuka (2 eggs)",
+    "calories": 260,
+    "protein": 15,
+    "carbs": 14,
+    "fats": 16
+  },
+  {
+    "name": "Shin Ramyun (1 pack)",
+    "calories": 510,
+    "protein": 10,
+    "carbs": 80,
+    "fats": 16,
+    "aliases": [
+      "shin ramen",
+      "korean instant noodles",
+      "ramyeon"
+    ],
+    "brand": "Nongshim"
+  },
+  {
+    "name": "Shoyu Ramen (1 bowl)",
+    "calories": 470,
+    "protein": 22,
+    "carbs": 62,
+    "fats": 14,
+    "aliases": [
+      "shoyu ramen",
+      "ramen"
+    ]
   },
   {
     "name": "Shrimp",
@@ -1617,11 +5007,28 @@
     "fats": 10
   },
   {
-    "name": "Skim Milk",
+    "name": "Skim Milk (1 cup)",
     "calories": 83,
     "protein": 8,
     "carbs": 12,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "fat free milk",
+      "nonfat milk",
+      "susu skim"
+    ]
+  },
+  {
+    "name": "Sliced Ham (2 slices)",
+    "calories": 60,
+    "protein": 10,
+    "carbs": 1,
+    "fats": 2,
+    "aliases": [
+      "ham",
+      "chicken ham",
+      "turkey ham"
+    ]
   },
   {
     "name": "Smoothie",
@@ -1638,6 +5045,114 @@
     "fats": 11
   },
   {
+    "name": "Snickers (1 bar, 50g)",
+    "calories": 250,
+    "protein": 4,
+    "carbs": 33,
+    "fats": 12,
+    "brand": "Mars"
+  },
+  {
+    "name": "Soba Noodles (1 cup cooked)",
+    "calories": 113,
+    "protein": 6,
+    "carbs": 24,
+    "fats": 0,
+    "aliases": [
+      "buckwheat noodles"
+    ]
+  },
+  {
+    "name": "Soju (1 shot)",
+    "calories": 64,
+    "protein": 0,
+    "carbs": 2,
+    "fats": 0
+  },
+  {
+    "name": "Som Tam",
+    "calories": 140,
+    "protein": 4,
+    "carbs": 24,
+    "fats": 4,
+    "aliases": [
+      "papaya salad",
+      "som tum"
+    ]
+  },
+  {
+    "name": "Sorbet (1/2 cup)",
+    "calories": 110,
+    "protein": 0,
+    "carbs": 28,
+    "fats": 0
+  },
+  {
+    "name": "Soto Ayam",
+    "calories": 310,
+    "protein": 22,
+    "carbs": 28,
+    "fats": 12,
+    "aliases": [
+      "soto"
+    ]
+  },
+  {
+    "name": "Sourdough Bread (1 slice)",
+    "calories": 120,
+    "protein": 4,
+    "carbs": 23,
+    "fats": 1,
+    "aliases": [
+      "sourdough"
+    ]
+  },
+  {
+    "name": "Soy Milk (1 cup)",
+    "calories": 100,
+    "protein": 7,
+    "carbs": 8,
+    "fats": 4,
+    "aliases": [
+      "soya milk",
+      "susu soya"
+    ]
+  },
+  {
+    "name": "Soy Sauce (1 tbsp)",
+    "calories": 9,
+    "protein": 1,
+    "carbs": 1,
+    "fats": 0,
+    "aliases": [
+      "kicap",
+      "kicap masin"
+    ]
+  },
+  {
+    "name": "Soya Bean Drink (1 glass)",
+    "calories": 130,
+    "protein": 6,
+    "carbs": 18,
+    "fats": 4,
+    "aliases": [
+      "tau fu sui",
+      "air soya",
+      "soya"
+    ]
+  },
+  {
+    "name": "Soya Cincau (1 glass)",
+    "calories": 140,
+    "protein": 5,
+    "carbs": 22,
+    "fats": 4,
+    "aliases": [
+      "michael jackson drink",
+      "cincau"
+    ]
+  },
+  {
     "name": "Spaghetti",
     "calories": 221,
     "protein": 8,
@@ -1649,7 +5164,11 @@
     "calories": 590,
     "protein": 27,
     "carbs": 74,
-    "fats": 20
+    "fats": 20,
+    "aliases": [
+      "bolognese",
+      "spag bol"
+    ]
   },
   {
     "name": "Spinach",
@@ -1659,32 +5178,123 @@
     "fats": 0
   },
   {
-    "name": "Strawberries",
+    "name": "Spring Roll (1 fried)",
+    "calories": 110,
+    "protein": 3,
+    "carbs": 12,
+    "fats": 6,
+    "aliases": [
+      "popia goreng",
+      "egg roll"
+    ]
+  },
+  {
+    "name": "Starfruit (1 fruit)",
+    "calories": 28,
+    "protein": 1,
+    "carbs": 6,
+    "fats": 0,
+    "aliases": [
+      "belimbing",
+      "carambola"
+    ]
+  },
+  {
+    "name": "Steamed Fish (1 serving)",
+    "calories": 200,
+    "protein": 30,
+    "carbs": 3,
+    "fats": 7,
+    "aliases": [
+      "ikan kukus",
+      "steam fish",
+      "ikan stim"
+    ]
+  },
+  {
+    "name": "Stir-Fried Mixed Vegetables (1 serving)",
+    "calories": 130,
+    "protein": 4,
+    "carbs": 12,
+    "fats": 8,
+    "aliases": [
+      "sayur campur",
+      "sayur goreng",
+      "chap chye",
+      "fried vegetables"
+    ]
+  },
+  {
+    "name": "Strawberries (1 cup)",
     "calories": 49,
     "protein": 1,
     "carbs": 12,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "strawberry"
+    ]
+  },
+  {
+    "name": "Sugar (1 tsp)",
+    "calories": 16,
+    "protein": 0,
+    "carbs": 4,
+    "fats": 0,
+    "aliases": [
+      "gula"
+    ]
   },
   {
     "name": "Sugarcane Juice",
     "calories": 180,
     "protein": 0,
     "carbs": 44,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "air tebu"
+    ]
   },
   {
-    "name": "Sushi Roll",
-    "calories": 255,
-    "protein": 9,
-    "carbs": 38,
-    "fats": 7
+    "name": "Sundubu Jjigae",
+    "calories": 250,
+    "protein": 18,
+    "carbs": 10,
+    "fats": 15,
+    "aliases": [
+      "soft tofu stew"
+    ]
+  },
+  {
+    "name": "Sunflower Seeds (28g)",
+    "calories": 165,
+    "protein": 6,
+    "carbs": 7,
+    "fats": 14,
+    "aliases": [
+      "kuaci"
+    ]
+  },
+  {
+    "name": "Sup Ayam (1 bowl)",
+    "calories": 160,
+    "protein": 16,
+    "carbs": 8,
+    "fats": 7,
+    "aliases": [
+      "chicken soup malay",
+      "sup ayam kampung"
+    ]
   },
   {
     "name": "Sushi Roll (6 pieces)",
     "calories": 250,
     "protein": 9,
     "carbs": 42,
-    "fats": 4
+    "fats": 4,
+    "aliases": [
+      "california roll",
+      "maki"
+    ]
   },
   {
     "name": "Sweet and Sour Pork",
@@ -1692,6 +5302,27 @@
     "protein": 24,
     "carbs": 52,
     "fats": 24
+  },
+  {
+    "name": "Sweet Corn (1/2 cup)",
+    "calories": 72,
+    "protein": 2,
+    "carbs": 16,
+    "fats": 1,
+    "aliases": [
+      "corn kernels",
+      "jagung manis"
+    ]
+  },
+  {
+    "name": "Sweet Lassi (1 glass)",
+    "calories": 180,
+    "protein": 6,
+    "carbs": 28,
+    "fats": 5,
+    "aliases": [
+      "lassi"
+    ]
   },
   {
     "name": "Sweet Potato",
@@ -1708,6 +5339,26 @@
     "fats": 18
   },
   {
+    "name": "Swiss Roll (1 slice)",
+    "calories": 130,
+    "protein": 2,
+    "carbs": 20,
+    "fats": 5,
+    "aliases": [
+      "kek gulung"
+    ]
+  },
+  {
+    "name": "Tabbouleh (1 cup)",
+    "calories": 180,
+    "protein": 4,
+    "carbs": 20,
+    "fats": 10,
+    "aliases": [
+      "tabouli"
+    ]
+  },
+  {
     "name": "Taco",
     "calories": 156,
     "protein": 8,
@@ -1715,11 +5366,100 @@
     "fats": 8
   },
   {
+    "name": "Takoyaki (6 pieces)",
+    "calories": 280,
+    "protein": 9,
+    "carbs": 34,
+    "fats": 12
+  },
+  {
+    "name": "Tandoori Chicken (1 leg quarter)",
+    "calories": 260,
+    "protein": 30,
+    "carbs": 4,
+    "fats": 13,
+    "aliases": [
+      "ayam tandoori",
+      "tandoori"
+    ]
+  },
+  {
+    "name": "Tang Yuan (4 pieces)",
+    "calories": 220,
+    "protein": 3,
+    "carbs": 38,
+    "fats": 6,
+    "aliases": [
+      "glutinous rice balls"
+    ]
+  },
+  {
+    "name": "Tangerine (1 fruit)",
+    "calories": 47,
+    "protein": 1,
+    "carbs": 12,
+    "fats": 0,
+    "aliases": [
+      "mandarin",
+      "mandarin orange",
+      "clementine",
+      "limau mandarin"
+    ]
+  },
+  {
     "name": "Tau Fu Fah",
     "calories": 130,
     "protein": 5,
     "carbs": 22,
-    "fats": 3
+    "fats": 3,
+    "aliases": [
+      "tofu pudding",
+      "douhua",
+      "tau huay"
+    ]
+  },
+  {
+    "name": "Tea with Milk and Sugar (1 cup)",
+    "calories": 60,
+    "protein": 1,
+    "carbs": 10,
+    "fats": 2,
+    "aliases": [
+      "english tea",
+      "milk tea"
+    ]
+  },
+  {
+    "name": "Teh Ais (1 glass)",
+    "calories": 160,
+    "protein": 3,
+    "carbs": 26,
+    "fats": 5,
+    "aliases": [
+      "iced milk tea",
+      "teh ais susu"
+    ]
+  },
+  {
+    "name": "Teh C (1 cup)",
+    "calories": 110,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 3,
+    "aliases": [
+      "teh c panas"
+    ]
+  },
+  {
+    "name": "Teh O (sweetened)",
+    "calories": 60,
+    "protein": 0,
+    "carbs": 15,
+    "fats": 0,
+    "aliases": [
+      "teh o panas",
+      "black tea with sugar"
+    ]
   },
   {
     "name": "Teh O Ais Limau",
@@ -1733,21 +5473,75 @@
     "calories": 130,
     "protein": 3,
     "carbs": 20,
-    "fats": 4
+    "fats": 4,
+    "aliases": [
+      "pulled tea",
+      "teh susu"
+    ]
   },
   {
-    "name": "Tempeh",
+    "name": "Telur Dadar (omelette)",
+    "calories": 200,
+    "protein": 12,
+    "carbs": 2,
+    "fats": 16,
+    "aliases": [
+      "malay omelette"
+    ]
+  },
+  {
+    "name": "Tempeh (100g)",
     "calories": 192,
     "protein": 20,
     "carbs": 8,
-    "fats": 11
+    "fats": 11,
+    "aliases": [
+      "tempe"
+    ]
+  },
+  {
+    "name": "Tempeh Goreng (3 pieces)",
+    "calories": 195,
+    "protein": 13,
+    "carbs": 8,
+    "fats": 13,
+    "aliases": [
+      "fried tempeh"
+    ]
+  },
+  {
+    "name": "Tempura (5 pieces)",
+    "calories": 300,
+    "protein": 8,
+    "carbs": 28,
+    "fats": 17,
+    "aliases": [
+      "prawn tempura",
+      "ebi tempura"
+    ]
+  },
+  {
+    "name": "Thai Iced Tea (1 glass)",
+    "calories": 200,
+    "protein": 2,
+    "carbs": 36,
+    "fats": 6,
+    "aliases": [
+      "cha yen",
+      "thai milk tea"
+    ]
   },
   {
     "name": "Thosai",
     "calories": 170,
     "protein": 5,
     "carbs": 30,
-    "fats": 4
+    "fats": 4,
+    "aliases": [
+      "tosai",
+      "dosai",
+      "plain dosa"
+    ]
   },
   {
     "name": "Tilapia",
@@ -1764,6 +5558,16 @@
     "fats": 9
   },
   {
+    "name": "Tom Kha Gai",
+    "calories": 270,
+    "protein": 16,
+    "carbs": 10,
+    "fats": 19,
+    "aliases": [
+      "coconut chicken soup"
+    ]
+  },
+  {
     "name": "Tom Yum Soup",
     "calories": 180,
     "protein": 16,
@@ -1771,11 +5575,28 @@
     "fats": 8
   },
   {
-    "name": "Tomato",
+    "name": "Tomato (1 medium)",
     "calories": 22,
     "protein": 1,
     "carbs": 5,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "tomatoes"
+    ]
+  },
+  {
+    "name": "Tomato Soup (1 bowl)",
+    "calories": 100,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 2
+  },
+  {
+    "name": "Tonkotsu Ramen (1 bowl)",
+    "calories": 650,
+    "protein": 28,
+    "carbs": 72,
+    "fats": 27
   },
   {
     "name": "Tortilla",
@@ -1785,11 +5606,43 @@
     "fats": 4
   },
   {
+    "name": "Tortilla Chips (28g)",
+    "calories": 140,
+    "protein": 2,
+    "carbs": 18,
+    "fats": 7,
+    "aliases": [
+      "nacho chips",
+      "doritos"
+    ]
+  },
+  {
+    "name": "Tteokbokki (1 serving)",
+    "calories": 380,
+    "protein": 8,
+    "carbs": 74,
+    "fats": 6,
+    "aliases": [
+      "topokki",
+      "rice cakes korean"
+    ]
+  },
+  {
     "name": "Tuna",
     "calories": 132,
     "protein": 28,
     "carbs": 0,
     "fats": 1
+  },
+  {
+    "name": "Tuna in Oil (100g)",
+    "calories": 198,
+    "protein": 29,
+    "carbs": 0,
+    "fats": 8,
+    "aliases": [
+      "tuna oil"
+    ]
   },
   {
     "name": "Tuna Salad",
@@ -1799,6 +5652,27 @@
     "fats": 18
   },
   {
+    "name": "Tuna Sandwich",
+    "calories": 350,
+    "protein": 22,
+    "carbs": 32,
+    "fats": 15,
+    "aliases": [
+      "sandwich tuna"
+    ]
+  },
+  {
+    "name": "Tuna Sub (6 inch)",
+    "calories": 480,
+    "protein": 20,
+    "carbs": 44,
+    "fats": 25,
+    "aliases": [
+      "subway tuna"
+    ],
+    "brand": "Subway"
+  },
+  {
     "name": "Turkey Breast",
     "calories": 135,
     "protein": 30,
@@ -1806,11 +5680,72 @@
     "fats": 1
   },
   {
+    "name": "Turkey Breast Sub (6 inch)",
+    "calories": 280,
+    "protein": 18,
+    "carbs": 46,
+    "fats": 4,
+    "aliases": [
+      "subway turkey"
+    ],
+    "brand": "Subway"
+  },
+  {
+    "name": "Udon Noodles (1 cup cooked)",
+    "calories": 190,
+    "protein": 6,
+    "carbs": 38,
+    "fats": 1
+  },
+  {
+    "name": "Udon Soup (1 bowl)",
+    "calories": 360,
+    "protein": 12,
+    "carbs": 66,
+    "fats": 5,
+    "aliases": [
+      "kitsune udon",
+      "udon"
+    ]
+  },
+  {
     "name": "Vadai",
     "calories": 180,
     "protein": 6,
     "carbs": 20,
     "fats": 9
+  },
+  {
+    "name": "Veggie Delite (6 inch)",
+    "calories": 210,
+    "protein": 8,
+    "carbs": 39,
+    "fats": 2,
+    "aliases": [
+      "subway veggie"
+    ],
+    "brand": "Subway"
+  },
+  {
+    "name": "Vietnamese Iced Coffee (1 glass)",
+    "calories": 140,
+    "protein": 2,
+    "carbs": 24,
+    "fats": 4,
+    "aliases": [
+      "ca phe sua da"
+    ]
+  },
+  {
+    "name": "Vodka (1 shot)",
+    "calories": 97,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 0,
+    "aliases": [
+      "gin",
+      "tequila"
+    ]
   },
   {
     "name": "Waffle",
@@ -1827,18 +5762,36 @@
     "fats": 18
   },
   {
-    "name": "Wantan Mee (dry)",
-    "calories": 512,
-    "protein": 24,
-    "carbs": 66,
-    "fats": 17
+    "name": "Wantan Mee Soup (1 bowl)",
+    "calories": 410,
+    "protein": 22,
+    "carbs": 56,
+    "fats": 11,
+    "aliases": [
+      "wonton noodle soup",
+      "wan tan mee soup"
+    ]
   },
   {
-    "name": "Watermelon",
+    "name": "Watermelon (1 cup)",
     "calories": 46,
     "protein": 1,
     "carbs": 12,
-    "fats": 0
+    "fats": 0,
+    "aliases": [
+      "tembikai"
+    ]
+  },
+  {
+    "name": "Wheat Biscuit Cereal (2 biscuits)",
+    "calories": 136,
+    "protein": 4,
+    "carbs": 26,
+    "fats": 1,
+    "aliases": [
+      "weetabix",
+      "weet-bix"
+    ]
   },
   {
     "name": "Whey Protein",
@@ -1848,11 +5801,47 @@
     "fats": 2
   },
   {
-    "name": "White Bread",
-    "calories": 79,
+    "name": "Whipped Cream (2 tbsp)",
+    "calories": 50,
+    "protein": 0,
+    "carbs": 1,
+    "fats": 5
+  },
+  {
+    "name": "Whipped Potato with Gravy",
+    "calories": 130,
     "protein": 3,
-    "carbs": 15,
-    "fats": 1
+    "carbs": 20,
+    "fats": 5,
+    "aliases": [
+      "kfc mashed potato",
+      "kfc whipped potato"
+    ],
+    "brand": "KFC"
+  },
+  {
+    "name": "Whisky (1 shot)",
+    "calories": 105,
+    "protein": 0,
+    "carbs": 0,
+    "fats": 0,
+    "aliases": [
+      "whiskey",
+      "brandy",
+      "rum"
+    ]
+  },
+  {
+    "name": "White Bread (2 slices)",
+    "calories": 156,
+    "protein": 6,
+    "carbs": 29,
+    "fats": 2,
+    "aliases": [
+      "roti putih",
+      "gardenia"
+    ],
+    "brand": "Gardenia"
   },
   {
     "name": "White Rice",
@@ -1869,6 +5858,57 @@
     "fats": 1
   },
   {
+    "name": "Whopper",
+    "calories": 660,
+    "protein": 28,
+    "carbs": 49,
+    "fats": 40,
+    "aliases": [
+      "bk whopper"
+    ],
+    "brand": "Burger King"
+  },
+  {
+    "name": "Wonton Soup (6 pieces)",
+    "calories": 230,
+    "protein": 14,
+    "carbs": 24,
+    "fats": 8,
+    "aliases": [
+      "wantan soup",
+      "sup wantan"
+    ]
+  },
+  {
+    "name": "Xiao Long Bao (4 pieces)",
+    "calories": 250,
+    "protein": 12,
+    "carbs": 26,
+    "fats": 11,
+    "aliases": [
+      "soup dumplings",
+      "xlb"
+    ]
+  },
+  {
+    "name": "Yakitori (2 skewers)",
+    "calories": 170,
+    "protein": 16,
+    "carbs": 6,
+    "fats": 9
+  },
+  {
+    "name": "Yellow Noodles (1 cup cooked)",
+    "calories": 220,
+    "protein": 7,
+    "carbs": 40,
+    "fats": 3,
+    "aliases": [
+      "mee kuning",
+      "egg noodles"
+    ]
+  },
+  {
     "name": "Yogurt",
     "calories": 149,
     "protein": 9,
@@ -1883,10 +5923,37 @@
     "fats": 14
   },
   {
-    "name": "Zucchini",
-    "calories": 33,
+    "name": "You Tiao (1 stick)",
+    "calories": 200,
+    "protein": 4,
+    "carbs": 24,
+    "fats": 10,
+    "aliases": [
+      "cakoi",
+      "char kway",
+      "chinese cruller"
+    ]
+  },
+  {
+    "name": "Zinger Burger",
+    "calories": 480,
+    "protein": 25,
+    "carbs": 44,
+    "fats": 23,
+    "aliases": [
+      "zinger",
+      "kfc burger"
+    ],
+    "brand": "KFC"
+  },
+  {
+    "name": "Zucchini (1 cup)",
+    "calories": 21,
     "protein": 2,
-    "carbs": 6,
-    "fats": 1
+    "carbs": 4,
+    "fats": 0,
+    "aliases": [
+      "courgette"
+    ]
   }
 ]

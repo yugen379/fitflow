@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { searchFood, searchLocalFoods } from "./foodService";
+import { searchFood, searchLocalFoods, ensureFoodIndex } from "./foodService";
 import { buildBriefing, applyPolish, CoachContext, CoachBriefing } from "./coachBriefing";
 import { splitPhrases, buildResult, normalizeItem, QuickAddResult, QuickAddItem } from "./quickAddUtils";
 import { decidePolish, polishBaseKey, polishSlot, readPolish, savePolish } from "./briefingPolishCache";
@@ -251,6 +251,8 @@ const estimateCaloriesUncached = async (description: string) => {
 
   // 1) Local curated database — instant hit for common foods like "bowl of oatmeal",
   //    "chicken breast", "banana smoothie". Strips filler words before matching.
+  await ensureFoodIndex();
+
   const local = searchLocalFoods(description);
   if (local.length > 0 && local[0].calories > 0) {
     const hit = local[0];
@@ -916,6 +918,8 @@ If you cannot parse any food, return [].`;
   // 2) Deterministic fallback — resolve each phrase via local DB → USDA.
   const items: QuickAddItem[] = [];
   for (const phrase of phrases) {
+    await ensureFoodIndex();
+
     const local = searchLocalFoods(phrase);
     if (local.length > 0 && local[0].calories > 0) {
       items.push(normalizeItem({ ...local[0], source: 'local' }));

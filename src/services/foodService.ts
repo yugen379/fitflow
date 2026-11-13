@@ -1,6 +1,10 @@
 /// <reference types="vite/client" />
 import { get, set } from 'idb-keyval';
 import { lookupBarcodeRaw } from './barcodeUtils';
+import {
+  buildFoodIndex, searchFoodIndex, resolveFoodPhrase, displayName,
+  type FoodIndex, type IndexedFood,
+} from './foodSearchIndex';
 
 const USDA_API_KEY = (import.meta as any).env?.VITE_USDA_API_KEY || 'DEMO_KEY';
 const CACHE_PREFIX = 'food_cache_';
@@ -138,39 +142,60 @@ const LOCAL_FOODS: LocalFood[] = [
   { name: 'Soda',                    aliases: ['soda', 'coke', 'cola', 'pepsi'],                                                                  calories: 150, protein: 0,  carbs: 39, fats: 0,  serving: '355ml can' },
 ];
 
-// Strip filler words so "a bowl of oatmeal with honey" matches "oatmeal".
-const FILLER = /\b(a|an|the|some|of|with|and|my|small|medium|large|big|bowl|cup|glass|plate|piece|slice|serving|portion|grams?|cups?)\b/gi;
-const normalize = (q: string) => q.toLowerCase().replace(FILLER, ' ').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+/** The curated list alone: what search knew before the full list was indexed. */
+export const CURATED_FOODS: ReadonlyArray<LocalFood> = LOCAL_FOODS;
 
-export const searchLocalFoods = (query: string): FoodProduct[] => {
-  const q = normalize(query);
-  if (!q) return [];
-  const tokens = q.split(' ').filter(t => t.length >= 2);
-  if (!tokens.length) return [];
+// --- Offline search over every bundled food --------------------------------
+//
+// The curated list above is in the main bundle, so search works from the first
+// keystroke. The big list (scripts/data/common-foods.json, the same file that
+// seeds the shared catalog) is a separate chunk loaded the first time anyone
+// searches; once it arrives the index is rebuilt over both.
+const curatedIndex = buildFoodIndex(
+  LOCAL_FOODS.map((f) => ({ name: f.name, calories: f.calories, protein: f.protein, carbs: f.carbs, fats: f.fats, serving: f.serving, aliases: f.aliases })),
+);
+let foodIndex: FoodIndex = curatedIndex;
+let fullIndexLoad: Promise<void> | null = null;
 
-  // Score each food by how many tokens it covers, then by alias-match-length.
-  const scored = LOCAL_FOODS.map(f => {
-    const hay = (f.name + ' ' + f.aliases.join(' ')).toLowerCase();
-    let score = 0;
-    let exact = 0;
-    for (const t of tokens) {
-      if (hay.includes(t)) score++;
-      // Exact alias match counts double
-      if (f.aliases.some(a => a === t || a.split(' ').includes(t))) exact++;
-    }
-    return { f, score, exact };
-  }).filter(s => s.score > 0)
-    .sort((a, b) => (b.exact - a.exact) || (b.score - a.score));
-
-  return scored.slice(0, 5).map(s => ({
-    name: `${s.f.name} (${s.f.serving})`,
-    calories: s.f.calories,
-    protein: s.f.protein,
-    carbs: s.f.carbs,
-    fats: s.f.fats,
-    source: 'LOCAL' as const,
-  }));
+/** Load the full food list (once). Resolves even if the chunk fails to load. */
+export const ensureFoodIndex = (): Promise<void> => {
+  if (!fullIndexLoad) {
+    fullIndexLoad = import('../../scripts/data/common-foods.json')
+      .then((mod) => {
+        const big = ((mod as any).default || mod) as IndexedFood[];
+        // Curated entries first: they win a name clash because their serving
+        // sizes were chosen for how people describe a meal.
+        foodIndex = buildFoodIndex([...curatedIndex.entries.map((e) => e.food), ...big]);
+      })
+      .catch(() => { fullIndexLoad = null; });
+  }
+  return fullIndexLoad;
 };
+
+const toProduct = (f: IndexedFood): FoodProduct => ({
+  name: displayName(f),
+  calories: f.calories,
+  protein: f.protein,
+  carbs: f.carbs,
+  fats: f.fats,
+  ...(f.brand ? { brand: f.brand } : {}),
+  source: 'LOCAL' as const,
+});
+
+/** Synchronous search over whatever is loaded. Call ensureFoodIndex() first when you can wait. */
+export const searchLocalFoods = (query: string, limit = 5): FoodProduct[] =>
+  searchFoodIndex(foodIndex, query, limit).map((h) => toProduct(h.food));
+
+/** The food a phrase names outright ("nasi lemak", "telur mata"), or null. Offline. */
+export const resolveLocalFood = async (phrase: string): Promise<FoodProduct | null> => {
+  await ensureFoodIndex();
+  const f = resolveFoodPhrase(foodIndex, phrase);
+  return f ? toProduct(f) : null;
+};
+
+/** How many foods search can currently see (for diagnostics and the proof). */
+export const localFoodCount = (): number => foodIndex.size;
+
 
 async function getFromCache(id: string): Promise<FoodProduct | null> {
   const cached = await get(`${CACHE_PREFIX}${id}`);
@@ -252,14 +277,7 @@ const dedupeUsda = (foods: any[]): FoodProduct[] => {
   return Array.from(seen.values());
 };
 
-export const searchFood = async (query: string): Promise<FoodProduct[]> => {
-  if (query.length < 2) return [];
-
-  // 1) Local curated database — instant, no API call, no duplicates, sane portions.
-  const local = searchLocalFoods(query);
-  if (local.length > 0) return local;
-
-  // 2) USDA fallback for anything not in the local DB.
+const searchUsda = async (query: string): Promise<FoodProduct[]> => {
   try {
     const res = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=20&api_key=${USDA_API_KEY}`);
     const data = await res.json();
@@ -270,3 +288,22 @@ export const searchFood = async (query: string): Promise<FoodProduct[]> => {
     return [];
   }
 };
+
+/**
+ * Offline results first, then USDA for whatever the bundled list lacks.
+ *
+ * This used to return the local hits and stop if there was even one, so any
+ * query that brushed a local food ("chicken tikka") never reached USDA. Now
+ * USDA is asked whenever the local list has fewer than a screenful, and its
+ * results follow the local ones.
+ */
+export const searchFood = async (query: string, limit = 8): Promise<FoodProduct[]> => {
+  if (query.trim().length < 2) return [];
+  await ensureFoodIndex();
+  const local = searchLocalFoods(query, limit);
+  if (local.length >= 4) return local;
+  const usda = await searchUsda(query);
+  const have = new Set(local.map((f) => f.name.toLowerCase()));
+  return [...local, ...usda.filter((u) => !have.has(u.name.toLowerCase()))].slice(0, limit);
+};
+

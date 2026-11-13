@@ -28,6 +28,7 @@
     "proof:steps": "tsx scripts/steps-proof.mjs",
     "perf": "node scripts/perf-probe.mjs",
     "proof:quickadd": "tsx scripts/quickadd-proof.mjs",
+    "proof:foodsearch": "tsx scripts/foodsearch-proof.mjs",
     "proof:catalog": "tsx scripts/catalog-proof.mjs",
     "proof:retention": "tsx scripts/retention-proof.mjs",
     "proof:engagement": "tsx scripts/engagement-proof.mjs",
