@@ -41,6 +41,7 @@
     "promo": "firebase emulators:exec --only auth,firestore \"node scripts/make-promo.mjs\"",
     "proof:ui": "firebase emulators:exec --only auth,firestore \"node scripts/ui-proof.mjs\"",
     "backfill:public-profiles": "node scripts/backfill-public-profiles.mjs",
+    "proof:csp": "vite build --mode e2e --outDir dist-e2e --emptyOutDir && npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions \"node scripts/csp-proof.mjs\"",
     "proof:flows": "npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions \"node scripts/flows-proof.mjs\"",
     "proof:formcheck": "tsx scripts/formcheck-proof.mjs",
     "proof:regressions": "tsx scripts/regressions-proof.mjs",

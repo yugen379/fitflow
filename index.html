@@ -42,12 +42,18 @@
          TLS + response time; on a cold mobile connection that alone was costing
          us most of a second before a single pixel appeared. Loading it as a
          print stylesheet and flipping to `all` on load makes it non-blocking,
-         and font-display:swap (already in the URL) covers the swap-in. -->
+         and font-display:swap (already in the URL) covers the swap-in.
+
+         The flip is done by the inline script further down, NOT by an
+         onload="..." attribute here. A Content-Security-Policy that forbids
+         inline event handlers (ours does, see scripts/csp-policy.mjs) would
+         block the attribute silently, and the fonts would stay "print" for
+         ever. `npm run proof:csp` found that. -->
     <link
+      id="ff-fonts"
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap"
       media="print"
-      onload="this.media='all'; this.onload=null;"
     />
     <noscript>
       <link
@@ -89,6 +95,16 @@
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark');
         }
+        // Switch the fonts stylesheet from "print" to "all" once it has loaded
+        // (see the comment on the <link id="ff-fonts"> above). If it is already
+        // loaded, from cache, the load event has passed: flip it now.
+        try {
+          var fonts = document.getElementById('ff-fonts');
+          if (fonts) {
+            var show = function () { fonts.media = 'all'; };
+            if (fonts.sheet) show(); else fonts.addEventListener('load', show);
+          }
+        } catch (e) { /* fonts fall back to the system face */ }
       })();
     </script>
   </head>
