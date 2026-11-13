@@ -287,6 +287,8 @@ await run('You: open Settings', page.getByRole('button', { name: 'Settings', exa
 await run('Dock → You (back)', dock('/profile'), textVisible, 'Weight over the last');
 await run('You: open Achievements', page.getByRole('button', { name: 'Achievements', exact: true }).last(), textVisible, 'ACHIEVEMENTS');
 
+if (process.env.LATENCY_SHOT_END) await page.screenshot({ path: process.env.LATENCY_SHOT_END });
+
 // ── Report ────────────────────────────────────────────────────────────────────
 console.log(`\n${C.b}Tap latency — production build, CPU ${CPU_SLOWDOWN}x slower, budget ${BUDGET_MS} ms${C.x}`);
 console.log(`${C.d}  response = input -> next paint (INP)   ready = input -> the content is on screen${C.x}\n`);

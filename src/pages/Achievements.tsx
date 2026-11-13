@@ -10,6 +10,7 @@
  */
 
 import React, { useMemo, useRef, useState } from 'react';
+import { useAfterFirstPaint } from '../hooks/useAfterFirstPaint';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Lock, Sparkles, X } from 'lucide-react';
 
@@ -32,6 +33,9 @@ import type { AchievementCategory, AchievementProgress, AchievementStats } from 
 
 type Filter = 'all' | AchievementCategory;
 
+/** About two screens' worth. The rest are built just after the first paint. */
+const CARDS_IN_FIRST_PAINT = 12;
+
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'daily-steps', label: CATEGORY_LABELS['daily-steps'] },
@@ -53,6 +57,9 @@ const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ en
   const [tilt, setTilt] = useState({ x: 0, y: 0, mx: 50, my: 50 });
   const { achievement, unlocked, ratio } = entry;
   const color = TIER_COLORS[achievement.tier];
+  // Only while tilted: 52 cards at rest each holding a 3D transform meant 52
+  // extra layers to draw on every visit, for an effect seen on one at a time.
+  const tilted = tilt.x !== 0 || tilt.y !== 0;
 
   const onMove = (event: React.PointerEvent<HTMLButtonElement>) => {
     const node = ref.current;
@@ -82,7 +89,7 @@ const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ en
       )}
       style={{
         borderColor: unlocked ? `${color}44` : 'rgba(255,255,255,0.06)',
-        transform: `perspective(700px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+        transform: tilted ? `perspective(700px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` : undefined,
         transition: 'transform 220ms cubic-bezier(0.16,1,0.3,1)',
         boxShadow: unlocked ? `0 0 26px -12px ${color}` : 'none',
       }}
@@ -167,6 +174,9 @@ export const Achievements: React.FC = () => {
     () => (filter === 'all' ? all : all.filter((e) => e.achievement.category === filter)),
     [all, filter],
   );
+
+  const showAllCards = useAfterFirstPaint();
+  const rendered = showAllCards ? visible : visible.slice(0, CARDS_IN_FIRST_PAINT);
 
   const openCard = (entry: AchievementProgress) => {
     setOpen(entry);
@@ -256,7 +266,7 @@ export const Achievements: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {visible.map((entry) => (
+        {rendered.map((entry) => (
           <Card key={entry.achievement.id} entry={entry} onOpen={() => openCard(entry)} />
         ))}
       </div>

@@ -8,9 +8,8 @@
  *   1. **The background never unmounts.** `ParticleField` lives outside the
  *      routed subtree, so the atmosphere is continuous across routes and the
  *      screen is never actually empty — only the content layer changes.
- *   2. **Depth, not sliding.** Screens rise through depth rather than sliding
- *      sideways, which preserves the sense that they occupy different depths of
- *      one space.
+ *   2. **A short rise, not a slide.** Screens fade up a few pixels in 160 ms. It
+ *      was a 3D tilt once, which redrew the whole page for 420 ms on every tap.
  *   3. **Liquid skeletons.** The Suspense fallback is a flowing shimmer that
  *      shares the page's shape, so the swap to real content is a fill rather
  *      than a replacement.
@@ -72,7 +71,7 @@ const buildField = (count: number): Particle[] => {
 };
 
 export const ParticleField: React.FC<{ density?: number; className?: string }> = ({
-  density = 26,
+  density = 12,
   className,
 }) => {
   const reduced = prefersReducedMotion();
@@ -104,7 +103,6 @@ export const ParticleField: React.FC<{ density?: number; className?: string }> =
             width: p.size,
             height: p.size,
             background: p.tone,
-            boxShadow: `0 0 ${p.size * 3}px ${p.tone}`,
             animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
           }}
@@ -155,31 +153,23 @@ export const LiquidSkeleton: React.FC = () => (
  * happens, and it did on the first attempt here.
  *
  * The compromise is deliberate and, on a phone, nearly invisible: the outgoing
- * screen is replaced immediately while the incoming one rises through depth
- * over the persistent particle field. Because the atmosphere never unmounts,
+ * screen is replaced immediately while the incoming one rises over the
+ * persistent particle field. Because the atmosphere never unmounts,
  * there is no blank frame between routes — which was the actual problem an exit
  * animation would have been solving. In-page motion still uses the full library;
  * it lives in lazy route chunks where it costs nothing at boot.
- *
- * Depth comes from the `perspective()` function inside the keyframe transform,
- * NOT from a `perspective` property on the container — see the comment on the
- * wrapper below for why that distinction is load-bearing.
  */
 export const SpatialPageTransition: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const reduced = prefersReducedMotion();
 
   return (
-    // NO `perspective` on this wrapper. Like `transform`, the `perspective`
-    // property makes an element the CONTAINING BLOCK for every
+    // NO `perspective` or `transform` on this wrapper. Each of them
+    // makes an element the CONTAINING BLOCK for every
     // `position: fixed` descendant — which meant every modal in the app (water
     // picker, edit profile, permissions sheet, scanner) was sized against this
     // wrapper instead of the viewport, and opened far below the fold on any
     // long page. The user taps, the modal mounts, nothing appears to happen.
-    //
-    // The depth effect is unaffected: the `ff-spatial-enter` keyframes already
-    // carry their own `perspective(1400px)` inside the transform function, so
-    // rotateX still has real depth rather than flattening into a squash.
     <div className="relative">
       <main
         key={location.pathname}

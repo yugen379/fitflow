@@ -18,6 +18,7 @@ import { computeLevel } from '../services/missionUtils';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '../hooks/useToast';
+import { useAfterFirstPaint } from '../hooks/useAfterFirstPaint';
 import { isHealthAvailable, connectAndPersist, DailyHealthMetrics } from '../services/healthService';
 import { Capacitor } from '@capacitor/core';
 import { allFeaturesFree, getEntitlement } from '../lib/billing';
@@ -39,6 +40,8 @@ export const Profile: React.FC = () => {
   const { profile, signOut } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  // The heatmap and workout list sit below the fold and each query the database.
+  const belowFoldReady = useAfterFirstPaint();
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [isLoggingWeight, setIsLoggingWeight] = useState(false);
   const [newWeight, setNewWeight] = useState('');
@@ -299,6 +302,7 @@ export const Profile: React.FC = () => {
                 <Line
                   type="monotone"
                   dataKey="weight"
+                  isAnimationActive={false}
                   stroke={ACCENT}
                   strokeWidth={2.5}
                   dot={{ r: 3, fill: ACCENT, strokeWidth: 0 }}
@@ -343,8 +347,8 @@ export const Profile: React.FC = () => {
       </div>
 
       {/* Streak heatmap */}
-      <div className="glass p-5">
-        <StreakHeatmap />
+      <div className="glass p-5 min-h-40">
+        {belowFoldReady && <StreakHeatmap />}
       </div>
 
       {/* Recent workouts */}
@@ -352,7 +356,7 @@ export const Profile: React.FC = () => {
         <div className="flex justify-between items-end px-1">
           <h2 className="font-display text-lg font-bold text-white tracking-tight">Recent workouts</h2>
         </div>
-        <WorkoutHistory limitCount={10} />
+        {belowFoldReady && <WorkoutHistory limitCount={10} />}
       </div>
 
       {/* Achievements */}

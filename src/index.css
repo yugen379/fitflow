@@ -145,11 +145,13 @@
 }
 
 @layer utilities {
-  /* === Surfaces === */
+  /* === Surfaces ===
+     No backdrop-filter on these in-page cards: there is rarely anything behind
+     them to blur, and the Android WebView was not rendering it anyway (v1.6.3
+     review), yet it was among the largest costs on every screen. .glass-spatial
+     keeps it, because the dock and other floating surfaces have text behind them. */
   .glass {
     background: var(--color-glass);
-    backdrop-filter: blur(28px) saturate(140%);
-    -webkit-backdrop-filter: blur(28px) saturate(140%);
     border: 1px solid var(--color-glass-border);
     border-radius: 1.5rem;
     box-shadow:
@@ -158,8 +160,6 @@
   }
   .glass-3d, .glass-card {
     background: var(--color-glass);
-    backdrop-filter: blur(28px) saturate(140%);
-    -webkit-backdrop-filter: blur(28px) saturate(140%);
     border: 1px solid var(--color-glass-border);
     border-radius: 1.5rem;
     box-shadow:
@@ -168,8 +168,6 @@
   }
   .stat-card-3d {
     background: var(--color-glass);
-    backdrop-filter: blur(28px) saturate(140%);
-    -webkit-backdrop-filter: blur(28px) saturate(140%);
     border: 1px solid var(--color-glass-border);
     border-radius: 1.75rem;
     padding: 1.5rem;
@@ -610,14 +608,8 @@
      particle field, so there is never a blank frame to cover. Transform and
      opacity only — the compositor handles this without a layout pass. */
   @keyframes ff-spatial-enter {
-    from {
-      opacity: 0;
-      transform: perspective(1400px) translate3d(0, 14px, 0) scale(0.94) rotateX(4deg);
-    }
-    to {
-      opacity: 1;
-      transform: perspective(1400px) translate3d(0, 0, 0) scale(1) rotateX(0deg);
-    }
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
   }
   .spatial-enter {
     /*
@@ -636,8 +628,11 @@
      * so the entrance is identical — it just stops pinning the end state after
      * it finishes. The final rendering is unchanged, because the `to` keyframe
      * is already the element's natural state (opacity 1, no offset).
+     *
+     * Short and flat on purpose: a 0.42 s 3D tilt redrew the whole page for
+     * longer than the 200 ms a tap is meant to take.
      */
-    animation: ff-spatial-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation: ff-spatial-enter 0.16s cubic-bezier(0.16, 1, 0.3, 1) backwards;
     /*
      * NO `will-change` here either. `will-change: opacity` (or transform)
      * forms a STACKING CONTEXT for the life of the element, which capped every
