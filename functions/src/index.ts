@@ -22,6 +22,11 @@ import Stripe from "stripe";
 import { db, DATABASE_ID } from "./db";
 export { awardXp } from "./xp";
 export { deleteAccount } from "./account";
+export { onPostLikeWritten, onPostCommentWritten, onPostCountersChanged } from "./postCounters";
+import { correctedTrialStart } from "./trialGuard";
+// From the package entry, not admin.firestore.*: the emulator's binding of
+// admin.firestore drops these statics.
+import { Timestamp } from "firebase-admin/firestore";
 import { runWeeklyRecaps } from "./recaps";
 
 // Gemini key lives in Firebase Secret Manager (replaces the deprecated
@@ -511,6 +516,29 @@ export const syncPublicProfile = onDocumentWritten(
     }
 
     const data = after.data() as Record<string, any>;
+
+    // A brand-new profile document: make sure its trial clock is not a second
+    // one (see trialGuard.ts). Only on create, so this costs one account lookup
+    // per sign-up and nothing on the thousands of writes that follow.
+    if (!event.data?.before?.exists && data.trialStartedAt) {
+      try {
+        const account = await admin.auth().getUser(uid);
+        const fixed = correctedTrialStart(
+          toMillisServer(data.trialStartedAt),
+          Date.parse(account.metadata.creationTime),
+        );
+        if (fixed != null) {
+          await db.doc(`users/${uid}`).update({
+            trialStartedAt: Timestamp.fromMillis(fixed),
+          });
+          console.warn("trial clock restored to account creation for", uid);
+        }
+      } catch (e: any) {
+        // No sign-in account behind this document (a seeded or test profile):
+        // nothing to compare against, so leave it.
+        if (e?.code !== "auth/user-not-found") console.error("trial guard failed for", uid, e);
+      }
+    }
 
     // Keep the fields the scheduled push jobs select on (see pushJobs.ts). The
     // equality check is what stops this write re-triggering itself forever.

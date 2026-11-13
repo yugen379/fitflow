@@ -628,5 +628,114 @@ check('while requests people asked for still go through', (await guard.checkAiAl
 delete process.env.AI_GLOBAL_CALLS_PER_DAY;
 check('the default app-wide limit is the agreed 1,000 a day', guard.AI_LIMITS.globalCallsPerDay === 1000, String(guard.AI_LIMITS.globalCallsPerDay));
 
+// =============================================================================
+section('12 · The free trial starts once per account');
+
+const { correctedTrialStart, TRIAL_SLACK_MS } = require('./lib/trialGuard.js');
+const T0 = Date.UTC(2026, 0, 1);
+check('a profile created seconds after its account keeps its trial start', correctedTrialStart(T0 + 5_000, T0) === null);
+check('a profile created just inside the slack is left alone', correctedTrialStart(T0 + TRIAL_SLACK_MS, T0) === null);
+check('a profile re-created 30 days later is put back to the account\'s creation',
+  correctedTrialStart(T0 + 30 * 86_400_000, T0) === T0);
+check('no trial on the profile, or no account to compare with: nothing to correct',
+  correctedTrialStart(null, T0) === null && correctedTrialStart(T0, null) === null && correctedTrialStart(NaN, T0) === null);
+
+// Until a value settles: it must hold on two reads half a second apart, so a
+// number that is merely passing through does not count.
+const holds = async (read, want, ms = 20_000) => {
+  const end = Date.now() + ms;
+  let last, streak = 0;
+  while (Date.now() < end) {
+    last = await read();
+    streak = JSON.stringify(last) === JSON.stringify(want) ? streak + 1 : 0;
+    if (streak >= 2) return { ok: true, last };
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return { ok: false, last };
+};
+const trialOf = async (uid) => (await adb.doc(`users/${uid}`).get()).data()?.trialStartedAt?.toMillis?.() ?? null;
+
+// An account that has existed for 30 days, whose owner deletes the profile
+// document and lets the app create it again with a brand-new trial.
+const OLD_UID = `oldacct_${WEEK}`;
+const oldCreated = new Date(Date.now() - 30 * 86_400_000);
+const imported = await admin.auth().importUsers([{
+  uid: OLD_UID, email: `${OLD_UID}@proof.test`,
+  metadata: { creationTime: oldCreated.toUTCString(), lastSignInTime: oldCreated.toUTCString() },
+}]);
+const oldAcct = await admin.auth().getUser(OLD_UID);
+const oldCreatedMs = Date.parse(oldAcct.metadata.creationTime);
+check('the test account really is 30 days old',
+  imported.failureCount === 0 && Math.abs(oldCreatedMs - oldCreated.getTime()) < 2000,
+  `created ${oldAcct.metadata.creationTime}`);
+await seedUser(OLD_UID, { trialStartedAt: ts.now(), subscriptionStatus: 'trialing' });
+const restored = await holds(() => trialOf(OLD_UID), oldCreatedMs);
+check('its re-created profile gets the ORIGINAL trial start back, not a new 6 days', restored.ok,
+  `trial start ${restored.last && new Date(restored.last).toISOString()}, account created ${new Date(oldCreatedMs).toISOString()}`);
+
+// A real first sign-up must not be touched.
+await signOut(auth).catch(() => {});
+const fresh = await newUser('fresh');
+const freshStart = ts.now();
+await seedUser(fresh, { trialStartedAt: freshStart, subscriptionStatus: 'trialing' });
+// Wait for the trigger to have run (the public mirror appears), then look.
+await holds(async () => (await adb.doc(`public_profiles/${fresh}`).get()).exists, true);
+check('a genuine new sign-up keeps the trial start it was given', (await trialOf(fresh)) === freshStart.toMillis());
+
+// =============================================================================
+section('13 · Like and comment totals are counted, not trusted');
+
+const { writeBatch: cwriteBatch, increment: cincrement, deleteDoc: cdeleteDoc } = await import('firebase/firestore');
+const POST = `countPost_${WEEK}`;
+const postRef = adb.doc(`posts/${POST}`);
+await postRef.set({ userId: bob, username: 'bob', content: 'count me', likesCount: 0, commentsCount: 0, createdAt: ts.now() });
+const totals = async () => {
+  const d = (await postRef.get()).data() || {};
+  return { likes: d.likesCount, comments: d.commentsCount };
+};
+const cPost = cdoc(cdb, 'posts', POST);
+// `fresh` is signed in: an ordinary account with no special rights.
+await seedUser(fresh, { displayName: 'Fresh' });
+
+let forgedWrites = 0;
+for (let i = 1; i <= 5; i++) {
+  await cupdateDoc(cPost, { likesCount: cincrement(1), commentsCount: cincrement(0) }).then(() => forgedWrites++).catch(() => {});
+}
+check('the rules still accept +1 writes (released apps depend on it)', forgedWrites === 5, `${forgedWrites}/5 accepted`);
+const afterForgery = await holds(totals, { likes: 0, comments: 0 });
+check('five forged +1 likes with no like behind them are undone', afterForgery.ok, JSON.stringify(afterForgery.last));
+
+// The current app: like document and count in one atomic write.
+const likeBatch = cwriteBatch(cdb);
+likeBatch.set(cdoc(cdb, `posts/${POST}/likes`, fresh), { userId: fresh, timestamp: cserverTimestamp() });
+likeBatch.update(cPost, { likesCount: cincrement(1) });
+await likeBatch.commit();
+const afterLike = await holds(totals, { likes: 1, comments: 0 });
+check('a real like counts as exactly one', afterLike.ok, JSON.stringify(afterLike.last));
+
+// A released app: count first, like document second, as two writes. Simulated
+// for a second person with the Admin SDK, in that order.
+await postRef.update({ likesCount: 2 });
+await adb.doc(`posts/${POST}/likes/${bob}`).set({ userId: bob });
+const afterLegacy = await holds(totals, { likes: 2, comments: 0 });
+check('a like from an older app (count first, like second) also ends up right', afterLegacy.ok, JSON.stringify(afterLegacy.last));
+
+const commentRef = cdoc(cdb, `posts/${POST}/comments`, `c_${WEEK}`);
+const commentBatch = cwriteBatch(cdb);
+commentBatch.set(commentRef, { userId: fresh, username: 'Fresh', userPhoto: '', content: 'well done', createdAt: cserverTimestamp() });
+commentBatch.update(cPost, { commentsCount: cincrement(1) });
+const commented = await commentBatch.commit().then(() => true).catch((e) => e?.code);
+check('the app\'s comment write (comment + count together) is accepted by the rules', commented === true, String(commented));
+const afterComment = await holds(totals, { likes: 2, comments: 1 });
+check('a real comment counts as exactly one', afterComment.ok, JSON.stringify(afterComment.last));
+
+await cupdateDoc(cPost, { likesCount: cincrement(-1), commentsCount: cincrement(-1) });
+const afterSabotage = await holds(totals, { likes: 2, comments: 1 });
+check('knocking a rival\'s totals down by one is undone too', afterSabotage.ok, JSON.stringify(afterSabotage.last));
+
+await cdeleteDoc(commentRef);
+const afterDelete = await holds(totals, { likes: 2, comments: 0 });
+check('deleting the comment lowers the total without the app touching the count', afterDelete.ok, JSON.stringify(afterDelete.last));
+
 console.log(`\n${C.b}Result: ${fail ? C.r : C.g}${pass}/${pass + fail}${C.x}${C.b} checks passed${C.x}`);
 process.exit(fail ? 1 : 0);

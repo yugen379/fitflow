@@ -115,15 +115,21 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    // The catalog is shared by every user, so one entry is everyone's answer.
+    // Bounded on every field, no extra keys, and the macros may not add up to
+    // far more energy than the calories claim (4/4/9 kcal per gram, with slack
+    // for fibre and rounding) — the cheap test that a "0 kcal" pizza fails.
     function isValidCatalogFood(data) {
       return data.keys().hasAll(['name', 'calories', 'protein', 'carbs', 'fats', 'updatedAt']) &&
+             data.keys().hasOnly(['name', 'calories', 'protein', 'carbs', 'fats', 'brand', 'updatedAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.calories is number && data.calories > 0 &&
-             data.protein is number && data.protein >= 0 &&
-             data.carbs is number && data.carbs >= 0 &&
-             data.fats is number && data.fats >= 0 &&
-             (!('brand' in data) || data.brand is string) &&
-             (data.updatedAt is timestamp || data.updatedAt == request.time);
+             data.calories is number && data.calories > 0 && data.calories <= 5000 &&
+             data.protein is number && data.protein >= 0 && data.protein <= 500 &&
+             data.carbs is number && data.carbs >= 0 && data.carbs <= 1000 &&
+             data.fats is number && data.fats >= 0 && data.fats <= 500 &&
+             data.protein * 4 + data.carbs * 4 + data.fats * 9 <= data.calories * 1.5 + 50 &&
+             (!('brand' in data) || (data.brand is string && data.brand.size() <= 80)) &&
+             data.updatedAt == request.time;
     }
 
     function isValidActivityDay(data) {
@@ -192,17 +198,38 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    // The name on a post or comment must be the author's own profile name, so
+    // nobody can post as someone else. ('Athlete' is what the app sends when a
+    // profile has no name.) Costs one document read per post or comment.
+    function isOwnName(name) {
+      return name is string && name.size() <= 80 &&
+             (name == 'Athlete' ||
+              name == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName);
+    }
+
+    // A new post starts with zero likes and zero comments, carries nothing but
+    // the fields the app writes, and every string is bounded.
     function isValidPost(data) {
       return data.keys().hasAll(['userId', 'username', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'username', 'userPhoto', 'content', 'mediaUrl',
+                                  'likesCount', 'commentsCount', 'createdAt']) &&
              data.userId == request.auth.uid &&
-             data.username is string &&
+             isOwnName(data.username) &&
+             (!('userPhoto' in data) || (data.userPhoto is string && data.userPhoto.size() <= 2048)) &&
+             (!('content' in data) || (data.content is string && data.content.size() <= 5000)) &&
+             (!('mediaUrl' in data) || (data.mediaUrl is string && data.mediaUrl.size() <= 2048)) &&
+             (!('likesCount' in data) || data.likesCount == 0) &&
+             (!('commentsCount' in data) || data.commentsCount == 0) &&
              data.createdAt == request.time;
     }
 
     function isValidComment(data) {
       return data.keys().hasAll(['userId', 'username', 'content', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'username', 'userPhoto', 'content', 'createdAt']) &&
              data.userId == request.auth.uid &&
-             data.content is string && data.content.size() <= 1000 &&
+             isOwnName(data.username) &&
+             (!('userPhoto' in data) || (data.userPhoto is string && data.userPhoto.size() <= 2048)) &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 1000 &&
              data.createdAt == request.time;
     }
 
@@ -263,7 +290,21 @@ service cloud.firestore {
       allow get: if isOwner(userId);
       // No client ever enumerates the user collection.
       allow list: if false;
-      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().subscriptionType == 'free';
+      // A new profile may carry only the fields the app itself writes at
+      // sign-up. Without this list a client could create its document with
+      // stripeCustomerId, plan, currentPeriodEnd or graceUntil already planted;
+      // the update rule below never lets those through, but create did.
+      // (The trial clock is also re-checked by the server: see trialGuard.ts.)
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().subscriptionType == 'free' &&
+                    incoming().keys().hasOnly([
+                      'uid', 'displayName', 'photoURL', 'subscriptionType',
+                      'trialStartedAt', 'subscriptionStatus',
+                      'streak', 'points', 'level', 'badges',
+                      'createdAt', 'updatedAt', 'tzOffsetHours', 'tzId',
+                    ]) &&
+                    incoming().displayName.size() <= 80 &&
+                    incoming().photoURL.size() <= 2048 &&
+                    (!('streak' in incoming()) || incoming().streak == 0);
       allow update: if isOwner(userId) && (
         // Action: Update Profile Info (allows fields added for flagship features).
         // NOTE: billing fields (subscriptionType, subscriptionStatus, trialStartedAt,
@@ -359,13 +400,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow list: if isSignedIn();
       allow create: if isVerified() && isValidId(postId) && isValidPost(incoming());
-      // Owners may edit their own content; anyone signed-in may bump the like /
-      // comment counters, but only by ±1 per write — a counter can no longer be
-      // set to an arbitrary number by a hostile client.
+      // Owners may edit their own content. `updatedAt` is in the list because
+      // the app has always sent it with an edit; while it was missing, every
+      // post edit was refused.
+      //
+      // Anyone signed-in may still move the like / comment counters by ±1 per
+      // write, because released apps do exactly that. The numbers are no longer
+      // trusted though: functions/src/postCounters.ts recounts the real likes
+      // and comments after every change and writes the true totals back, so a
+      // forged bump lasts about a second.
       allow update: if (isOwner(existing().userId) &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['mediaUrl', 'content']) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['mediaUrl', 'content', 'updatedAt']) &&
                        (!('content' in incoming()) || (incoming().content is string && incoming().content.size() <= 5000)) &&
-                       (!('mediaUrl' in incoming()) || incoming().mediaUrl is string)) ||
+                       (!('mediaUrl' in incoming()) || (incoming().mediaUrl is string && incoming().mediaUrl.size() <= 2048)) &&
+                       (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)) ||
                     (isSignedIn() &&
                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'commentsCount']) &&
                        incoming().likesCount is int &&
@@ -380,13 +428,25 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if isSignedIn();
         allow create: if isVerified() && isValidId(commentId) && isValidComment(incoming());
-        allow update, delete: if isOwner(existing().userId);
+        // An edit may change the words and nothing else. This used to be a bare
+        // owner check, so the author could rewrite userId and username and pin
+        // their comment on someone else.
+        allow update: if isOwner(existing().userId) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['content', 'updatedAt']) &&
+                      incoming().content is string && incoming().content.size() > 0 && incoming().content.size() <= 1000 &&
+                      (!('updatedAt' in incoming()) || incoming().updatedAt == request.time);
+        allow delete: if isOwner(existing().userId);
       }
 
-      // Likes Subcollection (Identity-based)
+      // Likes Subcollection (Identity-based): one document per user per post,
+      // which is what makes the server's recount an honest number.
       match /likes/{userId} {
         allow read: if isSignedIn();
-        allow create, delete: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                      incoming().keys().hasOnly(['userId', 'timestamp']) &&
+                      (!('userId' in incoming()) || incoming().userId == request.auth.uid) &&
+                      (!('timestamp' in incoming()) || incoming().timestamp == request.time);
+        allow delete: if isOwner(userId);
       }
     }
 
@@ -469,11 +529,15 @@ service cloud.firestore {
     }
 
     // Shared Food Catalog (#3) — a compounding, app-wide DB of resolved foods.
-    // Any signed-in user may read it and contribute validated entries; doc id is a
-    // normalised food key. No deletes (append/update only).
+    // Any signed-in user may read it and ADD a validated entry; doc id is a
+    // normalised food key. First entry wins: no client can change or delete a
+    // food that is already there, so one account cannot rewrite the numbers
+    // everybody else logs (the seeded foods included). Corrections go through
+    // the Admin SDK (scripts/seed-catalog.mjs).
     match /food_catalog/{foodId} {
       allow get, list: if isSignedIn();
-      allow create, update: if isVerified() && isValidCatalogFood(incoming());
+      allow create: if isVerified() && isValidId(foodId) && isValidCatalogFood(incoming());
+      allow update, delete: if false;
     }
 
     // Active-day markers (#4) — one doc per user per day, id format <uid>_<YYYY-MM-DD>.

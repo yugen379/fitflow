@@ -38,6 +38,12 @@ export const USER_TRIGGER = {
   cpu: 1, memory: "256MiB", concurrency: 80, maxInstances: 100, timeoutSeconds: 60,
 } as const;
 
+// Fires on every like, comment and counter change: two small counts and at most
+// one write each.
+export const POST_TRIGGER = {
+  cpu: 1, memory: "256MiB", concurrency: 80, maxInstances: 50, timeoutSeconds: 60,
+} as const;
+
 // One at a time: a slow run can't overlap the next one and double-send.
 export const SCHEDULED_JOB = {
   memory: "512MiB", concurrency: 1, maxInstances: 1, timeoutSeconds: 540,

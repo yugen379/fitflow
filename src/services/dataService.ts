@@ -1,4 +1,4 @@
-import { collection, addDoc, query, where, getDocs, orderBy, limit, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, orderBy, limit, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { handleFirestoreError } from '../lib/firebase';
 import { db } from '../lib/firestore';
 import { MealRecord, WorkoutRecord, Post, UserProfile } from '../types';
@@ -163,8 +163,10 @@ export const createPost = async (userId: string, username: string, userPhoto: st
   try {
     const postData: any = {
       userId,
-      username,
-      userPhoto,
+      // The rules require the author's own profile name, or 'Athlete' when the
+      // profile has none.
+      username: username || 'Athlete',
+      userPhoto: userPhoto || '',
       content,
       likesCount: 0,
       commentsCount: 0,
@@ -225,14 +227,14 @@ export const likePost = async (postId: string, userId: string) => {
     const likeSnap = await getDoc(likeRef);
     if (likeSnap.exists()) return;
 
-    await updateDoc(postRef, {
-      likesCount: increment(1)
-    });
-    
-    await setDoc(likeRef, {
-      userId,
-      timestamp: serverTimestamp()
-    });
+    // One atomic write. These used to be two: the count went up first, and if
+    // the like itself then failed the post kept a like nobody had given. The
+    // server also recounts (functions/src/postCounters.ts), and with both
+    // halves landing together it never sees the count ahead of the likes.
+    const batch = writeBatch(db);
+    batch.set(likeRef, { userId, timestamp: serverTimestamp() });
+    batch.update(postRef, { likesCount: increment(1) });
+    await batch.commit();
   } catch (error) {
     handleFirestoreError(error, 'update', `posts/${postId}`);
   }
@@ -240,20 +242,19 @@ export const likePost = async (postId: string, userId: string) => {
 
 export const addComment = async (postId: string, userId: string, username: string, userPhoto: string, content: string) => {
   try {
-    const commentRef = await addDoc(collection(db, `posts/${postId}/comments`), {
+    // The comment and its count land together, for the same reason as likePost.
+    const commentRef = doc(collection(db, `posts/${postId}/comments`));
+    const batch = writeBatch(db);
+    batch.set(commentRef, {
       userId,
-      username,
-      userPhoto,
+      username: username || 'Athlete',
+      userPhoto: userPhoto || '',
       content,
       createdAt: serverTimestamp()
     });
-    
-    // Update comment count on post
-    const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
-      commentsCount: increment(1)
-    });
-    
+    batch.update(doc(db, 'posts', postId), { commentsCount: increment(1) });
+    await batch.commit();
+
     return commentRef.id;
   } catch (error) {
     handleFirestoreError(error, 'create', `posts/${postId}/comments`);
