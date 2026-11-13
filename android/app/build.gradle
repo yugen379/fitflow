@@ -15,8 +15,8 @@ android {
         applicationId "com.fitflow.fitness"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 30
-        versionName "1.6.6"
+        versionCode 31
+        versionName "1.6.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -78,11 +78,22 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+// google-services.json carries the Firebase app id and sender id. Without it
+// the native Firebase app never starts: Google sign-in fails and no push is
+// ever received. The file is gitignored, so a fresh clone or a new worktree
+// does not have it — and this block used to log at INFO level and carry on.
+// v1.6.5 and v1.6.6 were built that way and shipped with neither feature.
+//
+// A release build now refuses to start without it. Debug builds still may.
+def servicesJSON = file('google-services.json')
+def buildingRelease = gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }
+if (servicesJSON.exists() && servicesJSON.text) {
+    apply plugin: 'com.google.gms.google-services'
+} else if (buildingRelease) {
+    throw new GradleException(
+        "android/app/google-services.json is missing. A release built without it has no " +
+        "Google sign-in and no push notifications. Copy it from the main checkout " +
+        "(it is gitignored) or restore it from the GOOGLE_SERVICES_JSON secret.")
+} else {
+    logger.warn("google-services.json not found: this DEBUG build has no Google sign-in and no push.")
 }
