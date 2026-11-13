@@ -7,6 +7,7 @@ import { logMeal } from '../services/dataService';
 import { analyzeMealImage, analyzeNutritionLabel, parseQuickAdd } from '../services/geminiService';
 import { searchFood, lookupBarcode, resolveLocalFood } from '../services/foodService';
 import { lookupCatalog } from '../services/foodCatalogService';
+import { searchBrandedFoods } from '../services/remoteFoodSearch';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { MealRecord } from '../types';
 import { db, safeUnsubscribe } from '../lib/firestore';
@@ -53,6 +54,23 @@ export const Track: React.FC = () => {
   const [manualP, setManualP] = useState(0);
   const [manualC, setManualC] = useState(0);
   const [manualF, setManualF] = useState(0);
+  // Set when the sheet was opened from a packaged product: Open Food Facts
+  // gives values per 100 g, so the sheet shows an amount field that rescales
+  // them. Cleared whenever the sheet closes, so a plain manual entry never
+  // inherits it.
+  const [manualBase, setManualBase] = useState<null | { name: string; calories: number; protein: number; carbs: number; fats: number }>(null);
+  const [manualGrams, setManualGrams] = useState(100);
+  useEffect(() => { if (!manualOpen) setManualBase(null); }, [manualOpen]);
+  const setAmount = (grams: number) => {
+    setManualGrams(grams);
+    if (!manualBase) return;
+    const k = grams / 100;
+    setManualName(`${manualBase.name} (${grams}g)`);
+    setManualCals(Math.round(manualBase.calories * k));
+    setManualP(Math.round(manualBase.protein * k));
+    setManualC(Math.round(manualBase.carbs * k));
+    setManualF(Math.round(manualBase.fats * k));
+  };
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [aiSearching, setAiSearching] = useState(false);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
@@ -496,8 +514,17 @@ export const Track: React.FC = () => {
     setAiSearching(true);
     const t = setTimeout(async () => {
       try {
-        const results = await searchFood(term);
-        if (!cancelled) setAiSuggestions(results.filter(r => r.calories > 0).slice(0, 8));
+        const results = (await searchFood(term)).filter(r => r.calories > 0).slice(0, 8);
+        if (!cancelled) setAiSuggestions(results);
+        // Then branded products (Open Food Facts, via the server). They arrive
+        // a moment later and slot in under the best few of our own, so a
+        // packaged product is never buried below the fold.
+        const branded = await searchBrandedFoods(term);
+        if (!cancelled && branded.length) {
+          const have = new Set(results.map(r => r.name.toLowerCase()));
+          const extra = branded.filter(b => !have.has(b.name.toLowerCase())).slice(0, 5);
+          setAiSuggestions([...results.slice(0, 5), ...extra, ...results.slice(5)].slice(0, 10));
+        }
       } finally {
         if (!cancelled) setAiSearching(false);
       }
@@ -550,6 +577,20 @@ export const Track: React.FC = () => {
 
   const logSuggestion = async (s: any) => {
     if (!profile?.uid) return;
+    // A packaged product comes per 100 g, and almost nobody eats exactly that.
+    // Open the entry sheet with its numbers and an amount to adjust, instead of
+    // logging 100 g of chocolate spread on one tap.
+    if (s.source === 'OFF') {
+      const name = String(s.name).replace(/\s*\(100g\)$/, '');
+      setManualBase({ name, calories: s.calories, protein: s.protein, carbs: s.carbs, fats: s.fats });
+      setManualGrams(100);
+      setManualName(`${name} (100g)`);
+      setManualCals(Math.round(s.calories)); setManualP(Math.round(s.protein));
+      setManualC(Math.round(s.carbs)); setManualF(Math.round(s.fats));
+      setSearch(''); setAiSuggestions([]);
+      setManualOpen(true);
+      return;
+    }
     await logMeal(profile.uid, {
       name: s.name,
       calories: Math.round(s.calories),
@@ -663,6 +704,12 @@ export const Track: React.FC = () => {
                 <span className="num text-sm text-accent font-semibold shrink-0 ml-2">{Math.round(s.calories)}</span>
               </button>
             ))}
+            {/* Required by the Open Database Licence whenever their data is shown. */}
+            {aiSuggestions.some(s => s.source === 'OFF') && (
+              <p className="px-4 py-2 text-[10px] text-text-dim border-t border-white/[0.04]">
+                Packaged products from Open Food Facts (ODbL). Check the label.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -1096,6 +1143,23 @@ export const Track: React.FC = () => {
                 placeholder="Food name"
                 className="w-full glass rounded-2xl h-12 px-4 text-white text-sm placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30"
               />
+              {manualBase && (
+                <div className="space-y-2">
+                  <label className="text-xs text-text-dim font-medium ml-1">Amount (g or ml)</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    aria-label="Amount in grams"
+                    value={manualGrams || ''}
+                    onChange={e => setAmount(Math.min(5000, Math.max(0, parseInt(e.target.value) || 0)))}
+                    placeholder="100"
+                    className="w-full glass rounded-2xl h-12 px-4 num text-lg font-semibold text-white text-center focus:outline-none focus:border-accent/40"
+                  />
+                  <p className="text-[10px] text-text-dim ml-1">
+                    {Math.round(manualBase.calories)} kcal per 100 g, from Open Food Facts. Check it against the label.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-xs text-text-dim font-medium ml-1">Calories (kcal)</label>
                 <input

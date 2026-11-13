@@ -737,5 +737,80 @@ await cdeleteDoc(commentRef);
 const afterDelete = await holds(totals, { likes: 2, comments: 0 });
 check('deleting the comment lowers the total without the app touching the count', afterDelete.ok, JSON.stringify(afterDelete.last));
 
+// =============================================================================
+section('14 · Branded food search: Open Food Facts, cleaned and remembered');
+
+const { mapOffHit, mapOffHits, searchKey } = require('./lib/offFoods.js');
+const { runFoodSearch } = require('./lib/foodSearch.js');
+
+// The shape search.openfoodfacts.org really returns (captured 2026-11-13).
+const milo = {
+  code: '9300605126527', brands: ['Milo', 'Nestle'], product_name: 'Nestle Milo',
+  nutriments: { 'carbohydrates_100g': 68.5, 'energy-kcal_100g': 430, 'fat_100g': 13, 'proteins_100g': 6 },
+};
+const m100 = mapOffHit(milo);
+check('a real hit becomes a loggable food, per 100 g when no serving is stated',
+  m100?.name === 'Nestle Milo (100g)' && m100.calories === 430 && m100.protein === 6 && m100.carbs === 69 && m100.fats === 13
+  && m100.brand === 'Milo' && m100.code === '9300605126527' && m100.source === 'OFF', JSON.stringify(m100));
+const mServ = mapOffHit({ ...milo, serving_quantity: 30, serving_size: '30 g' });
+check('a stated serving scales the numbers (30 g of 430 kcal/100 g = 129)',
+  mServ?.name === 'Nestle Milo (30 g)' && mServ.calories === 129 && mServ.carbs === 21, JSON.stringify(mServ));
+check('energy given only in kJ is converted', mapOffHit({ product_name: 'Oat Bar', nutriments: { energy_100g: 1800 } })?.calories === 430);
+check('a brand given as a comma list still yields one brand', mapOffHit({ ...milo, brands: 'Milo, Nestle' })?.brand === 'Milo');
+check('markup in a name is stripped', mapOffHit({ ...milo, product_name: 'Milo <script>x</script>' })?.name.includes('<') === false);
+
+const bad = (over) => mapOffHit({ ...milo, ...over });
+const withNutr = (nu) => bad({ nutriments: { ...milo.nutriments, ...nu } });
+const refused = [
+  ['no name', bad({ product_name: '' })],
+  ['no energy at all', bad({ nutriments: { proteins_100g: 5 } })],
+  ['zero energy', withNutr({ 'energy-kcal_100g': 0 })],
+  ['energy above pure fat (kJ typed as kcal)', withNutr({ 'energy-kcal_100g': 1800 })],
+  ['150 g of protein in 100 g', withNutr({ proteins_100g: 150 })],
+  ['macros that add up to far more than the energy', withNutr({ 'energy-kcal_100g': 20, fat_100g: 60 })],
+  ['negative fat', withNutr({ fat_100g: -3 })],
+  ['not an object', mapOffHit('milo')],
+].filter(([, r]) => r !== null).map(([why]) => why);
+check('rows that cannot be trusted are refused (8 kinds)', refused.length === 0, `let through: ${refused.join('; ')}`);
+check('an absurd serving size falls back to per 100 g', mapOffHit({ ...milo, serving_quantity: 50000 })?.name.endsWith('(100g)') === true);
+const many = mapOffHits([milo, milo, { ...milo, product_name: 'Milo Cereal' }, null, { product_name: 'x' }, ...Array(30).fill(0).map((_, i) => ({ ...milo, product_name: `Milo ${i}` }))]);
+check('repeats are dropped and the list is capped at 10', many.length === 10 && many[0].name === 'Nestle Milo (100g)' && many[1].name === 'Milo Cereal (100g)', String(many.length));
+check('search keys are stable and id-safe', searchKey('  Nestlé  MILO!! ') === 'nestle-milo' && searchKey('@@') === '');
+
+// The search itself, with the network replaced so nothing here depends on it.
+let fetched = 0;
+const fakeFetch = (body, ok = true) => async () => { fetched++; return { ok, json: async () => body }; };
+const FS_Q = `milo ${WEEK}`;
+const FS_NOW = Date.UTC(2031, 5, 1);
+const first = await runFoodSearch(FS_Q, fakeFetch({ hits: [milo, { ...milo, product_name: 'Milo Cereal' }] }), FS_NOW);
+check('first search asks Open Food Facts and returns the cleaned foods', first.from === 'live' && first.foods.length === 2 && fetched === 1, JSON.stringify({ from: first.from, n: first.foods.length, fetched }));
+const second = await runFoodSearch(`  ${FS_Q.toUpperCase()} `, fakeFetch({ hits: [] }), FS_NOW + 3_600_000);
+check('the same search again (any case or spacing) is answered from memory, with no outside request',
+  second.from === 'cache' && second.foods.length === 2 && fetched === 1, JSON.stringify({ from: second.from, fetched }));
+const later = await runFoodSearch(FS_Q, fakeFetch({ hits: [milo] }), FS_NOW + 31 * 86_400_000);
+check('after 30 days it asks again', later.from === 'live' && later.foods.length === 1 && fetched === 2, JSON.stringify({ from: later.from, fetched }));
+
+fetched = 0;
+const DOWN_Q = `down ${WEEK}`;
+const down = await runFoodSearch(DOWN_Q, fakeFetch({}, false), FS_NOW);
+const downAgain = await runFoodSearch(DOWN_Q, async () => { fetched++; throw new Error('timeout'); }, FS_NOW);
+check('Open Food Facts down or timing out: no foods, no crash, and the failure is NOT remembered',
+  down.from === 'unavailable' && downAgain.from === 'unavailable' && down.foods.length === 0 && fetched === 2
+  && !(await exists(`food_search_cache/${searchKey(DOWN_Q)}`)), JSON.stringify({ a: down.from, b: downAgain.from, fetched }));
+const recovered = await runFoodSearch(DOWN_Q, fakeFetch({ hits: [milo] }), FS_NOW);
+check('and the next search after it recovers gets real results', recovered.from === 'live' && recovered.foods.length === 1);
+const garbage = await runFoodSearch(`junk ${WEEK}`, fakeFetch({ hits: 'not a list' }), FS_NOW);
+check('a malformed reply is an empty answer, not an error', garbage.foods.length === 0 && garbage.from === 'live');
+
+fetched = 0;
+const tiny = await runFoodSearch('ab', fakeFetch({ hits: [milo] }), FS_NOW);
+check('a one- or two-letter search never leaves the server', tiny.foods.length === 0 && fetched === 0);
+
+const { getDoc: cgetDoc } = await import('firebase/firestore');
+const cacheRead = await cgetDoc(cdoc(cdb, 'food_search_cache', searchKey(FS_Q))).then(() => 'ok').catch((e) => e?.code);
+check('the app cannot read or tamper with the search memory directly', cacheRead === 'permission-denied', String(cacheRead));
+await signOut(auth);
+check('a signed-out caller cannot search', (await callErr('searchFoods', { query: 'milo' })) === 'functions/unauthenticated');
+
 console.log(`\n${C.b}Result: ${fail ? C.r : C.g}${pass}/${pass + fail}${C.x}${C.b} checks passed${C.x}`);
 process.exit(fail ? 1 : 0);

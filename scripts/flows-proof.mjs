@@ -169,6 +169,34 @@ const wrongEggs = await mealNamed('Eggs (2 large')();
 check('"3 eggs" is logged as three eggs (234 kcal), not the listed two', !!three && three.calories === 234 && !wrongEggs,
   three ? `${three.name}: ${three.calories}` : wrongEggs ? `logged ${wrongEggs.name}: ${wrongEggs.calories}` : 'no meal written');
 
+// ── Branded products ─────────────────────────────────────────────────────────
+// The answer is seeded into the server's search memory, so the real callable
+// runs end to end without this gate depending on Open Food Facts being up.
+section('Track: a packaged product from Open Food Facts');
+await db.doc('food_search_cache/zzbrand-spread').set({
+  q: 'zzbrand-spread', at: Date.now(),
+  foods: [{ name: 'ZZBrand Hazelnut Spread (100g)', calories: 540, protein: 6, carbs: 58, fats: 31, brand: 'ZZBrand', source: 'OFF' }],
+});
+await search.fill('zzbrand spread');
+const brandedRow = rows.filter({ hasText: 'ZZBrand Hazelnut Spread' });
+await brandedRow.first().waitFor({ timeout: 25000 }).catch(() => {});
+check('the branded product appears in the results', (await brandedRow.count()) === 1, `${await brandedRow.count()} matching rows`);
+check('Open Food Facts is credited beside it', await page.locator('text=Open Food Facts (ODbL)').isVisible().catch(() => false));
+await brandedRow.first().click().catch(() => {});
+const amount = page.locator('input[aria-label="Amount in grams"]');
+await amount.waitFor({ timeout: 10000 }).catch(() => {});
+const kcalField = page.locator('label', { hasText: 'Calories (kcal)' }).locator('xpath=following-sibling::input');
+check('tapping it opens the entry sheet at 100 g / 540 kcal instead of logging',
+  (await amount.inputValue().catch(() => '')) === '100' && (await kcalField.inputValue().catch(() => '')) === '540'
+  && !(await mealNamed('ZZBrand')()), `amount ${await amount.inputValue().catch(() => '?')}, kcal ${await kcalField.inputValue().catch(() => '?')}`);
+await amount.fill('30');
+check('changing the amount to 30 g rescales the calories to 162', (await kcalField.inputValue().catch(() => '')) === '162', await kcalField.inputValue().catch(() => '?'));
+await page.locator('button.btn-3d', { hasText: 'Log meal' }).click().catch(() => {});
+const spread = await until(mealNamed('ZZBrand Hazelnut Spread (30g)'));
+check('logging writes 30 g of it: 162 kcal, P2 C17 F9',
+  !!spread && spread.calories === 162 && spread.protein === 2 && spread.carbs === 17 && spread.fats === 9,
+  spread ? `${spread.name}: ${spread.calories} kcal P${spread.protein} C${spread.carbs} F${spread.fats}` : 'no meal written');
+
 // ── Community ────────────────────────────────────────────────────────────────
 section('Community: post, like, comment, edit');
 await page.goto(BASE + '/community', { waitUntil: 'load', timeout: 45000 });
