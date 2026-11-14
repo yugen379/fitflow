@@ -82,12 +82,19 @@ await db.doc('food_search_cache/milo').set({ q: 'milo', at: Date.now(), foods: [
   { name: 'Milo nuggets (100g)', calories: 486, protein: 9, carbs: 60, fats: 22, brand: 'Milo', source: 'OFF' },
 ] });
 
+// A previous run's dev server still holding the port answers this fetch, and
+// the run would then drive a server that is being torn down (or wait for ever
+// on one that has stopped answering). Refuse to start instead.
+if (await fetch(BASE, { signal: AbortSignal.timeout(2000) }).then(() => true).catch(() => false)) {
+  console.error(`Something is already serving ${BASE}. A previous run's dev server is still alive: close it and run again.`);
+  process.exit(1);
+}
 server = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsx', 'server.ts'], {
   env: { ...process.env, VITE_USE_EMULATORS: 'true' }, stdio: 'ignore', shell: process.platform === 'win32',
 });
 let up = false;
 for (let i = 0; i < 60 && !up; i++) {
-  try { up = (await fetch(BASE)).ok; } catch { /* not yet */ }
+  try { up = (await fetch(BASE, { signal: AbortSignal.timeout(3000) })).ok; } catch { /* not yet */ }
   if (!up) await new Promise((r) => setTimeout(r, 1000));
 }
 if (!up) { console.error('dev server never came up'); finish(1); }

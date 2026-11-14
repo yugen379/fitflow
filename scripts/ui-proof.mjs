@@ -105,6 +105,13 @@ await db.collection('posts').add({
 });
 
 // ── 3. Boot the dev server with emulator wiring on ───────────────────────────
+// A previous run's dev server still holding the port answers this fetch, and
+// the run would then drive a server that is being torn down (or wait for ever
+// on one that has stopped answering). Refuse to start instead.
+if (await fetch(BASE, { signal: AbortSignal.timeout(2000) }).then(() => true).catch(() => false)) {
+  console.error(`Something is already serving ${BASE}. A previous run's dev server is still alive: close it and run again.`);
+  process.exit(1);
+}
 server = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsx', 'server.ts'], {
   env: { ...process.env, VITE_USE_EMULATORS: 'true' },
   stdio: 'ignore',
@@ -112,7 +119,7 @@ server = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsx', 'server
 });
 const waitForServer = async () => {
   for (let i = 0; i < 60; i++) {
-    try { const r = await fetch(BASE); if (r.ok) return true; } catch { /* not up yet */ }
+    try { const r = await fetch(BASE, { signal: AbortSignal.timeout(3000) }); if (r.ok) return true; } catch { /* not up yet */ }
     await new Promise((r) => setTimeout(r, 1000));
   }
   return false;
