@@ -298,8 +298,12 @@ export const analyzeMealImage = async (base64Image: string, mimeType = 'image/jp
     {
       parts: [
         { inlineData: { data: base64Image, mimeType } },
-        { text: `Analyze this food image and return ONLY valid JSON.
-Format: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number}` },
+        { text: `You are FitFlow's nutrition AI. Your top priority is an accurate CALORIE and macro estimate for a fitness user.
+Look at the photo. Identify the dish even if it is a mixed bowl, soup or noodle dish (e.g. ramen, laksa, pho, nasi lemak, curry, salad).
+Estimate the visible PORTION (bowl/plate size, how full) and give totals for the WHOLE portion shown, including broth, oil, toppings and sides.
+Never answer 0 calories if any food is visible; give your best realistic estimate.
+Return ONLY valid JSON, no markdown:
+{"name": string, "calories": number, "protein": number, "carbs": number, "fats": number}` },
       ],
     },
     fallback,

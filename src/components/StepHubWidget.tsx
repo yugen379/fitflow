@@ -40,7 +40,40 @@ import { spawnRipple } from './ui/WaterRipple';
 import { prefetchRoute } from '../lib/prefetch';
 import { SPRING, prefersReducedMotion } from '../lib/motion';
 
-const StepDial = React.lazy(() => import('./3d/StepDial').then((m) => ({ default: m.StepDial })));
+/**
+ * Clean SVG ring. Lives in its own slot in the header, so the progress bar
+ * below never crosses it (the old 3D dial sat behind the content and the bar
+ * cut straight through it). No WebGL context either, which was a real cost on
+ * every Home render.
+ */
+const StepRing: React.FC<{ ratio: number }> = ({ ratio }) => {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, Number.isFinite(ratio) ? ratio : 0));
+  const hit = pct >= 1;
+  return (
+    <div className="relative w-16 h-16" aria-hidden="true">
+      <svg viewBox="0 0 64 64" className="w-16 h-16 -rotate-90">
+        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="6" className="stroke-white/[0.08]" />
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          fill="none"
+          strokeWidth="6"
+          strokeLinecap="round"
+          stroke={hit ? '#CCFF00' : '#00F5FF'}
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - pct)}
+          style={{ transition: 'stroke-dashoffset 600ms cubic-bezier(.2,.8,.2,1)' }}
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-[11px] font-bold text-white tabular-nums">
+        {Math.round(pct * 100)}%
+      </span>
+    </div>
+  );
+};
 
 export interface StepHubWidgetProps {
   steps: number;
@@ -103,8 +136,6 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
       `radial-gradient(circle at ${50 + x * 40}% ${50 + y * 40}%, rgba(255,255,255,0.16), transparent 58%)`,
   );
 
-  // Mirrored into React state for the 3D dial, which needs a plain number.
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   const track = (clientX: number, clientY: number) => {
     if (reduced || !cardRef.current) return;
@@ -113,13 +144,11 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
     const ny = ((clientY - rect.top) / rect.height) * 2 - 1;
     px.set(nx);
     py.set(ny);
-    setTilt({ x: nx, y: ny });
   };
 
   const release = () => {
     px.set(0);
     py.set(0);
-    setTilt({ x: 0, y: 0 });
   };
 
   /**
@@ -182,16 +211,6 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
         className,
       )}
     >
-      {/* The dial sits behind the content, bleeding off the right edge so the
-          card feels like a window onto something larger than itself. */}
-      <React.Suspense fallback={null}>
-        <StepDial
-          ratio={ratio}
-          tilt={tilt}
-          className="absolute right-3 top-8 w-24 h-24 opacity-90 pointer-events-none"
-        />
-      </React.Suspense>
-
       {!reduced && (
         <motion.span
           aria-hidden="true"
@@ -212,7 +231,10 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
               <span className="text-base text-text-dim font-medium"> / {goal.toLocaleString()}</span>
             </p>
           </div>
-          <ChevronRight size={18} className="text-text-mute shrink-0 mt-1 -mr-1" aria-hidden="true" />
+          <div className="flex items-center gap-1 shrink-0">
+            <StepRing ratio={ratio} />
+            <ChevronRight size={18} className="text-text-mute -mr-1" aria-hidden="true" />
+          </div>
         </div>
       </div>
 

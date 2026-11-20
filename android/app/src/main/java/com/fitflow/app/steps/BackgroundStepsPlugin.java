@@ -296,6 +296,13 @@ public class BackgroundStepsPlugin extends Plugin {
     }
 
     private void setEnabled(boolean enabled) {
+        boolean was = prefs().getBoolean(KEY_ENABLED, false);
+        if (enabled && !was) {
+            // Switching counting ON must never gift the steps the hardware
+            // counter accumulated while it was OFF (the 34,362-on-enable bug):
+            // those could be days old. Start from a fresh baseline.
+            new StepStore(getContext()).resetBaseline();
+        }
         prefs().edit().putBoolean(KEY_ENABLED, enabled).apply();
     }
 }

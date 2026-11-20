@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Volume2, ChevronRight } from 'lucide-react';
 import { getCoachBriefing, type CoachContext, type CoachBriefing } from '../services/geminiService';
+import { buildBriefing } from '../services/coachBriefing';
 import { pushTopNudge } from '../services/notificationService';
 import { haptic } from '../lib/haptics';
 
@@ -33,7 +34,13 @@ export const CoachBriefingCard: React.FC<Props> = ({ uid, ctx, online = true, on
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    // Instant: the deterministic engine runs synchronously, so the card never
+    // sits on a shimmer waiting for the network. The AI-polished wording
+    // replaces it in place when (if) it arrives.
+    try {
+      setBriefing(buildBriefing(ctx));
+    } catch { /* engine is pure; ignore */ }
+    setLoading(false);
     getCoachBriefing(ctx)
       .then(b => {
         if (cancelled) return;

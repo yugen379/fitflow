@@ -21,6 +21,17 @@ import { computeDailyTargets } from '../lib/nutritionTargets';
 import { MacroMatrix } from '../components/3d/MacroMatrix';
 import { useTabVisible } from '../components/layout/DockTabs';
 
+const downscaleToJpegBase64 = async (file: File, maxSide: number): Promise<string> => {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  return canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+};
+
 export const Track: React.FC = () => {
   const { profile } = useAuth();
   const { showToast } = useToast();
@@ -638,12 +649,14 @@ export const Track: React.FC = () => {
     e.target.value = '';
     if (!file || !profile?.uid) return;
     setIsAnalyzing(true);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
+    {
       let result: any = null;
       try {
-        const b64 = (reader.result as string).split(',')[1];
-        result = await analyzeMealImage(b64, file.type);
+        // Phone photos are 5-10 MB; sent raw they blew the request limit and
+        // came back empty (the ramen bug). 1024px JPEG keeps every detail the
+        // model needs at ~150 KB.
+        const b64 = await downscaleToJpegBase64(file, 1024);
+        result = await analyzeMealImage(b64, 'image/jpeg');
       } catch { result = null; }
       if (result && result.calories > 0) {
         await logMeal(profile.uid!, { name: result.name, calories: result.calories, protein: result.protein, carbs: result.carbs, fats: result.fats, mealType: 'snack' });
@@ -659,8 +672,7 @@ export const Track: React.FC = () => {
         showToast('Enter the meal details yourself', 'info');
       }
       setIsAnalyzing(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const filtered = meals.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));

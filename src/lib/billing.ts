@@ -75,6 +75,11 @@ const NONE: Entitlement = {
  * Pure entitlement calculation. `freeForAll` is the launch-mode flag.
  * Paid access always takes precedence over the trial for display purposes.
  */
+/** Accounts that get every feature free (the creator). Lowercase. */
+export const CREATOR_EMAILS = ['yugentiran2011@gmail.com'];
+export const isCreatorEmail = (email: unknown): boolean =>
+  typeof email === 'string' && CREATOR_EMAILS.includes(email.trim().toLowerCase());
+
 export const computeEntitlement = (
   profile: Partial<UserProfile> | null | undefined,
   nowMs: number,
@@ -84,6 +89,12 @@ export const computeEntitlement = (
     return { ...NONE, isPro: true, status: 'active', source: 'launch' };
   }
   if (!profile) return { ...NONE };
+  // The app's creator gets every feature free, forever. The server checks the
+  // VERIFIED Firebase Auth email (functions/src/index.ts isProUid), so editing
+  // the profile email cannot unlock paid AI for anyone else.
+  if (isCreatorEmail((profile as any).email)) {
+    return { ...NONE, isPro: true, status: 'active', source: 'launch' };
+  }
 
   const plan = (profile.plan ?? null) as BillingPlan | null;
   const cancelAtPeriodEnd = !!profile.cancelAtPeriodEnd;

@@ -385,8 +385,16 @@ const cascadeText = async (
  * dependency-free rather than importing the client module, which is bundled
  * for the browser.
  */
+const CREATOR_EMAILS = ["yugentiran2011@gmail.com"];
+
 const isProUid = async (uid: string): Promise<boolean> => {
   if (process.env.ALL_FEATURES_FREE === "true") return true;
+  // The creator: every feature free. Uses the VERIFIED auth email, never the
+  // client-writable profile field.
+  try {
+    const user = await admin.auth().getUser(uid);
+    if (user.emailVerified && CREATOR_EMAILS.includes((user.email || "").toLowerCase())) return true;
+  } catch { /* fall through to the normal checks */ }
   try {
     const snap = await db.doc(`users/${uid}`).get();
     if (!snap.exists) return false;
@@ -685,8 +693,12 @@ Food: "${clip(payload.description, 500)}"`,
 
       case "analyzeMealImage": {
         const out = await json(
-          vision(payload.base64Image, payload.mimeType, `Analyze this food image and return ONLY valid JSON.
-Format: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number}`),
+          vision(payload.base64Image, payload.mimeType, `You are FitFlow's nutrition AI. Your top priority is an accurate CALORIE and macro estimate for a fitness user.
+Look at the photo. Identify the dish even if it is a mixed bowl, soup or noodle dish (e.g. ramen, laksa, pho, nasi lemak, curry, salad).
+Estimate the visible PORTION (bowl/plate size, how full) and give totals for the WHOLE portion shown, including broth, oil, toppings and sides.
+Never answer 0 calories if any food is visible; give your best realistic estimate.
+Return ONLY valid JSON, no markdown:
+{"name": string, "calories": number, "protein": number, "carbs": number, "fats": number}`),
           { name: "Unknown meal", calories: 0, protein: 0, carbs: 0, fats: 0 },
         );
         res.json(out);

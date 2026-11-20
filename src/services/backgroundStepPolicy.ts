@@ -119,7 +119,28 @@ export interface ReadingContext {
   elapsedMs: number;
   /** Settings.Global.BOOT_COUNT, or -1 if the OEM doesn't provide it. */
   bootCount: number;
+  /** ms since local midnight. When given, no reading may credit steps from before today. */
+  msSinceMidnight?: number;
 }
+
+const windowMs = (ms: number, ctx: ReadingContext): number =>
+  typeof ctx.msSinceMidnight === 'number' && Number.isFinite(ctx.msSinceMidnight)
+    ? Math.min(ms, Math.max(0, ctx.msSinceMidnight))
+    : ms;
+
+/**
+ * Forget the raw baseline so the next reading credits nothing. Used when the
+ * user switches background counting ON after it was off: the hardware counter
+ * kept rising the whole time (34,362 "free" steps on enable), and none of that
+ * can be attributed to today. Mirrors StepStore.resetBaseline.
+ */
+export const resetBaseline = (state: CounterState): CounterState => ({
+  ...state,
+  hasBaseline: false,
+  dropSteps: 0,
+  detectorSteps: 0,
+  peakRaw: -1,
+});
 
 /** Whether the device rebooted between the stored state and this reading. */
 export const didReboot = (state: CounterState, ctx: ReadingContext): boolean => {
@@ -151,7 +172,7 @@ export const rawReadingDelta = (rawValue: unknown, state: CounterState, ctx: Rea
 
   let delta: number;
   if (didReboot(state, ctx)) {
-    delta = raw <= cadenceCeiling(ctx.elapsedMs) ? raw : 0;
+    delta = raw <= cadenceCeiling(windowMs(ctx.elapsedMs, ctx)) ? raw : 0;
   } else if (raw < state.lastRaw) {
     delta = 0;
   } else {
@@ -163,7 +184,7 @@ export const rawReadingDelta = (rawValue: unknown, state: CounterState, ctx: Rea
     } else {
       delta = raw - state.lastRaw;
     }
-    if (delta > cadenceCeiling(ctx.elapsedMs - state.lastElapsedMs)) delta = 0;
+    if (delta > cadenceCeiling(windowMs(ctx.elapsedMs - state.lastElapsedMs, ctx))) delta = 0;
   }
 
   if (!Number.isFinite(delta) || delta <= 0) return 0;

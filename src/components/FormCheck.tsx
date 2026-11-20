@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Volume2, VolumeX, Sparkles, AlertTriangle, CheckCircle2, Camera as CameraIcon, RefreshCcw } from 'lucide-react';
+import { X, Volume2, VolumeX, Sparkles, AlertTriangle, CheckCircle2, Camera as CameraIcon, RefreshCcw, Timer } from 'lucide-react';
 import { analyzeFormFrame, FormFeedback } from '../services/geminiService';
 import { PoseOverlay } from './PoseOverlay';
 import type { FormVerdict } from '../lib/formRules';
@@ -20,6 +20,7 @@ interface Props {
 }
 
 const INTERVAL_MS = 3000; // analyze every 3 seconds
+const COUNTDOWN_S = 5;
 
 export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -100,6 +101,21 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [paused, setPaused] = useState(false);
+  // 5-second "get into position" countdown before anything is captured, so the
+  // user knows exactly when the AI starts looking. Re-runnable from the header.
+  const [countdown, setCountdown] = useState(COUNTDOWN_S);
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => {
+      setCountdown((c) => c - 1);
+      if (voiceOn && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(countdown - 1 > 0 ? String(countdown - 1) : 'Go'));
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [countdown, voiceOn]);
+  const counting = countdown > 0;
   // Measured, on-device verdict — updates ~20x/sec, independent of Gemini.
   const [verdict, setVerdict] = useState<FormVerdict | null>(null);
   // null = still loading the model; false = unavailable, run Gemini-only.
@@ -161,7 +177,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
   }, [facingMode]);
 
   const captureAndAnalyze = useCallback(async () => {
-    if (paused || inflightRef.current) return;
+    if (paused || counting || inflightRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.readyState < 2) return;
@@ -197,7 +213,9 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
       setIsAnalyzing(false);
       inflightRef.current = false;
     }
-  }, [exerciseName, voiceOn, paused]);
+  }, [exerciseName, voiceOn, paused, counting]);
+  // First Gemini read the moment the countdown hits zero, not 3 s later.
+  useEffect(() => { if (!counting) void captureAndAnalyze(); }, [counting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     intervalRef.current = setInterval(captureAndAnalyze, INTERVAL_MS);
@@ -241,6 +259,13 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setCountdown(COUNTDOWN_S)}
+            className="h-9 px-3 rounded-full bg-white/[0.06] flex items-center gap-1.5 text-xs font-bold text-accent tabular-nums"
+            aria-label="Restart 5 second timer"
+          >
+            <Timer size={14} /> {counting ? `${countdown}s` : '5s'}
+          </button>
+          <button
             onClick={() => setVoiceOn(v => !v)}
             className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${voiceOn ? 'bg-accent/12 border-accent/30 text-accent' : 'glass text-text-dim'}`}
             aria-label="Toggle voice"
@@ -276,6 +301,21 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
         {/* Frame-grab scratch canvas for the Gemini call — never displayed. */}
         <canvas ref={canvasRef} className="hidden" />
 
+        {counting && !error && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 pointer-events-none">
+            <p className="text-eyebrow text-white/80 mb-2">Get into position</p>
+            <motion.span
+              key={countdown}
+              initial={{ scale: 1.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="font-display text-8xl font-bold text-accent tabular-nums"
+            >
+              {countdown}
+            </motion.span>
+            <p className="text-xs text-white/70 mt-3">AI starts checking your form at 0</p>
+          </div>
+        )}
+
         {/* The live skeleton. Mirrored in lockstep with the video so the lines
             sit on the body rather than its reflection. */}
         {!error && (
@@ -283,7 +323,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
             videoRef={videoRef}
             exerciseName={exerciseName}
             mirrored={facingMode === 'user'}
-            paused={paused}
+            paused={paused || counting}
             onVerdict={handleVerdict}
             onReady={setPoseReady}
           />

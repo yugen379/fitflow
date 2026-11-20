@@ -204,7 +204,7 @@ public final class StepStore {
         } else if (didReboot(lastBoot, bootCount, lastElapsed, elapsedMs)) {
             // A REAL reboot: the counter restarted from zero, so the value is
             // the steps since boot — if it could have been walked since boot.
-            delta = rawValue <= cadenceCeiling(elapsedMs) ? rawValue : 0L;
+            delta = rawValue <= cadenceCeiling(Math.min(elapsedMs, msSinceMidnight())) ? rawValue : 0L;
         } else if (rawValue < lastRaw) {
             // Dropped without a reboot: a sensor reset, not walking.
             delta = 0L;
@@ -212,14 +212,14 @@ public final class StepStore {
             // Jump back to the real cumulative value after a drop. Only steps
             // above the old peak are new, less what the drop already credited.
             delta = rawValue - peak - dropSteps;
-            if (delta > cadenceCeiling(elapsedMs - lastElapsed)) {
+            if (delta > cadenceCeiling(Math.min(elapsedMs - lastElapsed, msSinceMidnight()))) {
                 delta = 0L;
             }
         } else {
             // The normal path. Covers time the process was dead, because the
             // hardware counter kept incrementing regardless.
             delta = rawValue - lastRaw;
-            if (delta > cadenceCeiling(elapsedMs - lastElapsed)) {
+            if (delta > cadenceCeiling(Math.min(elapsedMs - lastElapsed, msSinceMidnight()))) {
                 delta = 0L; // faster than a human can walk: a sensor jump
             }
         }
@@ -253,6 +253,28 @@ public final class StepStore {
                 .apply();
 
         return stepsToday;
+    }
+
+    /**
+     * Forget the raw baseline so the next reading credits nothing. Called when
+     * the user switches background counting on after it was off.
+     */
+    public synchronized void resetBaseline() {
+        prefs.edit()
+                .putBoolean(KEY_HAS_BASELINE, false)
+                .putLong(KEY_DROP_STEPS, 0L)
+                .putLong(KEY_DETECTOR_STEPS, 0L)
+                .remove(KEY_PEAK_RAW)
+                .apply();
+    }
+
+    /** ms since local midnight: no single reading may credit steps from before today. */
+    static long msSinceMidnight() {
+        Calendar c = Calendar.getInstance();
+        long now = c.getTimeInMillis();
+        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0);
+        c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0);
+        return Math.max(0L, now - c.getTimeInMillis());
     }
 
     static boolean didReboot(int lastBoot, int bootCount, long lastElapsed, long elapsedMs) {

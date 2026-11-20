@@ -64,7 +64,7 @@ const {
 const { resolveTheme } = await import('../src/hooks/useTheme.tsx');
 
 const {
-  MAX_PLAUSIBLE_DELTA, MAX_PLAUSIBLE_DAY_STEPS, addDetectorSteps, applyRawReading, emptyCounterState, rawReadingDelta, rollDay,
+  MAX_PLAUSIBLE_DELTA, MAX_PLAUSIBLE_DAY_STEPS, addDetectorSteps, applyRawReading, emptyCounterState, rawReadingDelta, rollDay, resetBaseline,
 } = await import('../src/services/backgroundStepPolicy.ts');
 
 const {
@@ -1209,6 +1209,27 @@ const accuracy = (counted, actual) => (counted / actual) * 100;
   }
   check('500 hostile sample streams: zero throws', throws === 0, `${throws}`);
   check('500 hostile sample streams: never a negative credit', bad === 0, `${bad}`);
+}
+
+// --- 34,362-on-enable bug (2026-11-21) ----------------------------------------
+{
+  const H = 3_600_000;
+  // Counting was on yesterday, then switched off. The hardware counter kept
+  // rising 34,362 while it was off. Re-enabling must credit 0, not 34,362.
+  let s = applyRawReading(10_000, emptyCounterState(), { elapsedMs: 1 * H, bootCount: 3 });
+  s = applyRawReading(10_500, s, { elapsedMs: 1.2 * H, bootCount: 3 });
+  const before = s.stepsToday;
+  const reenabled = applyRawReading(44_862, resetBaseline(s), { elapsedMs: 30 * H, bootCount: 3 });
+  check('enable after a long off period credits nothing (was +34,362)', reenabled.stepsToday === before, `${reenabled.stepsToday}`);
+  const control = applyRawReading(44_862, s, { elapsedMs: 30 * H, bootCount: 3 });
+  check('CONTROL: without the reset the old logic gifts 34,362', control.stepsToday - before === 34_362, `${control.stepsToday - before}`);
+  const walk = applyRawReading(45_862, reenabled, { elapsedMs: 30.2 * H, bootCount: 3 });
+  check('after re-enable, real walking still counts', walk.stepsToday - reenabled.stepsToday === 1_000, `${walk.stepsToday}`);
+  // Long gap across midnight: only what fits since midnight may be credited.
+  const atNight = applyRawReading(45_862 + 34_362, walk, { elapsedMs: 40 * H, bootCount: 3, msSinceMidnight: 60_000 });
+  check('a 10-hour gap 1 min after midnight cannot credit 34k', atNight.stepsToday === walk.stepsToday, `${atNight.stepsToday}`);
+  const noClamp = applyRawReading(45_862 + 34_362, walk, { elapsedMs: 40 * H, bootCount: 3 });
+  check('CONTROL: without the midnight clamp the gap is credited', noClamp.stepsToday > walk.stepsToday);
 }
 
 // --- Summary -----------------------------------------------------------------
