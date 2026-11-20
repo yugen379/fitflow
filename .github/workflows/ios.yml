@@ -78,7 +78,14 @@ jobs:
       # Regenerates CapApp-SPM/Package.swift with macOS paths (the committed
       # one was written on Windows and has backslash paths).
       - name: Sync Capacitor → iOS
-        run: npx cap sync ios
+        run: |
+          npx cap sync ios
+          # SwiftPM names a local package after its folder: the plugin's
+          # "app-check" folder collides with google/app-check (needed by
+          # GoogleSignIn). Point at a uniquely named copy instead.
+          cp -R node_modules/@capacitor-firebase/app-check node_modules/@capacitor-firebase/capacitor-firebase-app-check
+          sed -i '' 's#@capacitor-firebase/app-check"#@capacitor-firebase/capacitor-firebase-app-check"#' ios/App/CapApp-SPM/Package.swift
+          grep -n app-check ios/App/CapApp-SPM/Package.swift
 
       - name: Write GoogleService-Info.plist
         env:
