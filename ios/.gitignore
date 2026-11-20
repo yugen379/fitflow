@@ -11,3 +11,6 @@ capacitor-cordova-ios-plugins
 # Generated Config files
 App/App/capacitor.config.json
 App/App/config.xml
+
+# Firebase iOS config: supplied by the GOOGLE_SERVICE_INFO_PLIST secret in CI
+App/App/GoogleService-Info.plist
