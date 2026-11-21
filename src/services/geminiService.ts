@@ -670,8 +670,14 @@ export const swapMeal = async (original: string, reason: string, dietaryPreferen
 
   let result: any = fallback;
   if (useProxy) {
-    try { result = await callProxy('swapMeal', { original, reason, dietaryPreferences }); }
-    catch { return fallback; }
+    // Fast by design: never make the user wait more than 2.5 s for a swap.
+    // If the AI is slow, the built-in swap (same macros logic) shows instantly.
+    try {
+      result = await Promise.race([
+        callProxy('swapMeal', { original, reason, dietaryPreferences }),
+        new Promise((resolve) => setTimeout(() => resolve(fallback), 2500)),
+      ]);
+    } catch { return fallback; }
   } else {
     result = await direct(
       `Suggest ONE alternative ${mealType} meal that replaces "${original}". Reason: ${reason}. Preferences: ${dietaryPreferences}. Do NOT return "${original}" — return a different dish.

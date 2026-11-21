@@ -68,6 +68,9 @@ import {
 import type { BackgroundStepsStatus } from '../lib/backgroundSteps';
 import { fetchStepDay, upsertStepDay } from '../services/stepSyncService';
 
+const isNativeShell = (): boolean =>
+  typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
+
 export type StepSource = 'background-service' | 'health-connect' | 'hardware-counter' | 'device-sensor' | 'none';
 
 export interface StepState extends StepSnapshot {
@@ -177,6 +180,9 @@ export const useSteps = ({
     if (!uid) return;
     let cancelled = false;
     void (async () => {
+      // On a phone with the native counter, the phone is the truth; the cloud
+      // copy is only for web / a second device (it can hold a stale-high day).
+      if (isBackgroundStepsSupported()) return;
       const remote = await fetchStepDay(uid, localDateKey());
       if (!cancelled && remote > 0) await pedometer.adoptDeviceCount(remote);
     })();
@@ -193,7 +199,9 @@ export const useSteps = ({
     if (!isBackgroundStepsSupported()) return;
     const [next, steps] = await Promise.all([getBackgroundStatus(), readTodayBackgroundSteps()]);
     setBackground(next);
-    if (steps > 0) await pedometer.adoptDeviceCount(steps);
+    // Service running = it owns today's number (can correct a stuck-high value).
+    if (next?.serviceRunning) await pedometer.setAuthoritativeCount(steps);
+    else if (steps > 0) await pedometer.adoptDeviceCount(steps);
   }, []);
 
   // Keep the service's copy of bodyweight current, so the calories in the
@@ -219,7 +227,7 @@ export const useSteps = ({
     void (async () => {
       const off = await onBackgroundSteps((event) => {
         const steps = Number(event?.steps);
-        if (Number.isFinite(steps) && steps > 0) void pedometer.adoptDeviceCount(steps);
+        if (Number.isFinite(steps) && steps >= 0) void pedometer.setAuthoritativeCount(steps);
       });
       if (cancelled) off();
       else dispose = off;
@@ -278,6 +286,10 @@ export const useSteps = ({
   // ── Tier 4: accelerometer, only when nothing else is carrying it ──────────
   useEffect(() => {
     if (!enabled || backgroundActive || healthConnectLeading || hardwareActive) return;
+    // NEVER on a native phone: the accelerometer guess counts the phone being
+    // shaken, carried in a bag or bounced in a car as steps. Native phones use
+    // the real step sensor (tiers 1/3) or count nothing.
+    if (isNativeShell()) return;
     void pedometer.start();
     return () => pedometer.stop();
   }, [enabled, backgroundActive, healthConnectLeading, hardwareActive]);

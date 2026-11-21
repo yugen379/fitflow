@@ -86,6 +86,8 @@ export const computeLevel = (points: unknown): LevelInfo => {
 export const STEPS_GOAL = 10000;
 
 export interface MissionSnapshot {
+  /** The user's chosen daily calorie target, when set. */
+  calorieTarget?: number;
   hour: number;                    // 0–23, user-local
   goal?: string;                   // 'muscle_gain' | 'fat_loss' | ...
   weightKg?: number;
@@ -147,7 +149,7 @@ export const buildMission = (snapIn: MissionSnapshot): Mission => {
   const stepsConnected =
     typeof snap.steps === 'number' && Number.isFinite(snap.steps) && snap.steps >= 0;
   const steps = stepsConnected ? Math.floor(snap.steps as number) : 0;
-  const targets = computeTargets(snap.goal, snap.weightKg);
+  const targets = computeTargets(snap.goal, snap.weightKg, snap.calorieTarget);
 
   // Workout — done after one session. Evenings suggest the quick version
   // (feedback engine: a missed session becomes a smaller ask, not a bigger one).

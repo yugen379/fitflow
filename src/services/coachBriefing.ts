@@ -13,6 +13,8 @@
 export type CoachTone = 'push' | 'nudge' | 'care' | 'celebrate';
 
 export interface CoachContext {
+  /** The user's chosen daily calorie target, when set. */
+  calorieTarget?: number;
   hour: number;                       // 0–23, user-local
   goal?: string;                      // 'muscle_gain' | 'fat_loss' | 'general' | ...
   weightKg?: number;
@@ -55,10 +57,14 @@ export interface CoachTargets {
 // Daily targets from goal + bodyweight. Mirrors the formulas already used in
 // Home.tsx (calorie target) and heuristicCoachReply (protein / water) so the
 // proactive coach never contradicts the rest of the app.
-export const computeTargets = (goal?: string, weightKg?: number): CoachTargets => {
+export const computeTargets = (goal?: string, weightKg?: number, calorieTarget?: number): CoachTargets => {
   const w = typeof weightKg === 'number' && weightKg > 0 ? weightKg : 70;
   const g = goal || 'general';
-  const calories = g === 'fat_loss' ? 1800 : g === 'muscle_gain' ? 2800 : 2200;
+  // The user's own target (meal plan / nutrition goals) always wins, so every
+  // widget shows the SAME number (was: Home 1800 vs meal plan 2000).
+  const calories = typeof calorieTarget === 'number' && calorieTarget > 0
+    ? Math.round(calorieTarget)
+    : g === 'fat_loss' ? 1800 : g === 'muscle_gain' ? 2800 : 2200;
   const proteinFactor = g === 'muscle_gain' ? 2.0 : g === 'fat_loss' ? 1.8 : 1.6;
   return {
     calories,
@@ -123,7 +129,7 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
   const pod = partOfDay(hour);
   const goal = ctx.goal || 'general';
   const goalLabel = goal.replace(/_/g, ' ');
-  const targets = computeTargets(goal, ctx.weightKg);
+  const targets = computeTargets(goal, ctx.weightKg, ctx.calorieTarget);
 
   const cal = pos(ctx.caloriesConsumed);
   const protein = pos(ctx.proteinConsumed);

@@ -371,6 +371,23 @@ class Pedometer {
    * own counter always wins over our estimate — this exists so the UI can show
    * one number rather than two competing ones.
    */
+  /**
+   * The native background counter is the source of truth on Android. Unlike
+   * adoptDeviceCount (a max), this can bring the number DOWN, so one bad
+   * reading from another tier or the cloud can't stick for the rest of the day.
+   */
+  async setAuthoritativeCount(steps: number): Promise<void> {
+    await this.hydrate();
+    this.rollDateIfNeeded();
+    if (!isPlausibleDailySteps(steps) && steps !== 0) return;
+    const next = Math.max(0, Math.round(steps));
+    if (next !== this.steps) {
+      this.steps = next;
+      this.emit();
+      this.scheduleSave();
+    }
+  }
+
   async adoptDeviceCount(steps: number): Promise<void> {
     await this.hydrate();
     this.rollDateIfNeeded();

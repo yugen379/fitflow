@@ -83,3 +83,25 @@ export const openBillingPortal = async (): Promise<{ ok: boolean; reason?: strin
   await openExternal(data.url);
   return { ok: true };
 };
+
+
+/**
+ * Ask the server to confirm the subscription straight with Stripe / Google Play
+ * and write Pro onto the profile. Fixes "paid but still locked" when the payment
+ * webhook was missed or slow. Never throws; resolves true when Pro is active.
+ */
+export const syncSubscription = async (): Promise<boolean> => {
+  const env = (import.meta as any).env || {};
+  const base = (env.VITE_GEMINI_PROXY_URL || CHECKOUT_URL || PORTAL_URL || '') as string;
+  const url = base.replace(/(geminiProxy|createCheckoutSession|createPortalSession)/, 'syncSubscription');
+  if (!url || url === base) return false;
+  try {
+    const { auth } = await import('../lib/firebase');
+    const idToken = await auth.currentUser?.getIdToken();
+    if (!idToken) return false;
+    const res = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${idToken}` } });
+    return res.ok && (await res.json())?.pro === true;
+  } catch {
+    return false;
+  }
+};

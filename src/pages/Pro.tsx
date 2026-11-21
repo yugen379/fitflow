@@ -5,7 +5,7 @@ import { ChevronLeft, Check, Sparkles, Zap, Camera, Heart, TrendingUp, Bell, Cro
 import { LogoMark } from '../components/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { startCheckout, isStripeConfigured, openBillingPortal, isPortalConfigured } from '../services/stripeService';
+import { startCheckout, syncSubscription, isStripeConfigured, openBillingPortal, isPortalConfigured } from '../services/stripeService';
 import { isNativeApp } from '../lib/firebase';
 import {
   isPlayBillingConfigured, configurePlayBilling, startPlayPurchase,
@@ -63,6 +63,14 @@ export const Pro: React.FC = () => {
   const isPaid = ent.isPro && ent.source === 'paid';
   const isTrialing = ent.isPro && ent.source === 'trial';
 
+  // Paid but the profile still says free (missed webhook): ask the server to
+  // check with Stripe / Play directly. Runs on open, and again after checkout.
+  useEffect(() => {
+    if (!profile?.uid || isPaid) return;
+    void syncSubscription();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.uid]);
+
   // Configure RevenueCat up front on Android so the purchase sheet opens
   // instantly, and pull the real Play prices so the cards show exactly what
   // the sheet will charge (right period, right currency).
@@ -109,7 +117,9 @@ export const Pro: React.FC = () => {
       const result = await startPlayPurchase(profile!.uid, plan);
       setStarting(false);
       if (result.ok) {
-        showToast('Purchase complete — unlocking Pro…', 'success');
+        showToast('Subscribed to FitFlow Pro — unlocking…', 'success');
+        // Don't wait on the webhook: confirm with the server now, retry once.
+        void syncSubscription().then((ok) => { if (!ok) setTimeout(() => void syncSubscription(), 4000); });
         // The RevenueCat webhook flips subscriptionType server-side; the profile
         // listener picks it up within a moment.
       } else if (result.reason !== 'cancelled') {
@@ -288,7 +298,11 @@ export const Pro: React.FC = () => {
       {/* Primary CTA */}
       {allFree ? (
         <button onClick={() => navigate('/')} className="btn-3d w-full h-14">Continue training</button>
-      ) : isPaid ? null : !showPurchaseUi ? (
+      ) : isPaid ? (
+        <div className="w-full h-14 rounded-2xl bg-accent/15 border border-accent/30 flex items-center justify-center gap-2 text-accent font-bold">
+          <Check size={18} /> Subscribed to FitFlow Pro
+        </div>
+      ) : !showPurchaseUi ? (
         <p className="text-center text-xs text-text-mute leading-relaxed">
           {isTrialing
             ? `Your trial keeps everything unlocked for ${ent.trialDaysLeft} more ${ent.trialDaysLeft === 1 ? 'day' : 'days'}.`

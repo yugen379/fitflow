@@ -230,6 +230,71 @@ export const createPortalSession = functions.https.onRequest(
     }
   });
 
+// ---------------------------------------------------------------------------
+// syncSubscription — "I paid but I'm still locked" fix. The app calls this after
+// checkout and whenever the Pro page opens without Pro. It asks Stripe (and
+// RevenueCat, when REVENUECAT_SECRET_KEY is set) directly, so a missed or
+// delayed webhook can no longer leave a paying user locked out.
+// ---------------------------------------------------------------------------
+export const syncSubscription = functions.https.onRequest(
+  { ...INTERACTIVE, secrets: [stripeSecret] },
+  async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+      res.set("Access-Control-Allow-Methods", "POST");
+      res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.status(204).send(""); return;
+    }
+    try {
+      const h = req.headers.authorization || "";
+      if (!h.startsWith("Bearer ")) { res.status(401).json({ error: "Missing auth token" }); return; }
+      const decoded = await admin.auth().verifyIdToken(h.slice(7));
+      const uid = decoded.uid;
+      const ref = db.doc(`users/${uid}`);
+      let pro = false;
+
+      // 1) Stripe — by stored customer id, else by the VERIFIED account email.
+      const stripe = getStripe();
+      if (stripe) {
+        let customerId = (await ref.get()).data()?.stripeCustomerId as string | undefined;
+        if (!customerId && decoded.email && decoded.email_verified) {
+          const found = await stripe.customers.list({ email: decoded.email, limit: 1 });
+          customerId = found.data[0]?.id;
+          if (customerId) await ref.set({ stripeCustomerId: customerId }, { merge: true });
+        }
+        if (customerId) {
+          const subs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 5 });
+          const best = subs.data.find((x) => ["active", "trialing", "past_due"].includes(x.status)) || subs.data[0];
+          if (best) { await applySubscription(stripe, best); pro = ["active", "trialing", "past_due"].includes(best.status); }
+        }
+      }
+
+      // 2) Google Play via RevenueCat REST (appUserID === Firebase uid).
+      const rcKey = process.env.REVENUECAT_SECRET_KEY;
+      if (!pro && rcKey) {
+        const r = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(uid)}`,
+          { headers: { Authorization: `Bearer ${rcKey}` } });
+        if (r.ok) {
+          const ent = (await r.json())?.subscriber?.entitlements?.pro;
+          const exp = ent?.expires_date ? Date.parse(ent.expires_date) : null;
+          if (ent && (exp === null || exp > Date.now())) {
+            pro = true;
+            await ref.set({
+              subscriptionType: "premium", subscriptionStatus: "active", billingSource: "play",
+              plan: /year|annual/i.test(ent.product_identifier || "") ? "yearly" : "monthly",
+              currentPeriodEnd: exp, cancelAtPeriodEnd: false, graceUntil: null,
+              subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+          }
+        }
+      }
+      res.json({ pro });
+    } catch (err: any) {
+      console.error("syncSubscription error:", err);
+      res.status(500).json({ error: "sync failed" });
+    }
+  });
+
 export const stripeWebhook = functions.https.onRequest(
   { ...PAYMENTS, secrets: [stripeSecret, stripeWebhookSecret] },
   async (req, res) => {
