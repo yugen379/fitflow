@@ -92,8 +92,9 @@ export const openBillingPortal = async (): Promise<{ ok: boolean; reason?: strin
  */
 export const syncSubscription = async (): Promise<boolean> => {
   const env = (import.meta as any).env || {};
-  const base = (env.VITE_GEMINI_PROXY_URL || CHECKOUT_URL || PORTAL_URL || '') as string;
-  const url = base.replace(/(geminiProxy|createCheckoutSession|createPortalSession)/, 'syncSubscription');
+  // Same functions host as the AI proxy (present in every build, incl. Play).
+  const base = String(env.VITE_GEMINI_PROXY_URL || '');
+  const url = base ? base.replace(/[^/]+\/?$/, 'syncSubscription') : '';
   if (!url || url === base) return false;
   try {
     const { auth } = await import('../lib/firebase');
