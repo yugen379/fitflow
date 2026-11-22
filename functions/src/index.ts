@@ -88,6 +88,9 @@ const safeUrl = (url: unknown, fallbackPath: string): string =>
 // `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH`). Guards the endpoint
 // so only RevenueCat can grant entitlement.
 const revenueCatAuth = defineSecret("REVENUECAT_WEBHOOK_AUTH");
+// RevenueCat REST secret key (sk_...), lets syncSubscription find Play purchases
+// whose webhook was missed (e.g. while the server was down).
+const revenueCatSecretKey = defineSecret("REVENUECAT_SECRET_KEY");
 
 const getStripe = (): Stripe | null => {
   const key = stripeSecret.value() || process.env.STRIPE_SECRET_KEY;
@@ -237,7 +240,7 @@ export const createPortalSession = functions.https.onRequest(
 // delayed webhook can no longer leave a paying user locked out.
 // ---------------------------------------------------------------------------
 export const syncSubscription = functions.https.onRequest(
-  { ...INTERACTIVE, secrets: [stripeSecret] },
+  { ...INTERACTIVE, secrets: [stripeSecret, revenueCatSecretKey] },
   async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*");
     if (req.method === "OPTIONS") {
@@ -270,14 +273,18 @@ export const syncSubscription = functions.https.onRequest(
       }
 
       // 2) Google Play via RevenueCat REST (appUserID === Firebase uid).
-      const rcKey = process.env.REVENUECAT_SECRET_KEY;
+      const rcKey = (revenueCatSecretKey.value() || process.env.REVENUECAT_SECRET_KEY || "").trim();
       if (!pro && rcKey) {
         const r = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(uid)}`,
           { headers: { Authorization: `Bearer ${rcKey}` } });
         if (r.ok) {
-          const ent = (await r.json())?.subscriber?.entitlements?.pro;
+          // Entitlement id in the RC dashboard is "fitflow Pro" (not "pro"), so
+          // accept ANY entitlement that is still active.
+          const ents = Object.values((await r.json())?.subscriber?.entitlements || {}) as any[];
+          const live = ents.filter((e) => !e?.expires_date || Date.parse(e.expires_date) > Date.now());
+          const ent = live.sort((a, b) => Date.parse(b.expires_date || "9999") - Date.parse(a.expires_date || "9999"))[0];
           const exp = ent?.expires_date ? Date.parse(ent.expires_date) : null;
-          if (ent && (exp === null || exp > Date.now())) {
+          if (ent) {
             pro = true;
             await ref.set({
               subscriptionType: "premium", subscriptionStatus: "active", billingSource: "play",
