@@ -16,7 +16,7 @@
  * carries `aria-current`, and every target clears 44px.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PanInfo } from 'motion/react';
@@ -42,6 +42,24 @@ const navItems = [
 export const FloatingDock: React.FC = () => {
   const [hidden, setHidden] = useState(false);
   const { pathname } = useLocation();
+  // While the on-screen keyboard is up, the dock sat on top of it and squeezed
+  // the Coach chat into a strip. A text field being focused is the reliable
+  // signal across Android WebViews (visualViewport resizing is not).
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const isField = (el: Element | null) =>
+      !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' &&
+        !['checkbox', 'radio', 'button', 'range', 'file', 'submit'].includes((el as HTMLInputElement).type)) ||
+        (el as HTMLElement).isContentEditable);
+    const sync = () => setTyping(isField(document.activeElement));
+    const later = () => { setTimeout(sync, 0); };
+    document.addEventListener('focusin', sync);
+    document.addEventListener('focusout', later);
+    return () => {
+      document.removeEventListener('focusin', sync);
+      document.removeEventListener('focusout', later);
+    };
+  }, []);
   // Same matching as NavLink: Home only on exactly "/", the rest by prefix.
   const activeIndex = navItems.findIndex((item) =>
     item.path === '/' ? pathname === '/' : pathname === item.path || pathname.startsWith(`${item.path}/`));
@@ -59,7 +77,7 @@ export const FloatingDock: React.FC = () => {
   return (
     <>
       <AnimatePresence>
-        {!hidden && (
+        {!hidden && !typing && (
           <motion.div
             key="dock"
             initial={{ y: 120, opacity: 0 }}

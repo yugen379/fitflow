@@ -561,6 +561,14 @@ export const Profile: React.FC = () => {
           transition: border-color 0.15s ease;
         }
         .modal-input:focus { border-color: rgba(198,255,61,0.4); }
+        /* Light mode: white text on a 3%-white box was invisible — the
+           Account info sheet showed labels and no fields (seen on a device). */
+        :root[data-theme="light"] .modal-input {
+          background: rgba(15,23,42,0.04);
+          border-color: rgba(15,23,42,0.14);
+          color: #0f172a;
+        }
+        :root[data-theme="light"] .modal-input:focus { border-color: rgba(94,124,0,0.55); }
       `}</style>
     </div>
   );

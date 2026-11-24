@@ -152,7 +152,12 @@ const callProxy = async (action: string, payload: any, retried = false): Promise
         return callProxy(action, payload, true);
       }
     }
-    if (!res.ok) throw new Error(`Gemini proxy returned ${res.status}`);
+    if (!res.ok) {
+      // Keep the server's machine code (e.g. coach_trial_used) on the error.
+      let code = '';
+      try { code = String((await res.json())?.code || ''); } catch { /* no body */ }
+      throw new Error(`Gemini proxy returned ${res.status}${code ? ` ${code}` : ''}`);
+    }
     return res.json();
   } finally {
     clearTimeout(timer);
@@ -742,13 +747,22 @@ export const askCoach = async (
       const r = await callProxy('askCoach', { message, history, profile });
       const text = typeof r === 'string' ? r : (r?.text || '');
       return text.trim() || fallback;
-    } catch { return fallback; }
+    } catch (e: any) {
+      // Free daily coach messages used up: the UI shows the upgrade path
+      // instead of a canned answer pretending to be the coach.
+      const msg = String(e?.message);
+      if (/returned 402 coach_trial_used/.test(msg)) throw new Error('coach_trial_used');
+      // An older server answers 402 with no code: coach chat is Pro-only there.
+      if (/returned 402/.test(msg)) throw new Error('coach_pro_only');
+      return fallback;
+    }
   }
   const transcript = history.slice(-8).map(m => `${m.role === 'user' ? 'User' : 'Coach'}: ${m.text}`).join('\n');
   const aiResp = await directRawRetry(
     `You are FitFlow Coach — an expert in strength training, nutrition, recovery, and behavior change.
 The user's goal is ${profile.goal || 'general fitness'}. Weight: ${profile.weight || 'n/a'}kg. Age: ${profile.age || 'n/a'}.
 Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
+Accuracy rules: when you compare foods or give calories/macros, use standard USDA-style values per stated portion and name the portion. If you are not sure, say it is an estimate. Never invent a number to sound confident. If the message includes "FitFlow app data for today", treat it as the user's real log and use it.
 
 ${transcript ? 'Conversation so far:\n' + transcript + '\n\n' : ''}User: ${message}
 Coach:`,
@@ -891,6 +905,8 @@ Return ONLY valid JSON, same shape: {"headline":string,"subtitle":string,"nudges
 // ---------------------------------------------------------------------------
 export type { QuickAddResult, QuickAddItem } from "./quickAddUtils";
 
+export const QUICKADD_AI_BUDGET_MS = 8_000;
+
 export const parseQuickAdd = async (text: string): Promise<QuickAddResult> =>
   // Same phrase → same parse. Cache only successful parses (items found) so an
   // empty result is never pinned and the user can retry into a real answer.
@@ -923,7 +939,13 @@ If you cannot parse any food, return [].`;
     return items.length > 0 ? items : null;
   };
 
-  const aiItems = await tryAi();
+  // A slow model cascade made one boiled egg take ~25 s on a real phone. The
+  // AI gets QUICKADD_AI_BUDGET_MS; past that the deterministic resolver below
+  // (bundled foods -> USDA) answers instead, so logging never stalls.
+  const aiItems = await Promise.race([
+    tryAi(),
+    new Promise<null>((r) => setTimeout(() => r(null), QUICKADD_AI_BUDGET_MS)),
+  ]);
   if (aiItems) return buildResult(aiItems, 'AI');
 
   // 2) Deterministic fallback — resolve each phrase via local DB → USDA.

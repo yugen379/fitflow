@@ -57,6 +57,8 @@ export interface DayTargets {
 }
 
 export interface UserProfile {
+  /** Client-only: verified Firebase Auth email (not stored in Firestore). */
+  authEmail?: string;
   uid: string;
   displayName: string;
   photoURL: string;
@@ -241,6 +243,8 @@ export interface WorkoutRecord {
   id: string;
   userId: string;
   type: string;
+  /** Human name for history, e.g. the AI plan title. Optional (older docs lack it). */
+  title?: string;
   duration: number; // in minutes
   caloriesBurned: number;
   timestamp: any;

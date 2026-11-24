@@ -18,6 +18,8 @@ interface PremiumGateProps {
   feature: Feature | (string & {});
   children: React.ReactNode;
   className?: string;
+  /** Open the gate for a free allowance (e.g. 3 free coach messages a day). */
+  unlocked?: boolean;
 }
 
 /** Resolve a Feature id to its registry entry; free text passes through. */
@@ -32,19 +34,19 @@ const metaFor = (feature: string) =>
 // not have. Selling a subscription on things the user already has, and one
 // thing that does not exist, is the kind of copy that produces refunds.
 const PERKS = [
-  'AI Coach chat — ask anything, any time',
+  'Unlimited AI Coach chat (free: 3 a day)',
   'Your full history, not just the last 7 days',
   'The AI weekly recap, every week',
   'The 3D Biomechanics Lab',
   'Unlimited streak freezes + Pro challenges',
 ];
 
-export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, className }) => {
+export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, className, unlocked }) => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
 
-  if (isProUnlocked(profile)) return <>{children}</>;
+  if (unlocked || isProUnlocked(profile)) return <>{children}</>;
 
   // Entitlement (trial + paid) is granted only server-side via the Stripe
   // webhook — the client never writes billing fields. The gate just routes to

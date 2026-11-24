@@ -209,7 +209,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const fromCache = snapshot.metadata.fromCache;
           if (snapshot.exists()) {
             const data = snapshot.data() as any;
-            setProfile({ uid: user.uid, ...data } as UserProfile);
+            // The VERIFIED sign-in email rides along (never written back). The
+            // creator unlock keys on it, exactly like the server's isProUid —
+            // keying on the profile doc's own email made the app say "trial
+            // ended" while the server still served Pro (seen on a device).
+            setProfile({ uid: user.uid, ...data, authEmail: user.emailVerified ? (user.email || undefined) : undefined } as UserProfile);
             identify(user.uid, {
               email: user.email || undefined,
               displayName: data.displayName,

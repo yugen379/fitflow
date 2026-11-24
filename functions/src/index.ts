@@ -408,8 +408,21 @@ const safeJsonParse = (text: string, fallback: any) => {
 // failed. Retryable (quota/transient) errors advance to the next model; hard
 // errors stop. Never throws.
 const MODEL_CALL_TIMEOUT_MS = 15_000; // a 7-day meal plan takes a while
-const cascadeOnce = async (ai: GoogleGenAI, contents: any, deadline = Infinity): Promise<string | null> => {
-  for (const model of GEMINI_MODELS) {
+// Quick-add is a tiny JSON task the user waits on: lite models first (fastest,
+// separate quota), and each model gets 6 s, not 15, before the next is tried.
+const FAST_MODELS = [
+  "gemini-2.5-flash-lite",
+  "gemini-flash-lite-latest",
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+];
+const FAST_CALL_TIMEOUT_MS = 6_000;
+
+const cascadeOnce = async (
+  ai: GoogleGenAI, contents: any, deadline = Infinity,
+  { models = GEMINI_MODELS, callTimeoutMs = MODEL_CALL_TIMEOUT_MS }: { models?: string[]; callTimeoutMs?: number } = {},
+): Promise<string | null> => {
+  for (const model of models) {
     if (Date.now() >= deadline) return null;
     if (modelIsCooling(model)) continue;
     try {
@@ -420,7 +433,7 @@ const cascadeOnce = async (ai: GoogleGenAI, contents: any, deadline = Infinity):
         config: {
           thinkingConfig: { thinkingBudget: 0 },
           // One hung model must not hold a server slot until the function dies.
-          abortSignal: AbortSignal.timeout(Math.min(MODEL_CALL_TIMEOUT_MS, deadline - Date.now())),
+          abortSignal: AbortSignal.timeout(Math.min(callTimeoutMs, deadline - Date.now())),
         },
       });
       const text = (resp.text || "").trim();
@@ -715,17 +728,20 @@ export const geminiProxy = functions.https.onRequest(
     // a client-side gate is a UI convenience, not a spend control. Entitlement
     // is recomputed here from the user doc the webhooks own, so a modified
     // client or a replayed request cannot buy Gemini calls on the free tier.
-    if (action === "askCoach" && !isPro) {
-      res.status(402).json({ error: "Coach chat requires FitFlow Pro" });
-      return;
-    }
-
-    // After the Pro check, so a refused coach message costs no allowance.
+    // Coach chat: Pro is unlimited (within the normal call allowance); free
+    // users get AI_FREE_COACH_PER_DAY messages, counted server-side in the same
+    // transactional allowance doc, so a modified client cannot exceed it.
+    const freeCoach = action === "askCoach" && !isPro;
     const refusal = await checkAiAllowance(
       callerUid,
-      action === "analyzeFormFrame" ? "frame" : action === "coachBriefing" ? "briefing" : "call",
+      freeCoach ? "coach"
+        : action === "analyzeFormFrame" ? "frame" : action === "coachBriefing" ? "briefing" : "call",
       isPro, undefined, undefined, action === "coachBriefing",
     );
+    if (refusal && freeCoach && refusal === "daily_limit") {
+      res.status(402).json({ error: "Free coach messages used for today", code: "coach_trial_used" });
+      return;
+    }
     if (refusal) {
       res.set("Retry-After", refusal === "global_limit" ? "3600" : "21600");
       res.status(429).json({ error: "Today's AI limit is reached", code: refusal });
@@ -881,6 +897,7 @@ Return ONLY plain text, no JSON.`,
           `You are FitFlow Coach — an expert in strength training, nutrition, recovery, and behavior change.
 The user's goal is ${clip(profile.goal, 100) || "general fitness"}. Weight: ${Number(profile.weight) || "n/a"}kg. Age: ${Number(profile.age) || "n/a"}.
 Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
+Accuracy rules: when you compare foods or give calories/macros, use standard USDA-style values per stated portion and name the portion (e.g. "a medium potato, ~160 kcal"). If you are not sure, say it is an estimate. Never invent a number to sound confident. If the message includes "FitFlow app data for today", treat it as the user's real log and use it.
 
 ${transcript ? "Conversation so far:\n" + transcript + "\n\n" : ""}User: ${clip(payload.message, 2000)}
 Coach:`,
@@ -918,15 +935,17 @@ Tone: warm, direct, like a real human coach. No emojis.`,
       }
 
       case "quickAdd": {
-        const out = await json(
+        const fastText = await cascadeOnce(ai,
           `Parse this meal description into individual food items with realistic nutrition.
 Description: "${clip(payload.text, 500)}"
 Estimate macros for the quantity stated; default to a typical single serving when no quantity is given.
 Return ONLY a valid JSON array (no markdown):
 [{"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}]
 If you cannot parse any food, return [].`,
-          [],
+          deadline,
+          { models: FAST_MODELS, callTimeoutMs: FAST_CALL_TIMEOUT_MS },
         );
+        const out = fastText ? safeJsonParse(fastText, []) : [];
         res.json(Array.isArray(out) ? out.slice(0, 20) : []);
         return;
       }

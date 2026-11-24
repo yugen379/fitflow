@@ -30,7 +30,13 @@ export const Community: React.FC = () => {
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [reportTarget, setReportTarget] = useState<Post | null>(null);
 
+  // Subscribe only once signed in, and again if the user changes. On a cold
+  // start (deep link / reload straight into /community) these listeners used
+  // to open before auth was restored; Firestore refused them, a refused
+  // listener never recovers, and the feed sat on "Loading feed" forever.
+  const uid = user?.uid;
   useEffect(() => {
+    if (!uid) return;
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50));
     // Leaderboards read the public mirror. /users carries health, contact and
     // billing data and is owner-only.
@@ -39,17 +45,17 @@ export const Community: React.FC = () => {
     const unsubPosts = onSnapshot(q, (snap) => {
       setPosts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post)));
       setLoading(false);
-    });
+    }, () => setLoading(false));
 
     const unsubUsers = onSnapshot(uQ, (snap) => {
       setLeaderboard(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, () => { /* leaderboard is optional */ });
 
     return () => {
-      unsubPosts();
-      unsubUsers();
+      safeUnsubscribe(unsubPosts);
+      safeUnsubscribe(unsubUsers);
     };
-  }, []);
+  }, [uid]);
 
   // Subscribe to the people this user has blocked, so their content disappears.
   useEffect(() => {

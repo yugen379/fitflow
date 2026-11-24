@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Camera, CameraOff, Sparkles, X, Loader2, ScanBarcode, Image as ImageIcon, Aperture, Pencil, Settings, ChefHat } from 'lucide-react';
+import { Search, Plus, Camera, CameraOff, Sparkles, X, Loader2, ScanBarcode, Image as ImageIcon, Aperture, Pencil, Settings, ChefHat, Trash2 } from 'lucide-react';
 import { canOpenAppSettings, openAppSettings } from '../lib/appSettings';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
-import { logMeal } from '../services/dataService';
+import { logMeal, updateMeal, deleteMeal } from '../services/dataService';
 import { analyzeMealImage, analyzeNutritionLabel, parseQuickAdd } from '../services/geminiService';
 import { searchFood, lookupBarcode, resolveLocalFood } from '../services/foodService';
 import { lookupCatalog } from '../services/foodCatalogService';
@@ -18,6 +18,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useToast } from '../hooks/useToast';
 import { useNavigate } from 'react-router-dom';
 import { computeDailyTargets } from '../lib/nutritionTargets';
+import { useBackHandler } from '../lib/backButton';
 import { MacroMatrix } from '../components/3d/MacroMatrix';
 import { useTabVisible } from '../components/layout/DockTabs';
 
@@ -31,6 +32,8 @@ const downscaleToJpegBase64 = async (file: File, maxSide: number): Promise<strin
   bitmap.close?.();
   return canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
 };
+
+type AiReviewItem = { name: string; calories: number; protein: number; carbs: number; fats: number };
 
 export const Track: React.FC = () => {
   const { profile } = useAuth();
@@ -47,6 +50,32 @@ export const Track: React.FC = () => {
     if (!tabVisible) setScanOpen(false);
   }, [tabVisible]);
   const [aiInput, setAiInput] = useState('');
+  const [aiReview, setAiReview] = useState<AiReviewItem[] | null>(null);
+  // Edit / delete a logged meal (there was no way to fix a typo or an AI misread).
+  const [editMeal, setEditMeal] = useState<MealRecord | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', calories: 0, protein: 0, carbs: 0, fats: 0 });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
+  const openEdit = (m: MealRecord) => {
+    setEditMeal(m); setConfirmDelete(false);
+    setEditForm({ name: m.name, calories: m.calories || 0, protein: m.protein || 0, carbs: m.carbs || 0, fats: m.fats || 0 });
+  };
+  const saveEdit = async () => {
+    if (!editMeal?.id || !editForm.name.trim()) return;
+    setEditBusy(true);
+    try { await updateMeal(editMeal.id, editForm); showToast('Meal updated', 'success'); setEditMeal(null); }
+    catch { showToast('Could not save. Try again.', 'error'); }
+    finally { setEditBusy(false); }
+  };
+  const removeMeal = async () => {
+    if (!editMeal?.id) return;
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setEditBusy(true);
+    try { await deleteMeal(editMeal.id); showToast(`Removed ${editMeal.name}`, 'success'); setEditMeal(null); }
+    catch { showToast('Could not delete. Try again.', 'error'); }
+    finally { setEditBusy(false); }
+  };
+  useEffect(() => { if (!aiOpen) setAiReview(null); }, [aiOpen]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [meals, setMeals] = useState<MealRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +90,14 @@ export const Track: React.FC = () => {
   const [scanBlocked, setScanBlocked] = useState(false);
   const gestureStreamRef = useRef<MediaStream | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  // Android Back closes the open sheet instead of the app.
+  useBackHandler(aiOpen || scanOpen || manualOpen || !!editMeal, () => {
+    if (editMeal) setEditMeal(null);
+    else if (aiReview) setAiReview(null);
+    else if (manualOpen) setManualOpen(false);
+    else if (scanOpen) setScanOpen(false);
+    else setAiOpen(false);
+  });
   const [manualName, setManualName] = useState('');
   const [manualCals, setManualCals] = useState(0);
   const [manualP, setManualP] = useState(0);
@@ -465,34 +502,40 @@ export const Track: React.FC = () => {
   // items in one tap. Fast-paths a shared-catalog hit for the exact phrase (#3),
   // then parses the whole description (multi-item) via parseQuickAdd, which never
   // throws and always returns a valid result.
+  // Meal type from the clock instead of tagging everything "snack".
+  const mealTypeNow = (d = new Date()) => {
+    const h = d.getHours();
+    return h >= 5 && h < 11 ? 'breakfast' : h >= 11 && h < 16 ? 'lunch' : h >= 17 && h < 22 ? 'dinner' : 'snack';
+  };
+
+  // AI results are shown for review before anything is saved: the AI can
+  // misread a phrase (autocorrect turned "teh tarik" into "the tarikn"), and
+  // silently writing six items to the diary left no way to catch that.
   const handleAiAnalyze = async () => {
     if (!aiInput.trim() || !profile?.uid) return;
     setIsAnalyzing(true);
     const phrase = aiInput.trim();
-    let logged = 0;
+    let items: AiReviewItem[] = [];
 
     // Fast path: someone already resolved this exact food — instant, no AI call.
     try {
       // The bundled list first (offline, instant), then the shared catalog.
       const cat = (await resolveLocalFood(phrase)) || (await lookupCatalog(phrase));
       if (cat && cat.calories > 0) {
-        await logMeal(profile.uid, { name: cat.name, calories: cat.calories, protein: cat.protein, carbs: cat.carbs, fats: cat.fats, mealType: 'snack' });
-        logged = 1;
+        items = [{ name: cat.name, calories: cat.calories, protein: cat.protein, carbs: cat.carbs, fats: cat.fats }];
       }
     } catch { /* fall through to parse */ }
 
-    if (logged === 0) {
-      const result = await parseQuickAdd(phrase);
-      for (const it of result.items) {
-        await logMeal(profile.uid, { name: it.name, calories: it.calories, protein: it.protein, carbs: it.carbs, fats: it.fats, mealType: 'snack' });
-        logged++;
-      }
+    if (items.length === 0) {
+      try {
+        const result = await parseQuickAdd(phrase);
+        items = result.items.map(it => ({ name: it.name, calories: it.calories, protein: it.protein, carbs: it.carbs, fats: it.fats }));
+      } catch { /* handled below as "nothing resolved" */ }
     }
+    setIsAnalyzing(false);
 
-    if (logged > 0) {
-      try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
-      showToast(logged === 1 ? 'Logged with AI' : `Logged ${logged} items`, 'success');
-      setAiOpen(false); setAiInput('');
+    if (items.length > 0) {
+      setAiReview(items);
     } else {
       // Nothing resolved — slide into manual entry, pre-filled with their text.
       setManualName(phrase);
@@ -501,6 +544,18 @@ export const Track: React.FC = () => {
       setManualOpen(true);
       showToast('Enter the calories yourself', 'info');
     }
+  };
+
+  const confirmAiReview = async () => {
+    if (!profile?.uid || !aiReview?.length) return;
+    setIsAnalyzing(true);
+    const mealType = mealTypeNow();
+    for (const it of aiReview) {
+      await logMeal(profile.uid, { ...it, mealType });
+    }
+    try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
+    showToast(aiReview.length === 1 ? 'Logged' : `Logged ${aiReview.length} items`, 'success');
+    setAiReview(null); setAiOpen(false); setAiInput('');
     setIsAnalyzing(false);
   };
 
@@ -882,9 +937,13 @@ export const Track: React.FC = () => {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }}
-            className="glass p-4 flex justify-between items-center"
+            className="glass p-4 flex justify-between items-center cursor-pointer active:scale-[0.99] transition-transform"
+            role="button"
+            tabIndex={0}
+            aria-label={`Edit ${m.name}`}
+            onClick={() => openEdit(m)}
           >
-            <div>
+            <div className="min-w-0">
               <p className="text-white font-medium">{m.name}</p>
               <div className="flex gap-3 mt-1 num text-xs text-text-dim">
                 <span>P {m.protein || 0}g</span>
@@ -892,7 +951,10 @@ export const Track: React.FC = () => {
                 <span>F {m.fats || 0}g</span>
               </div>
             </div>
-            <span className="num text-xl font-semibold text-accent">{m.calories}</span>
+            <span className="flex items-center gap-2 shrink-0">
+              <span className="num text-xl font-semibold text-accent">{m.calories}</span>
+              <Pencil size={13} className="text-text-mute" aria-hidden />
+            </span>
           </motion.div>
         )) : (
           <div className="glass p-10 flex flex-col items-center justify-center text-center gap-3">
@@ -1095,6 +1157,63 @@ export const Track: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Edit / delete a logged meal */}
+      <AnimatePresence>
+        {editMeal && (
+          <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setEditMeal(null)} />
+            <motion.div
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
+              transition={{ type: 'spring', damping: 28 }}
+              className="relative bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 space-y-4 border border-white/[0.06] max-h-[92dvh] overflow-y-auto overscroll-contain"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-eyebrow text-accent">Logged meal</p>
+                  <p className="text-white font-medium text-sm">Edit or remove</p>
+                </div>
+                <button onClick={() => setEditMeal(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+                  <X size={16} />
+                </button>
+              </div>
+              <input
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                maxLength={100}
+                aria-label="Meal name"
+                className="w-full glass rounded-2xl px-4 py-3 text-white text-sm focus:outline-none"
+              />
+              <div className="grid grid-cols-4 gap-2">
+                {([['kcal', 'calories'], ['P g', 'protein'], ['C g', 'carbs'], ['F g', 'fats']] as const).map(([label, key]) => (
+                  <label key={key} className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-text-dim text-center">{label}</span>
+                    <input
+                      type="number" inputMode="numeric" min={0}
+                      value={editForm[key]}
+                      onChange={e => setEditForm(f => ({ ...f, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                      className="w-full glass rounded-xl px-2 py-2 text-white num text-center"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={removeMeal}
+                  disabled={editBusy}
+                  className={cn('btn-ghost h-12 disabled:opacity-50', confirmDelete && 'border-accent-2/50 text-accent-2')}
+                >
+                  <Trash2 size={15} /> {confirmDelete ? 'Tap to confirm' : 'Delete'}
+                </button>
+                <button onClick={saveEdit} disabled={editBusy || !editForm.name.trim()} className="btn-3d h-12 disabled:opacity-50">
+                  {editBusy ? <Loader2 className="animate-spin" size={16} /> : 'Save'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* AI modal */}
       <AnimatePresence>
         {aiOpen && (
@@ -1122,6 +1241,38 @@ export const Track: React.FC = () => {
                   <X size={16} />
                 </button>
               </div>
+              {aiReview ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-text-dim">Check before saving. Remove anything the AI got wrong.</p>
+                  <ul className="space-y-2">
+                    {aiReview.map((it, i) => (
+                      <li key={i} className="glass rounded-2xl px-4 py-3 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{it.name}</p>
+                          <p className="num text-[11px] text-text-dim">P {Math.round(it.protein)}g · C {Math.round(it.carbs)}g · F {Math.round(it.fats)}g</p>
+                        </div>
+                        <span className="num text-accent font-semibold text-sm">{Math.round(it.calories)}</span>
+                        <button
+                          onClick={() => setAiReview(r => (r && r.length > 1 ? r.filter((_, j) => j !== i) : null))}
+                          className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-text-dim"
+                          aria-label={`Remove ${it.name}`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setAiReview(null)} disabled={isAnalyzing} className="btn-ghost h-12 disabled:opacity-50">
+                      Edit text
+                    </button>
+                    <button onClick={confirmAiReview} disabled={isAnalyzing} className="btn-3d h-12 disabled:opacity-50">
+                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : `Log ${aiReview.reduce((a, b) => a + Math.round(b.calories), 0)} kcal`}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+              <>
               <textarea
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
@@ -1129,6 +1280,11 @@ export const Track: React.FC = () => {
                 placeholder="e.g. a bowl of oatmeal with blueberries and honey"
                 className="w-full glass rounded-2xl p-4 text-white min-h-[110px] text-sm placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30 resize-none"
               />
+              {isAnalyzing && (
+                <p className="text-xs text-accent flex items-center gap-2" role="status">
+                  <Loader2 className="animate-spin" size={12} /> Reading your meal and estimating portions…
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => fileRef.current?.click()}
@@ -1143,9 +1299,11 @@ export const Track: React.FC = () => {
                   disabled={isAnalyzing || !aiInput.trim()}
                   className="btn-3d h-12 disabled:opacity-50"
                 >
-                  {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <><Sparkles size={14} /> Log</>}
+                  {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <><Sparkles size={14} /> Analyse</>}
                 </button>
               </div>
+              </>
+              )}
               <p className="text-center text-xs text-text-mute">
                 Powered by Gemini — estimates macros from text or photo
               </p>

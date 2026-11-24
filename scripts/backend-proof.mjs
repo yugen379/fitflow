@@ -536,8 +536,13 @@ check('unknown action: refused, and costs no allowance',
   (await hit({ action: 'nope' })).status === 400 && !(await usageOf(hitUid)));
 check('oversized image: refused, and costs no allowance',
   (await hit({ action: 'analyzeMealImage', payload: { base64Image: 'a'.repeat(10_000_001) } })).status === 413 && !(await usageOf(hitUid)));
-check('free user asking the coach: refused, and costs no allowance',
-  (await hit({ action: 'askCoach', payload: { message: 'hi' } })).status === 402 && !(await usageOf(hitUid)));
+// Free users get 3 coach messages a day (counted server-side), then 402.
+await adb.doc(`users/${hitUid}/private/ai_usage`).set({ day: dayKey(Date.now()), calls: 0, frames: 0, coach: 3 });
+const coachUsedUp = await hit({ action: 'askCoach', payload: { message: 'hi' } });
+check('free user past 3 coach messages: 402 coach_trial_used, and no extra allowance used',
+  coachUsedUp.status === 402 && coachUsedUp.body?.code === 'coach_trial_used' && (await usageOf(hitUid)).coach === 3,
+  JSON.stringify(coachUsedUp));
+await adb.doc(`users/${hitUid}/private/ai_usage`).delete();
 await adb.doc(`users/${hitUid}/private/ai_usage`).set({ day: dayKey(Date.now()), calls: 50, frames: 0 });
 const limited = await hit({ action: 'getRecipe', payload: { mealName: 'x' } });
 check('over the daily limit: 429 with a reason and Retry-After',

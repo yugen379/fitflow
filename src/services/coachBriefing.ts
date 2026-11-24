@@ -15,6 +15,8 @@ export type CoachTone = 'push' | 'nudge' | 'care' | 'celebrate';
 export interface CoachContext {
   /** The user's chosen daily calorie target, when set. */
   calorieTarget?: number;
+  /** The Fuel tab's (safety-bounded) protein target; wins over the bodyweight formula. */
+  proteinTarget?: number;
   hour: number;                       // 0–23, user-local
   goal?: string;                      // 'muscle_gain' | 'fat_loss' | 'general' | ...
   weightKg?: number;
@@ -57,7 +59,7 @@ export interface CoachTargets {
 // Daily targets from goal + bodyweight. Mirrors the formulas already used in
 // Home.tsx (calorie target) and heuristicCoachReply (protein / water) so the
 // proactive coach never contradicts the rest of the app.
-export const computeTargets = (goal?: string, weightKg?: number, calorieTarget?: number): CoachTargets => {
+export const computeTargets = (goal?: string, weightKg?: number, calorieTarget?: number, proteinTarget?: number): CoachTargets => {
   const w = typeof weightKg === 'number' && weightKg > 0 ? weightKg : 70;
   const g = goal || 'general';
   // The user's own target (meal plan / nutrition goals) always wins, so every
@@ -68,7 +70,10 @@ export const computeTargets = (goal?: string, weightKg?: number, calorieTarget?:
   const proteinFactor = g === 'muscle_gain' ? 2.0 : g === 'fat_loss' ? 1.8 : 1.6;
   return {
     calories,
-    proteinG: Math.round(w * proteinFactor),
+    // Same number Fuel shows (was: coach 162 g vs Fuel 185 g for one user).
+    proteinG: typeof proteinTarget === 'number' && proteinTarget > 0
+      ? Math.round(proteinTarget)
+      : Math.round(w * proteinFactor),
     waterMl: Math.round(w * 35),
   };
 };
@@ -105,7 +110,9 @@ const HEADLINES: Record<string, string> = {
   hydrate: 'Hydration check.',
   'fuel-start': 'Fuel the day.',
   'log-meals': 'Log your day.',
-  'streak-risk': 'Protect your streak.',
+  // The Mission card above already says "Protect your N-day streak" — the
+  // coach adds the next step instead of repeating it (it said it 3 times).
+  'streak-risk': 'One small log keeps it alive.',
   'recover-lowsleep': 'Recover smart today.',
   winddown: 'Wind down.',
   'all-good': "You're locked in.",
@@ -129,7 +136,7 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
   const pod = partOfDay(hour);
   const goal = ctx.goal || 'general';
   const goalLabel = goal.replace(/_/g, ' ');
-  const targets = computeTargets(goal, ctx.weightKg, ctx.calorieTarget);
+  const targets = computeTargets(goal, ctx.weightKg, ctx.calorieTarget, ctx.proteinTarget);
 
   const cal = pos(ctx.caloriesConsumed);
   const protein = pos(ctx.proteinConsumed);
@@ -286,8 +293,8 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     candidates.push({
       id: 'streak-risk',
       icon: '🔥',
-      title: `Save your ${round(streak)}-day streak`,
-      message: `Nothing logged today yet. One meal, a glass of water, or a short walk keeps the streak alive before midnight.`,
+      title: `Log one thing before midnight`,
+      message: `Nothing logged today yet. A meal, a glass of water or a short walk keeps your ${round(streak)} days going.`,
       tone: 'push',
       action: { label: 'Keep the streak', route: '/track' },
       priority: 90,

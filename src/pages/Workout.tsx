@@ -21,6 +21,8 @@ import { prefetchHandlers } from '../lib/prefetch';
 import { AnatomyViewer } from '../components/3d/AnatomyViewer';
 import { hasClipFor } from '../biomechanics/motions';
 import { coachCueFor, modalityOf } from '../lib/coachCue';
+import { useBackHandler } from '../lib/backButton';
+import { parseExercise, prettyLabel } from '../lib/exerciseParse';
 
 const WORKOUT_TYPES = [
   { id: 'strength', name: 'Strength', icon: Dumbbell, hint: 'Lift heavy' },
@@ -62,6 +64,22 @@ export const Workout: React.FC = () => {
   const [customOpen, setCustomOpen] = useState(false);
   /** Second-tap guard on the discard button; resets whenever the session changes. */
   const [confirmQuit, setConfirmQuit] = useState(false);
+  // Android Back during a session must never silently throw it away (it used
+  // to close the whole app). In the active step it arms the same two-tap
+  // discard guard; on the summary it just closes the summary.
+  useBackHandler(!!activeWorkout, () => {
+    if (step === 'summary') {
+      window.speechSynthesis?.cancel();
+      setActiveWorkout(null);
+      setShared(false);
+      return true;
+    }
+    if (!confirmQuit) {
+      setConfirmQuit(true);
+      showToast('Workout in progress. Tap "Tap again to discard" to quit.', 'info');
+    }
+    return true;
+  });
   const [customPrompt, setCustomPrompt] = useState('');
   const [customFocus, setCustomFocus] = useState<'Strength' | 'Cardio' | 'Cycling' | 'Swimming'>('Strength');
   const [customDuration, setCustomDuration] = useState(30);
@@ -176,10 +194,11 @@ export const Workout: React.FC = () => {
     // a measured recommendation beats a remembered one.
     if (typeof ex.sets === 'number' && ex.sets > 0) setSets(ex.sets);
     if (typeof ex.reps === 'number' && ex.reps > 0) setReps(ex.reps);
-    if (typeof ex.weight === 'number' && ex.weight > 0) setWeight(ex.weight);
+    if (ex.bodyweight) setWeight(0);
+    else if (typeof ex.weight === 'number' && ex.weight > 0) setWeight(ex.weight);
     if (!profile?.uid) return;
     analyzeProgression(profile.uid, ex.id).then(p => {
-      if (p) { setProgression(p); setWeight(p.suggestedWeight); setReps(p.suggestedReps); }
+      if (p) { setProgression(p); if (!ex.bodyweight) setWeight(p.suggestedWeight); setReps(p.suggestedReps); }
     });
   }, [curIdx, activeWorkout]);
 
@@ -199,8 +218,14 @@ export const Workout: React.FC = () => {
     return () => { if (restRef.current) clearTimeout(restRef.current); };
   }, [restRemaining]);
 
-  const startSession = (type: string, exercises: any[] = []) => {
-    const s = exercises.length ? exercises : [{ name: type, id: type.toLowerCase() }];
+  // A real name for the history list (every past session used to read "Strength").
+  const [sessionTitle, setSessionTitle] = useState('');
+  const startSession = (type: string, exercises: any[] = [], title?: string) => {
+    const s = (exercises.length ? exercises : [{ name: type, id: type.toLowerCase() }]).map(parseExercise);
+    setSessionTitle(
+      (title && title.trim().slice(0, 80)) ||
+      (s.length > 1 ? `${s[0].name} + ${s.length - 1} more` : prettyLabel(type) || type),
+    );
     setStack(s); setActiveWorkout(type); setStep('active'); setCurIdx(0); setTimer(0); setExLogs([]);
     setPrs([]); setShared(false); setRestRemaining(null); setFormChecks([]);
     speak(`Starting ${type}. First up: ${s[0].name}.`);
@@ -264,6 +289,7 @@ export const Workout: React.FC = () => {
       const cals = Math.floor((MET[activeWorkout] || 5) * (profile.weight || 70) * (timer / 3600));
       await logWorkout(profile.uid, {
         type: activeWorkout,
+        ...(sessionTitle ? { title: sessionTitle } : {}),
         // Rounded, not floored: a 90-second session is closer to 2 minutes than
         // to 1, and the rules require duration > 0 so it can never be zero.
         duration: Math.max(1, Math.round(timer / 60)),
@@ -385,7 +411,7 @@ export const Workout: React.FC = () => {
           </div>
           {aiPlan && !isGenerating && (
             <button
-              onClick={() => startSession(aiPlan.type || 'Strength', aiPlan.exercises || [])}
+              onClick={() => startSession(aiPlan.type || 'Strength', aiPlan.exercises || [], aiPlan.title)}
               className="btn-primary px-4 py-2 text-xs"
             >
               <Play size={12} fill="currentColor" /> Start
@@ -406,6 +432,11 @@ export const Workout: React.FC = () => {
                 {aiPlan.exercises.slice(0, 6).map((ex: any, i: number) => (
                   <li key={i} className="text-xs text-white/80 bg-white/[0.03] px-3 py-2 rounded-lg border border-white/[0.05]">{ex.name}</li>
                 ))}
+                {aiPlan.exercises.length > 6 && (
+                  <li className="text-xs text-accent px-3 py-2 rounded-lg border border-accent/20 bg-accent/5 flex items-center">
+                    + {aiPlan.exercises.length - 6} more · {aiPlan.exercises.length} total
+                  </li>
+                )}
               </ul>
             )}
           </div>
@@ -427,7 +458,7 @@ export const Workout: React.FC = () => {
                 {/* Header bar */}
                 <div className="p-5 flex justify-between items-center border-b border-white/[0.06] bg-surface/60 backdrop-blur-xl">
                   <div>
-                    <p className="text-eyebrow text-accent">{activeWorkout}</p>
+                    <p className="text-eyebrow text-accent">{prettyLabel(activeWorkout)}</p>
                     <h3 className="font-display text-xl font-bold text-white tracking-tight">{stack[curIdx]?.name}</h3>
                   </div>
                   <div className="flex items-center gap-2">

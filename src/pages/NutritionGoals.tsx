@@ -6,7 +6,7 @@ import { db } from '../lib/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { isProUnlocked } from '../lib/billing';
-import { baseCaloriesFor, defaultSplitFor, computeDailyTargets } from '../lib/nutritionTargets';
+import { baseCaloriesFor, defaultSplitFor, computeDailyTargets, applySafetyBounds } from '../lib/nutritionTargets';
 import type { MacroTargets, DayTargets } from '../types';
 import { cn } from '../lib/utils';
 
@@ -68,6 +68,16 @@ export const NutritionGoals: React.FC = () => {
       calories: baseCals,
     };
   }, [mode, proteinG, carbsG, fatsG, proteinPct, carbsPct, fatsPct, pctSum, baseCals]);
+
+  // What the app will actually use after the safety bounds (fat floor, protein cap).
+  const bounded = useMemo(() => {
+    const b = applySafetyBounds(
+      { proteinG: previewGrams.protein, carbsG: previewGrams.carbs, fatsG: previewGrams.fats },
+      previewGrams.calories, profile?.weight,
+    );
+    return { protein: b.proteinG, carbs: b.carbsG, fats: b.fatsG, calories: previewGrams.calories };
+  }, [previewGrams, profile?.weight]);
+  const adjusted = bounded.protein !== previewGrams.protein || bounded.fats !== previewGrams.fats;
 
   const cycleDay = (idx: number) => {
     if (!dayEnabled) return;
@@ -140,13 +150,19 @@ export const NutritionGoals: React.FC = () => {
           <p className="num text-accent font-display text-xl font-bold">{previewGrams.calories.toLocaleString()} kcal</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {([['Protein', previewGrams.protein], ['Carbs', previewGrams.carbs], ['Fats', previewGrams.fats]] as const).map(([label, g]) => (
+          {([['Protein', bounded.protein], ['Carbs', bounded.carbs], ['Fats', bounded.fats]] as const).map(([label, g]) => (
             <div key={label} className="bg-white/[0.03] rounded-xl p-3 text-center border border-white/[0.05]">
               <p className="num text-white font-display text-lg font-bold">{g}g</p>
               <p className="text-[10px] text-text-dim uppercase tracking-wider mt-0.5">{label}</p>
             </div>
           ))}
         </div>
+        {adjusted && (
+          <p className="text-xs text-text-dim mt-3 leading-relaxed">
+            Adjusted for safety: fat stays at least 20% of calories and protein at most
+            {profile?.weight ? ' 2.5 g per kg' : ' 50% of calories'}. The difference moves to carbs.
+          </p>
+        )}
       </div>
 
       {/* Macro split */}

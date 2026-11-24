@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { computeLevel } from '../services/missionUtils';
-import { celebrateLevelUp } from '../lib/celebrate';
 
 // The XP/Level strip under the Home header. Level and progress are DERIVED from
 // lifetime points via the shared curve (missionUtils.computeLevel) — never from
@@ -24,8 +23,8 @@ export const XPBar: React.FC<{ points?: number; streak?: number }> = ({ points, 
     if (prev === null || points <= prev) return;
     setGain({ id: ++gainSeq.current, amount: points - prev });
     if (computeLevel(prev).level < computeLevel(points).level) {
+      // The confetti + card come from the app-wide LevelUpWatcher.
       setLevelPop((n) => n + 1);
-      celebrateLevelUp();
     }
   }, [points]);
 

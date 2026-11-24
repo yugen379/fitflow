@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { installBackButton, setBackFallback } from './lib/backButton';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
 import { Logo } from './components/Logo';
@@ -17,6 +18,7 @@ import { initTelemetry, identify } from './lib/telemetry';
 import { warmLikelyRoutes } from './lib/prefetch';
 import { LiquidSkeleton, ParticleField, SpatialPageTransition } from './components/layout/SpatialPageTransition';
 import { DockTabs, type DockTab } from './components/layout/DockTabs';
+import { LevelUpWatcher } from './components/LevelUpWatcher';
 // The bottom nav is the only other eager consumer of the animation library and
 // it never renders on the signed-out first paint, so it loads a beat later
 // rather than holding up the hero.
@@ -79,6 +81,22 @@ const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) 
   // Onboarding is a focused, full-screen flow: the dock sat on top of its
   // Continue button, so it is hidden there even for a complete profile.
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  // Android Back: previous route when there is one inside the app, otherwise
+  // the Home tab; only on Home does it fall through to "minimise".
+  React.useEffect(() => {
+    void installBackButton();
+  }, []);
+  React.useEffect(() => {
+    setBackFallback(() => {
+      if (pathname === '/') return false;
+      const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+      if (!DOCK_PATHS.has(pathname) && idx > 0) navigate(-1);
+      else navigate('/');
+      return true;
+    });
+  }, [pathname, navigate]);
 
   // Warm the bottom-nav destinations once the app is up. Deliberately after
   // auth resolves: before that the user may still be looking at a spinner, and
@@ -213,6 +231,7 @@ const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) 
       {/* The five dock tabs stay alive between visits (see DockTabs); every
           other page mounts fresh through the transition as before. */}
       <DockTabs tabs={DOCK_TABS} pathname={pathname} />
+      {!isProfileIncomplete && <LevelUpWatcher />}
       {!DOCK_PATHS.has(pathname) && <SpatialPageTransition>{children}</SpatialPageTransition>}
       {!isProfileIncomplete && pathname !== '/onboarding' && (
         <Suspense fallback={null}>

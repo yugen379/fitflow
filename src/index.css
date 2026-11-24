@@ -204,6 +204,17 @@
     font-size: 0.875rem;
     transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
+  /* .btn-primary / .btn-ghost are used on their own all over the app (13+
+     places), without the .btn base. They rendered as square, unaligned boxes
+     with the icon stacked in a corner, so they now carry the base layout too.
+     No padding here: call sites size them with px-/py-/h- utilities. */
+  .btn-primary, .btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.5rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
   .btn-primary {
     background: var(--accent);
     color: #06070A;

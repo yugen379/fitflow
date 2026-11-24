@@ -32,6 +32,9 @@ export const AI_LIMITS = {
   // with no limit of their own, so the cap has to be here, and it is separate so
   // those requests can't use up the allowance for features people asked for.
   get briefingsPerDay() { return envInt("AI_BRIEFINGS_PER_DAY", 6); },
+  // Free users can try the coach chat (it used to be a hard Pro wall, so most
+  // never saw the app's best feature before the paywall).
+  get freeCoachPerDay() { return envInt("AI_FREE_COACH_PER_DAY", 3); },
   get globalCallsPerDay() { return envInt("AI_GLOBAL_CALLS_PER_DAY", 1_000); },
 };
 
@@ -41,7 +44,7 @@ const FREE_SHARE_OF_GLOBAL = 0.8;
 const LOW_PRIORITY_SHARE_OF_GLOBAL = 0.5;
 
 export type AiRefusal = "daily_limit" | "global_limit";
-export type AiKind = "call" | "frame" | "briefing";
+export type AiKind = "call" | "frame" | "briefing" | "coach";
 
 const dayKey = (now: number) => new Date(now).toISOString().slice(0, 10);
 
@@ -60,14 +63,16 @@ export const takeUserAllowance = async (
   isPro: boolean,
   now = Date.now(),
 ): Promise<boolean> => {
-  const limit = kind === "briefing"
+  const limit = kind === "coach"
+    ? AI_LIMITS.freeCoachPerDay
+    : kind === "briefing"
     ? AI_LIMITS.briefingsPerDay
     : kind === "frame"
       ? (isPro ? AI_LIMITS.proFramesPerDay : AI_LIMITS.freeFramesPerDay)
       : (isPro ? AI_LIMITS.proCallsPerDay : AI_LIMITS.freeCallsPerDay);
   const ref = db.doc(`users/${uid}/private/ai_usage`);
   const day = dayKey(now);
-  const field = kind === "frame" ? "frames" : kind === "briefing" ? "briefings" : "calls";
+  const field = kind === "frame" ? "frames" : kind === "briefing" ? "briefings" : kind === "coach" ? "coach" : "calls";
   // A burst from one user can make the database give up on the transaction.
   // That is a refusal, not a server error: paid AI fails closed.
   return db.runTransaction(async (tx) => {
@@ -80,6 +85,7 @@ export const takeUserAllowance = async (
       calls: sameDay ? Number(data?.calls) || 0 : 0,
       frames: sameDay ? Number(data?.frames) || 0 : 0,
       briefings: sameDay ? Number(data?.briefings) || 0 : 0,
+      coach: sameDay ? Number(data?.coach) || 0 : 0,
       [field]: used + 1,
     });
     return true;

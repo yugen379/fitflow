@@ -52,6 +52,29 @@ const cleanObject = (obj: any) => {
  */
 export interface WriteOptions { queueOnFailure?: boolean }
 
+/** Edit a logged meal. Rules allow only name + the four nutrition fields to change. */
+export const updateMeal = async (
+  mealId: string,
+  fields: { name: string; calories: number; protein: number; carbs: number; fats: number },
+) => {
+  await updateDoc(doc(db, 'meals', mealId), {
+    name: fields.name.trim().slice(0, 100),
+    calories: Math.max(0, Math.round(fields.calories)),
+    protein: Math.max(0, Math.round(fields.protein)),
+    carbs: Math.max(0, Math.round(fields.carbs)),
+    fats: Math.max(0, Math.round(fields.fats)),
+  });
+};
+
+/**
+ * Delete a logged meal. Before this existed a typo or an AI misread stayed in
+ * the diary forever. Daily totals are derived from the meals query, so they
+ * correct themselves; XP already earned is kept (no clawback).
+ */
+export const deleteMeal = async (mealId: string) => {
+  await deleteDoc(doc(db, 'meals', mealId));
+};
+
 export const logMeal = async (
   userId: string,
   meal: Omit<MealRecord, 'id' | 'timestamp' | 'userId'>,

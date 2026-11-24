@@ -79,6 +79,7 @@ export const computeDailyTargets = (
 
   // Goal-by-day override (premium).
   let dayType: 'workout' | 'rest' | 'base' = 'base';
+  let carbsFixed = false; // a day override set carbs explicitly: never rebalance them
   const dt = profile?.dayTargets as DayTargets | undefined;
   if (dt?.enabled && dt.schedule) {
     const weekday = String(date.getDay()); // 0=Sun .. 6=Sat
@@ -88,11 +89,49 @@ export const computeDailyTargets = (
       const ov = t === 'workout' ? dt.workout : dt.rest;
       if (ov) {
         if (typeof ov.calories === 'number' && ov.calories > 0) calories = round(ov.calories);
-        if (typeof ov.carbsG === 'number') carbsG = round(ov.carbsG);
+        if (typeof ov.carbsG === 'number') { carbsG = round(ov.carbsG); carbsFixed = true; }
         if (typeof ov.proteinG === 'number') proteinG = round(ov.proteinG);
       }
     }
   }
 
+  ({ proteinG, carbsG, fatsG } = applySafetyBounds(
+    { proteinG, carbsG, fatsG }, calories, profile?.weight, carbsFixed,
+  ));
+
   return { calories, proteinG, carbsG, fatsG, dayType, macroMode };
+};
+
+// ---------------------------------------------------------------------------
+// Safety bounds. A stored split of e.g. 90/5/5 produced 416g protein / 10g fat
+// on 1,850 kcal — a target no nutrition app should ever show. Fat is floored at
+// 20% of calories (hormone health), protein capped at 2.5 g/kg (and at most 50% of
+// calories); calories are held constant by moving the
+// difference into carbs. There is deliberately NO carb floor, so a chosen
+// low-carb/keto split stays possible.
+// ---------------------------------------------------------------------------
+export const FAT_MIN_PCT = 0.2;
+export const PROTEIN_MAX_G_PER_KG = 2.5;
+export const PROTEIN_MAX_PCT = 0.5;
+
+export const applySafetyBounds = (
+  m: { proteinG: number; carbsG: number; fatsG: number },
+  calories: number,
+  weightKg?: number,
+  keepCarbs = false,
+) => {
+  if (!(calories > 0)) return m;
+  let { proteinG, carbsG, fatsG } = m;
+  const fatMin = round((calories * FAT_MIN_PCT) / 9);
+  // Both caps apply when weight is known, so protein + the fat floor can never
+  // exceed the calorie budget (heavy user on a low target).
+  const pctCap = round((calories * PROTEIN_MAX_PCT) / 4);
+  const proteinMax = weightKg && weightKg > 0
+    ? Math.min(round(weightKg * PROTEIN_MAX_G_PER_KG), pctCap)
+    : pctCap;
+  let changed = false;
+  if (fatsG < fatMin) { fatsG = fatMin; changed = true; }
+  if (proteinG > proteinMax) { proteinG = proteinMax; changed = true; }
+  if (changed && !keepCarbs) carbsG = round((calories - proteinG * 4 - fatsG * 9) / 4);
+  return { proteinG, carbsG, fatsG };
 };

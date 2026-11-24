@@ -314,7 +314,8 @@ export const Home: React.FC = () => {
     workoutsToday: summary?.workoutCount || 0,
     // The same number the Steps card shows (background counter first), not
     // Health Connect alone — which left the mission at 0 for everyone else.
-    steps: liveSteps.source !== 'none' ? liveSteps.steps : null,
+    // No permission = not counting: show "Set up", not a misleading 0/10,000.
+    steps: liveSteps.source !== 'none' && !liveSteps.needsPermission ? liveSteps.steps : null,
     streak: profile?.streak || 0,
   });
 
@@ -406,26 +407,39 @@ export const Home: React.FC = () => {
         onAction={onMissionAction}
       />
 
-      {/* Meal plan had NO entry point anywhere in the app — the route and the
-          whole AI weekly-menu screen existed but nothing linked to it, so it was
-          simply unreachable. This is that door. */}
-      <button
-        onClick={() => { void haptic('light'); prefetchPath('/meal-plan'); navigate('/meal-plan'); }}
-        onPointerEnter={() => prefetchPath('/meal-plan')}
-        className="w-full glass p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
-      >
-        <div className="w-11 h-11 rounded-2xl bg-accent-4/12 border border-accent-4/25 flex items-center justify-center text-accent-4 shrink-0">
-          <ChefHat size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-eyebrow text-accent-4">Meal plan</p>
-          <p className="text-white text-sm font-medium mt-0.5">Your AI week of meals</p>
-          <p className="text-xs text-text-dim mt-0.5">
-            Seven days, every meal listed, with ingredients and a shopping list.
-          </p>
-        </div>
-        <ChevronRight size={18} className="text-text-mute shrink-0" aria-hidden="true" />
-      </button>
+      {/* Home order (customer review 2026-11-24): the ONE mission, the coach's
+          next steps, then the four quick actions — everything else is below.
+          It used to take ~7 screens and say "protect your streak" three times. */}
+      <CoachBriefingCard
+        uid={profile?.uid}
+        online={isOnline}
+        onWater={() => setWaterPicker(true)}
+        ctx={{
+          hour: new Date().getHours(),
+          goal: profile?.goal,
+          weightKg: profile?.weight,
+          calorieTarget: nutritionTargets.calories,
+          proteinTarget: nutritionTargets.proteinG,
+          caloriesConsumed: summary?.caloriesConsumed || 0,
+          proteinConsumed: summary?.proteinConsumed || 0,
+          waterMl: water,
+          trainedToday: (summary?.workoutCount || 0) > 0,
+          mealsLogged: summary?.mealCount || 0,
+          sleepHours: sleep,
+          streak: profile?.streak || 0,
+          preferredWorkoutHour: profile?.preferredWorkoutTime
+            ? parseInt(profile.preferredWorkoutTime.split(':')[0], 10)
+            : null,
+          daysSinceLastWorkout: daysSinceWorkout,
+        }}
+      />
+
+      <div className="grid grid-cols-2 gap-3 perspective-1000">
+        <ActionCard3D icon="🥗" label="Log meal" onClick={() => { haptic('light'); navigate('/track'); }} />
+        <ActionCard3D icon="💪" label="Workout" onClick={() => { haptic('light'); navigate('/workout'); }} />
+        <ActionCard3D icon="🧘" label="Recovery" onClick={() => { haptic('light'); navigate('/wellness'); }} />
+        <ActionCard3D icon="🎯" label="Discover" onClick={() => { haptic('light'); navigate('/explore'); }} />
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {/* One step widget, always. Which tier is feeding it (Health Connect,
@@ -604,6 +618,7 @@ export const Home: React.FC = () => {
         </motion.button>
       </div>
 
+
       <DailyHabits
         water={water}
         meals={summary?.mealCount || 0}
@@ -629,35 +644,26 @@ export const Home: React.FC = () => {
         <span className="text-accent text-xl relative">›</span>
       </motion.button>
 
-      <div className="grid grid-cols-2 gap-3 perspective-1000">
-        <ActionCard3D icon="🥗" label="Log meal" onClick={() => { haptic('light'); navigate('/track'); }} />
-        <ActionCard3D icon="💪" label="Workout" onClick={() => { haptic('light'); navigate('/workout'); }} />
-        <ActionCard3D icon="🧘" label="Recovery" onClick={() => { haptic('light'); navigate('/wellness'); }} />
-        <ActionCard3D icon="🎯" label="Discover" onClick={() => { haptic('light'); navigate('/explore'); }} />
-      </div>
-
-      <CoachBriefingCard
-        uid={profile?.uid}
-        online={isOnline}
-        onWater={() => setWaterPicker(true)}
-        ctx={{
-          hour: new Date().getHours(),
-          goal: profile?.goal,
-          weightKg: profile?.weight,
-          calorieTarget: nutritionTargets.calories,
-          caloriesConsumed: summary?.caloriesConsumed || 0,
-          proteinConsumed: summary?.proteinConsumed || 0,
-          waterMl: water,
-          trainedToday: (summary?.workoutCount || 0) > 0,
-          mealsLogged: summary?.mealCount || 0,
-          sleepHours: sleep,
-          streak: profile?.streak || 0,
-          preferredWorkoutHour: profile?.preferredWorkoutTime
-            ? parseInt(profile.preferredWorkoutTime.split(':')[0], 10)
-            : null,
-          daysSinceLastWorkout: daysSinceWorkout,
-        }}
-      />
+      {/* Meal plan had NO entry point anywhere in the app — the route and the
+          whole AI weekly-menu screen existed but nothing linked to it, so it was
+          simply unreachable. This is that door. */}
+      <button
+        onClick={() => { void haptic('light'); prefetchPath('/meal-plan'); navigate('/meal-plan'); }}
+        onPointerEnter={() => prefetchPath('/meal-plan')}
+        className="w-full glass p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+      >
+        <div className="w-11 h-11 rounded-2xl bg-accent-4/12 border border-accent-4/25 flex items-center justify-center text-accent-4 shrink-0">
+          <ChefHat size={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-eyebrow text-accent-4">Meal plan</p>
+          <p className="text-white text-sm font-medium mt-0.5">Your AI week of meals</p>
+          <p className="text-xs text-text-dim mt-0.5">
+            Seven days, every meal listed, with ingredients and a shopping list.
+          </p>
+        </div>
+        <ChevronRight size={18} className="text-text-mute shrink-0" aria-hidden="true" />
+      </button>
 
       <section className="space-y-3">
         <div className="flex justify-between items-end">

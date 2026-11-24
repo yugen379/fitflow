@@ -6,12 +6,14 @@ import { useAuth } from '../hooks/useAuth';
 import { PremiumGate } from '../components/PremiumGate';
 import { canUse } from '../lib/features';
 import { askCoach, CoachChatMessage } from '../services/geminiService';
+import { buildCoachContext } from '../lib/coachContext';
 import { haptic } from '../lib/haptics';
 import { useToast } from '../hooks/useToast';
 import { AIEntityOrb } from '../components/3d/AIEntityOrb';
 import type { EntityState } from '../components/3d/AIEntityOrb';
 
 const STORAGE_KEY = (uid: string) => `ff_coach_chat_${uid}`;
+export const FREE_COACH_PER_DAY = 3;
 
 const STARTERS = [
   'What should I eat after my workout?',
@@ -40,6 +42,24 @@ export const Coach: React.FC = () => {
    * and the conversation is still there (it also survives in localStorage).
    */
   const [standby, setStandby] = useState(false);
+
+  // Free users get FREE_COACH_PER_DAY messages a day (the server enforces the
+  // same number; this local count only drives the "x of 3 left" label). The
+  // chat used to be a hard Pro wall, so most people never met the coach.
+  const isPro = canUse('coach-chat', profile);
+  const dayKey = new Date().toISOString().slice(0, 10);
+  const freeKey = profile?.uid ? `ff_coach_free_${profile.uid}_${dayKey}` : '';
+  const [freeUsed, setFreeUsed] = useState(0);
+  useEffect(() => {
+    if (!freeKey) return;
+    try { setFreeUsed(Number(localStorage.getItem(freeKey)) || 0); } catch {}
+  }, [freeKey]);
+  const freeLeft = Math.max(0, FREE_COACH_PER_DAY - freeUsed);
+  const locked = !isPro && freeLeft === 0;
+  const bumpFree = (n: number) => {
+    setFreeUsed(n);
+    try { if (freeKey) localStorage.setItem(freeKey, String(n)); } catch {}
+  };
 
   /**
    * Conversation state for the 3D entity. `responding` is inferred from the
@@ -87,7 +107,7 @@ export const Coach: React.FC = () => {
     // normal use. It stays because a Gemini call costs real money and a
     // rendering bug must not be able to spend it. The server enforces the
     // same rule independently — see functions geminiProxy.
-    if (!canUse('coach-chat', profile)) return;
+    if (locked) return;
     haptic('light');
     // Sending always means "show me the transcript", including from standby.
     setStandby(false);
@@ -98,13 +118,27 @@ export const Coach: React.FC = () => {
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setThinking(true);
     try {
-      const reply = await askCoach(message, next, {
+      // Today's meals, totals and targets ride along with the question so the
+      // coach answers from the user's real day (the transcript stays clean).
+      const context = await buildCoachContext(profile);
+      const reply = await askCoach(`${message}\n\n${context}`, next.slice(0, -1), {
         goal: profile?.goal,
         weight: profile?.weight,
         age: profile?.age,
       });
       setMessages([...next, { role: 'coach', text: reply }]);
-    } catch {
+      if (!isPro) bumpFree(freeUsed + 1);
+    } catch (e: any) {
+      if (e?.message === 'coach_pro_only') {
+        bumpFree(FREE_COACH_PER_DAY);
+        setMessages([...next, { role: 'coach', text: "Coach chat is part of FitFlow Pro. Upgrade to ask me anything, any time." }]);
+        return;
+      }
+      if (e?.message === 'coach_trial_used') {
+        bumpFree(FREE_COACH_PER_DAY);
+        setMessages([...next, { role: 'coach', text: "That's your free coach messages for today. FitFlow Pro unlocks unlimited coaching — or come back tomorrow for 3 more." }]);
+        return;
+      }
       setMessages([...next, { role: 'coach', text: "Sorry — I hit an error. Try again." }]);
     } finally {
       setThinking(false);
@@ -307,7 +341,12 @@ export const Coach: React.FC = () => {
         {/* Gate the composer, not the page: the header, the back button and
             the transcript all stay usable, and what is locked is exactly the
             thing Pro buys. */}
-        <PremiumGate feature="coach-chat" className="min-h-[64px]">
+        {!isPro && !locked && (
+          <p className="text-[11px] text-text-dim text-center pb-2">
+            {freeLeft} of {FREE_COACH_PER_DAY} free coach messages left today
+          </p>
+        )}
+        <PremiumGate feature="coach-chat" className="min-h-[64px]" unlocked={!locked}>
         <div className="glass rounded-2xl flex items-end gap-2 p-2">
           <button
             onClick={handleVoice}

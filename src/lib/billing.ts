@@ -92,7 +92,7 @@ export const computeEntitlement = (
   // The app's creator gets every feature free, forever. The server checks the
   // VERIFIED Firebase Auth email (functions/src/index.ts isProUid), so editing
   // the profile email cannot unlock paid AI for anyone else.
-  if (isCreatorEmail((profile as any).email)) {
+  if (isCreatorEmail((profile as any).authEmail) || isCreatorEmail((profile as any).email)) {
     return { ...NONE, isPro: true, status: 'active', source: 'launch' };
   }
 

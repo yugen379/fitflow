@@ -9,6 +9,7 @@ import { cn } from '../lib/utils';
 interface WorkoutEntry {
   id: string;
   type: string;
+  title?: string;
   duration: number;
   caloriesBurned: number;
   timestamp: any;
@@ -102,13 +103,13 @@ export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount =
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-white font-medium text-sm truncate">{w.type}</p>
+                  <p className="text-white font-medium text-sm truncate">{w.title || w.type}</p>
                   <span className="text-xs text-text-dim shrink-0">{date ? formatRelative(date) : ''}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1 num text-xs text-text-dim">
                   <span className="flex items-center gap-1"><Clock size={11} />{w.duration || 0}m</span>
-                  <span className="flex items-center gap-1"><Flame size={11} />{w.caloriesBurned || 0}c</span>
-                  {hasDetails && <span>{w.exerciseLogs!.length} sets</span>}
+                  <span className="flex items-center gap-1"><Flame size={11} />{w.caloriesBurned || 0} kcal</span>
+                  {hasDetails && <span>{w.exerciseLogs!.length} {w.exerciseLogs!.length === 1 ? 'set' : 'sets'}</span>}
                 </div>
               </div>
               {hasDetails && (

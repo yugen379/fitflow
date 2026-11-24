@@ -109,12 +109,17 @@ const browser = await chromium.launch();
 // A small phone (360x640): the size at which a list that opens low on the page is actually hidden.
 const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
 const page = await ctx.newPage();
+// The level-up card (v1.6.10) can appear whenever XP crosses a level; tap it
+// away like a user would, wherever it interrupts.
+await page.addLocatorHandler(page.locator('[role="dialog"][aria-label^="Level"]'), async (d) => {
+  await d.locator('button').first().click().catch(() => {});
+});
 const pageErrors = [];
 const denied = [];
 page.on('pageerror', (e) => pageErrors.push(e.message));
 page.on('console', (m) => {
   const t = m.text();
-  if (m.type() === 'error' && /permission|insufficient/i.test(t)) denied.push(t.slice(0, 140));
+  if (m.type() === 'error' && /permission|insufficient/i.test(t)) denied.push(t.slice(0, 700));
 });
 
 await page.goto(BASE, { waitUntil: 'load', timeout: 45000 });
@@ -167,15 +172,43 @@ check('tapping it writes the meal, with the catalog numbers', !!lemak && lemak.c
 
 // ── Quick-add ────────────────────────────────────────────────────────────────
 section('Track: quick-add by typing');
+// v1.6.10 celebrates a level-up with a card; a user taps it away.
+const dismissLevelUp = async () => {
+  const go = page.locator('[role="dialog"][aria-label^="Level"] button');
+  if (await go.count()) { await go.first().click().catch(() => {}); await page.waitForTimeout(300); }
+};
 const quickAdd = async (text) => {
+  await dismissLevelUp();
   await page.locator('button[aria-label="Add meal"]').click();
   const box2 = page.locator('textarea[placeholder^="e.g. a bowl"]');
   await box2.waitFor({ timeout: 10000 });
   await box2.fill(text);
-  await page.locator('button.btn-3d', { hasText: 'Log' }).click();
+  // v1.6.10: Analyse shows a review list first; nothing is written until the
+  // user confirms "Log N kcal" (an AI misread used to go straight into the diary).
+  await page.locator('button.btn-3d', { hasText: 'Analyse' }).click();
+  const confirm = page.locator('button.btn-3d', { hasText: /^Log \d+ kcal$/ });
+  await confirm.waitFor({ timeout: 60000 }).catch(() => {});
+  if (await confirm.count()) await confirm.click();
   // The sheet closes itself when the log lands (or falls through to manual).
   await box2.waitFor({ state: 'detached', timeout: 60000 }).catch(() => {});
 };
+
+// The review step must not write anything before confirmation.
+section('Track: AI review writes nothing until confirmed');
+{
+  await dismissLevelUp();
+  await page.locator('button[aria-label="Add meal"]').click();
+  const box3 = page.locator('textarea[placeholder^="e.g. a bowl"]');
+  await box3.waitFor({ timeout: 10000 });
+  await box3.fill('telur mata');
+  await page.locator('button.btn-3d', { hasText: 'Analyse' }).click();
+  const confirm = page.locator('button.btn-3d', { hasText: /^Log \d+ kcal$/ });
+  await confirm.waitFor({ timeout: 60000 });
+  const early = await mealNamed('Fried Egg')();
+  check('nothing is written while the review is open', !early, early ? `${early.name} written early` : '');
+  await page.locator('button[aria-label="Close"]').first().click();
+  await box3.waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
+}
 await quickAdd('telur mata');
 const egg = await until(mealNamed('Fried Egg'));
 check('"telur mata" logs Fried Egg from the bundled list', !!egg && egg.calories === 90, egg ? `${egg.name}: ${egg.calories}` : 'no meal written');
@@ -185,6 +218,21 @@ const three = await until(mealNamed('3 eggs'), 45000);
 const wrongEggs = await mealNamed('Eggs (2 large')();
 check('"3 eggs" is logged as three eggs (234 kcal), not the listed two', !!three && three.calories === 234 && !wrongEggs,
   three ? `${three.name}: ${three.calories}` : wrongEggs ? `logged ${wrongEggs.name}: ${wrongEggs.calories}` : 'no meal written');
+
+// ── Edit / delete a logged meal (v1.6.10) ───────────────────────────────────
+section('Track: delete a logged meal');
+{
+  await dismissLevelUp();
+  const row = page.locator('[aria-label^="Edit Fried Egg"]').first();
+  await row.scrollIntoViewIfNeeded().catch(() => {});
+  await row.click();
+  const del = page.locator('button', { hasText: /(Delete|Tap to confirm)/ });
+  await del.first().click();   // arms
+  await del.first().click();   // confirms
+  let gone = false;
+  for (let i = 0; i < 30 && !gone; i++) { gone = !(await mealNamed('Fried Egg')()); if (!gone) await page.waitForTimeout(500); }
+  check('two taps on Delete remove the meal from Firestore', gone);
+}
 
 // ── Branded products ─────────────────────────────────────────────────────────
 // The answer is seeded into the server's search memory, so the real callable
