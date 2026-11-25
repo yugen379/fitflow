@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Play, Plus, Dumbbell, Bike, Waves, Zap, Sparkles, Loader2, ArrowRight,
-  TrendingUp, Trophy, CheckCircle2, Volume2, VolumeX, X, Timer, Camera, Share2, Check, Boxes, Flame,
+  TrendingUp, Trophy, CheckCircle2, Volume2, VolumeX, X, Timer, Camera, Share2, Check, Boxes, Flame, MapPin,
 } from 'lucide-react';
 import { FormCheck, FormCheckSummary } from '../components/FormCheck';
 import { AnimatedNumber } from '../components/AnimatedNumber';
@@ -373,6 +373,21 @@ export const Workout: React.FC = () => {
           </motion.button>
         ))}
       </div>
+
+      {/* GPS walk / run / ride recorder (lazy route). */}
+      <button
+        type="button"
+        onClick={() => { void haptic('light'); navigate('/track-activity'); }}
+        className="glass w-full p-5 flex items-center gap-4 text-left"
+      >
+        <div className="w-11 h-11 rounded-xl bg-accent/12 border border-accent/25 flex items-center justify-center shrink-0">
+          <MapPin size={20} className="text-accent" aria-hidden="true" />
+        </div>
+        <div className="flex-1">
+          <p className="text-white font-semibold text-base">Record a walk / run</p>
+          <p className="text-xs text-text-dim mt-0.5">GPS route, pace, splits — walk, run or ride.</p>
+        </div>
+      </button>
 
       {/* Biomechanics Lab entry — 3D form work, separate from the live session. */}
       <motion.button

@@ -290,6 +290,21 @@ export const Steps: React.FC = () => {
         ) : null}
       </motion.section>
 
+      {/* GPS walk / run / ride recorder (lazy route). */}
+      <button
+        type="button"
+        onClick={() => { void haptic('light'); navigate('/track-activity'); }}
+        className="glass w-full p-5 flex items-center gap-4 text-left"
+      >
+        <div className="w-11 h-11 rounded-xl bg-accent/12 border border-accent/25 flex items-center justify-center shrink-0">
+          <MapPin size={20} className="text-accent" aria-hidden="true" />
+        </div>
+        <div className="flex-1">
+          <p className="text-white font-semibold text-base">Record a walk / run</p>
+          <p className="text-xs text-text-dim mt-0.5">GPS route, pace, splits — walk, run or ride.</p>
+        </div>
+      </button>
+
       {/* Sensor diagnostic.
           "It isn't counting" and "it forgot my steps" have several distinct
           causes that look identical from outside: the listener never attached,

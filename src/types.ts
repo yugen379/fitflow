@@ -250,6 +250,12 @@ export interface WorkoutRecord {
   timestamp: any;
   notes?: string;
   exerciseLogs?: any[];
+  /** GPS sessions (TrackActivity). Capped by firestore.rules isValidGpsFields. */
+  distanceKm?: number;
+  movingSeconds?: number;
+  elevationGainM?: number;
+  /** Douglas-Peucker simplified, at most 500 points. */
+  route?: { lat: number; lng: number }[];
   formChecks?: {
     exerciseName: string;
     samples: number;
