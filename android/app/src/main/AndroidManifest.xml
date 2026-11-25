@@ -32,6 +32,21 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- Android 14+ (Health Connect inside the OS) shows its permission
+             sheet ONLY if the app declares this. Without it the sheet opens and
+             closes at once and every permission comes back denied: that is
+             what the Connect button did on an Android 16 phone. -->
+        <activity-alias
+            android:name=".ViewPermissionUsageActivity"
+            android:exported="true"
+            android:targetActivity=".MainActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
+
         <!-- Background step counting.
              foregroundServiceType="health" is required from Android 14 (the app
              targets SDK 36) and must match the type passed to startForeground().
