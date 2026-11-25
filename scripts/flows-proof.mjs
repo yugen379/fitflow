@@ -621,6 +621,129 @@ await page.locator('button.btn-3d', { hasText: 'Save' }).click();
 const edited = myPost ? await until(async () => (await myPost.ref.get()).data()?.content === EDITED, 10000) : false;
 check('the author can edit their post', edited === true, myPost ? `content is "${(await myPost.ref.get()).data()?.content}"` : 'no post to edit');
 
+// ── Squads ───────────────────────────────────────────────────────────────────
+// Create in the UI, a second (seeded) account joins through the real joinSquad
+// function, both weekly docs land on the leaderboard in the right order, the
+// server enforces the 10-member cap and the join rate limit, and the owner
+// leaving hands ownership to the longest-standing member.
+section('Squads: create, join by code, leaderboard, cap, rate limit, leave');
+{
+  const FN = `http://127.0.0.1:5001/${cfg.projectId}/us-central1`;
+  const callFn = async (name, token, data) => {
+    const r = await fetch(`${FN}/${name}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ data }),
+    });
+    return r.json().catch(() => ({ error: { status: `HTTP ${r.status}` } }));
+  };
+  const newAccount = async (label) => {
+    const made = await fetch(`http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${cfg.apiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@fitflow.test`, password: PASSWORD, returnSecureToken: true }),
+    }).then((r) => r.json());
+    return { uid: made.localId, token: made.idToken };
+  };
+  // The squad's week, as the browser (same machine, same zone) computes it.
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [ty, tm, td] = today.split('-').map(Number);
+  const mon = new Date(Date.UTC(ty, tm - 1, td));
+  mon.setUTCDate(mon.getUTCDate() - ((mon.getUTCDay() + 6) % 7));
+  const WEEK = mon.toISOString().slice(0, 10);
+
+  // My steps today, as the step sync would have stored them.
+  await db.doc(`step_days/${UID}_${today}`).set({ userId: UID, day: today, steps: 3000, source: 'flows', updatedAt: now });
+  const buddy = await newAccount('buddy');
+  await db.doc(`users/${buddy.uid}`).set({
+    uid: buddy.uid, displayName: 'Squad Buddy', photoURL: '', email: 'buddy-private@fitflow.test', weight: 91,
+    subscriptionType: 'free', trialStartedAt: now, createdAt: now,
+  });
+  await db.doc(`public_profiles/${buddy.uid}`).set({ displayName: 'Squad Buddy', photoURL: '' });
+
+  await page.goto(BASE + '/challenges', { waitUntil: 'load', timeout: 45000 });
+  await page.locator('button[aria-label="Squads"]').click({ timeout: 20000 });
+  await page.waitForURL(/\/squads$/, { timeout: 15000 }).catch(() => {});
+  const emptyShown = await page.locator('text=No squads yet').waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  check('the Challenges page opens Squads, which shows its empty state', emptyShown, page.url());
+
+  await page.locator('button', { hasText: 'Create squad' }).click();
+  await page.locator('input[placeholder="Squad name"]').fill('  Flow   Squad  ');
+  await page.locator('form button[type="submit"]', { hasText: 'Create' }).click();
+  await page.waitForURL(/\/squads\/[A-Za-z0-9]+$/, { timeout: 30000 }).catch(() => {});
+  const squadId = page.url().split('/squads/')[1] || '';
+  const code = (await page.locator('[data-testid="squad-code"]').innerText({ timeout: 20000 }).catch(() => '')).trim();
+  const sq = squadId ? (await db.doc(`squads/${squadId}`).get()).data() : null;
+  check('creating a squad goes through the function: sanitised name, me as owner, my zone, a 6-char code',
+    !!sq && sq.name === 'Flow Squad' && sq.ownerId === UID && sq.memberIds.join() === UID && sq.tz === tz &&
+    /^[A-HJ-NP-Z2-9]{6}$/.test(code) && sq.code === code,
+    JSON.stringify(sq && { name: sq.name, owner: sq.ownerId === UID, tz: sq.tz, code, stored: sq.code }));
+  check('the invite code has its own server-only record', code ? (await db.doc(`squad_codes/${code}`).get()).data()?.squadId === squadId : false);
+
+  const mine = await until(async () => (await db.doc(`squads/${squadId}/weekly/${WEEK}_${UID}`).get()).data(), 15000);
+  check('opening the squad publishes my week (3,000 steps from my step day)', mine?.steps === 3000 && mine?.uid === UID, JSON.stringify(mine));
+
+  const joined = await callFn('joinSquad', buddy.token, { code: code.toLowerCase().replace(/(...)/, '$1-') });
+  check('a second account joins with the code (typed lower-case, with a dash)', joined?.result?.squadId === squadId, JSON.stringify(joined));
+  const sq2 = (await db.doc(`squads/${squadId}`).get()).data();
+  const card = sq2?.members?.[buddy.uid] || {};
+  check('the joiner is a member, and their card carries only a name and a photo (no email, no weight)',
+    sq2?.memberIds?.includes(buddy.uid) && card.name === 'Squad Buddy' && Object.keys(card).sort().join() === 'joinedAt,name,photoURL',
+    JSON.stringify(card));
+  await db.doc(`squads/${squadId}/weekly/${WEEK}_${buddy.uid}`).set({ uid: buddy.uid, weekKey: WEEK, steps: 9000, activeDays: 2, workouts: 1, updatedAt: now });
+
+  const order = async () => page.locator('[data-testid="squad-row"]').evaluateAll((els) => els.map((e) => `${e.getAttribute('data-uid')}:${e.querySelector('[data-testid="squad-value"]')?.textContent}`));
+  const boardHas = (want) => until(async () => { const o = await order(); return o.join('|') === want ? o : null; }, 15000);
+  const o1 = await boardHas(`${buddy.uid}:9,000|${UID}:3,000`);
+  check('the leaderboard shows both members, highest first (9,000 then 3,000)', !!o1, (await order()).join(' | '));
+  const total1 = await page.locator('[data-testid="squad-total"]').innerText().catch(() => '');
+  check('the squad total adds both members (12,000)', total1.replace(/\D/g, '') === '12000', total1);
+  await db.doc(`squads/${squadId}/weekly/${WEEK}_${buddy.uid}`).update({ steps: 1000 });
+  const o2 = await boardHas(`${UID}:3,000|${buddy.uid}:1,000`);
+  check('when the numbers change, the board re-orders live', !!o2, (await order()).join(' | '));
+  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  check('the squad screen does not scroll sideways at 360 px', sideways <= 1, `${sideways}px`);
+
+  // Server-side rules of membership.
+  const notOwner = await callFn('manageSquad', buddy.token, { squadId, action: 'rename', name: 'Hijacked' });
+  check('a member who is not the owner cannot rename', notOwner?.error?.status === 'PERMISSION_DENIED', JSON.stringify(notOwner));
+  const notOwnerRemove = await callFn('manageSquad', buddy.token, { squadId, action: 'remove', memberUid: UID });
+  check('a member who is not the owner cannot remove the owner', notOwnerRemove?.error?.status === 'PERMISSION_DENIED', JSON.stringify(notOwnerRemove));
+  const fillers = [];
+  for (let i = 0; i < 9; i++) fillers.push(await newAccount(`fill${i}`));
+  const fillRes = [];
+  for (const f of fillers) fillRes.push(await callFn('joinSquad', f.token, { code }));
+  const okJoins = fillRes.filter((r) => r?.result?.squadId === squadId).length;
+  check('the squad fills to 10 members and the 11th is refused by the server',
+    okJoins === 8 && fillRes[8]?.error?.status === 'FAILED_PRECONDITION' && (await db.doc(`squads/${squadId}`).get()).data().memberIds.length === 10,
+    `${okJoins} joined; 11th: ${JSON.stringify(fillRes[8]?.error)}`);
+  const guesser = await newAccount('guesser');
+  const guesses = [];
+  for (let i = 0; i < 11; i++) guesses.push(await callFn('joinSquad', guesser.token, { code: 'ZZZZZ' + 'ABCDEFGHJKL'[i] }));
+  check('guessing codes is rate-limited: 10 tries, then refused',
+    guesses.slice(0, 10).every((g) => g?.error?.status === 'NOT_FOUND') && guesses[10]?.error?.status === 'RESOURCE_EXHAUSTED',
+    guesses.map((g) => g?.error?.status).join(','));
+  const anon = await fetch(`${FN}/joinSquad`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: { code } }) }).then((r) => r.json());
+  check('joining without signing in is refused', anon?.error?.status === 'UNAUTHENTICATED', JSON.stringify(anon));
+
+  // Owner leaves in the UI → ownership passes to the longest-standing member (the buddy).
+  await page.locator('button', { hasText: 'Leave squad' }).click();
+  await page.locator('[role="dialog"][aria-label="Leave squad?"] button', { hasText: 'Leave' }).click();
+  const after = await until(async () => { const d = (await db.doc(`squads/${squadId}`).get()).data(); return d && !d.memberIds.includes(UID) ? d : null; }, 15000);
+  check('the owner leaving hands the squad to the longest-standing member', after?.ownerId === buddy.uid && after?.memberIds.length === 9,
+    JSON.stringify(after && { owner: after.ownerId === buddy.uid, n: after.memberIds.length }));
+  // The weekly cleanup runs right after the membership transaction commits.
+  const gone = await until(async () => !(await db.doc(`squads/${squadId}/weekly/${WEEK}_${UID}`).get()).exists, 10000);
+  check('the leaver\'s weekly numbers leave with them', gone === true);
+  const backOnList = await page.waitForURL(/\/squads$/, { timeout: 10000 }).then(() => true).catch(() => false);
+  check('after leaving, the app returns to the squad list', backOnList, page.url());
+
+  // Last member leaving deletes the squad and its code.
+  for (const f of [buddy, ...fillers.slice(0, 8)]) await callFn('leaveSquad', f.token, { squadId });
+  check('when the last member leaves, the squad and its code are deleted',
+    !(await db.doc(`squads/${squadId}`).get()).exists && !(await db.doc(`squad_codes/${code}`).get()).exists &&
+    (await db.collection(`squads/${squadId}/weekly`).get()).empty);
+}
+
 // ── A reload straight after signing in ───────────────────────────────────────
 // The profile listen can go out before Firestore has picked up the restored
 // sign-in; the rules then see nobody and refuse it. That used to strand the user

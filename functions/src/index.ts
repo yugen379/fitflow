@@ -24,6 +24,7 @@ export { awardXp } from "./xp";
 export { deleteAccount } from "./account";
 export { onPostLikeWritten, onPostCommentWritten, onPostCountersChanged } from "./postCounters";
 export { searchFoods } from "./foodSearch";
+export { createSquad, joinSquad, leaveSquad, manageSquad } from "./squads";
 import { correctedTrialStart } from "./trialGuard";
 // From the package entry, not admin.firestore.*: the emulator's binding of
 // admin.firestore drops these statics.

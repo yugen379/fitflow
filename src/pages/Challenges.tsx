@@ -272,6 +272,19 @@ export const Challenges: React.FC = () => {
         </div>
       </header>
 
+      <button
+        onClick={() => navigate('/squads')}
+        aria-label="Squads"
+        className="glass w-full p-4 mb-5 flex items-center gap-3 text-left"
+      >
+        <div className="w-10 h-10 shrink-0 rounded-xl bg-accent/15 text-accent flex items-center justify-center"><Users size={18} /></div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-white">Squads</p>
+          <p className="text-xs text-text-dim truncate">Private weekly challenges with up to 10 friends</p>
+        </div>
+        <ChevronLeft size={16} className="rotate-180 text-text-dim shrink-0" />
+      </button>
+
       {activeTab === 'global' ? (
         <div className="space-y-6">
           <div className="space-y-3">

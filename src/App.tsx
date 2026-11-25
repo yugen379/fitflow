@@ -23,6 +23,7 @@ import { DockTabs, type DockTab } from './components/layout/DockTabs';
 // rather than holding up the hero.
 // Lazy: its card animates with `motion`, which must stay off the boot path (proof:perf).
 const LevelUpWatcher = lazy(() => import('./components/LevelUpWatcher').then(m => ({ default: m.LevelUpWatcher })));
+const SquadSyncWatcher = lazy(() => import('./components/SquadSyncWatcher').then(m => ({ default: m.SquadSyncWatcher })));
 const FloatingDock = lazy(() => import('./components/layout/FloatingDock').then(m => ({ default: m.FloatingDock })));
 
 initTelemetry();
@@ -52,6 +53,7 @@ const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default:
 // when an athlete actually opens the 3D view.
 const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
 const Steps = lazy(() => import('./pages/Steps').then(m => ({ default: m.Steps })));
+const Squads = lazy(() => import('./pages/Squads').then(m => ({ default: m.Squads })));
 const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })));
 
 // The bottom-nav tabs. Kept alive between visits by DockTabs; must match the
@@ -233,6 +235,7 @@ const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) 
           other page mounts fresh through the transition as before. */}
       <DockTabs tabs={DOCK_TABS} pathname={pathname} />
       {!isProfileIncomplete && <Suspense fallback={null}><LevelUpWatcher /></Suspense>}
+      {!isProfileIncomplete && <Suspense fallback={null}><SquadSyncWatcher /></Suspense>}
       {!DOCK_PATHS.has(pathname) && <SpatialPageTransition>{children}</SpatialPageTransition>}
       {!isProfileIncomplete && pathname !== '/onboarding' && (
         <Suspense fallback={null}>
@@ -387,6 +390,8 @@ export default function App() {
               <Route path="/analytics" element={lazyRoute(<Analytics />)} />
               <Route path="/meal-plan" element={lazyRoute(<MealPlan />)} />
               <Route path="/challenges" element={lazyRoute(<Challenges />)} />
+              <Route path="/squads" element={lazyRoute(<Squads />)} />
+              <Route path="/squads/:squadId" element={lazyRoute(<Squads />)} />
               <Route path="/settings" element={lazyRoute(<Settings />)} />
               <Route path="/pro" element={lazyRoute(<Pro />)} />
               <Route path="/nutrition-goals" element={lazyRoute(<NutritionGoals />)} />
