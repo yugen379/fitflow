@@ -391,3 +391,24 @@ export const cleanHint = (v: unknown): string | null => {
 /** What gets written to the diary for one line. */
 export const diaryName = (l: ReviewLine): string =>
   l.grams != null ? `${l.name} (${l.grams} g)` : l.servings !== 1 ? `${l.name} ×${l.servings}` : l.name;
+
+/**
+ * Choose the USDA hit for one ingredient. The main word must appear as a whole
+ * word, plural allowed ("peas" never matches "chickpeas"; "pomegranate" does
+ * match "Pomegranates, raw"). Among those, a plain food beats a processed one
+ * (juice, drink, yogurt...) unless the ingredient itself names that form:
+ * the phone logged a pomegranate as bottled juice before this.
+ */
+const PROCESSED = ['juice', 'beverage', 'beverages', 'drink', 'yogurt', 'sauce', 'syrup', 'candy', 'candies', 'cereal', 'bar', 'babyfood', 'soup', 'flavored', 'dressing', 'powder'];
+
+export const pickUsdaHit = <T extends { name: string; calories: number }>(ingredient: string, hits: T[]): T | null => {
+  const words = (s: string) => s.toLowerCase().split(/[^\p{L}]+/u).filter(Boolean);
+  const want = words(ingredient);
+  const key = [...want].reverse().find((w) => w.length > 2) || want[want.length - 1];
+  if (!key) return null;
+  const forms = new Set([key, `${key}s`, `${key}es`, key.replace(/(es|s)$/, '')]);
+  const named = new Set(want);
+  const ok = hits.filter((h) => h.calories > 0 && words(h.name).some((w) => forms.has(w)));
+  const plain = ok.find((h) => !words(h.name).some((w) => PROCESSED.includes(w) && !named.has(w)));
+  return plain || ok[0] || null;
+};

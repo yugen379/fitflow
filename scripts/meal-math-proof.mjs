@@ -4,7 +4,7 @@ import {
   macrosForGrams, lineMacros, sumMacros, totalsOf, sanitizeDecomposition, sanePer100, toConfidence,
   lookupOffline, nameVariants, per100FromServingFood, servingGrams, makeLine, servingLine,
   oilGrams, oilMacros, oilBaseGrams, needsOilChoice, suggestedOil, mealTotals, OIL_MAX_G,
-  needsHint, mealConfidence, cleanHint, diaryName, clampGrams, isVagueMeal,
+  needsHint, mealConfidence, cleanHint, diaryName, clampGrams, isVagueMeal, pickUsdaHit,
 } from '../src/lib/mealMath.ts';
 import { buildFoodIndex, searchFoodIndex } from '../src/services/foodSearchIndex.ts';
 import { INGREDIENTS_100G } from '../src/data/ingredients100g.ts';
@@ -63,6 +63,13 @@ ok('"steamed jasmine rice" -> White rice', lookupOffline('steamed jasmine rice')
 ok('"kangkung" -> Leafy greens (alias)', lookupOffline('kangkung')?.matched === 'Leafy greens');
 ok('phone miss: "peas" -> Green peas at 81 kcal, not a 585 kcal peanut snack', lookupOffline('peas')?.matched === 'Green peas' && lookupOffline('peas')?.per100.kcal === 81);
 ok('"chickpeas" stays Chickpeas', lookupOffline('chickpeas')?.matched === 'Chickpeas');
+const H = (name, calories) => ({ name, calories });
+const pom = [H('Pomegranate juice, bottled', 54), H('Pomegranates, raw', 83)];
+ok('USDA: "pomegranate" takes "Pomegranates, raw" (plural) over bottled juice', pickUsdaHit('pomegranate', pom)?.calories === 83);
+ok('USDA: "pomegranate juice" keeps the juice', pickUsdaHit('pomegranate juice', pom)?.calories === 54);
+ok('USDA: "peas" never matches "Chickpeas"', pickUsdaHit('peas', [H('Chickpeas, mature seeds, cooked', 164)]) === null);
+ok('USDA: "boiled edamame" keys on edamame, not "boiled"', pickUsdaHit('boiled edamame', [H('Potatoes, boiled', 87), H('Edamame, frozen, prepared', 121)])?.calories === 121);
+ok('USDA: zero-kcal hits skipped', pickUsdaHit('tea', [H('Tea, brewed', 0)]) === null);
 ok('"chili sauce" is NOT guessed', lookupOffline('chili sauce') === null);
 // control: a loose top-hit on the word "sauce" would have returned some sauce
 const tableIdx = buildFoodIndex(INGREDIENTS_100G);
