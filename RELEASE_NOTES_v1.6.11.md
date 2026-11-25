@@ -38,7 +38,14 @@ Calories you can check:
 
 ## Env vars / keys
 
-No new ones. Uses the existing `GEMINI_API_KEY` secret (functions) and `VITE_USDA_API_KEY` (falls back to USDA's rate-limited `DEMO_KEY` if unset — set a real free key from api.data.gov for production volume).
+`VITE_USDA_API_KEY` is now set in the local `.env` (the Play AAB and APK on the Desktop carry it). The shared `DEMO_KEY` was over its rate limit on 2026-11-25, so every USDA lookup failed without it. **Still to do by hand:** add the same value as the GitHub secret `VITE_USDA_API_KEY` so CI and web builds get it (deploy.yml now forwards it).
+
+## Fixes after on-device testing (2026-11-25)
+
+- "a plate of leftovers" got a confident invented plate → descriptions that name no food now always ask for a hint (`isVagueMeal`).
+- Peas at 585 kcal/100 g (a branded peanut snack) → USDA per-100 g lookups use reference foods only; peas, spring onion, garlic, spinach, mushroom, bell pepper built in.
+- USDA lookups never answered on the phone: the FNDDS filter made ~half the requests 400 and the rest overran the 3 s budget → Foundation + SR Legacy, 5 s budget.
+- Pomegranate matched bottled juice → `pickUsdaHit` keys on the last word, accepts plurals, prefers the unprocessed food.
 
 ## Gates
 
