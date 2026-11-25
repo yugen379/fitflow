@@ -1404,7 +1404,7 @@ export const Track: React.FC = () => {
                                 g
                               </label>
                             ) : (
-                              <span className="num text-[11px] text-text-dim w-16 text-center">×{it.servings} serving</span>
+                              <span className="num text-[11px] text-text-dim min-w-16 px-1 text-center whitespace-nowrap">×{it.servings} {it.servings === 1 ? 'serving' : 'servings'}</span>
                             )}
                             <button onClick={() => stepLine(i, 1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={`More ${it.name}`}>+</button>
                           </div>
