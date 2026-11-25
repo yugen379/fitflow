@@ -13,7 +13,7 @@
 import { decomposeMeal, parseQuickAdd, analyzeMealImage } from './geminiService';
 import { getFoodIndex, searchUsda, type FoodProduct } from './foodService';
 import {
-  sanitizeDecomposition, lookupOffline, makeLine, servingLine, sanePer100, isVagueMeal, pickUsdaHit,
+  sanitizeDecomposition, lookupOffline, makeLine, servingLine, sanePer100, isVagueMeal, pickUsdaHit, mealCacheKey,
   type ReviewLine, type Found, type DecomposedItem,
 } from '../lib/mealMath';
 
@@ -22,6 +22,8 @@ export interface MealAnalysis {
   obscured: boolean;
   /** true = ingredient + grams pipeline; false = an older per-serving fallback answered. */
   decomposed: boolean;
+  /** Answered from this device's repeat-meal cache. */
+  cached?: boolean;
 }
 
 const USDA_BUDGET_MS = 5_000;
@@ -53,8 +55,48 @@ const resolveAll = async (raw: { items: any[]; obscured: boolean }): Promise<Mea
   return { lines, obscured: d.obscured, decomposed: true };
 };
 
+// ---- Repeat meals answer instantly -------------------------------------------
+// People eat the same things again and again. A description that was already
+// broken down (and looked up) is kept on the device for 14 days, so typing
+// "nasi lemak with fried chicken" a second time shows the review at once
+// instead of waiting on the AI. Only full itemised answers are kept.
+const CACHE_KEY = 'ff_meal_cache_v1';
+const CACHE_TTL_MS = 14 * 86_400_000;
+const CACHE_MAX = 60;
+type CacheEntry = { at: number; lines: ReviewLine[] };
+
+const readCache = (): Record<string, CacheEntry> => {
+  try {
+    if (typeof localStorage === 'undefined') return {};
+    const v = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    return v && typeof v === 'object' ? v : {};
+  } catch { return {}; }
+};
+const writeCache = (c: Record<string, CacheEntry>) => {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const keep = Object.entries(c).filter(([, e]) => e && Date.now() - e.at < CACHE_TTL_MS)
+      .sort((a, b) => b[1].at - a[1].at).slice(0, CACHE_MAX);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(keep)));
+  } catch { /* storage full or blocked: the cache is only a speed-up */ }
+};
+export const cachedMeal = (text: string, hint?: string): ReviewLine[] | null => {
+  const k = mealCacheKey(text, hint);
+  const e = k ? readCache()[k] : undefined;
+  return e && Date.now() - e.at < CACHE_TTL_MS && Array.isArray(e.lines) && e.lines.length ? e.lines : null;
+};
+const rememberMeal = (text: string, hint: string | undefined, lines: ReviewLine[]) => {
+  const k = mealCacheKey(text, hint);
+  if (!k || !lines.length) return;
+  const c = readCache();
+  c[k] = { at: Date.now(), lines };
+  writeCache(c);
+};
+
 /** A typed meal ("nasi lemak with fried chicken"). */
 export const analyzeMealText = async (text: string, hint?: string): Promise<MealAnalysis> => {
+  const hit = cachedMeal(text, hint);
+  if (hit) return { lines: hit.map((l) => ({ ...l })), obscured: false, decomposed: true, cached: true };
   const t0 = Date.now();
   const raw = await decomposeMeal({ text, hint });
   // A quick null is an older server (unknown action) or a network blip; a slow
@@ -64,7 +106,10 @@ export const analyzeMealText = async (text: string, hint?: string): Promise<Meal
   // a hint first, whatever the model guessed.
   if (raw && raw.items.length) {
     const a = await resolveAll(raw);
-    return hint === undefined && isVagueMeal(text) ? { ...a, obscured: true } : a;
+    if (hint === undefined && isVagueMeal(text)) return { ...a, obscured: true };
+    // Only answers the user would not be asked about again are kept.
+    if (!a.obscured && a.lines.every((l) => l.source !== 'none')) rememberMeal(text, hint, a.lines);
+    return a;
   }
   if (raw && raw.obscured && hint === undefined) return { lines: [], obscured: true, decomposed: true };
   // Older path: per-serving items from the quick-add parser. When the server

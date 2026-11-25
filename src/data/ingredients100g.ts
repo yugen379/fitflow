@@ -4,7 +4,10 @@
 // Values follow USDA FoodData Central / the Malaysian Food Composition
 // Database, rounded. `calories` is kcal per 100 g.
 //
-// Pure data, no imports: the proof harness loads it directly.
+// Pure data. The USDA-built table (ingredientsUsda.ts) is appended after the
+// hand entries below, so a hand entry wins on any conflict.
+
+import { INGREDIENTS_USDA } from './ingredientsUsda';
 
 export interface Per100Food {
   name: string;
@@ -18,7 +21,7 @@ export interface Per100Food {
 const f = (name: string, calories: number, protein: number, carbs: number, fats: number, aliases: string[] = []): Per100Food =>
   ({ name, calories, protein, carbs, fats, aliases });
 
-export const INGREDIENTS_100G: Per100Food[] = [
+export const INGREDIENTS_HAND: Per100Food[] = [
   // --- Grains and starches (cooked) -------------------------------------
   f('White rice', 130, 2.7, 28, 0.3, ['rice', 'steamed rice', 'jasmine rice', 'nasi putih', 'basmati rice', 'cooked rice']),
   f('Brown rice', 112, 2.3, 24, 0.8, ['brown rice cooked']),
@@ -155,3 +158,6 @@ export const INGREDIENTS_100G: Per100Food[] = [
   f('Cream crackers', 440, 9.5, 68, 14, ['crackers', 'biscuits plain']),
   f('Cookies', 488, 5, 64, 24, ['biscuits', 'cookie']),
 ];
+
+/** Lookup table: hand entries first (they win), then the USDA-built list. */
+export const INGREDIENTS_100G: Per100Food[] = [...INGREDIENTS_HAND, ...INGREDIENTS_USDA];

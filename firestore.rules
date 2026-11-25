@@ -132,6 +132,12 @@ service cloud.firestore {
              data.updatedAt == request.time;
     }
 
+    function isPlausibleLabel(data) {
+      return data.calories <= 900 &&
+             data.protein + data.carbs + data.fats <= 102 &&
+             data.protein * 4 + data.carbs * 4 + data.fats * 9 >= data.calories * 0.75 - 25;
+    }
+
     function isValidActivityDay(data) {
       return data.keys().hasAll(['userId', 'day', 'timestamp']) &&
              data.userId == request.auth.uid &&
@@ -536,7 +542,12 @@ service cloud.firestore {
     // the Admin SDK (scripts/seed-catalog.mjs).
     match /food_catalog/{foodId} {
       allow get, list: if isSignedIn();
-      allow create: if isVerified() && isValidId(foodId) && isValidCatalogFood(incoming());
+      // Barcode entries ("barcode-<digits>") are label reads per 100 g, so
+      // their macros must also explain the calories from below: a per-serving
+      // kcal next to per-100 g macros (the usual misread) is refused. Name
+      // entries keep the old rule so zero-macro drinks still work.
+      allow create: if isVerified() && isValidId(foodId) && isValidCatalogFood(incoming()) &&
+                    (!foodId.matches('^barcode-.*') || isPlausibleLabel(incoming()));
       allow update, delete: if false;
     }
 

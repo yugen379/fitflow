@@ -4,7 +4,7 @@ import {
   macrosForGrams, lineMacros, sumMacros, totalsOf, sanitizeDecomposition, sanePer100, toConfidence,
   lookupOffline, nameVariants, per100FromServingFood, servingGrams, makeLine, servingLine,
   oilGrams, oilMacros, oilBaseGrams, needsOilChoice, suggestedOil, mealTotals, OIL_MAX_G,
-  needsHint, mealConfidence, cleanHint, diaryName, clampGrams, isVagueMeal, pickUsdaHit,
+  needsHint, mealConfidence, cleanHint, diaryName, clampGrams, isVagueMeal, pickUsdaHit, mealCacheKey,
 } from '../src/lib/mealMath.ts';
 import { buildFoodIndex, searchFoodIndex } from '../src/services/foodSearchIndex.ts';
 import { INGREDIENTS_100G } from '../src/data/ingredients100g.ts';
@@ -136,6 +136,10 @@ ok('only once: hint already used -> never again', !needsHint([], true, true));
 for (const v of ['a plate of leftovers', 'Leftovers', 'my usual lunch', 'some food', 'dinner at the stall', 'had a big meal']) ok(`vague "${v}": asks`, isVagueMeal(v));
 for (const f of ['leftover rice', 'nasi lemak', 'a plate of chicken rice', 'egg', 'mixed rice with curry', 'leftover pizza']) ok(`names a food "${f}": no ask`, !isVagueMeal(f));
 ok('empty text is not "vague"', !isVagueMeal(''));
+ok('cache key: case, punctuation and spaces ignored', mealCacheKey('Nasi Lemak!') === mealCacheKey('nasi   lemak'));
+ok('cache key: different meals differ', mealCacheKey('nasi lemak') !== mealCacheKey('nasi goreng'));
+ok('cache key: the hint is part of the key', mealCacheKey('leftovers', 'fried rice') !== mealCacheKey('leftovers') && mealCacheKey('leftovers', 'fried rice') !== mealCacheKey('leftovers', 'curry'));
+ok('cache key: too short -> no caching', mealCacheKey('a') === '' && mealCacheKey('!!') === '');
 ok('cleanHint trims and caps', cleanHint('  chicken   curry!! with rice ') === 'chicken curry with rice' && cleanHint('a b c d e f g h') === 'a b c d e f');
 ok('empty hint -> null', cleanHint('   ') === null && cleanHint(5) === null);
 

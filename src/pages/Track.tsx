@@ -11,7 +11,9 @@ import {
   needsHint, cleanHint, diaryName, clampGrams, type ReviewLine, type OilLevel,
 } from '../lib/mealMath';
 import { searchFood, lookupBarcode, resolveLocalFood } from '../services/foodService';
-import { lookupCatalog } from '../services/foodCatalogService';
+import { SmartTargetCard } from '../components/SmartTargetCard';
+import { lookupCatalog, lookupBarcodeFood, saveBarcodeFood } from '../services/foodCatalogService';
+import { labelPlausible } from '../services/foodCatalogUtils';
 import { searchBrandedFoods, fetchProductServing } from '../services/remoteFoodSearch';
 import { cn } from '../lib/utils';
 import { checkAndAwardBadge } from '../services/badgeService';
@@ -97,6 +99,9 @@ export const Track: React.FC = () => {
   const [meals, setMeals] = useState<MealRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [scannedProduct, setScannedProduct] = useState<any>(null);
+  // A barcode nothing knows yet: the user is asked for a photo of its label.
+  const [labelFor, setLabelFor] = useState<string | null>(null);
+  const labelFileRef = useRef<HTMLInputElement>(null);
   const [portionSize, setPortionSize] = useState(100);
   const fileRef = useRef<HTMLInputElement>(null);
   const barcodeFileRef = useRef<HTMLInputElement>(null);
@@ -160,7 +165,7 @@ export const Track: React.FC = () => {
   }, [profile?.uid]);
 
   useEffect(() => {
-    if (!scanOpen || scannedProduct || scanBlocked) return;
+    if (!scanOpen || scannedProduct || scanBlocked || labelFor) return;
     scannedRef.current = false;
     setScanError(null);
     let cancelled = false;
@@ -280,7 +285,7 @@ export const Track: React.FC = () => {
         try { inst?.clear(); } catch {}
       });
     };
-  }, [scanOpen, scannedProduct, scanAttempt, scanBlocked]);
+  }, [scanOpen, scannedProduct, scanAttempt, scanBlocked, labelFor]);
 
   // Auto-recover: while the scanner is open, watch the browser's camera-permission
   // state. The moment it flips to "granted" — e.g. the user enabled it in settings
@@ -316,6 +321,7 @@ export const Track: React.FC = () => {
   // prompting. That is exactly the "it never asks, just says blocked" bug.
   const openScanner = async () => {
     setScannedProduct(null);
+    setLabelFor(null);
     setScanError(null);
     setScanBlocked(false);
 
@@ -379,8 +385,10 @@ export const Track: React.FC = () => {
     });
 
   // Map either a FoodProduct (DB) or ScannedNutrition (AI) into the modal shape.
-  const showProduct = (p: { name: string; brand?: string; calories: number; protein: number; carbs: number; fats: number; source?: string }) => {
+  const showProduct = (p: { name: string; brand?: string; calories: number; protein: number; carbs: number; fats: number; source?: string }, barcode?: string | null) => {
+    setLabelFor(null);
     setScannedProduct({
+      barcode: barcode || null,
       name: p.name || 'Scanned product',
       brand: p.brand || '',
       calories100g: Math.round(p.calories) || 0,
@@ -407,29 +415,38 @@ export const Track: React.FC = () => {
     setIsAnalyzing(true);
     setScanError(null);
     try {
-      // 1) Barcode → Open Food Facts / USDA (hardened, multi-variant resolver).
       if (barcode) {
+        // 1) A label another FitFlow user already photographed for this barcode.
+        const shared = await lookupBarcodeFood(barcode);
+        if (shared) { showProduct({ ...shared, source: 'SHARED' }, barcode); return; }
+        // 2) Open Food Facts / USDA (hardened, multi-variant resolver).
         try {
           const product = await lookupBarcode(barcode);
-          if (product && product.calories > 0) { showProduct(product); return; }
+          if (product && product.calories > 0) { showProduct(product, barcode); return; }
         } catch (e) { console.warn('[scan] DB lookup failed', e); }
       }
-      // 2) AI nutrition-label fallback on the captured frame.
-      if (imageBase64) {
+      // 3) No barcode in the photo: it may be a nutrition label, so read it.
+      //    When a barcode WAS read, its photo shows a barcode, not a label, and
+      //    asking the AI about it invites made-up numbers: ask for the label.
+      if (imageBase64 && !barcode) {
         try {
           const ai = await analyzeNutritionLabel(imageBase64);
-          if (ai) { showProduct(ai); return; }
+          if (ai && labelPlausible(ai)) { showProduct(ai, barcode); return; }
         } catch (e) { console.warn('[scan] AI label read failed', e); }
       }
-      // 3) Nothing resolved — hand off to manual with a useful prefill.
-      fallToManual(barcode, barcode ? 'Product not found — log it manually' : 'Could not read that — log it manually');
+      // 4) A barcode nobody knows: ask for its nutrition label. Reading it also
+      //    teaches the shared catalog, so the next person's scan is instant.
+      if (barcode) { setLabelFor(barcode); return; }
+      fallToManual(null, 'Could not read that — log it manually');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const decodeFile = async (file: File): Promise<string | null> => {
-    const tempQr = new Html5Qrcode('ff-reader-file', {
+    let tempQr: Html5Qrcode;
+    try {
+      tempQr = new Html5Qrcode('ff-reader-file', {
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
@@ -441,7 +458,10 @@ export const Track: React.FC = () => {
         Html5QrcodeSupportedFormats.ITF,
       ],
       verbose: false,
-    });
+      });
+    } catch {
+      return null; // no mount point: let the AI label read take the photo instead
+    }
     try {
       const result = await tempQr.scanFile(file, true);
       return result;
@@ -464,6 +484,24 @@ export const Track: React.FC = () => {
       const [barcode, base64] = await Promise.all([decodeFile(file), fileToBase64(file)]);
       // Even when no barcode decodes, the AI tier reads the label off the photo.
       await resolveAndShow(barcode, base64);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleLabelFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !labelFor) return;
+    setIsAnalyzing(true);
+    try {
+      const base64 = await fileToBase64(file);
+      if (!base64) { showToast("Couldn't open that photo. Try again.", "info"); return; }
+      const ai = await analyzeNutritionLabel(base64).catch(() => null);
+      if (ai && labelPlausible(ai)) { showProduct({ ...ai, source: 'LABEL' }, labelFor); return; }
+      showToast(ai
+        ? "Those numbers don't add up. Take the photo straight on, with the whole table in view."
+        : "Couldn't read the label. Try again in better light, or enter it by hand.", 'info');
     } finally {
       setIsAnalyzing(false);
     }
@@ -511,8 +549,17 @@ export const Track: React.FC = () => {
     });
     try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
     try { await checkAndAwardBadge(profile.uid, 'scanner_pro'); } catch {}
-    showToast('Logged', 'success');
-    setScanOpen(false); setScannedProduct(null);
+    // A label read for a barcode nobody had: share it (per 100 g) with everyone.
+    let shared = false;
+    if (scannedProduct.barcode && (scannedProduct.source === 'LABEL' || scannedProduct.source === 'AI')) {
+      shared = await saveBarcodeFood(scannedProduct.barcode, {
+        name: scannedProduct.name, brand: scannedProduct.brand || undefined,
+        calories: scannedProduct.calories100g, protein: scannedProduct.protein100g,
+        carbs: scannedProduct.carbs100g, fats: scannedProduct.fats100g,
+      });
+    }
+    showToast(shared ? 'Logged, and saved so the next scan of this product is instant' : 'Logged', 'success');
+    setScanOpen(false); setScannedProduct(null); setLabelFor(null);
   };
 
   // Natural-language quick-add: "2 eggs, toast and a banana" → multiple logged
@@ -928,6 +975,9 @@ export const Track: React.FC = () => {
         </button>
       </div>
 
+      {/* Speaks up only when the user's own data says the target is off. */}
+      <SmartTargetCard compact />
+
       {/* CTA row */}
       <div className="grid grid-cols-4 gap-2">
         <motion.button
@@ -1067,6 +1117,10 @@ export const Track: React.FC = () => {
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="relative bg-surface w-full max-w-sm rounded-3xl overflow-hidden border border-white/[0.06]"
             >
+              {/* The photo decoder's mount point. It lives at the sheet's root:
+                  inside the camera view it vanished whenever the camera was
+                  blocked, so "Upload a photo of the barcode" could never decode. */}
+              <div id="ff-reader-file" className="hidden" />
               <div className="p-5 border-b border-white/[0.06] flex justify-between items-center">
                 <div>
                   <p className="text-eyebrow text-accent">Barcode</p>
@@ -1118,15 +1172,41 @@ export const Track: React.FC = () => {
                       <ImageIcon size={16} /> Upload a photo of the barcode instead
                     </button>
                   </div>
-                  <input ref={barcodeFileRef} type="file" accept="image/*" onChange={handleBarcodeFile} className="hidden" />
+                  <input ref={barcodeFileRef} type="file" accept="image/*" onChange={handleBarcodeFile} className="hidden" data-testid="barcode-file-blocked" />
                 </div>
               )}
 
-              {!scannedProduct && !scanBlocked && (
+              {!scannedProduct && labelFor && (
+                <div className="p-6 space-y-4" data-testid="label-step">
+                  <div>
+                    <p className="font-display text-xl font-bold text-white leading-tight tracking-tight">New product</p>
+                    <p className="text-sm text-text-dim mt-1 leading-relaxed">
+                      Barcode {labelFor} isn't in any database yet. Photograph its nutrition table and FitFlow reads it, then saves it so the next person who scans it gets it instantly.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => labelFileRef.current?.click()}
+                    disabled={isAnalyzing}
+                    className="btn-3d w-full h-12 disabled:opacity-50"
+                  >
+                    {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+                    {isAnalyzing ? 'Reading the label…' : 'Photograph the label'}
+                  </button>
+                  <button
+                    onClick={() => { const code = labelFor; setLabelFor(null); fallToManual(code, 'Enter it from the pack'); }}
+                    disabled={isAnalyzing}
+                    className="btn-ghost w-full h-11 disabled:opacity-50"
+                  >
+                    Enter it by hand
+                  </button>
+                  <input ref={labelFileRef} type="file" accept="image/*" capture="environment" onChange={handleLabelFile} className="hidden" data-testid="label-file" />
+                </div>
+              )}
+
+              {!scannedProduct && !scanBlocked && !labelFor && (
                 <>
                   <div className="relative bg-black" style={{ aspectRatio: '1/1' }}>
                     <div id="ff-reader" className="w-full h-full" />
-                    <div id="ff-reader-file" className="hidden" />
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                       <div className="relative">
                         <div className="border-2 border-accent rounded-xl" style={{ width: 260, height: 140 }} />
@@ -1182,6 +1262,7 @@ export const Track: React.FC = () => {
                       type="file"
                       accept="image/*"
                       onChange={handleBarcodeFile}
+                      data-testid="barcode-file"
                       className="hidden"
                     />
                   </div>
@@ -1195,7 +1276,12 @@ export const Track: React.FC = () => {
                     <p className="font-display text-xl font-bold text-white leading-tight tracking-tight mt-1">{scannedProduct.name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       <p className="text-xs text-text-dim">Nutrition per 100g</p>
-                      {scannedProduct.source === 'AI' && (
+                      {scannedProduct.source === 'SHARED' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-accent bg-accent/10 rounded-full px-2 py-0.5">
+                          From a FitFlow user's label
+                        </span>
+                      )}
+                      {(scannedProduct.source === 'AI' || scannedProduct.source === 'LABEL') && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-accent-2 bg-accent-2/10 rounded-full px-2 py-0.5">
                           <Sparkles size={10} /> Read by AI
                         </span>

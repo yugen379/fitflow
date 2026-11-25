@@ -66,3 +66,31 @@ export const normalizeCatalogFood = (raw: any): CatalogFood | null => {
   };
   return isValidCatalogFood(candidate) ? candidate : null;
 };
+
+/**
+ * Shared-catalog key for a packaged product, by barcode: "barcode-<digits>".
+ * Values stored under it are PER 100 g (as a nutrition label reads them), unlike
+ * name keys, which hold one serving. '' for a code too short to be real.
+ */
+export const barcodeKey = (code: string): string => {
+  const digits = String(code || '').replace(/\D/g, '');
+  return digits.length >= 6 && digits.length <= 14 ? `barcode-${digits}` : '';
+};
+
+/**
+ * Is a nutrition label read (per 100 g) believable enough to share with every
+ * user? A misread label is worse than none: the next person trusts it.
+ *  - 1..900 kcal (pure fat is ~900),
+ *  - protein + carbs + fat can't weigh more than 100 g in 100 g (2 g reading slack),
+ *  - the macros must explain the calories: 4P + 4C + 9F within 25% (or 25 kcal)
+ *    of the stated kcal. Fibre, sugar alcohols and rounding fit inside that.
+ */
+export const labelPlausible = (f: { calories: number; protein: number; carbs: number; fats: number } | null | undefined): boolean => {
+  if (!f) return false;
+  const vals = [f.calories, f.protein, f.carbs, f.fats];
+  if (!vals.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0)) return false;
+  if (f.calories < 1 || f.calories > 900) return false;
+  if (f.protein + f.carbs + f.fats > 102) return false;
+  const atwater = f.protein * 4 + f.carbs * 4 + f.fats * 9;
+  return Math.abs(atwater - f.calories) <= Math.max(25, 0.25 * f.calories);
+};

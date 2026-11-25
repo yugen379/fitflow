@@ -23,6 +23,8 @@ import { isHealthAvailable, connectAndPersist, DailyHealthMetrics } from '../ser
 import { Capacitor } from '@capacitor/core';
 import { allFeaturesFree, getEntitlement } from '../lib/billing';
 import { purchaseUiAllowed } from '../services/playBillingService';
+import { trendSeries, localDate } from '../lib/adaptiveTarget';
+import { SmartTargetCard } from '../components/SmartTargetCard';
 
 const ACCENT = '#C6FF3D';
 
@@ -85,18 +87,26 @@ export const Profile: React.FC = () => {
     const q = query(
       collection(db, 'weight_history'),
       where('userId', '==', profile.uid),
-      orderBy('timestamp', 'asc'),
-      limit(30),
+      // Newest 60, shown oldest-first. Ascending + limit(30) showed the FIRST
+      // 30 weigh-ins forever, so after a month new weights never appeared.
+      orderBy('timestamp', 'desc'),
+      limit(60),
     );
     const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => {
-        const d = doc.data();
-        return {
-          ...d,
-          date: d.timestamp?.toDate?.().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        };
-      });
-      setWeightHistory(data);
+      const rows = snap.docs.map(doc => {
+        // A weigh-in that hasn't reached the server yet has no timestamp;
+        // use the local estimate so it shows straight away, in order.
+        const d = doc.data({ serverTimestamps: 'estimate' }) as { weight?: number; timestamp?: { toDate?: () => Date } } & Record<string, unknown>;
+        const at: Date | null = d.timestamp?.toDate?.() ?? null;
+        return { ...d, at };
+      }).filter((r) => r.at).sort((a, b) => a.at!.getTime() - b.at!.getTime());
+      // Smoothed trend: daily water swings hide the real direction.
+      const trend = new Map(trendSeries(rows.map((r) => ({ date: localDate(r.at!), kg: Number(r.weight) }))).map((p) => [p.date, p.trend]));
+      setWeightHistory(rows.map((r) => ({
+        ...r,
+        date: r.at!.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        trend: trend.get(localDate(r.at!)),
+      })));
     }, (err) => {
       // Snapshot errors are usually transient (network blips, rule warmups) — log and stay
       // silent rather than nagging the customer with a red toast.
@@ -277,7 +287,7 @@ export const Profile: React.FC = () => {
         <div className="flex justify-between items-end">
           <div>
             <h2 className="font-display text-lg font-bold text-white tracking-tight">Progress</h2>
-            <p className="text-xs text-text-dim mt-0.5">Weight over the last 30 logs</p>
+            <p className="text-xs text-text-dim mt-0.5">Weigh-ins, with the dashed trend line</p>
           </div>
           <button
             onClick={() => setIsLoggingWeight(true)}
@@ -301,7 +311,19 @@ export const Profile: React.FC = () => {
                 />
                 <Line
                   type="monotone"
+                  dataKey="trend"
+                  name="Trend"
+                  isAnimationActive={false}
+                  stroke="#8B92A3"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  activeDot={false}
+                />
+                <Line
+                  type="monotone"
                   dataKey="weight"
+                  name="Weight"
                   isAnimationActive={false}
                   stroke={ACCENT}
                   strokeWidth={2.5}
@@ -322,6 +344,8 @@ export const Profile: React.FC = () => {
           </div>
         )}
       </div>
+
+      <SmartTargetCard />
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">

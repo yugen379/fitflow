@@ -9,6 +9,7 @@ import { isProUnlocked } from '../lib/billing';
 import { baseCaloriesFor, defaultSplitFor, computeDailyTargets, applySafetyBounds } from '../lib/nutritionTargets';
 import type { MacroTargets, DayTargets } from '../types';
 import { cn } from '../lib/utils';
+import { SmartTargetCard } from '../components/SmartTargetCard';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -23,7 +24,11 @@ export const NutritionGoals: React.FC = () => {
   const { showToast } = useToast();
   const isPro = isProUnlocked(profile);
   const goal = profile?.goal;
-  const baseCals = baseCaloriesFor(goal);
+  // The user's own daily target (set on the meal plan or by the smart target)
+  // when there is one; this page used to show and save the goal's default
+  // instead, and saving here wiped the user's target.
+  const chosenCals = profile?.macroTargets?.calorieTarget;
+  const baseCals = typeof chosenCals === 'number' && chosenCals > 0 ? Math.round(chosenCals) : baseCaloriesFor(goal);
 
   // --- Macro split state ---
   const initialMt: MacroTargets = profile?.macroTargets ?? { mode: 'percent', ...defaultSplitFor(goal) };
@@ -99,9 +104,10 @@ export const NutritionGoals: React.FC = () => {
       showToast('Macro percentages must add up to 100%.', 'error');
       return;
     }
+    const keep = typeof chosenCals === 'number' && chosenCals > 0 ? { calorieTarget: chosenCals } : {};
     const macroTargets: MacroTargets = mode === 'grams'
-      ? { mode: 'grams', proteinG, carbsG, fatsG }
-      : { mode: 'percent', proteinPct, carbsPct, fatsPct };
+      ? { mode: 'grams', proteinG, carbsG, fatsG, ...keep }
+      : { mode: 'percent', proteinPct, carbsPct, fatsPct, ...keep };
 
     const dayTargets: DayTargets = {
       enabled: dayEnabled,
@@ -142,6 +148,8 @@ export const NutritionGoals: React.FC = () => {
           <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">Macro targets</h1>
         </div>
       </header>
+
+      <SmartTargetCard onApplied={() => navigate(-1)} />
 
       {/* Live preview */}
       <div className="glass p-4">

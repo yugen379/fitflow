@@ -412,3 +412,16 @@ export const pickUsdaHit = <T extends { name: string; calories: number }>(ingred
   const plain = ok.find((h) => !words(h.name).some((w) => PROCESSED.includes(w) && !named.has(w)));
   return plain || ok[0] || null;
 };
+
+/**
+ * Key for the repeat-meal cache: the description with case, punctuation and
+ * spacing ignored ("Nasi lemak!" = "nasi  lemak"), plus the hint if any.
+ * '' for text too short to be a meal.
+ */
+export const mealCacheKey = (text: string, hint?: string): string => {
+  const norm = (v: string) => String(v || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const t = norm(text);
+  if (t.length < 2) return '';
+  const h = hint ? norm(hint) : '';
+  return h ? `${t} || ${h}` : t;
+};

@@ -5,7 +5,7 @@
 // garbage so the shared DB can't be poisoned. No Firestore I/O here (that layer
 // just calls these), so this is a fully deterministic 100% proof.
 
-const { catalogKey, isValidCatalogFood, normalizeCatalogFood } = await import('../src/services/foodCatalogUtils.ts');
+const { catalogKey, isValidCatalogFood, normalizeCatalogFood, barcodeKey, labelPlausible } = await import('../src/services/foodCatalogUtils.ts');
 
 const C = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', x: '\x1b[0m' };
 const PASS = `${C.g}PASS${C.x}`, FAIL = `${C.r}FAIL${C.x}`;
@@ -56,6 +56,19 @@ for (let i = 0; i < 1000; i++) {
 }
 check('fuzz · 1,000 names never throw', fuzzThrew === 0, `${fuzzThrew} threw`);
 check('fuzz · 1,000 keys valid-or-empty', fuzzBad === 0, `${fuzzBad} invalid`);
+
+// ── Barcode keys + nutrition-label plausibility (label photos are shared with everyone)
+check('barcodeKey: digits only, prefixed', barcodeKey('5 012345 678900') === 'barcode-5012345678900');
+check('barcodeKey: matches the Firestore id rule', /^[a-zA-Z0-9_-]+$/.test(barcodeKey('012345678905')));
+check('barcodeKey: too short / too long / empty -> ""', barcodeKey('123') === '' && barcodeKey('1'.repeat(20)) === '' && barcodeKey('') === '');
+check('label: oat biscuit (450 kcal, P7 C65 F18) passes', labelPlausible({ calories: 450, protein: 7, carbs: 65, fats: 18 }));
+check('label: cola (42 kcal, C10.6) passes', labelPlausible({ calories: 42, protein: 0, carbs: 10.6, fats: 0 }));
+check('label: peanut butter (588, P25 C20 F50) passes', labelPlausible({ calories: 588, protein: 25, carbs: 20, fats: 50 }));
+check('label: per-serving kcal with per-100 g macros (60 vs 450) rejected', !labelPlausible({ calories: 60, protein: 7, carbs: 65, fats: 18 }));
+check('label: kJ read as kcal (1880) rejected', !labelPlausible({ calories: 1880, protein: 7, carbs: 65, fats: 18 }));
+check('label: macros over 100 g per 100 g rejected', !labelPlausible({ calories: 800, protein: 60, carbs: 60, fats: 40 }));
+check('label: zero / negative / NaN rejected', !labelPlausible({ calories: 0, protein: 0, carbs: 0, fats: 0 }) && !labelPlausible({ calories: 100, protein: -1, carbs: 25, fats: 0 }) && !labelPlausible({ calories: NaN, protein: 1, carbs: 1, fats: 1 }));
+check('label: a correct label is not rejected (strictness control)', labelPlausible({ calories: 100, protein: 3, carbs: 18, fats: 1.5 }));
 
 console.log(`\n${C.b}── Summary ──${C.x}`);
 console.log(`  Assertions: ${fail === 0 ? C.g : C.r}${pass}/${pass + fail}${C.x}`);

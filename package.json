@@ -51,6 +51,8 @@
     "proof:latency": "vite build --mode e2e --outDir dist-e2e --emptyOutDir && npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions \"node scripts/latency-proof.mjs\"",
     "proof:review": "tsx scripts/review-fixes-proof.mjs",
     "proof:mealmath": "tsx scripts/meal-math-proof.mjs",
+    "proof:ingredients": "tsx scripts/ingredients-usda-proof.mjs",
+    "proof:adaptive": "tsx scripts/adaptive-proof.mjs",
     "proof:mealpipeline": "tsx scripts/meal-pipeline-live.mjs"
   },
   "dependencies": {

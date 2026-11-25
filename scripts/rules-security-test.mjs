@@ -135,6 +135,12 @@ await attack('a food cannot carry extra fields', setDoc(doc(alice, 'food_catalog
 await works('a new, sensible food is accepted', setDoc(doc(alice, 'food_catalog', 'oat_bar'), food()));
 await works('a branded food is accepted', setDoc(doc(alice, 'food_catalog', 'oat_bar_acme'), food({ brand: 'Acme' })));
 await works('a zero-macro drink is accepted', setDoc(doc(alice, 'food_catalog', 'vodka_shot'), food({ name: 'Vodka', calories: 97, protein: 0, carbs: 0, fats: 0 })));
+await attack('a barcode label with per-serving kcal next to per-100 g macros is refused',
+  setDoc(doc(alice, 'food_catalog', 'barcode-9555123456789'), food({ name: 'Biscuit', calories: 60, protein: 7, carbs: 65, fats: 18 })));
+await attack('a barcode label over 900 kcal per 100 g is refused',
+  setDoc(doc(alice, 'food_catalog', 'barcode-9555123456790'), food({ name: 'Biscuit', calories: 1880, protein: 7, carbs: 65, fats: 18 })));
+await works('a sensible barcode label is accepted',
+  setDoc(doc(alice, 'food_catalog', 'barcode-9555123456791'), food({ name: 'Oat biscuit', calories: 450, protein: 7, carbs: 65, fats: 18 })));
 await works('foods still cannot be deleted', assertFails(deleteDoc(doc(alice, 'food_catalog', 'banana'))));
 
 await testEnv.cleanup();

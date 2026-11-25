@@ -366,6 +366,163 @@ check('logging writes 30 g of it: 162 kcal, P2 C17 F9',
   !!spread && spread.calories === 162 && spread.protein === 2 && spread.carbs === 17 && spread.fats === 9,
   spread ? `${spread.name}: ${spread.calories} kcal P${spread.protein} C${spread.carbs} F${spread.fats}` : 'no meal written');
 
+
+
+// ── Unknown barcode -> photo of its label -> shared with everyone ─────────────
+// A real EAN-13 image is drawn in the browser (in-store prefix 200, so it can
+// never be a real product). Open Food Facts and USDA are answered "not found"
+// and the AI label read is fixed, so this checks the app, not those services.
+section('Scanner: unknown barcode -> label photo -> shared catalog');
+{
+  const ean13 = (twelve) => {
+    const d = twelve.split('').map(Number);
+    const sum = d.reduce((s, x, i) => s + x * (i % 2 ? 3 : 1), 0);
+    return twelve + ((10 - (sum % 10)) % 10);
+  };
+  const drawEan = async (code) => {
+    const p = await ctx.newPage();
+    await p.setContent('<canvas id="c" width="360" height="200" style="background:#fff"></canvas>');
+    await p.evaluate((code) => {
+      const L = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'];
+      const G = L.map((s) => s.split('').map((b) => (b === '0' ? '1' : '0')).reverse().join(''));
+      const R = L.map((s) => s.split('').map((b) => (b === '0' ? '1' : '0')).join(''));
+      const PAR = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL'];
+      const n = code.split('').map(Number);
+      let bits = '101';
+      for (let i = 1; i <= 6; i++) bits += (PAR[n[0]][i - 1] === 'L' ? L : G)[n[i]];
+      bits += '01010';
+      for (let i = 7; i <= 12; i++) bits += R[n[i]];
+      bits += '101';
+      const c = document.getElementById('c'); const x = c.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#000';
+      const w = 3, left = (c.width - bits.length * w) / 2;
+      for (let i = 0; i < bits.length; i++) if (bits[i] === '1') x.fillRect(left + i * w, 20, w, 160);
+    }, code);
+    const png = await p.locator('#c').screenshot();
+    await p.close();
+    return png;
+  };
+
+  const CODE = ean13(String(200000000000 + (Date.now() % 1_000_000_000)).slice(0, 12));
+  const BAD = ean13(String(200000000000 + ((Date.now() + 7) % 1_000_000_000)).slice(0, 12));
+  const good = await drawEan(CODE);
+  const bad = await drawEan(BAD);
+
+  let labelCalls = 0;
+  const notFound = (route) => route.fulfill({ status: 404, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"status":0}' });
+  await page.route('**/world.openfoodfacts.org/**', notFound);
+  await page.route('**/*.openfoodfacts.org/**', notFound);
+  await page.route('**/api.nal.usda.gov/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"foods":[],"totalHits":0}' }));
+  await page.route('**/geminiProxy', async (route) => {
+    let body = {};
+    try { body = route.request().postDataJSON() || {}; } catch { /* not JSON */ }
+    if (body.action !== 'analyzeNutritionLabel') return route.fallback();
+    labelCalls++;
+    // The second barcode's "label" is a misread: per-serving kcal next to per-100 g macros.
+    const misread = labelCalls > 1;
+    const reply = misread
+      ? { name: 'ZZLabel Misread Bar', calories: 60, protein: 7, carbs: 65, fats: 18 }
+      : { name: 'ZZLabel Kaya Puff', brand: 'ZZTest', calories: 450, protein: 7, carbs: 65, fats: 18 };
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(reply) });
+  });
+
+  const openScan = async () => {
+    await page.goto(BASE + '/track', { waitUntil: 'load', timeout: 45000 });
+    await dismissLevelUp();
+    await page.locator('button', { hasText: /^Scan$/ }).first().click();
+    await page.locator('[data-testid^="barcode-file"]').first().waitFor({ state: 'attached', timeout: 15000 });
+  };
+  const upload = (png) => page.locator('[data-testid^="barcode-file"]').first().setInputFiles({ name: 'barcode.png', mimeType: 'image/png', buffer: png });
+
+  // 1) Unknown barcode: no manual form, a label step instead.
+  await openScan();
+  await upload(good);
+  const step = page.locator('[data-testid="label-step"]');
+  await step.waitFor({ timeout: 30000 }).catch(() => {});
+  const stepText = (await step.innerText().catch(() => '')).replace(/\s+/g, ' ');
+  check('an unknown barcode asks for a photo of its label', stepText.includes(CODE), stepText.slice(0, 160) || ('no label step; screen: ' + (await page.locator('.rounded-3xl').last().innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 300)));
+  if (!stepText.includes(CODE)) await page.screenshot({ path: process.env.TEMP + '/label-fail.png' });
+
+  // 2) The label photo is read and shown per 100 g.
+  await page.locator('[data-testid="label-file"]').setInputFiles({ name: 'label.png', mimeType: 'image/png', buffer: good });
+  const product = page.locator('p', { hasText: 'ZZLabel Kaya Puff' });
+  await product.waitFor({ timeout: 20000 }).catch(() => {});
+  check('the label read is shown (Kaya Puff, 450 kcal / 100 g)', await product.count() > 0);
+
+  // 3) Logging 100 g writes 450 kcal AND shares the label under the barcode.
+  await page.locator('button.btn-3d', { hasText: /^Log$/ }).click().catch(() => {});
+  const puff = await until(mealNamed('ZZLabel Kaya Puff'));
+  check('logging 100 g writes 450 kcal', puff?.calories === 450, puff ? `${puff.calories}` : 'no meal');
+  const sharedDoc = await until(async () => {
+    const d = await db.doc(`food_catalog/barcode-${CODE}`).get();
+    return d.exists ? d.data() : null;
+  });
+  check('the label is saved for everyone under its barcode (per 100 g)', sharedDoc?.calories === 450 && sharedDoc?.name === 'ZZLabel Kaya Puff', JSON.stringify(sharedDoc || {}));
+
+  // 4) The next scan of that barcode is instant: no AI call, tagged as a user label.
+  const callsBefore = labelCalls;
+  await openScan();
+  await upload(good);
+  const tag = page.locator('text=From a FitFlow user\'s label');
+  await tag.waitFor({ timeout: 20000 }).catch(() => {});
+  check('a second scan finds it in the shared catalog', await tag.count() > 0);
+  check('...without reading the label again', labelCalls === callsBefore, `label reads ${callsBefore} -> ${labelCalls}`);
+
+  // 5) A misread label is refused and nothing is shared.
+  await openScan();
+  await upload(bad);
+  await step.waitFor({ timeout: 30000 }).catch(() => {});
+  await page.locator('[data-testid="label-file"]').setInputFiles({ name: 'label.png', mimeType: 'image/png', buffer: bad });
+  const warn = page.locator('text=/numbers don.t add up/');
+  await warn.waitFor({ timeout: 20000 }).catch(() => {});
+  check('a label whose numbers do not add up is refused with a reason', await warn.count() > 0);
+  const badDoc = await db.doc(`food_catalog/barcode-${BAD}`).get();
+  check('...and nothing is shared for it', !badDoc.exists);
+
+  await page.unroute('**/geminiProxy');
+  await page.unroute('**/world.openfoodfacts.org/**');
+  await page.unroute('**/*.openfoodfacts.org/**');
+  await page.unroute('**/api.nal.usda.gov/**');
+}
+// ── Smart target (adaptive calories) ─────────────────────────────────────────
+// Four weeks of history: 1,700 kcal logged every day while the scale falls
+// 72.0 -> 70.5 kg (about 0.42 kg a week). Real burn = 1700 + 0.06 x 7700 ≈ 2160.
+// The user's target is set to 2,200, so the card must suggest lowering it by
+// one step (200) to 2,000, and the button must save exactly that.
+section('Smart target: real burn from logs + weigh-ins');
+{
+  const dayAt = (back, h = 12) => { const d = new Date(); d.setHours(h, 0, 0, 0); d.setDate(d.getDate() - back); return Timestamp.fromDate(d); };
+  const batch = db.batch();
+  for (let back = 25; back >= 1; back--) {
+    for (const [h, kcal] of [[8, 500], [13, 700], [19, 500]]) {
+      batch.set(db.collection('meals').doc(), { userId: UID, name: 'Seeded meal', calories: kcal, protein: 30, carbs: 50, fats: 15, mealType: 'lunch', timestamp: dayAt(back, h) });
+    }
+  }
+  for (let back = 25; back >= 1; back -= 2) {
+    batch.set(db.collection('weight_history').doc(), { userId: UID, weight: Math.round((70.5 + (back / 25) * 1.5) * 10) / 10, timestamp: dayAt(back, 7) });
+  }
+  await batch.commit();
+  await db.doc(`users/${UID}`).update({ macroTargets: { mode: 'percent', calorieTarget: 2200 } });
+
+  await page.goto(BASE + '/nutrition-goals', { waitUntil: 'load', timeout: 45000 });
+  const card = page.locator('[data-testid="smart-target"]');
+  await card.waitFor({ timeout: 20000 }).catch(() => {});
+  const text = (await card.innerText().catch(() => '')).replace(/\s+/g, ' ');
+  const burn = Number((text.match(/(\d{4}) real burn/i) || [])[1]);
+  check('card shows a real burn near 2,160', burn >= 2080 && burn <= 2240, text.slice(0, 160));
+  check('card shows the weekly loss (~ -0.4 kg)', /-0\.(3|4|5)\d kg \/ week/i.test(text), text.slice(0, 200));
+  const btn = card.locator('button', { hasText: 'Lower target to 2000 kcal' });
+  check('suggests lowering one step, to 2,000', await btn.count() === 1, text.slice(0, 200));
+  await btn.click().catch(() => {});
+  const saved = await until(async () => {
+    const t = (await db.doc(`users/${UID}`).get()).data()?.macroTargets?.calorieTarget;
+    return t === 2000 ? t : null;
+  }, 15000);
+  check('the button saves 2,000 as the daily target', saved === 2000, `saved ${saved}`);
+  // Applying returns to the previous screen; let that finish before moving on.
+  await page.waitForURL((u) => !u.pathname.includes('nutrition-goals'), { timeout: 10000 }).catch(() => {});
+  await page.waitForLoadState('load').catch(() => {});
+}
 // ── Community ────────────────────────────────────────────────────────────────
 section('Community: post, like, comment, edit');
 await page.goto(BASE + '/community', { waitUntil: 'load', timeout: 45000 });

@@ -406,6 +406,34 @@ export const getMeals = async (userId: string) => {
   }
 };
 
+/**
+ * Calories logged per meal over the last `days` days (for the adaptive
+ * target). Only the fields the maths needs; uses the same (userId, timestamp)
+ * index as getMeals.
+ */
+export const getMealCaloriesSince = async (userId: string, days: number): Promise<{ at: Date; kcal: number }[]> => {
+  try {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - days);
+    const q = query(
+      collection(db, 'meals'),
+      where('userId', '==', userId),
+      where('timestamp', '>=', since),
+      orderBy('timestamp', 'desc'),
+      limit(2000),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => {
+      const data = d.data() as { timestamp?: { toDate?: () => Date }; calories?: number };
+      return { at: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(NaN), kcal: Number(data.calories) || 0 };
+    }).filter((m) => Number.isFinite(m.at.getTime()));
+  } catch (error) {
+    handleFirestoreError(error, 'list', 'meals');
+    return [];
+  }
+};
+
 export const logWeight = async (userId: string, weight: number) => {
   try {
     const docRef = await addDoc(collection(db, 'weight_history'), {
@@ -429,14 +457,16 @@ export const getWeightHistory = async (userId: string) => {
     const q = query(
       collection(db, 'weight_history'),
       where('userId', '==', userId),
-      orderBy('timestamp', 'asc'),
-      limit(30)
+      // Newest first, then flipped: ascending + limit returned the OLDEST
+      // weigh-ins, so after 30 logs nothing new ever appeared on the chart.
+      orderBy('timestamp', 'desc'),
+      limit(180)
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ 
       id: doc.id, 
       ...doc.data() 
-    }));
+    })).reverse();
   } catch (error) {
     handleFirestoreError(error, 'list', 'weight_history');
   }
