@@ -2,7 +2,8 @@
  * Biomechanics Lab.
  *
  * The screen that ties the RTK session state, the RTK Query cache and the 3D
- * viewport together. It is deep-linkable (`/lab?clip=deadlift`) so a push
+ * viewport together. It is deep-linkable (`/lab?clip=deadlift`, or
+ * `/lab?exercise=<library id>` for any of the 137 library exercises) so a push
  * notification, a coach message or a library entry can drop the athlete
  * straight into the movement being discussed.
  */
@@ -32,11 +33,11 @@ import {
   useLogSessionMutation,
   useRecordSetMutation,
 } from '../biomechanics/fitnessApi';
-import { getClipOrDefault } from '../biomechanics/motions';
+import { exerciseClipId, getClip, getClipOrDefault } from '../biomechanics/motions';
 import { selectCompletedSets, selectCurrentExercise, selectElapsedSec, selectSessionStatus } from '../biomechanics/selectors';
 import { store as biomechanicsStore, useAppDispatch, useAppSelector } from '../biomechanics/store';
 import { useBiomechanicsControls } from '../biomechanics/useBiomechanicsControls';
-import { buildQueueEntry, exerciseSelected, sessionFinished, sessionStarted } from '../biomechanics/workoutSlice';
+import { buildQueueEntry, exerciseQueued, exerciseSelected, sessionFinished, sessionStarted } from '../biomechanics/workoutSlice';
 
 const LabInner: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -56,6 +57,8 @@ const LabInner: React.FC = () => {
   const [logSession, { isLoading: saving }] = useLogSessionMutation();
 
   const requestedClip = searchParams.get('clip');
+  const requestedExercise = searchParams.get('exercise');
+  const sessionQueue = useAppSelector((state) => state.workout.queue);
 
   const queue = useMemo(() => {
     if (!manifest) return [];
@@ -80,12 +83,25 @@ const LabInner: React.FC = () => {
 
   // Honour a deep link once the queue exists.
   useEffect(() => {
-    if (!requestedClip || queue.length === 0) return;
-    const index = queue.findIndex((item) => item.clipId === requestedClip);
-    if (index >= 0 && index !== queue.findIndex((item) => item.exerciseId === exercise?.exerciseId)) {
+    if (!requestedClip || sessionQueue.length === 0 || requestedExercise) return;
+    const index = sessionQueue.findIndex((item) => item.clipId === requestedClip);
+    if (index >= 0 && index !== sessionQueue.findIndex((item) => item.exerciseId === exercise?.exerciseId)) {
       dispatch(exerciseSelected(index));
     }
-  }, [requestedClip, queue, exercise?.exerciseId, dispatch]);
+  }, [requestedClip, requestedExercise, sessionQueue, exercise?.exerciseId, dispatch]);
+
+  // "See it in 3D" from the library: queue that exercise's generated demo and select it.
+  useEffect(() => {
+    if (!requestedExercise || status === 'idle' || sessionQueue.length === 0) return;
+    if (exercise?.exerciseId === requestedExercise) return;
+    const clip = getClip(exerciseClipId(requestedExercise));
+    if (!clip) return;
+    dispatch(
+      exerciseQueued(
+        buildQueueEntry({ exerciseId: requestedExercise, name: clip.name, clipId: clip.id, targetSets: 3, targetReps: 10, targetWeightKg: 0 }),
+      ),
+    );
+  }, [requestedExercise, status, sessionQueue.length, exercise?.exerciseId, dispatch]);
 
   const progressionArgs = useMemo(
     () => ({ userId: profile?.uid ?? '', exerciseId: exercise?.exerciseId ?? '' }),
@@ -99,14 +115,15 @@ const LabInner: React.FC = () => {
     (index: number) => {
       haptic('selection');
       dispatch(exerciseSelected(index));
-      const clipId = queue[index]?.clipId;
+      const clipId = sessionQueue[index]?.clipId;
       if (clipId) {
         const next = new URLSearchParams(searchParams);
         next.set('clip', clipId);
+        next.delete('exercise');
         setSearchParams(next, { replace: true });
       }
     },
-    [dispatch, queue, searchParams, setSearchParams],
+    [dispatch, sessionQueue, searchParams, setSearchParams],
   );
 
   const handleSetLogged = useCallback(
@@ -185,7 +202,7 @@ const LabInner: React.FC = () => {
     );
   }
 
-  const activeIndex = queue.findIndex((item) => item.exerciseId === exercise?.exerciseId);
+  const activeIndex = sessionQueue.findIndex((item) => item.exerciseId === exercise?.exerciseId);
   const activeClip = getClipOrDefault(exercise?.clipId ?? null);
 
   return (
@@ -208,9 +225,18 @@ const LabInner: React.FC = () => {
         </div>
       </div>
 
+      {activeClip.simplified ? (
+        <div className="glass px-4 py-3 flex items-start gap-2.5" role="note" data-testid="simplified-demo">
+          <Info size={15} className="text-accent-3 shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-xs text-text-dim leading-relaxed">
+            <span className="text-white font-semibold">Simplified demo.</span> {activeClip.simplifiedNote}
+          </p>
+        </div>
+      ) : null}
+
       {/* Movement picker */}
       <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1" role="tablist" aria-label="Movement">
-        {queue.map((item, index) => {
+        {sessionQueue.map((item, index) => {
           const selected = index === activeIndex;
           return (
             <button

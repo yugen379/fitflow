@@ -24,6 +24,8 @@
     "proof:mission": "tsx scripts/mission-proof.mjs",
     "proof:biomechanics": "tsx scripts/biomechanics-proof.mjs",
     "proof:viewport": "node scripts/viewport-proof.mjs",
+    "proof:motions": "tsx scripts/exercise-motions-proof.mjs",
+    "screens:motions": "node scripts/exercise-screens.mjs",
     "proof:perf": "node scripts/perf-proof.mjs",
     "proof:steps": "tsx scripts/steps-proof.mjs",
     "perf": "node scripts/perf-probe.mjs",

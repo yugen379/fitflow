@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Clock, Search, ChevronLeft, X, Dumbbell, Activity, Compass, Plus, SlidersHorizontal, Check, Trash2, Save, Youtube } from 'lucide-react';
+import { Play, Clock, Search, ChevronLeft, X, Dumbbell, Activity, Compass, Plus, SlidersHorizontal, Check, Trash2, Save, Youtube, Box } from 'lucide-react';
 import { openExternal } from '../lib/openExternal';
 import { ExerciseImage } from '../components/ExerciseImage';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import { logWorkout } from '../services/dataService';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
+// Data-only module (no three.js): decides whether to offer the 3D demo.
+import { exerciseMotionNote, hasExerciseMotion } from '../biomechanics/exerciseMotions';
 import { saveWorkoutPlan, listWorkoutPlans, deleteWorkoutPlan, WorkoutPlan } from '../services/workoutPlanService';
 import { MUSCLE_GROUPS, EQUIPMENT, CATEGORIES as TAXONOMY_CATEGORIES, DIFFICULTIES as TAXONOMY_DIFFICULTIES } from '../data/taxonomy';
 
@@ -563,6 +565,24 @@ export const Library: React.FC = () => {
                     <p className="text-[10px] text-text-dim font-medium">Equipment</p>
                   </div>
                 </div>
+
+                {hasExerciseMotion(selectedExercise.id) && (
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      data-testid="see-in-3d"
+                      onClick={() => navigate(`/lab?exercise=${encodeURIComponent(selectedExercise.id)}`)}
+                      className="w-full h-12 rounded-2xl bg-accent/10 border border-accent/30 text-accent font-semibold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                    >
+                      <Box size={16} aria-hidden="true" /> See it in 3D
+                    </button>
+                    {exerciseMotionNote(selectedExercise.id) && (
+                      <p className="text-[11px] text-text-dim leading-relaxed px-1">
+                        Simplified demo — {exerciseMotionNote(selectedExercise.id)}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <h4 className="text-eyebrow text-accent">How to perform</h4>

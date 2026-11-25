@@ -163,6 +163,24 @@ const workoutSlice = createSlice({
       resetSetAccumulators(state);
     },
 
+    /**
+     * Add an exercise to the queue (if it is not already there) and select it.
+     * Powers "See it in 3D" from the library: the Lab opens on that exercise
+     * without discarding a session already in progress.
+     */
+    exerciseQueued(state, action: PayloadAction<QueuedExercise>) {
+      let index = state.queue.findIndex((item) => item.exerciseId === action.payload.exerciseId);
+      if (index < 0) {
+        state.queue.push(action.payload);
+        index = state.queue.length - 1;
+      }
+      if (index === state.currentIndex) return;
+      state.currentIndex = index;
+      state.restRemaining = null;
+      if (state.status === 'resting') state.status = 'active';
+      resetSetAccumulators(state);
+    },
+
     equipmentChanged(state, action: PayloadAction<EquipmentId>) {
       state.equipment = action.payload;
     },
@@ -297,6 +315,7 @@ const workoutSlice = createSlice({
 export const {
   sessionStarted,
   exerciseSelected,
+  exerciseQueued,
   equipmentChanged,
   repCounted,
   repCountAdjusted,

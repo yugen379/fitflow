@@ -15,7 +15,7 @@
  * 60 Hz from a requestAnimationFrame loop.
  */
 
-import type { JointAngles, PoseKeyframe, Posture, Skeleton, Vec3 } from './types';
+import type { ContactId, JointAngles, PoseKeyframe, Posture, Skeleton, Vec3 } from './types';
 
 // ---------------------------------------------------------------------------
 // Proportions — a 1.78 m athlete, anthropometrically plausible segment lengths.
@@ -222,90 +222,300 @@ export interface SolveOptions {
   armsFollowGravity?: boolean;
   /** Half the distance between the hands, metres — set by the equipment picker. */
   gripHalfWidth?: number;
+
+  // --- Generated-clip extras (all optional; absent = legacy behaviour) ----
+  /** Carry the elbow flexion axis with the humerus so it never flips at 90 deg of flexion. */
+  carriedElbowAxis?: boolean;
+  /** Ignore gripHalfWidth — the pose authors its own shoulder abduction. */
+  noGripBias?: boolean;
+  /** Supine clips: keep the authored tibia instead of IK-ing the feet to the floor. */
+  freeLegs?: boolean;
+  /** Landmark held at x = z = 0 so feet (or hands) never slide across the floor. */
+  anchor?: 'pelvis' | 'feet' | 'hands' | 'footL' | 'footR';
+  /** Hanging clips: height of the bar the hands are pinned to. */
+  barY?: number;
+  /** Floor clips: which body parts may carry weight. Default: all of them. */
+  contacts?: ContactId[];
+  /** Clamp every authored angle into ROM_LIMITS before solving. */
+  enforceRom?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Range of motion
+// ---------------------------------------------------------------------------
+
+/**
+ * Conservative anatomical range-of-motion limits, degrees, in the BODY frame
+ * (i.e. before any whole-body pitch/roll). Generated clips are clamped into
+ * these by the solver, and `scripts/exercise-motions-proof.mjs` asserts every
+ * authored pose already sits inside them, so a clamp never silently hides a
+ * bad keyframe.
+ */
+export const ROM_LIMITS = {
+  /** Hip flexion = femur + trunk lean (sagittal component). Negative is extension. */
+  hipFlex: [-35, 150],
+  /** Frontal-plane hip abduction (femur angle x |sin(leg yaw)|). */
+  hipAbd: [0, 55],
+  /** Knee flexion = femur - tibia. Negative is hyperextension. */
+  kneeFlex: [-5, 160],
+  /** Ankle dorsiflexion = -tibia - foot pitch. Negative is plantarflexion. */
+  ankleDorsi: [-75, 45],
+  shoulderFlex: [-75, 185],
+  shoulderAbd: [-25, 185],
+  elbowFlex: [-5, 155],
+  trunkTwist: [-60, 60],
+  trunkSide: [-45, 45],
+  neck: [-50, 60],
+} as const;
+
+export type RomKey = keyof typeof ROM_LIMITS;
+
+const clampTo = (v: number, range: readonly [number, number]): number =>
+  v < range[0] ? range[0] : v > range[1] ? range[1] : v;
+
+/** Per-side resolved pose values, with every optional override folded in. */
+export interface ResolvedSide {
+  femur: number;
+  tibia: number;
+  legYaw: number;
+  footPitch: number;
+  shoulderFlex: number;
+  shoulderAbd: number;
+  elbow: number;
+}
+
+export const resolveSide = (pose: PoseKeyframe, side: 1 | -1): ResolvedSide => {
+  const R = side === 1;
+  return {
+    femur: safeNumber(R ? pose.femurDegR : pose.femurDegL, safeNumber(pose.femurDeg, 0)),
+    tibia: safeNumber(R ? pose.tibiaDegR : pose.tibiaDegL, safeNumber(pose.tibiaDeg, 0)),
+    legYaw: safeNumber(R ? pose.legYawDegR : pose.legYawDegL, 0),
+    footPitch: safeNumber(R ? pose.footPitchDegR : pose.footPitchDegL, 0),
+    shoulderFlex: safeNumber(R ? pose.shoulderFlexDegR : pose.shoulderFlexDegL, safeNumber(pose.shoulderFlexDeg, 0)),
+    shoulderAbd: safeNumber(R ? pose.shoulderAbdDegR : pose.shoulderAbdDegL, safeNumber(pose.shoulderAbdDeg, 0)),
+    elbow: safeNumber(R ? pose.elbowDegR : pose.elbowDegL, safeNumber(pose.elbowDeg, 0)),
+  };
+};
+
+/** Anatomical readings of an authored pose, body frame, per side (suffix L/R). */
+export const measurePose = (pose: PoseKeyframe): Record<string, number> => {
+  const trunk = safeNumber(pose.trunkDeg, 0);
+  const out: Record<string, number> = {
+    trunkTwist: safeNumber(pose.trunkTwistDeg, 0),
+    trunkSide: safeNumber(pose.trunkSideDeg, 0),
+    neck: safeNumber(pose.neckDeg, 0),
+  };
+  for (const side of [-1, 1] as const) {
+    const r = resolveSide(pose, side);
+    const tag = side === 1 ? 'R' : 'L';
+    const yaw = toRad(r.legYaw);
+    out[`hipFlex${tag}`] = r.femur * Math.cos(yaw) + trunk;
+    out[`hipAbd${tag}`] = Math.abs(r.femur * Math.sin(yaw));
+    out[`kneeFlex${tag}`] = r.femur - r.tibia;
+    out[`ankleDorsi${tag}`] = -r.tibia - r.footPitch;
+    out[`shoulderFlex${tag}`] = r.shoulderFlex;
+    out[`shoulderAbd${tag}`] = r.shoulderAbd;
+    out[`elbowFlex${tag}`] = r.elbow;
+  }
+  return out;
+};
+
+/** Every ROM violation in a pose, as human-readable strings. Empty = plausible. */
+export const romViolations = (pose: PoseKeyframe, tolerance = 0.5): string[] => {
+  const m = measurePose(pose);
+  const bad: string[] = [];
+  for (const key of Object.keys(m)) {
+    const value = m[key];
+    const base = key.replace(/[LR]$/, '') as RomKey;
+    const range = ROM_LIMITS[base];
+    if (!range) continue;
+    if (!Number.isFinite(value) || value < range[0] - tolerance || value > range[1] + tolerance) {
+      bad.push(`${key}=${Number.isFinite(value) ? value.toFixed(1) : String(value)} outside [${range[0]}, ${range[1]}]`);
+    }
+  }
+  return bad;
+};
+
+/** A copy of `pose` clamped into ROM_LIMITS. Total: any input yields a finite, in-range pose. */
+export const clampPoseToRom = (pose: PoseKeyframe): PoseKeyframe => {
+  const out: PoseKeyframe = { ...pose };
+  const trunk = clampTo(safeNumber(pose.trunkDeg, 0), [-180, 180]);
+  out.trunkDeg = trunk;
+  out.trunkTwistDeg = clampTo(safeNumber(pose.trunkTwistDeg, 0), ROM_LIMITS.trunkTwist);
+  out.trunkSideDeg = clampTo(safeNumber(pose.trunkSideDeg, 0), ROM_LIMITS.trunkSide);
+  out.neckDeg = clampTo(safeNumber(pose.neckDeg, 0), ROM_LIMITS.neck);
+  for (const side of [-1, 1] as const) {
+    const r = resolveSide(pose, side);
+    const yaw = clampTo(r.legYaw, [-95, 95]);
+    const c = Math.cos(toRad(yaw));
+    const sn = Math.abs(Math.sin(toRad(yaw)));
+    let legYaw = yaw;
+    let femur = clampTo(r.femur, [-180, 180]);
+    // Abduction bound first, then the flexion bound on the sagittal component.
+    if (sn > 1e-6) femur = clampTo(femur, [-ROM_LIMITS.hipAbd[1] / sn, ROM_LIMITS.hipAbd[1] / sn]);
+    if (c > 1e-3) femur = clampTo(femur, [(ROM_LIMITS.hipFlex[0] - trunk) / c, (ROM_LIMITS.hipFlex[1] - trunk) / c]);
+    const hip = femur * Math.cos(toRad(legYaw)) + trunk;
+    const abd = Math.abs(femur * Math.sin(toRad(legYaw)));
+    if (hip < ROM_LIMITS.hipFlex[0] - 1e-6 || hip > ROM_LIMITS.hipFlex[1] + 1e-6 || abd > ROM_LIMITS.hipAbd[1] + 1e-6) {
+      // Abduction and flexion bounds conflict (an extreme trunk lean with a
+      // sideways leg): fall back to a sagittal leg, which is always solvable.
+      legYaw = 0;
+      femur = clampTo(r.femur, [ROM_LIMITS.hipFlex[0] - trunk, ROM_LIMITS.hipFlex[1] - trunk]);
+    }
+    const tibia = clampTo(r.tibia, [femur - ROM_LIMITS.kneeFlex[1], femur - ROM_LIMITS.kneeFlex[0]]);
+    const footPitch = clampTo(r.footPitch, [-tibia - ROM_LIMITS.ankleDorsi[1], -tibia - ROM_LIMITS.ankleDorsi[0]]);
+    const shoulderFlex = clampTo(r.shoulderFlex, ROM_LIMITS.shoulderFlex);
+    const shoulderAbd = clampTo(r.shoulderAbd, ROM_LIMITS.shoulderAbd);
+    const elbow = clampTo(r.elbow, ROM_LIMITS.elbowFlex);
+    if (side === 1) {
+      out.femurDegR = femur; out.tibiaDegR = tibia; out.legYawDegR = legYaw; out.footPitchDegR = footPitch;
+      out.shoulderFlexDegR = shoulderFlex; out.shoulderAbdDegR = shoulderAbd; out.elbowDegR = elbow;
+    } else {
+      out.femurDegL = femur; out.tibiaDegL = tibia; out.legYawDegL = legYaw; out.footPitchDegL = footPitch;
+      out.shoulderFlexDegL = shoulderFlex; out.shoulderAbdDegL = shoulderAbd; out.elbowDegL = elbow;
+    }
+  }
+  return out;
+};
+
+// ---------------------------------------------------------------------------
+// Feet & contacts
+// ---------------------------------------------------------------------------
+
+/** Ankle-to-toe vector length and its legacy downward tilt (the original flat foot). */
+const FOOT_LEN = Math.hypot(RIG.ankleHeight * 0.4, RIG.footLength);
+const FOOT_TILT = Math.atan2(RIG.ankleHeight * 0.4, RIG.footLength);
+/** On a flat foot the toe marker sits this far above the floor. */
+const TOE_CONTACT = RIG.ankleHeight * 0.6;
+
+/** How far below each landmark the body surface that touches the floor is. */
+const CONTACT_RADIUS = { knee: 0.055, hand: 0.025, wrist: 0.035, elbow: 0.05, pelvis: 0.1, chest: 0.11, head: RIG.headRadius } as const;
+
+const ALL_CONTACTS: ContactId[] = ['feet', 'knees', 'hands', 'elbows', 'pelvis', 'back', 'head'];
+
+/** Heel contact relative to the ankle for a foot pitch (toes-down positive). */
+const heelOffset = (pitchDeg: number): Vec3 => {
+  const p = toRad(pitchDeg);
+  // The heel sits under and just behind the ankle; toes-down pitch swings it up and back.
+  return v3(0, -RIG.ankleHeight * Math.cos(p) + 0.03 * Math.sin(p), -0.03 * Math.cos(p) - RIG.ankleHeight * Math.sin(p));
+};
+
+/** Rotate about the vertical; positive yaw swings +Z toward +X (the athlete's right). */
+const yawVec = (v: Vec3, yawDeg: number): Vec3 => {
+  if (yawDeg === 0) return v;
+  const r = toRad(yawDeg);
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  return v3(v.x * c + v.z * s, v.y, -v.x * s + v.z * c);
+};
+
+// ---------------------------------------------------------------------------
+// Solver
+// ---------------------------------------------------------------------------
 
 /**
  * Solve a full skeleton from one pose.
  *
  * Standing poses are grounded by translating the whole figure so the ankles sit
  * at `RIG.ankleHeight`; supine poses pin the pelvis to the bench and run a
- * one-shot analytic IK on the tibia so the feet still reach the floor.
+ * one-shot analytic IK on the tibia so the feet still reach the floor. Floor
+ * poses rest their lowest contact on the floor; hanging poses pin the hands to
+ * the bar.
  */
-export const solvePose = (pose: PoseKeyframe, opts: SolveOptions): Skeleton => {
+export const solvePose = (rawPose: PoseKeyframe, opts: SolveOptions): Skeleton => {
+  const pose = opts.enforceRom ? clampPoseToRom(rawPose) : rawPose;
   // Every numeric input is sanitised at the door. Poses arrive from authored
   // data, from React props and from a scrub position the user drags, and a
   // single NaN anywhere in that chain would otherwise propagate silently into
   // the vertex buffers and render an invisible avatar with no error at all.
   const trunkDeg = safeNumber(pose.trunkDeg, 0);
-  const femurDeg = safeNumber(pose.femurDeg, 0);
-  const authoredTibiaDeg = safeNumber(pose.tibiaDeg, 0);
-  const shoulderFlexDeg = safeNumber(pose.shoulderFlexDeg, 0);
-  const shoulderAbdDeg = safeNumber(pose.shoulderAbdDeg, 0);
-  const elbowDeg = safeNumber(pose.elbowDeg, 0);
   const shoulderRotDeg = safeNumber(pose.shoulderRotDeg, 0);
+  const twistDeg = safeNumber(pose.trunkTwistDeg, 0);
+  const sideBendDeg = safeNumber(pose.trunkSideDeg, 0);
+  const neckDeg = safeNumber(pose.neckDeg, 0);
+  const rootPitch = safeNumber(pose.rootPitchDeg, 0);
+  const rootRoll = safeNumber(pose.rootRollDeg, 0);
+  const liftY = safeNumber(pose.liftY, 0);
+  const sideR = resolveSide(pose, 1);
+  const sideL = resolveSide(pose, -1);
+  const hasFootPitch = pose.footPitchDegL !== undefined || pose.footPitchDegR !== undefined;
 
   const supine = opts.posture === 'supine';
   // Supine clips author trunkDeg as the lean from vertical exactly like
   // standing ones (a bench press sits at 84-90), so the frame needs no
   // special-casing — only the grounding rule below differs.
-  const trunk = trunkFrame(trunkDeg);
+  let trunk = trunkFrame(trunkDeg);
+  if (sideBendDeg !== 0 || twistDeg !== 0) {
+    let { up, forward, right } = trunk;
+    if (sideBendDeg !== 0) {
+      // Positive bends toward the athlete's right: rotate about the chest normal.
+      up = normalize(rotateAbout(up, forward, -toRad(sideBendDeg)));
+      right = normalize(rotateAbout(right, forward, -toRad(sideBendDeg)));
+    }
+    if (twistDeg !== 0) {
+      forward = normalize(rotateAbout(forward, up, toRad(twistDeg)));
+      right = normalize(rotateAbout(right, up, toRad(twistDeg)));
+    }
+    trunk = { up, forward, right };
+  }
 
   // --- Pelvis (provisional; standing poses are grounded afterwards) ---------
   const pelvis0 = v3(0, supine ? safeNumber(opts.supinePelvisY, BENCH_HEIGHT + 0.1) : 0, 0);
 
   // --- Legs (world frame) ---------------------------------------------------
-  const femurDir = dirFromDown(femurDeg);
-  let tibiaDeg = authoredTibiaDeg;
-
-  const hipL0 = add(pelvis0, v3(-RIG.hipHalfWidth, 0, 0));
-  const kneeProbe = add(hipL0, scale(femurDir, RIG.thigh));
-
-  if (supine) {
-    const solved = solveTibiaForFloor(kneeProbe.y, femurDeg >= 0);
-    if (solved !== null) tibiaDeg = solved;
-  }
-
-  const tibiaDir = dirFromDown(tibiaDeg);
-
-  const legFor = (side: 1 | -1) => {
+  const legFor = (side: 1 | -1, r: ResolvedSide) => {
     const hip = add(pelvis0, v3(side * RIG.hipHalfWidth, 0, 0));
+    const femurDir = yawVec(dirFromDown(r.femur), r.legYaw);
     const knee = add(hip, scale(femurDir, RIG.thigh));
+    let tibiaDeg = r.tibia;
+    if (supine && !opts.freeLegs) {
+      const solved = solveTibiaForFloor(knee.y, r.femur >= 0);
+      if (solved !== null) tibiaDeg = solved;
+    }
+    const tibiaDir = yawVec(dirFromDown(tibiaDeg), r.legYaw);
     const ankle = add(knee, scale(tibiaDir, RIG.shank));
-    const toe = add(ankle, v3(0, -RIG.ankleHeight * 0.4, RIG.footLength));
+    // Legacy foot: a fixed, flat ankle-to-toe vector. Pitch rotates it about the ankle.
+    const pitch = hasFootPitch ? toRad(r.footPitch) : 0;
+    const toe = hasFootPitch
+      ? add(ankle, v3(0, -FOOT_LEN * Math.sin(FOOT_TILT + pitch), FOOT_LEN * Math.cos(FOOT_TILT + pitch)))
+      : add(ankle, v3(0, -RIG.ankleHeight * 0.4, RIG.footLength));
     return { hip, knee, ankle, toe };
   };
 
-  const legL = legFor(-1);
-  const legR = legFor(1);
+  const legL = legFor(-1, sideL);
+  const legR = legFor(1, sideR);
 
   // --- Torso, head ----------------------------------------------------------
   const chest = add(pelvis0, scale(trunk.up, RIG.torso));
   const neck = add(chest, scale(trunk.up, RIG.neck * 0.5));
-  const head = add(neck, scale(trunk.up, RIG.neck * 0.5 + RIG.headRadius));
+  const headDir = neckDeg !== 0 ? normalize(rotateAbout(trunk.up, trunk.right, toRad(neckDeg))) : trunk.up;
+  const head = add(neck, scale(headDir, RIG.neck * 0.5 + RIG.headRadius));
 
   // --- Arms -----------------------------------------------------------------
   const gripHalf = safeNumber(opts.gripHalfWidth, RIG.shoulderHalfWidth);
   // A wider grip is not a sideways teleport of the hands — it is achieved by
   // abducting the shoulder. Converting grip width into an abduction bias keeps
   // the arm chain anatomically intact instead of stretching the forearm.
-  const abdBias = opts.armsFollowGravity
+  const abdBias = opts.armsFollowGravity || opts.noGripBias
     ? 0
     : Math.max(-14, Math.min(8, (gripHalf - GRIP_REFERENCE_HALF_WIDTH) * GRIP_ABDUCTION_GAIN));
 
-  const armFor = (side: 1 | -1) => {
+  const armFor = (side: 1 | -1, r: ResolvedSide) => {
     const shoulder = add(chest, scale(trunk.right, side * RIG.shoulderHalfWidth));
     const humerus = opts.armsFollowGravity
       ? v3(0, -1, 0)
-      : humerusDirection(trunk, shoulderFlexDeg, shoulderAbdDeg + abdBias, side);
+      : humerusDirection(trunk, r.shoulderFlex, r.shoulderAbd + abdBias, side);
     const elbow = add(shoulder, scale(humerus, RIG.upperArm));
-    const forearm = forearmDirection(humerus, trunk, elbowDeg, shoulderRotDeg);
+    const forearm = opts.carriedElbowAxis && !opts.armsFollowGravity
+      ? carriedForearmDirection(trunk, r.shoulderFlex, r.shoulderAbd + abdBias, side, r.elbow, shoulderRotDeg)
+      : forearmDirection(humerus, trunk, r.elbow, shoulderRotDeg);
     const wrist = add(elbow, scale(forearm, RIG.forearm));
     const hand = add(wrist, scale(forearm, RIG.hand));
     return { shoulder, elbow, wrist, hand };
   };
 
-  const armL = armFor(-1);
-  const armR = armFor(1);
+  const armL = armFor(-1, sideL);
+  const armR = armFor(1, sideR);
 
   const skeleton: Skeleton = {
     pelvis: pelvis0,
@@ -330,18 +540,165 @@ export const solvePose = (pose: PoseKeyframe, opts: SolveOptions): Skeleton => {
     toeR: legR.toe,
   };
 
-  // --- Grounding ------------------------------------------------------------
-  if (!supine) {
-    const lowest = Math.min(skeleton.ankleL.y, skeleton.ankleR.y);
-    const lift = Number.isFinite(lowest) ? RIG.ankleHeight - lowest : 0;
-    if (Math.abs(lift) > 1e-6) {
-      for (const key of Object.keys(skeleton) as (keyof Skeleton)[]) {
-        skeleton[key] = v3(skeleton[key].x, skeleton[key].y + lift, skeleton[key].z);
-      }
-    }
+  const keys = Object.keys(skeleton) as (keyof Skeleton)[];
+
+  // Heels are not joints but they are contacts; carry them through the root
+  // transform so floor grounding can see them.
+  let heelL = add(legL.ankle, heelOffset(hasFootPitch ? sideL.footPitch : 0));
+  let heelR = add(legR.ankle, heelOffset(hasFootPitch ? sideR.footPitch : 0));
+
+  // --- Whole-body pitch / roll about the pelvis -----------------------------
+  if (rootPitch !== 0 || rootRoll !== 0) {
+    const pitchAxis = v3(1, 0, 0);
+    const rollAxis = v3(0, 0, 1);
+    const xform = (p: Vec3): Vec3 => {
+      let rel = sub(p, pelvis0);
+      // Positive pitch tips the head forward (+Y toward +Z).
+      if (rootPitch !== 0) rel = rotateAbout(rel, pitchAxis, toRad(rootPitch));
+      // Positive roll drops the athlete's right side (+X toward -Y).
+      if (rootRoll !== 0) rel = rotateAbout(rel, rollAxis, -toRad(rootRoll));
+      return add(pelvis0, rel);
+    };
+    for (const key of keys) skeleton[key] = xform(skeleton[key]);
+    heelL = xform(heelL);
+    heelR = xform(heelR);
   }
 
+  // --- Grounding ------------------------------------------------------------
+  const shiftAll = (dx: number, dy: number, dz: number) => {
+    if (Math.abs(dx) < 1e-12 && Math.abs(dy) < 1e-12 && Math.abs(dz) < 1e-12) return;
+    for (const key of keys) {
+      skeleton[key] = v3(skeleton[key].x + dx, skeleton[key].y + dy, skeleton[key].z + dz);
+    }
+  };
+
+  if (opts.posture === 'standing') {
+    const lowest = Math.min(skeleton.ankleL.y, skeleton.ankleR.y);
+    const lift = Number.isFinite(lowest) ? RIG.ankleHeight - lowest : 0;
+    if (Math.abs(lift) > 1e-6) shiftAll(0, lift, 0);
+  } else if (opts.posture === 'floor') {
+    const lowest = lowestContact(skeleton, heelL, heelR, opts.contacts);
+    if (Number.isFinite(lowest)) shiftAll(0, -lowest, 0);
+  } else if (opts.posture === 'hanging') {
+    const handY = (skeleton.handL.y + skeleton.handR.y) / 2;
+    if (Number.isFinite(handY)) shiftAll(0, safeNumber(opts.barY, 2.25) - handY, 0);
+  }
+
+  // --- Horizontal anchor ----------------------------------------------------
+  if (opts.anchor) {
+    let ax: number;
+    let az: number;
+    if (opts.anchor === 'feet') {
+      ax = (skeleton.toeL.x + skeleton.toeR.x) / 2;
+      az = (skeleton.toeL.z + skeleton.toeR.z) / 2;
+    } else if (opts.anchor === 'footL' || opts.anchor === 'footR') {
+      const toe = opts.anchor === 'footL' ? skeleton.toeL : skeleton.toeR;
+      ax = toe.x;
+      az = toe.z;
+    } else if (opts.anchor === 'hands') {
+      ax = (skeleton.handL.x + skeleton.handR.x) / 2;
+      az = (skeleton.handL.z + skeleton.handR.z) / 2;
+    } else {
+      ax = skeleton.pelvis.x;
+      az = skeleton.pelvis.z;
+    }
+    if (Number.isFinite(ax) && Number.isFinite(az)) shiftAll(-ax, 0, -az);
+  }
+
+  const shiftZ = safeNumber(pose.shiftZ, 0);
+  if (liftY !== 0 || shiftZ !== 0) shiftAll(0, liftY, shiftZ);
+
   return skeleton;
+};
+
+/** Height of the lowest weight-bearing surface of a solved skeleton (before grounding). */
+const lowestContact = (s: Skeleton, heelL: Vec3, heelR: Vec3, contacts?: ContactId[]): number => {
+  const list = contacts && contacts.length > 0 ? contacts : ALL_CONTACTS;
+  let lowest = Infinity;
+  const consider = (y: number) => {
+    if (Number.isFinite(y) && y < lowest) lowest = y;
+  };
+  for (const c of list) {
+    if (c === 'feet') {
+      consider(s.toeL.y - TOE_CONTACT);
+      consider(s.toeR.y - TOE_CONTACT);
+      consider(heelL.y);
+      consider(heelR.y);
+    } else if (c === 'knees') {
+      consider(s.kneeL.y - CONTACT_RADIUS.knee);
+      consider(s.kneeR.y - CONTACT_RADIUS.knee);
+    } else if (c === 'hands') {
+      consider(s.handL.y - CONTACT_RADIUS.hand);
+      consider(s.handR.y - CONTACT_RADIUS.hand);
+      consider(s.wristL.y - CONTACT_RADIUS.wrist);
+      consider(s.wristR.y - CONTACT_RADIUS.wrist);
+    } else if (c === 'elbows') {
+      consider(s.elbowL.y - CONTACT_RADIUS.elbow);
+      consider(s.elbowR.y - CONTACT_RADIUS.elbow);
+    } else if (c === 'pelvis') {
+      consider(s.pelvis.y - CONTACT_RADIUS.pelvis);
+    } else if (c === 'back') {
+      consider(s.chest.y - CONTACT_RADIUS.chest);
+    } else if (c === 'head') {
+      consider(s.head.y - CONTACT_RADIUS.head);
+    }
+  }
+  return lowest;
+};
+
+/**
+ * Lowest body surface of an already-solved skeleton over every contact except
+ * the heels (which are not joints). Floor clips must read ~0; anything clearly
+ * negative means a limb has gone through the floor.
+ */
+export const floorClearance = (s: Skeleton): number => {
+  let lowest = lowestContact(s, v3(0, Infinity, 0), v3(0, Infinity, 0));
+  // Toe-only foot reading is too strict for a flat foot whose heel is down, so
+  // also accept the ankle at its standing height as a contact.
+  lowest = Math.min(lowest, s.ankleL.y - RIG.ankleHeight, s.ankleR.y - RIG.ankleHeight);
+  return lowest;
+};
+
+/**
+ * Forearm direction with the elbow axis carried by the same shoulder rotations
+ * as the humerus. `forearmDirection` derives the axis from a cross product with
+ * the chest normal, which flips sign once the arm passes 90 deg of flexion — an
+ * overhead triceps extension would bend the elbow the wrong way. Carrying the
+ * anatomical axis (-right at rest) through abduction and flexion keeps elbow
+ * flexion pointing the same anatomical direction everywhere.
+ */
+export const carriedForearmDirection = (
+  frame: TrunkFrame,
+  flexDeg: number,
+  abdDeg: number,
+  side: 1 | -1,
+  elbowDeg: number,
+  rotationDeg = 0,
+): Vec3 => {
+  const humerus = humerusDirection(frame, flexDeg, abdDeg, side);
+  let axis = scale(frame.right, -1);
+  axis = rotateAbout(axis, frame.forward, side * toRad(abdDeg));
+  axis = normalize(rotateAbout(axis, frame.right, -toRad(flexDeg)));
+  // Mirrored per side so a positive value means the same anatomical rotation on both arms.
+  if (rotationDeg !== 0) axis = normalize(rotateAbout(axis, humerus, -side * toRad(rotationDeg)));
+  return normalize(rotateAbout(humerus, axis, toRad(elbowDeg)));
+};
+
+/**
+ * Signed knee flexion read off a solved skeleton, degrees: positive is normal
+ * flexion, negative is a knee bending backwards. The sign comes from the
+ * pelvis's lateral axis, which travels with any whole-body pitch or roll.
+ */
+export const signedKneeFlex = (s: Skeleton, side: 'L' | 'R'): number => {
+  const hip = side === 'L' ? s.hipL : s.hipR;
+  const knee = side === 'L' ? s.kneeL : s.kneeR;
+  const ankle = side === 'L' ? s.ankleL : s.ankleR;
+  const femur = normalize(sub(knee, hip));
+  const tibia = normalize(sub(ankle, knee));
+  const mag = toDeg(Math.acos(Math.min(1, Math.max(-1, dot(femur, tibia)))));
+  const lateral = normalize(sub(s.hipR, s.hipL));
+  const sign = dot(cross(femur, tibia), lateral) >= -1e-9 ? 1 : -1;
+  return sign * mag;
 };
 
 // ---------------------------------------------------------------------------
@@ -386,7 +743,9 @@ const round1 = (n: number): number => Math.round(n * 10) / 10;
  * mid-point of the hands; trap-anchored lifts (back squat) ride just behind
  * the neck.
  */
-export const barPosition = (s: Skeleton, anchor: 'wrists' | 'traps', trunkDeg: number): Vec3 => {
+export const barPosition = (s: Skeleton, anchor: 'wrists' | 'traps' | 'wristR' | 'pelvis', trunkDeg: number): Vec3 => {
+  if (anchor === 'wristR') return v3(s.wristR.x, s.wristR.y, s.wristR.z);
+  if (anchor === 'pelvis') return v3(s.pelvis.x, s.pelvis.y + 0.12, s.pelvis.z);
   if (anchor === 'wrists') {
     return v3((s.wristL.x + s.wristR.x) / 2, (s.wristL.y + s.wristR.y) / 2, (s.wristL.z + s.wristR.z) / 2);
   }

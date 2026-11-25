@@ -173,16 +173,66 @@ export interface PoseKeyframe {
    * because most poses leave it at zero.
    */
   shoulderRotDeg?: number;
+
+  // --- Extended degrees of freedom (generated exercise clips) -------------
+  // Every field below is optional and falls back to the symmetric value above,
+  // so the five hand-authored clips are untouched. Per-side values let the
+  // rig show lunges, running, single-arm rows and alternating curls.
+  femurDegL?: number;
+  femurDegR?: number;
+  tibiaDegL?: number;
+  tibiaDegR?: number;
+  /**
+   * Yaw of a leg's swing plane about the vertical, degrees. 0 = the femur
+   * swings forward/back; +90 on the right leg (or -90 on the left) swings it
+   * straight out to the side, which is how hip abduction is expressed.
+   */
+  legYawDegL?: number;
+  legYawDegR?: number;
+  /** Foot pitch, degrees. 0 = flat on the floor, positive = toes point down (plantarflexion). */
+  footPitchDegL?: number;
+  footPitchDegR?: number;
+  shoulderFlexDegL?: number;
+  shoulderFlexDegR?: number;
+  shoulderAbdDegL?: number;
+  shoulderAbdDegR?: number;
+  elbowDegL?: number;
+  elbowDegR?: number;
+  /** Axial trunk rotation (twist) about the spine, degrees. Positive turns the chest to the athlete's right. */
+  trunkTwistDeg?: number;
+  /** Lateral trunk flexion, degrees. Positive bends toward the athlete's right. */
+  trunkSideDeg?: number;
+  /** Head pitch relative to the trunk, degrees. Positive = chin to chest. */
+  neckDeg?: number;
+  /**
+   * Whole-body pitch about the pelvis, applied after the limbs are solved.
+   * +90 lays an upright body face-down (push-up), -90 face-up (crunch).
+   */
+  rootPitchDeg?: number;
+  /** Whole-body roll about the forward axis, applied after pitch. Positive rolls onto the right side. */
+  rootRollDeg?: number;
+  /** Vertical offset added after grounding — flight phase of a jump, metres. */
+  liftY?: number;
+  /** Forward offset added after anchoring — travel of a box jump, metres. */
+  shiftZ?: number;
+
   /** Muscle activation at this instant, 0..1. */
   activation: ActivationMap;
 }
 
-export type Posture = 'standing' | 'supine';
+/**
+ * standing — legacy: ankles grounded at RIG.ankleHeight.
+ * supine   — legacy: pelvis pinned to the bench, feet IK'd to the floor.
+ * floor    — the lowest contact point (feet, hands, knees, pelvis, back, head) rests on the floor.
+ * hanging  — the hands are pinned to an overhead bar.
+ */
+export type Posture = 'standing' | 'supine' | 'floor' | 'hanging';
 
 /** Where the implement rides on the body — drives the bar-path trace. */
-export type BarAnchor = 'wrists' | 'traps';
+/** wristR = single implement in the right hand; pelvis = bar across the hips (hip thrust). */
+export type BarAnchor = 'wrists' | 'traps' | 'wristR' | 'pelvis';
 
-export type EquipmentId = 'barbell' | 'dumbbell' | 'cable' | 'bodyweight';
+export type EquipmentId = 'barbell' | 'dumbbell' | 'cable' | 'bodyweight' | 'kettlebell' | 'band' | 'machine';
 
 export interface EquipmentOption {
   id: EquipmentId;
@@ -215,6 +265,52 @@ export interface MotionClip {
   secondary: MuscleId[];
   /** Short coaching cue shown next to the scrubber for each phase. */
   cues: Record<MovementPhase, string>;
+
+  // --- Generated (per-library-exercise) clips only ----------------------
+  /** Motion family this clip was generated from. Absent on hand-authored clips. */
+  family?: string;
+  /** True when the demo is an honest approximation rather than the real movement. */
+  simplified?: boolean;
+  /** Why the demo is simplified — shown in the UI next to the badge. */
+  simplifiedNote?: string;
+  /** Solver extras for generated clips; see SolveOptions in rig.ts. */
+  solve?: ClipSolveExtras;
+  /** Scenery the movement needs (bench, plyo box, pull-up bar). Replaces the legacy supine bench. */
+  props?: ClipProp[];
+  /** Where a cable or band is anchored, world metres. */
+  cableAnchor?: Vec3;
+}
+
+export interface ClipSolveExtras {
+  /** Elbow flexion axis carried with the humerus (continuous through 90 deg of flexion). */
+  carriedElbowAxis?: boolean;
+  /** Ignore equipment grip width; the clip authors its own abduction. */
+  noGripBias?: boolean;
+  /** Keep the pelvis/heel IK of a supine (bench) clip from re-solving the tibia. */
+  freeLegs?: boolean;
+  /** Which landmark is held fixed horizontally so feet or hands never slide. */
+  anchor?: 'pelvis' | 'feet' | 'hands' | 'footL' | 'footR';
+  /** Bar height for hanging clips, metres. */
+  barY?: number;
+  /** Joints allowed to carry body weight for `floor` grounding; default is every contact. */
+  contacts?: ContactId[];
+}
+
+export type ContactId = 'feet' | 'knees' | 'hands' | 'elbows' | 'pelvis' | 'back' | 'head';
+
+/** A static piece of scenery: a box (bench, plyo box, wall, seat) or a bar along X. */
+export interface ClipProp {
+  kind: 'box' | 'bar';
+  /** Centre, world metres. */
+  x: number;
+  y: number;
+  z: number;
+  /** Full size, metres (a bar uses sx as its length and sy as its diameter). */
+  sx: number;
+  sy: number;
+  sz: number;
+  /** Pitch about X, degrees (an incline bench pad). */
+  pitchDeg?: number;
 }
 
 // ---------------------------------------------------------------------------

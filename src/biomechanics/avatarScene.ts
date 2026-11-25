@@ -45,7 +45,7 @@ import {
 
 import { RIG, trunkFrame } from './rig';
 import { MUSCLE_COUNT, MUSCLE_INDEX, NEUTRAL_MUSCLE_INDEX } from './types';
-import type { EquipmentId, JointId, MuscleId, QualityProfile, Skeleton, Vec3 } from './types';
+import type { ClipProp, EquipmentId, JointId, MuscleId, QualityProfile, Skeleton, Vec3 } from './types';
 
 // ---------------------------------------------------------------------------
 // Palette — pulled from FitFlow's design tokens so the avatar sits in-brand.
@@ -439,6 +439,14 @@ export interface SceneFrame {
   /** 0..1 — how much of the precomputed bar path to reveal. */
   pathProgress: number;
   equipment: EquipmentId;
+  /**
+   * Scenery for generated exercise clips (bench, plyo box, bar, wall). When
+   * present it replaces the legacy supine bench. Identity-compared: pass the
+   * clip's own array so the meshes are rebuilt only on a clip change.
+   */
+  props?: ClipProp[] | null;
+  /** Where a cable or band is anchored; defaults to the legacy high pulley. */
+  cableAnchor?: Vec3 | null;
 }
 
 export interface LayerFlags {
@@ -496,6 +504,12 @@ export class AvatarScene {
   private barGroupMeshes: Mesh[] = [];
   private benchMeshes: Mesh[] = [];
   private cableLine: Line | null = null;
+  /** Prop meshes for the current clip; unit geometry is shared and lives in geometryBin. */
+  private propMeshes: Mesh[] = [];
+  private propSource: ClipProp[] | null | undefined = undefined;
+  private propBox: BoxGeometry | null = null;
+  private propBar: CylinderGeometry | null = null;
+  private propMaterial: MeshBasicMaterial | null = null;
 
   private arcs = new Map<JointId, { line: Line; geometry: BufferGeometry }>();
 
@@ -736,6 +750,39 @@ export class AvatarScene {
     }
   }
 
+  /** Detach the current prop meshes; their geometry/material belong to geometryBin. */
+  private clearProps(): void {
+    for (const mesh of this.propMeshes) this.scene.remove(mesh);
+    this.propMeshes = [];
+    this.propSource = undefined;
+    this.propBox = null;
+    this.propBar = null;
+    this.propMaterial = null;
+  }
+
+  /** Rebuild the scenery when the clip's prop list changes (never per frame). */
+  private syncProps(props: ClipProp[] | null | undefined): void {
+    if (props === this.propSource) return;
+    for (const mesh of this.propMeshes) this.scene.remove(mesh);
+    this.propMeshes = [];
+    this.propSource = props;
+    if (!props || props.length === 0) return;
+    if (!this.propBox) this.propBox = this.geometryBin.track(new BoxGeometry(1, 1, 1));
+    if (!this.propBar) {
+      this.propBar = this.geometryBin.track(new CylinderGeometry(0.5, 0.5, 1, 12));
+      this.propBar.rotateZ(Math.PI / 2);
+    }
+    if (!this.propMaterial) this.propMaterial = this.geometryBin.track(new MeshBasicMaterial({ color: PALETTE.bench }));
+    for (const prop of props) {
+      const mesh = new Mesh(prop.kind === 'bar' ? this.propBar : this.propBox, this.propMaterial);
+      mesh.position.set(prop.x, prop.y, prop.z);
+      mesh.scale.set(prop.sx, prop.sy, prop.sz);
+      if (prop.pitchDeg) mesh.rotation.x = (prop.pitchDeg * Math.PI) / 180;
+      this.scene.add(mesh);
+      this.propMeshes.push(mesh);
+    }
+  }
+
   /**
    * Release the bar-path geometry. It is not held in a bin because it is
    * replaced whenever the clip or equipment changes, and a bin would simply
@@ -954,15 +1001,29 @@ export class AvatarScene {
 
   private updateEquipment(frame: SceneFrame, visible: boolean): void {
     const { equipment, bar, skeleton } = frame;
-    const showBar = visible && (equipment === 'barbell' || equipment === 'dumbbell');
+    const showBar = visible && (equipment === 'barbell' || equipment === 'dumbbell' || equipment === 'kettlebell');
     for (const mesh of this.barGroupMeshes) mesh.visible = showBar;
-    if (this.cableLine) this.cableLine.visible = visible && equipment === 'cable';
+    if (this.cableLine) this.cableLine.visible = visible && (equipment === 'cable' || equipment === 'band');
 
     if (showBar) {
       const isDumbbell = equipment === 'dumbbell';
       const shaft = this.barGroupMeshes[0];
 
-      if (isDumbbell) {
+      if (equipment === 'kettlebell') {
+        // One bell held at the implement point (both hands, or one hand for single-arm clips).
+        shaft.visible = false;
+        for (let i = 0; i < 4; i++) {
+          const plate = this.barGroupMeshes[i + 1];
+          if (i > 0) {
+            plate.visible = false;
+            continue;
+          }
+          this.tmpMatrix.makeScale(1.2, 0.75, 0.75);
+          this.tmpMatrix.setPosition(bar.x, bar.y - 0.09, bar.z);
+          plate.matrix.copy(this.tmpMatrix);
+          plate.matrixWorldNeedsUpdate = true;
+        }
+      } else if (isDumbbell) {
         // Two short handles, one per hand.
         shaft.visible = false;
         const positions: Vec3[] = [skeleton.wristL, skeleton.wristR];
@@ -997,10 +1058,11 @@ export class AvatarScene {
     if (this.cableLine && this.cableLine.visible) {
       const attribute = this.cableLine.geometry.getAttribute('position') as BufferAttribute;
       const array = attribute.array as Float32Array;
-      // Pulley anchored behind and above the athlete.
-      array[0] = 0;
-      array[1] = 1.95;
-      array[2] = -1.4;
+      // Pulley anchored behind and above the athlete unless the clip says otherwise.
+      const anchor = frame.cableAnchor;
+      array[0] = anchor ? anchor.x : 0;
+      array[1] = anchor ? anchor.y : 1.95;
+      array[2] = anchor ? anchor.z : -1.4;
       array[3] = bar.x;
       array[4] = bar.y;
       array[5] = bar.z;
@@ -1034,7 +1096,9 @@ export class AvatarScene {
       this.shadowMesh.position.set(midX, 0.002, midZ);
     }
 
-    for (const mesh of this.benchMeshes) mesh.visible = frame.supine;
+    // A clip with its own scenery replaces the legacy bench.
+    for (const mesh of this.benchMeshes) mesh.visible = frame.supine && !frame.props;
+    this.syncProps(frame.props);
 
     this.updateArcs(skeleton, layers.jointVectors);
     this.updateSkeletonOverlay(skeleton, layers.skeleton);
@@ -1160,6 +1224,7 @@ export class AvatarScene {
       for (const { line } of this.arcs.values()) this.scene.remove(line);
       for (const mesh of this.barGroupMeshes) this.scene.remove(mesh);
       for (const mesh of this.benchMeshes) this.scene.remove(mesh);
+      this.clearProps();
       if (this.skeletonLine) this.scene.remove(this.skeletonLine);
       if (this.cableLine) this.scene.remove(this.cableLine);
       // Not just detached: the geometry is bin-less, so dropping the reference
@@ -1211,6 +1276,10 @@ export class AvatarScene {
     this.arcs.clear();
     this.barGroupMeshes = [];
     this.benchMeshes = [];
+    this.propMeshes = [];
+    this.propBox = null;
+    this.propBar = null;
+    this.propMaterial = null;
     this.skeletonLine = null;
     this.skeletonGeometry = null;
     this.cableLine = null;

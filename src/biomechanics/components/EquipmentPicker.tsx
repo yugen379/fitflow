@@ -7,12 +7,12 @@
  */
 
 import React from 'react';
-import { Cable, Dumbbell, PersonStanding, Weight } from 'lucide-react';
+import { Cable, Cog, Dumbbell, PersonStanding, Weight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { haptic } from '../../lib/haptics';
 import { cn } from '../../lib/utils';
-import { EQUIPMENT } from '../motions';
+import { EQUIPMENT, resolveEquipment } from '../motions';
 import { selectActiveClip, selectEquipment } from '../selectors';
 import { useAppDispatch, useAppSelector } from '../store';
 import type { EquipmentId } from '../types';
@@ -23,12 +23,18 @@ const ICONS: Record<EquipmentId, LucideIcon> = {
   dumbbell: Dumbbell,
   cable: Cable,
   bodyweight: PersonStanding,
+  kettlebell: Weight,
+  band: Cable,
+  machine: Cog,
 };
 
 export const EquipmentPicker: React.FC<{ className?: string }> = ({ className }) => {
   const dispatch = useAppDispatch();
   const clip = useAppSelector(selectActiveClip);
-  const active = useAppSelector(selectEquipment);
+  const sessionEquipment = useAppSelector(selectEquipment);
+  // A generated clip may not support the session's implement (a push-up has
+  // no barbell); show what is actually rendered.
+  const active = resolveEquipment(clip, sessionEquipment);
 
   // Only offer what the movement can actually be performed with.
   const options = clip.equipment;
