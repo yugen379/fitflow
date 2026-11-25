@@ -11,6 +11,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "proof:barcode": "tsx scripts/barcode-proof.mjs",
+    "proof:gps": "tsx scripts/gps-proof.mjs",
     "proof:coach": "tsx scripts/coach-proof.mjs",
     "proof:briefing": "tsx scripts/briefing-proof.mjs",
     "proof:badges": "tsx scripts/badges-proof.mjs",

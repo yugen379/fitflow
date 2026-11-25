@@ -156,6 +156,26 @@ await attack('a 30-hour night is refused', setDoc(doc(alice, 'sleep_logs', 's_30
 await attack('a sleep log with unknown fields is refused', setDoc(doc(alice, 'sleep_logs', 's_x'), { userId: ALICE, hours: 7, timestamp: serverTimestamp(), bonusXp: 999 }));
 await works('foods still cannot be deleted', assertFails(deleteDoc(doc(alice, 'food_catalog', 'banana'))));
 
+section('GPS workouts (walk / run / cycle)');
+const gpsWorkout = (extra = {}) => ({
+  userId: ALICE, type: 'run', duration: 25, caloriesBurned: 300, timestamp: serverTimestamp(),
+  distanceKm: 5, movingSeconds: 1500,
+  route: Array.from({ length: 500 }, (_, i) => ({ lat: 3.1 + i * 1e-4, lng: 101.6 })),
+  ...extra,
+});
+await works('a GPS run with a 500-point route is accepted',
+  setDoc(doc(alice, 'workouts', 'gps_ok'), gpsWorkout()));
+await works('a plain workout with no GPS fields is still accepted',
+  setDoc(doc(alice, 'workouts', 'plain_ok'), { userId: ALICE, type: 'strength', duration: 30, caloriesBurned: 200, timestamp: serverTimestamp() }));
+await attack('a route over 500 points is refused',
+  setDoc(doc(alice, 'workouts', 'gps_big'), gpsWorkout({ route: Array.from({ length: 501 }, () => ({ lat: 1, lng: 1 })) })));
+await attack('a route that is not a list of {lat,lng} is refused',
+  setDoc(doc(alice, 'workouts', 'gps_bad'), gpsWorkout({ route: ['x'] })));
+await attack('a distance over 1000 km is refused',
+  setDoc(doc(alice, 'workouts', 'gps_far'), gpsWorkout({ distanceKm: 5000 })));
+await attack('a negative distance is refused',
+  setDoc(doc(alice, 'workouts', 'gps_neg'), gpsWorkout({ distanceKm: -1 })));
+
 await testEnv.cleanup();
 
 const of = (k) => results.filter((r) => r.kind === k);

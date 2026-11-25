@@ -185,7 +185,21 @@ service cloud.firestore {
              data.type is string &&
              data.duration is number && data.duration > 0 &&
              data.caloriesBurned is number &&
-             data.timestamp is timestamp;
+             data.timestamp is timestamp &&
+             isValidGpsFields(data);
+    }
+
+    // GPS walk/run/cycle sessions (src/pages/TrackActivity.tsx). Optional, so
+    // every older workout shape still passes. The route is capped at 500
+    // simplified points (~40 KB) so a document stays far below the 1 MB limit;
+    // the app simplifies with Douglas-Peucker before saving. Element shape is
+    // not checked per point (rules have no loops) — the size cap is the guard.
+    function isValidGpsFields(data) {
+      return (!('distanceKm' in data) || (data.distanceKm is number && data.distanceKm >= 0 && data.distanceKm <= 1000)) &&
+             (!('movingSeconds' in data) || (data.movingSeconds is number && data.movingSeconds >= 0 && data.movingSeconds <= 172800)) &&
+             (!('elevationGainM' in data) || (data.elevationGainM is number && data.elevationGainM >= 0 && data.elevationGainM <= 20000)) &&
+             (!('route' in data) || (data.route is list && data.route.size() <= 500 &&
+               (data.route.size() == 0 || (data.route[0] is map && data.route[0].lat is number && data.route[0].lng is number))));
     }
 
     // A BUILT session, not a completed one. Deliberately has no `timestamp`:

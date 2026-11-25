@@ -51,6 +51,7 @@ const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default:
 // The Lab pulls in three.js, so it stays in its own chunk and is only fetched
 // when an athlete actually opens the 3D view.
 const Lab = lazy(() => import('./pages/Lab').then(m => ({ default: m.Lab })));
+const TrackActivity = lazy(() => import('./pages/TrackActivity').then(m => ({ default: m.TrackActivity })));
 const Steps = lazy(() => import('./pages/Steps').then(m => ({ default: m.Steps })));
 const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })));
 
@@ -392,6 +393,7 @@ export default function App() {
               <Route path="/nutrition-goals" element={lazyRoute(<NutritionGoals />)} />
               <Route path="/lab" element={lazyRoute(<Lab />)} />
               <Route path="/steps" element={lazyRoute(<Steps />)} />
+              <Route path="/track-activity" element={lazyRoute(<TrackActivity />)} />
               <Route path="/achievements" element={lazyRoute(<Achievements />)} />
             </Route>
             <Route path="/privacy" element={lazyRoute(<Privacy />)} />
