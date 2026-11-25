@@ -24,7 +24,7 @@ export interface MealAnalysis {
   decomposed: boolean;
 }
 
-const USDA_BUDGET_MS = 3_000;
+const USDA_BUDGET_MS = 5_000;
 
 const withBudget = <T,>(p: Promise<T>, ms: number, fallback: T): Promise<T> =>
   Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
