@@ -33,9 +33,10 @@ const usdaPer100 = async (name: string): Promise<Found | null> => {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
   const key = name.toLowerCase().split(/\s+/).find((w) => w.length > 2) || name.toLowerCase();
   const none: FoodProduct[] = [];
-  const hits = await withBudget(searchUsda(name).catch(() => none), USDA_BUDGET_MS, none);
-  // FDC's first hit can be a different food sharing one word; require the main word.
-  const hit = hits.find((h) => h.calories > 0 && h.name.toLowerCase().includes(key));
+  const hits = await withBudget(searchUsda(name, { generic: true }).catch(() => none), USDA_BUDGET_MS, none);
+  // FDC's first hit can be a different food sharing one word: require the main
+  // word as a whole word ("peas" must not match "chickpeas").
+  const hit = hits.find((h) => h.calories > 0 && h.name.toLowerCase().split(/[^\p{L}]+/u).includes(key));
   const per100 = hit ? sanePer100({ kcal: hit.calories, protein: hit.protein, carbs: hit.carbs, fats: hit.fats }) : null;
   return hit && per100 ? { per100, matched: hit.name, source: 'usda' } : null;
 };

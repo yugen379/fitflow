@@ -284,9 +284,15 @@ const dedupeUsda = (foods: any[]): FoodProduct[] => {
 };
 
 // FoodData Central search results report nutrients per 100 g.
-export const searchUsda = async (query: string): Promise<FoodProduct[]> => {
+/**
+ * `generic` limits results to USDA's reference foods (Foundation, SR Legacy,
+ * FNDDS). The meal pipeline wants "peas", not a branded "honey roasted peas &
+ * peanuts" snack at 585 kcal/100 g, which is what an unfiltered search gave it.
+ */
+export const searchUsda = async (query: string, opts: { generic?: boolean } = {}): Promise<FoodProduct[]> => {
   try {
-    const res = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=20&api_key=${USDA_API_KEY}`);
+    const types = opts.generic ? `&dataType=${encodeURIComponent('Foundation,SR Legacy,Survey (FNDDS)')}` : '';
+    const res = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=20${types}&api_key=${USDA_API_KEY}`);
     const data = await res.json();
     if (!data.foods) return [];
     return dedupeUsda(data.foods);

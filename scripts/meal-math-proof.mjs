@@ -61,6 +61,8 @@ ok('clampGrams rounds', clampGrams('180.6') === 181 && clampGrams(-3) === 0);
 ok('"grilled boneless chicken thigh" -> Chicken thigh', lookupOffline('grilled boneless chicken thigh')?.matched === 'Chicken thigh');
 ok('"steamed jasmine rice" -> White rice', lookupOffline('steamed jasmine rice')?.matched === 'White rice');
 ok('"kangkung" -> Leafy greens (alias)', lookupOffline('kangkung')?.matched === 'Leafy greens');
+ok('phone miss: "peas" -> Green peas at 81 kcal, not a 585 kcal peanut snack', lookupOffline('peas')?.matched === 'Green peas' && lookupOffline('peas')?.per100.kcal === 81);
+ok('"chickpeas" stays Chickpeas', lookupOffline('chickpeas')?.matched === 'Chickpeas');
 ok('"chili sauce" is NOT guessed', lookupOffline('chili sauce') === null);
 // control: a loose top-hit on the word "sauce" would have returned some sauce
 const tableIdx = buildFoodIndex(INGREDIENTS_100G);
