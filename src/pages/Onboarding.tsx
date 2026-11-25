@@ -10,6 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { requestPushPermission, micSupported } from '../lib/pushPermission';
 import { callAwardXp } from '../services/xpService';
 import { reportSwallowed } from '../lib/telemetry';
+import { useUnits, bindUnits } from '../hooks/useUnits';
+import { legacyWeightUnitFor, type UnitPrefs, type WeightUnit, type UnitSystem } from '../lib/units';
 
 type Goal = 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic_performance';
 
@@ -42,6 +44,33 @@ export const Onboarding: React.FC = () => {
     dietaryPreferences: [] as string[],
   });
   const [loading, setLoading] = useState(false);
+
+  // Units: the locale default (or saved prefs) until the person flips a toggle
+  // here. Inputs are typed in their units; everything is STORED in kg / cm.
+  const { prefs: defaultPrefs } = useUnits();
+  const [chosenPrefs, setChosenPrefs] = useState<UnitPrefs | null>(null);
+  const unitPrefs = chosenPrefs ?? defaultPrefs;
+  const units = React.useMemo(() => bindUnits(unitPrefs), [unitPrefs]);
+  const weightKg = units.parseWeight(formData.weight);
+  const goalWeightKg = units.parseWeight(formData.goalWeight);
+  const heightCm = units.parseHeight(formData.height);
+  /** Switch units without losing what was typed: re-express it in the new unit. */
+  const switchUnits = (next: UnitPrefs) => {
+    const nu = bindUnits(next);
+    const re = (raw: string, kg: number | null, fmt: (v: number) => string) => (kg != null ? fmt(kg) : raw);
+    setFormData(prev => ({
+      ...prev,
+      weight: re(prev.weight, weightKg, nu.formatWeightInput),
+      goalWeight: re(prev.goalWeight, goalWeightKg, nu.formatWeightInput),
+      height: re(prev.height, heightCm, nu.formatHeightInput),
+    }));
+    setChosenPrefs(next);
+  };
+  const setWeightUnit = (w: WeightUnit) => switchUnits({ ...unitPrefs, weight: w });
+  const setSystem = (s: UnitSystem) => switchUnits({ ...unitPrefs, system: s });
+  const weightPlaceholder = unitPrefs.weight === 'st' ? '11 st 6' : unitPrefs.weight === 'lb' ? '160' : '72';
+  const weightHint = 'Try 72.5 kg, 160 lb or 11 st 6';
+
   const [camPerm, setCamPerm] = useState<PermState>('idle');
   const [micPerm, setMicPerm] = useState<PermState>('idle');
   const [notifPerm, setNotifPerm] = useState<PermState>(
@@ -89,7 +118,7 @@ export const Onboarding: React.FC = () => {
 
   const handleUpdate = async () => {
     if (!user) return;
-    if (!formData.age || !formData.weight || !formData.height) {
+    if (!formData.age || weightKg == null || heightCm == null) {
       showToast('Please fill age, weight, and height to continue', 'error');
       return;
     }
@@ -99,8 +128,9 @@ export const Onboarding: React.FC = () => {
     // Core profile that matches the existing Firestore rule allowlist.
     const corePayload: Record<string, any> = {
       age: parseInt(formData.age),
-      weight: parseFloat(formData.weight),
-      height: parseFloat(formData.height),
+      // Always metric, whatever unit it was typed in.
+      weight: weightKg,
+      height: heightCm,
       goal: formData.goal,
       healthConditions: formData.healthConditions.length > 0 ? formData.healthConditions : ['None'],
       dietaryPreferences: formData.dietaryPreferences.length > 0 ? formData.dietaryPreferences : ['None'],
@@ -114,15 +144,28 @@ export const Onboarding: React.FC = () => {
 
       // Try to persist goalWeight in a separate write so newer rules can accept it
       // without blocking onboarding when older rules are still deployed.
-      if (formData.goalWeight) {
+      if (goalWeightKg != null) {
         try {
           await updateDoc(userRef, {
-            goalWeight: parseFloat(formData.goalWeight),
+            goalWeight: goalWeightKg,
             updatedAt: serverTimestamp(),
           });
         } catch {
           // ignore: older Firestore rules don't list goalWeight yet
         }
+      }
+
+      // Units the person picked here (only if they changed the default). A
+      // separate write for the same reason as goalWeight: rules without
+      // `units` must not block onboarding.
+      if (chosenPrefs) {
+        try {
+          await updateDoc(userRef, {
+            units: chosenPrefs,
+            weightUnit: legacyWeightUnitFor(chosenPrefs),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (e) { reportSwallowed('onboarding.units', e, { uid: user.uid }); }
       }
 
       // Once per account (server ledger), so re-running onboarding can't farm it.
@@ -133,7 +176,7 @@ export const Onboarding: React.FC = () => {
       try {
         await addDoc(collection(db, 'weight_history'), {
           userId: user.uid,
-          weight: parseFloat(formData.weight),
+          weight: weightKg,
           timestamp: serverTimestamp(),
         });
       } catch (e) { console.warn('Weight history skipped:', e); }
@@ -168,12 +211,13 @@ export const Onboarding: React.FC = () => {
 
   const canContinue =
     (step === 1 && !!formData.age) ||
-    (step === 2 && !!formData.weight) ||
-    (step === 3 && !!formData.height) ||
+    (step === 2 && weightKg != null) ||
+    (step === 3 && heightCm != null) ||
     step === 4 ||
     step === 5 ||
     step === 6 ||
-    step === 7 ||
+    // Goal weight is optional, but if typed it has to make sense.
+    (step === 7 && (!formData.goalWeight.trim() || goalWeightKg != null)) ||
     step === 8;
 
   return (
@@ -204,12 +248,40 @@ export const Onboarding: React.FC = () => {
           )}
           {step === 2 && (
             <Step key="2" icon={<Weight size={20} />} eyebrow="Body" title="Your current weight" subtitle="We'll track this over time to keep your plan adaptive.">
-              <NumberInput suffix="kg" value={formData.weight} onChange={v => setFormData({ ...formData, weight: v })} placeholder="72" />
+              <UnitToggle<WeightUnit>
+                ariaLabel="Weight unit"
+                options={[{ id: 'kg', label: 'kg' }, { id: 'lb', label: 'lb' }, { id: 'st', label: 'st + lb' }]}
+                value={unitPrefs.weight}
+                onChange={setWeightUnit}
+              />
+              <NumberInput
+                suffix={units.weightUnitLabel}
+                text={unitPrefs.weight === 'st'}
+                value={formData.weight}
+                onChange={v => setFormData({ ...formData, weight: v })}
+                placeholder={weightPlaceholder}
+                invalid={!!formData.weight.trim() && weightKg == null}
+                hint={weightHint}
+              />
             </Step>
           )}
           {step === 3 && (
             <Step key="3" icon={<Ruler size={20} />} eyebrow="Body" title="And your height?" subtitle="Used for BMR and macro calculations.">
-              <NumberInput suffix="cm" value={formData.height} onChange={v => setFormData({ ...formData, height: v })} placeholder="178" />
+              <UnitToggle<UnitSystem>
+                ariaLabel="Height unit"
+                options={[{ id: 'metric', label: 'cm' }, { id: 'imperial', label: 'ft + in' }]}
+                value={unitPrefs.system}
+                onChange={setSystem}
+              />
+              <NumberInput
+                suffix={units.heightUnitLabel}
+                text={unitPrefs.system === 'imperial'}
+                value={formData.height}
+                onChange={v => setFormData({ ...formData, height: v })}
+                placeholder={unitPrefs.system === 'imperial' ? `5'10"` : '178'}
+                invalid={!!formData.height.trim() && heightCm == null}
+                hint={unitPrefs.system === 'imperial' ? `Try 5'10" or 5 10` : 'Try 178 or 1.78 m'}
+              />
             </Step>
           )}
           {step === 4 && (
@@ -251,7 +323,15 @@ export const Onboarding: React.FC = () => {
           )}
           {step === 7 && (
             <Step key="7" icon={<Target size={20} />} eyebrow="Target" title="Your goal weight" subtitle="Optional — we'll plot your trajectory and adjust calories as you progress.">
-              <NumberInput suffix="kg" value={formData.goalWeight} onChange={v => setFormData({ ...formData, goalWeight: v })} placeholder={formData.weight || '70'} />
+              <NumberInput
+                suffix={units.weightUnitLabel}
+                text={unitPrefs.weight === 'st'}
+                value={formData.goalWeight}
+                onChange={v => setFormData({ ...formData, goalWeight: v })}
+                placeholder={formData.weight || weightPlaceholder}
+                invalid={!!formData.goalWeight.trim() && goalWeightKg == null}
+                hint={weightHint}
+              />
             </Step>
           )}
           {step === 8 && (
@@ -360,19 +440,54 @@ const Step: React.FC<{ icon: React.ReactNode; eyebrow: string; title: string; su
   </motion.div>
 );
 
-const NumberInput: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string; suffix: string }> = ({ value, onChange, placeholder, suffix }) => (
-  <div className="relative">
-    <input
-      type="number"
-      placeholder={placeholder}
-      autoFocus
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full h-16 glass px-6 pr-20 num text-3xl font-semibold text-white focus:outline-none focus:border-accent/40 transition-colors"
-    />
-    <span className="absolute right-6 top-1/2 -translate-y-1/2 text-text-dim text-sm font-medium">{suffix}</span>
+/**
+ * `text` switches to a free-text field for readings a number input cannot hold
+ * ("11 st 6", 5'10"). Number inputs also report "" for "72,5" on some
+ * keyboards, so weights in kg/lb use a decimal-keypad text field too.
+ */
+const NumberInput: React.FC<{
+  value: string; onChange: (v: string) => void; placeholder: string; suffix: string;
+  text?: boolean; invalid?: boolean; hint?: string;
+}> = ({ value, onChange, placeholder, suffix, text, invalid, hint }) => (
+  <div className="space-y-2">
+    <div className="relative">
+      <input
+        type={text || hint ? 'text' : 'number'}
+        inputMode={text ? 'text' : hint ? 'decimal' : undefined}
+        autoComplete="off"
+        placeholder={placeholder}
+        autoFocus
+        value={value}
+        aria-invalid={invalid || undefined}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full h-16 glass px-6 pr-24 num text-3xl font-semibold text-white focus:outline-none focus:border-accent/40 transition-colors"
+      />
+      <span className="absolute right-6 top-1/2 -translate-y-1/2 text-text-dim text-sm font-medium">{suffix}</span>
+    </div>
+    {invalid && hint && <p className="text-xs text-accent-2 px-1" role="alert">{hint}</p>}
   </div>
 );
+
+function UnitToggle<T extends string>({ options, value, onChange, ariaLabel }: {
+  options: { id: T; label: string }[]; value: T; onChange: (v: T) => void; ariaLabel: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label={ariaLabel} className="inline-flex bg-surface rounded-xl p-1 border border-white/[0.06]">
+      {options.map(o => (
+        <button
+          key={o.id}
+          type="button"
+          role="radio"
+          aria-checked={value === o.id}
+          onClick={() => { if (value !== o.id) onChange(o.id); }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${value === o.id ? 'bg-accent text-bg' : 'text-text-dim'}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const PermRow: React.FC<{
   icon: React.ReactNode;

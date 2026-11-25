@@ -25,6 +25,7 @@ import { allFeaturesFree, getEntitlement } from '../lib/billing';
 import { purchaseUiAllowed } from '../services/playBillingService';
 import { trendSeries, localDate } from '../lib/adaptiveTarget';
 import { SmartTargetCard } from '../components/SmartTargetCard';
+import { useUnits } from '../hooks/useUnits';
 
 const ACCENT = '#C6FF3D';
 
@@ -40,6 +41,7 @@ const goalLabel = (g?: string) => {
 
 export const Profile: React.FC = () => {
   const { profile, signOut } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const navigate = useNavigate();
   // The heatmap and workout list sit below the fold and each query the database.
@@ -115,16 +117,21 @@ export const Profile: React.FC = () => {
     return () => safeUnsubscribe(unsubscribe);
   }, [profile?.uid]);
 
+  // Typed in the person's unit, stored in kg (never lb/st).
+  const newWeightKg = units.parseWeight(newWeight);
+  const newMuscleKg = newMuscleMass.trim() ? units.parseWeight(newMuscleMass) : null;
+  const muscleInvalid = !!newMuscleMass.trim() && newMuscleKg == null;
+
   const handleLogWeight = async () => {
-    if (!profile?.uid || !newWeight) return;
+    if (!profile?.uid || newWeightKg == null || muscleInvalid) return;
     setIsSyncing(true);
     try {
-      await logWeight(profile.uid, parseFloat(newWeight));
+      await logWeight(profile.uid, newWeightKg);
       await addDoc(collection(db, 'body_metrics'), {
         userId: profile.uid,
-        weight: parseFloat(newWeight),
+        weight: newWeightKg,
         bodyFat: newBodyFat ? parseFloat(newBodyFat) : null,
-        muscleMass: newMuscleMass ? parseFloat(newMuscleMass) : null,
+        muscleMass: newMuscleKg,
         timestamp: serverTimestamp(),
       });
       showToast('Logged');
@@ -303,8 +310,10 @@ export const Profile: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weightHistory} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                 <XAxis dataKey="date" stroke="#4B5260" fontSize={10} tickLine={false} axisLine={false} dy={6} />
-                <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
+                {/* Series stay in kg (as stored); only the labels convert. */}
+                <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} tickFormatter={(v: number) => units.formatWeight(v)} />
                 <Tooltip
+                  formatter={(v, name) => [typeof v === 'number' ? units.formatWeight(v) : String(v ?? ''), name]}
                   contentStyle={{ backgroundColor: '#0E1014', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, fontSize: 12 }}
                   itemStyle={{ color: ACCENT, fontWeight: 600 }}
                   labelStyle={{ color: '#8B92A3', fontSize: 10 }}
@@ -349,9 +358,9 @@ export const Profile: React.FC = () => {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Weight} label="Weight" value={profile?.weight?.toString() || '–'} unit="kg" />
+        <StatCard icon={Weight} label="Weight" {...units.weightParts(profile?.weight)} />
         <StatCard icon={Activity} label="Body fat" value={profile?.latestBodyFat?.toString() || '–'} unit="%" />
-        <StatCard icon={TrendingUp} label="Muscle mass" value={profile?.latestMuscleMass?.toString() || '–'} unit="kg" />
+        <StatCard icon={TrendingUp} label="Muscle mass" {...units.weightParts(profile?.latestMuscleMass)} />
         <StatCard icon={Zap} label="BMI" value={profile?.weight && profile?.height ? calculateBMI(profile.weight, profile.height) || '–' : '–'} unit="" />
       </div>
 
@@ -532,14 +541,20 @@ export const Profile: React.FC = () => {
         {isLoggingWeight && (
           <Modal onClose={() => setIsLoggingWeight(false)} title="Log body metrics" size="sm">
             <div className="space-y-3">
-              <Field label="Weight (kg)">
+              <Field label={`Weight (${units.weightUnitLabel})`}>
                 <input
-                  type="number"
-                  placeholder="75.0"
+                  type="text"
+                  inputMode={units.prefs.weight === 'st' ? 'text' : 'decimal'}
+                  autoComplete="off"
+                  placeholder={units.prefs.weight === 'st' ? '11 st 6' : units.prefs.weight === 'lb' ? '165.0' : '75.0'}
                   className="modal-input"
                   value={newWeight}
+                  aria-invalid={(!!newWeight.trim() && newWeightKg == null) || undefined}
                   onChange={(e) => setNewWeight(e.target.value)}
                 />
+                {!!newWeight.trim() && newWeightKg == null && (
+                  <p className="text-xs text-accent-2 ml-1" role="alert">Try 75.5 kg, 165 lb or 11 st 6</p>
+                )}
               </Field>
               <Field label="Body fat % (optional)">
                 <input
@@ -550,19 +565,22 @@ export const Profile: React.FC = () => {
                   onChange={(e) => setNewBodyFat(e.target.value)}
                 />
               </Field>
-              <Field label="Muscle mass (kg) (optional)">
+              <Field label={`Muscle mass (${units.weightUnitLabel}) (optional)`}>
                 <input
-                  type="number"
-                  placeholder="35.0"
+                  type="text"
+                  inputMode={units.prefs.weight === 'st' ? 'text' : 'decimal'}
+                  autoComplete="off"
+                  placeholder={units.prefs.weight === 'st' ? '5 st 7' : units.prefs.weight === 'lb' ? '77.0' : '35.0'}
                   className="modal-input"
                   value={newMuscleMass}
+                  aria-invalid={muscleInvalid || undefined}
                   onChange={(e) => setNewMuscleMass(e.target.value)}
                 />
               </Field>
             </div>
             <button
               onClick={handleLogWeight}
-              disabled={isSyncing || !newWeight}
+              disabled={isSyncing || newWeightKg == null || muscleInvalid}
               className="btn-3d w-full h-12 mt-6 disabled:opacity-50"
             >
               {isSyncing ? <Loader2 className="animate-spin" size={16} /> : 'Log metrics'}
