@@ -46,6 +46,16 @@
             android:enabled="true"
             android:foregroundServiceType="health" />
 
+        <!-- GPS walk / run / ride recording. Started only from the visible app on
+             a user tap, so while-in-use location carries over for the life of the
+             service and the background-location permission is NOT needed (and is not
+             requested). Not exported, no boot restart. -->
+        <service
+            android:name=".gps.LocationTrackingService"
+            android:exported="false"
+            android:enabled="true"
+            android:foregroundServiceType="location" />
+
         <!-- Restarts counting after a reboot or an app update, but ONLY if the
              user switched background counting on. -->
         <receiver
@@ -91,6 +101,10 @@
          declaring foregroundServiceType="health". -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <!-- Mandatory on Android 14+ for the foregroundServiceType="location" GPS recorder. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- GPS is optional hardware: phones without it simply cannot record routes. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <!-- A reboot resets the hardware step counter to zero, so counting has to be
          restarted promptly or the steps between boot and next app launch are
