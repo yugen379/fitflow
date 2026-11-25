@@ -1,3 +1,5 @@
+import type { UnitPrefs } from './lib/units';
+
 export type BillingPlan = 'monthly' | 'yearly';
 
 export type SubscriptionStatus =
@@ -113,7 +115,13 @@ export interface UserProfile {
   latestMuscleMass?: number;
   voiceSpeed?: 'normal' | 'slow';
   voiceCoachingEnabled?: boolean;
+  /** Legacy kg/lbs toggle (pre-units builds still read it). Superseded by `units`. */
   weightUnit?: 'kg' | 'lbs';
+  /**
+   * Display units (src/lib/units.ts). DISPLAY ONLY: weight, height and every
+   * other stored number stays metric. Absent → derived from the device locale.
+   */
+  units?: UnitPrefs;
   goalWeight?: number;
 }
 

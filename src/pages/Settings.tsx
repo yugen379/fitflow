@@ -5,8 +5,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, Globe, Ruler, Bell, Shield, FileText, Download, Trash2,
   LogOut, ChevronRight, X, Loader2, Mail, Camera, Mic, Check, Sparkles, Crown,
-  KeyRound, MailWarning,
+  KeyRound, MailWarning, Flame,
 } from 'lucide-react';
+import { useUnits } from '../hooks/useUnits';
+import {
+  presetOf, legacyWeightUnitFor, UNIT_PRESETS,
+  type UnitPrefs, type UnitPreset, type EnergyUnit,
+} from '../lib/units';
 import { PermissionsPrompt } from '../components/PermissionsPrompt';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -120,13 +125,23 @@ export const Settings: React.FC = () => {
     );
   };
 
-  const setUnit = async (u: 'kg' | 'lbs') => {
+  const { prefs: unitPrefs } = useUnits();
+  const unitPreset = presetOf(unitPrefs);
+  const saveUnits = async (next: UnitPrefs, label: string) => {
     if (!profile?.uid) return;
     try {
-      await updateDoc(doc(db, 'users', profile.uid), { weightUnit: u, updatedAt: serverTimestamp() });
-      showToast(`Units set to ${u}`);
+      await updateDoc(doc(db, 'users', profile.uid), {
+        units: next,
+        // Builds from before the units map still read this one.
+        weightUnit: legacyWeightUnitFor(next),
+        updatedAt: serverTimestamp(),
+      });
+      showToast(label);
     } catch { showToast('Failed to save', 'error'); }
   };
+  const setPreset = (k: UnitPreset) =>
+    saveUnits({ ...unitPrefs, ...UNIT_PRESETS[k] }, `Units set to ${PRESET_LABEL[k]}`);
+  const setEnergy = (e: EnergyUnit) => saveUnits({ ...unitPrefs, energy: e }, `Energy shown in ${e}`);
 
   const setTzOffset = async () => {
     if (!profile?.uid) return;
@@ -259,8 +274,6 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const unit = profile?.weightUnit || 'kg';
-
   /* ── Account / sign-in method ──────────────────────────────────────────
    * With four ways into FitFlow, "which one did I use?" became a real
    * question — and the wrong answer sends someone round the password-reset
@@ -355,18 +368,21 @@ export const Settings: React.FC = () => {
       </Section>
 
       <Section title="Display">
-        <Row icon={Ruler} label="Weight units">
-          <div className="flex bg-surface rounded-xl p-1 border border-white/[0.06]">
-            {(['kg', 'lbs'] as const).map(u => (
-              <button
-                key={u}
-                onClick={() => setUnit(u)}
-                className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', unit === u ? 'bg-accent text-bg' : 'text-text-dim')}
-              >
-                {u}
-              </button>
-            ))}
-          </div>
+        <Row icon={Ruler} label="Units" sub={PRESET_SUB[unitPreset ?? 'custom']}>
+          <Segmented
+            ariaLabel="Units"
+            options={(Object.keys(PRESET_LABEL) as UnitPreset[]).map(k => ({ id: k, label: PRESET_LABEL[k] }))}
+            value={unitPreset}
+            onChange={setPreset}
+          />
+        </Row>
+        <Row icon={Flame} label="Energy" sub={unitPrefs.energy === 'kJ' ? 'Kilojoules (1 kcal = 4.184 kJ)' : 'Kilocalories'}>
+          <Segmented
+            ariaLabel="Energy unit"
+            options={[{ id: 'kcal' as const, label: 'kcal' }, { id: 'kJ' as const, label: 'kJ' }]}
+            value={unitPrefs.energy}
+            onChange={setEnergy}
+          />
         </Row>
         <Row icon={Globe} label="Timezone" sub={Intl.DateTimeFormat().resolvedOptions().timeZone}>
           <button onClick={setTzOffset} className="text-xs font-semibold text-accent">Sync now</button>
@@ -543,6 +559,34 @@ export const Settings: React.FC = () => {
     </div>
   );
 };
+
+const PRESET_LABEL: Record<UnitPreset, string> = { metric: 'Metric', us: 'US', uk: 'UK' };
+const PRESET_SUB: Record<UnitPreset | 'custom', string> = {
+  metric: 'kg · cm · km · ml',
+  us: 'lb · ft in · mi · fl oz',
+  uk: 'st lb · cm · km · ml',
+  custom: 'Custom — pick one to reset',
+};
+
+function Segmented<T extends string>({ options, value, onChange, ariaLabel }: {
+  options: { id: T; label: string }[]; value: T | null; onChange: (v: T) => void; ariaLabel: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label={ariaLabel} className="flex shrink-0 bg-surface rounded-xl p-1 border border-white/[0.06]">
+      {options.map(o => (
+        <button
+          key={o.id}
+          role="radio"
+          aria-checked={value === o.id}
+          onClick={() => { if (value !== o.id) onChange(o.id); }}
+          className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', value === o.id ? 'bg-accent text-bg' : 'text-text-dim')}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-2">

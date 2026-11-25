@@ -197,6 +197,17 @@ service cloud.firestore {
              data.createdAt == request.time;
     }
 
+    // Display-unit preferences on the user doc (src/lib/units.ts isValidUnitPrefs
+    // is the client mirror). Display only: weights and heights stay metric.
+    function isValidUnits(u) {
+      return u is map &&
+             u.keys().hasAll(['system', 'weight', 'energy']) &&
+             u.keys().hasOnly(['system', 'weight', 'energy']) &&
+             u.system in ['metric', 'imperial'] &&
+             u.weight in ['kg', 'lb', 'st'] &&
+             u.energy in ['kcal', 'kJ'];
+    }
+
     function isValidWeightRecord(data) {
       return data.keys().hasAll(['userId', 'weight', 'timestamp']) &&
              data.userId == request.auth.uid &&
@@ -338,6 +349,8 @@ service cloud.firestore {
           'preferredWorkoutTime', 'preferredWorkoutTimeSource',
           'tzOffsetHours', 'tzId',
           'weightUnit',
+          // Display units map — shape checked by isValidUnits below.
+          'units',
           // googleFitAccessToken/googleFitExpiry were removed: user docs are
           // readable by other signed-in users (leaderboards), so OAuth tokens
           // must never be written here. The token now lives in localStorage.
@@ -355,6 +368,10 @@ service cloud.firestore {
       ) && (
         !incoming().diff(existing()).affectedKeys().hasAny(['points', 'level', 'badges']) ||
         isLegacyOnboardingGrant()
+      ) && (
+        !incoming().diff(existing()).affectedKeys().hasAny(['units']) ||
+        !('units' in incoming()) ||
+        isValidUnits(incoming().units)
       );
       allow delete: if isOwner(userId);
 

@@ -34,6 +34,9 @@ const run = async (kind, name, p) => {
 const attack = (name, p) => run('ATTACK', name, assertFails(p));
 const fixed = (name, p) => run('FIXED', name, assertSucceeds(p));
 const works = (name, p) => run('WORKS', name, assertSucceeds(p));
+// Bad input to a field the old rules refused outright: must be refused, but the
+// control run cannot use it (see the units section).
+const guard = (name, p) => run('GUARD', name, assertFails(p));
 const section = (t) => console.log(`\n${C.b}${t}${C.x}`);
 
 const testEnv = await initializeTestEnvironment({
@@ -143,6 +146,29 @@ await works('a sensible barcode label is accepted',
   setDoc(doc(alice, 'food_catalog', 'barcode-9555123456791'), food({ name: 'Oat biscuit', calories: 450, protein: 7, carbs: 65, fats: 18 })));
 await works('foods still cannot be deleted', assertFails(deleteDoc(doc(alice, 'food_catalog', 'banana'))));
 
+section('Display units (users/{uid}.units)');
+// The old rules refuse ANY `units` write, so a junk-value refusal cannot be told
+// apart from the old behaviour there. Those checks are GUARDs: they must be
+// refused here, and the control run skips them (it still requires every FIXED
+// check below to fail on the old rules, which proves `units` is newly allowed).
+const aliceDoc = doc(alice, 'users', ALICE);
+const setUnits = (units, extra = {}) => updateDoc(aliceDoc, { units, updatedAt: serverTimestamp(), ...extra });
+await fixed('metric prefs are saved', setUnits({ system: 'metric', weight: 'kg', energy: 'kcal' }));
+await fixed('US prefs are saved with the legacy weightUnit the Settings screen also writes',
+  setUnits({ system: 'imperial', weight: 'lb', energy: 'kcal' }, { weightUnit: 'lbs' }));
+await fixed('UK prefs (stones) with kilojoules are saved', setUnits({ system: 'metric', weight: 'st', energy: 'kJ' }));
+await guard('an unknown system is refused', setUnits({ system: 'cubits', weight: 'kg', energy: 'kcal' }));
+await guard('an unknown weight unit is refused', setUnits({ system: 'metric', weight: 'grams', energy: 'kcal' }));
+await guard('"lbs" is the legacy spelling and is refused inside units', setUnits({ system: 'imperial', weight: 'lbs', energy: 'kcal' }));
+await guard('an unknown energy unit is refused', setUnits({ system: 'metric', weight: 'kg', energy: 'cal' }));
+await guard('energy is case-checked ("kj" is refused)', setUnits({ system: 'metric', weight: 'kg', energy: 'kj' }));
+await guard('an extra key is refused', setUnits({ system: 'metric', weight: 'kg', energy: 'kcal', scale: 2.2 }));
+await guard('a missing key is refused', setUnits({ system: 'metric', weight: 'kg' }));
+await guard('a non-map units value is refused', setUnits('imperial'));
+await guard('a non-string value is refused', setUnits({ system: 1, weight: 'kg', energy: 'kcal' }));
+await works('a units write still cannot smuggle in a paid plan',
+  assertFails(setUnits({ system: 'metric', weight: 'kg', energy: 'kcal' }, { plan: 'yearly' })));
+
 await testEnv.cleanup();
 
 const of = (k) => results.filter((r) => r.kind === k);
@@ -162,6 +188,6 @@ if (CONTROL) {
   process.exit(0);
 }
 const total = results.length, ok = results.filter((r) => r.ok).length;
-console.log(`${C.b}Result: ${ok === total ? C.g : C.r}${ok}/${total}${C.x}${C.b} checks passed${C.x}  ${C.d}(attacks refused ${passed('ATTACK')}/${of('ATTACK').length}, fixes ${passed('FIXED')}/${of('FIXED').length}, still works ${passed('WORKS')}/${of('WORKS').length})${C.x}`);
+console.log(`${C.b}Result: ${ok === total ? C.g : C.r}${ok}/${total}${C.x}${C.b} checks passed${C.x}  ${C.d}(attacks refused ${passed('ATTACK')}/${of('ATTACK').length}, fixes ${passed('FIXED')}/${of('FIXED').length}, guards ${passed('GUARD')}/${of('GUARD').length}, still works ${passed('WORKS')}/${of('WORKS').length})${C.x}`);
 if (ok === total) console.log(`${C.g}${C.b}100% success, zero errors${C.x}\n`);
 else { console.log(`${C.r}${C.b}${total - ok} FAILED${C.x}\n`); process.exit(1); }
