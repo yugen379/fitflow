@@ -579,6 +579,7 @@ export const Track: React.FC = () => {
   // (once per meal); otherwise the itemised list appears with the cooking-oil
   // choice pre-set from how things were cooked.
   const showAnalysis = (a: MealAnalysis, usedHint: boolean, fallbackName: string) => {
+    if (a.offline) showToast('AI is busy, so these are typical portions. Check the grams before logging.', 'info');
     if (a.decomposed && needsHint(a.lines, a.obscured, usedHint)) {
       setAskHint(true);
       setAiReview(a.lines.length ? a.lines : null);

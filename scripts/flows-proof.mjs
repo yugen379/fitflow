@@ -218,9 +218,11 @@ const egg = await until(mealNamed('Fried Egg'));
 check('"telur mata" logs Fried Egg from the bundled list', !!egg && egg.calories === 90, egg ? `${egg.name}: ${egg.calories}` : 'no meal written');
 
 await quickAdd('3 eggs');
-const three = await until(mealNamed('3 eggs'), 45000);
+// With the AI reachable this is "3 eggs" (234); without it the app splits the
+// meal itself: "eggs (150 g)" = 233. Either way: three eggs, not the listed two.
+const three = await until(async () => (await mealNamed('3 eggs')()) || (await mealNamed('eggs (150 g)')()), 45000);
 const wrongEggs = await mealNamed('Eggs (2 large')();
-check('"3 eggs" is logged as three eggs (234 kcal), not the listed two', !!three && three.calories === 234 && !wrongEggs,
+check('"3 eggs" is logged as three eggs (~234 kcal), not the listed two', !!three && three.calories >= 225 && three.calories <= 240 && !wrongEggs,
   three ? `${three.name}: ${three.calories}` : wrongEggs ? `logged ${wrongEggs.name}: ${wrongEggs.calories}` : 'no meal written');
 
 // ── Meal pipeline: AI names ingredients + grams, the app does the math ────────
@@ -483,6 +485,36 @@ section('Scanner: unknown barcode -> label photo -> shared catalog');
   await page.unroute('**/world.openfoodfacts.org/**');
   await page.unroute('**/*.openfoodfacts.org/**');
   await page.unroute('**/api.nal.usda.gov/**');
+}
+
+// ── AI unavailable (quota / outage): the meal is split on the phone ──────────
+section('Track: AI unavailable -> meal split locally, nothing dropped');
+{
+  await page.route('**/geminiProxy', async (route) => {
+    let body = {};
+    try { body = route.request().postDataJSON() || {}; } catch { /* not JSON */ }
+    if (body.action !== 'decomposeMeal') return route.fallback();
+    await route.fulfill({ status: 503, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"error":"all models busy"}' });
+  });
+  await page.goto(BASE + '/track', { waitUntil: 'load', timeout: 45000 });
+  await dismissLevelUp();
+  await page.locator('button[aria-label="Add meal"]').click();
+  const box = page.locator('textarea[placeholder^="e.g. a bowl"]');
+  await box.waitFor({ timeout: 10000 });
+  await box.fill('quinoa with black beans and grilled salmon');
+  const toastSeen = page.locator('text=/AI is busy/').first().waitFor({ timeout: 30000 }).then(() => true).catch(() => false);
+  await page.locator('button.btn-3d', { hasText: 'Analyse' }).click();
+  const logBtn = page.locator('button.btn-3d', { hasText: /^Log \d+ kcal$/ });
+  await logBtn.waitFor({ timeout: 30000 }).catch(() => {});
+  const sheet = (await page.locator('body').innerText().catch(() => '')).toLowerCase().replace(/\s+/g, ' ');
+  const gramInputs = await page.locator('input[aria-label^="Grams of"]').evaluateAll((els) => els.map((e) => e.value));
+  check('all three foods are listed (quinoa kept)', sheet.includes('quinoa') && sheet.includes('black beans') && sheet.includes('salmon'), sheet.slice(0, 200));
+  check('rows are in grams from the food table, not servings', ['180', '150', '120'].every((g) => gramInputs.includes(g)) && !sheet.includes('per serving'), `grams: ${gramInputs.join(',')}`);
+  check('the user is told portions are typical', await toastSeen);
+  // Close without logging.
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.locator('button[aria-label="Close"]').first().click().catch(() => {});
+  await page.unroute('**/geminiProxy');
 }
 // ── Smart target (adaptive calories) ─────────────────────────────────────────
 // Four weeks of history: 1,700 kcal logged every day while the scale falls

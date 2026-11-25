@@ -13,7 +13,7 @@
 import { decomposeMeal, parseQuickAdd, analyzeMealImage } from './geminiService';
 import { getFoodIndex, searchUsda, type FoodProduct } from './foodService';
 import {
-  sanitizeDecomposition, lookupOffline, makeLine, servingLine, sanePer100, isVagueMeal, pickUsdaHit, mealCacheKey,
+  sanitizeDecomposition, lookupOffline, makeLine, servingLine, sanePer100, isVagueMeal, pickUsdaHit, mealCacheKey, localDecompose,
   type ReviewLine, type Found, type DecomposedItem,
 } from '../lib/mealMath';
 
@@ -24,6 +24,8 @@ export interface MealAnalysis {
   decomposed: boolean;
   /** Answered from this device's repeat-meal cache. */
   cached?: boolean;
+  /** The AI was unavailable; the app split the meal itself (portions are typical, not seen). */
+  offline?: boolean;
 }
 
 const USDA_BUDGET_MS = 5_000;
@@ -112,10 +114,16 @@ export const analyzeMealText = async (text: string, hint?: string): Promise<Meal
     return a;
   }
   if (raw && raw.obscured && hint === undefined) return { lines: [], obscured: true, decomposed: true };
-  // Older path: per-serving items from the quick-add parser. When the server
-  // answered (just found nothing) or timed out, its AI is not asked again —
-  // the offline resolver answers at once. A server that predates decomposeMeal
-  // returns null fast, and the old AI parse still runs.
+  // The AI is unavailable (quota, outage, timeout) or found nothing: split the
+  // meal here. Every named part becomes a gram row; unknown foods still get a
+  // row ("not found", the user types the kcal) instead of vanishing.
+  const local = localDecompose(hint ? `${text}, ${hint}` : text);
+  if (local.length) {
+    const lines = await Promise.all(local.map(resolveItem));
+    if (lines.some((l) => l.per100)) return { lines, obscured: false, decomposed: true, offline: true };
+  }
+  // Nothing recognisable at all: the older per-serving parser, AI only when
+  // the server answered null quickly (it never tried).
   const r = await parseQuickAdd(text, { ai: raw === null && !timedOut() }).catch(() => null);
   return { lines: (r?.items || []).map((i) => servingLine(i, 0.7)), obscured: false, decomposed: false };
 };

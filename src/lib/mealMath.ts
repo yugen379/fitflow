@@ -425,3 +425,62 @@ export const mealCacheKey = (text: string, hint?: string): string => {
   const h = hint ? norm(hint) : '';
   return h ? `${t} || ${h}` : t;
 };
+
+// ---- When the AI is unavailable: split the meal locally ----------------------
+// The AI can be out of quota or down. The meal must still come out itemised,
+// and nothing the user typed may silently disappear (the phone once logged
+// "quinoa with black beans and grilled salmon" without the quinoa). So the
+// description is split here, amounts are read where given ("200g", "2 eggs"),
+// otherwise a typical portion is used, and every part becomes a row: matched
+// parts get kcal from the table, unmatched ones ask the user.
+
+/** Typical single portion as eaten, in grams, by what the food is. */
+export const typicalPortionG = (name: string): number => {
+  const n = ` ${name.toLowerCase()} `;
+  const has = (re: RegExp) => re.test(n);
+  if (has(/\b(oil|butter|ghee|sambal|sauce|ketchup|mayo|mayonnaise|dressing|sugar|honey|jam|chutney|gravy|dip)\b/)) return 20;
+  if (has(/\b(nuts?|peanuts?|almonds?|cashews?|seeds?|anchovies|ikan bilis|cheese|raisins?)\b/)) return 30;
+  if (has(/\b(egg|eggs)\b/)) return 50;
+  if (has(/\b(bread|toast|roti|chapati|naan|tortilla|pita|bun|bagel|croissant|paratha|wrap)\b/)) return 70;
+  if (has(/\b(tea|coffee|latte|milk|juice|soda|cola|drink|smoothie|shake|beer|wine|water|teh|kopi|milo|soup)\b/)) return 250;
+  if (has(/\b(rice|nasi|noodles?|mee|pasta|spaghetti|quinoa|couscous|oats|oatmeal|porridge|bulgur|congee|bihun|kuey teow)\b/)) return 180;
+  if (has(/\b(beans?|lentils?|dal|dhal|chickpeas?|edamame)\b/)) return 150;
+  if (has(/\b(chicken|beef|pork|lamb|mutton|fish|salmon|tuna|cod|prawns?|shrimp|squid|steak|tofu|tempeh|turkey|duck|sausages?|meat|ayam|daging|ikan)\b/)) return 120;
+  if (has(/\b(apple|banana|orange|mango|papaya|pear|grapes|berries|melon|watermelon|pineapple|fruit|durian|guava)\b/)) return 120;
+  if (has(/\b(salad|vegetables?|veg|veggies|broccoli|spinach|kangkung|cabbage|carrots?|bean sprouts?|taugeh|greens|cucumber|tomato(es)?|sayur)\b/)) return 80;
+  return 100;
+};
+
+const NUMBER_WORDS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, half: 0.5, couple: 2 };
+const UNIT_G: Record<string, number> = { kg: 1000, g: 1, gm: 1, gms: 1, gram: 1, grams: 1, ml: 1, l: 1000 };
+const FILLER = /\b(a|an|the|some|of|my|plate|plates|bowl|bowls|cup|cups|glass|glasses|piece|pieces|slice|slices|serving|servings|portion|portions|small|medium|large|big|side|fresh|plain|homemade|i|had|ate|for|lunch|dinner|breakfast)\b/g;
+
+/**
+ * Split a typed meal into ingredient items without any AI. Every part that
+ * has a name is kept (unknown foods included); grams come from an explicit
+ * amount or a typical portion. Confidence is modest: portions are guesses.
+ */
+export const localDecompose = (text: string): DecomposedItem[] => {
+  const parts = String(text || '').toLowerCase()
+    .replace(/[()]/g, ' ')
+    .split(/\s*(?:,|;|\+|&|\band\b|\bwith\b|\bplus\b|\bn\b)\s*/)
+    .map((p) => p.trim()).filter(Boolean);
+  const out: DecomposedItem[] = [];
+  for (const part of parts.slice(0, 12)) {
+    let grams: number | null = null;
+    let count = 1;
+    let rest = part;
+    const unit = /(\d+(?:\.\d+)?)\s*(kg|gms?|grams?|g|ml|l)\b/.exec(rest);
+    if (unit) { grams = Number(unit[1]) * (UNIT_G[unit[2]] ?? 1); rest = rest.replace(unit[0], ' '); }
+    const num = /^(\d+(?:\.\d+)?|a|an|one|two|three|four|five|six|half|couple)\b/.exec(rest.trim());
+    if (num && grams == null) { count = Number(num[1]) || NUMBER_WORDS[num[1]] || 1; rest = rest.trim().slice(num[0].length); }
+    const name = rest.replace(FILLER, ' ').replace(/[^\p{L}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim();
+    if (name.length < 2) continue;
+    const g = grams ?? typicalPortionG(name) * count;
+    const method: CookMethod = /\bfried\b|\bgoreng\b/.test(name) ? (/\bstir\b/.test(name) ? 'stir_fried' : 'fried')
+      : /\bgrilled|bakar|roast/.test(name) ? 'grilled' : /\bboiled|steamed|rebus/.test(name) ? 'boiled'
+        : /\bcurry|kari|gulai|sauce|masak/.test(name) ? 'saucy' : 'raw';
+    out.push({ name, grams: clampGrams(g), confidence: grams != null ? 0.75 : 0.55, method, per100Hint: null });
+  }
+  return out;
+};

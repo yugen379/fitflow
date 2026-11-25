@@ -418,6 +418,9 @@ const FAST_MODELS = [
 ];
 const FAST_CALL_TIMEOUT_MS = 6_000;
 
+// Models found to reject thinkingConfig (400) — called without it from then on.
+const noThinkingConfig = new Set<string>(["gemini-flash-lite-latest", "gemini-flash-latest"]);
+
 const cascadeOnce = async (
   ai: GoogleGenAI, contents: any, deadline = Infinity,
   { models = GEMINI_MODELS, callTimeoutMs = MODEL_CALL_TIMEOUT_MS }: { models?: string[]; callTimeoutMs?: number } = {},
@@ -425,23 +428,34 @@ const cascadeOnce = async (
   for (const model of models) {
     if (Date.now() >= deadline) return null;
     if (modelIsCooling(model)) continue;
+    // thinkingBudget 0 skips the 2.5-family "thinking" pass — the proxy's
+    // short structured tasks don't need it and it costs seconds of latency.
+    // The "-latest" aliases now point at newer models that reject that
+    // setting with 400 INVALID_ARGUMENT, so those get no thinking config.
+    const call = (withThinkingOff: boolean) => ai.models.generateContent({
+      model, contents,
+      config: {
+        ...(withThinkingOff ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+        // One hung model must not hold a server slot until the function dies.
+        abortSignal: AbortSignal.timeout(Math.max(1, Math.min(callTimeoutMs, deadline - Date.now()))),
+      },
+    });
     try {
-      // thinkingBudget 0 skips the 2.5-family "thinking" pass — the proxy's
-      // short structured tasks don't need it and it costs seconds of latency.
-      const resp = await ai.models.generateContent({
-        model, contents,
-        config: {
-          thinkingConfig: { thinkingBudget: 0 },
-          // One hung model must not hold a server slot until the function dies.
-          abortSignal: AbortSignal.timeout(Math.min(callTimeoutMs, deadline - Date.now())),
-        },
-      });
+      let resp;
+      try {
+        resp = await call(!noThinkingConfig.has(model));
+      } catch (e: any) {
+        if (Number(e?.status ?? e?.code) !== 400 || noThinkingConfig.has(model)) throw e;
+        noThinkingConfig.add(model); // remembered for the life of the instance
+        resp = await call(false);
+      }
       const text = (resp.text || "").trim();
       if (text) return text;
     } catch (e: any) {
       console.warn(`Gemini ${model} failed:`, e?.status || "", String(e?.message || e).slice(0, 80));
       if (isQuotaError(e)) coolModel(model);
-      if (!isRetryable(e) && e?.name !== "TimeoutError" && e?.name !== "AbortError") break;
+      // A 400 from one model (a setting it doesn't take) says nothing about the
+      // others: move on. Stopping here left the rest of the cascade unused.
     }
   }
   return null;

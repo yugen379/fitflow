@@ -4,7 +4,7 @@ import {
   macrosForGrams, lineMacros, sumMacros, totalsOf, sanitizeDecomposition, sanePer100, toConfidence,
   lookupOffline, nameVariants, per100FromServingFood, servingGrams, makeLine, servingLine,
   oilGrams, oilMacros, oilBaseGrams, needsOilChoice, suggestedOil, mealTotals, OIL_MAX_G,
-  needsHint, mealConfidence, cleanHint, diaryName, clampGrams, isVagueMeal, pickUsdaHit, mealCacheKey,
+  needsHint, mealConfidence, cleanHint, diaryName, clampGrams, isVagueMeal, pickUsdaHit, mealCacheKey, localDecompose,
 } from '../src/lib/mealMath.ts';
 import { buildFoodIndex, searchFoodIndex } from '../src/services/foodSearchIndex.ts';
 import { INGREDIENTS_100G } from '../src/data/ingredients100g.ts';
@@ -140,6 +140,19 @@ ok('cache key: case, punctuation and spaces ignored', mealCacheKey('Nasi Lemak!'
 ok('cache key: different meals differ', mealCacheKey('nasi lemak') !== mealCacheKey('nasi goreng'));
 ok('cache key: the hint is part of the key', mealCacheKey('leftovers', 'fried rice') !== mealCacheKey('leftovers') && mealCacheKey('leftovers', 'fried rice') !== mealCacheKey('leftovers', 'curry'));
 ok('cache key: too short -> no caching', mealCacheKey('a') === '' && mealCacheKey('!!') === '');
+// AI unavailable: the meal is split locally and nothing is dropped.
+const ld = localDecompose('quinoa with black beans and grilled salmon');
+ok('local split: three parts, quinoa kept', ld.length === 3 && ld[0].name === 'quinoa' && ld[1].name === 'black beans' && ld[2].name === 'grilled salmon');
+ok('local split: typical portions (grain 180, legumes 150, fish 120)', ld[0].grams === 180 && ld[1].grams === 150 && ld[2].grams === 120);
+ok('local split: grilled salmon is marked grilled', ld[2].method === 'grilled');
+const ld2 = localDecompose('2 eggs, 200g white rice + teh tarik');
+ok('local split: "2 eggs" = 100 g, "200g white rice" = 200 g, drink 250', ld2.length === 3 && ld2[0].grams === 100 && ld2[1].grams === 200 && ld2[1].name === 'white rice' && ld2[2].grams === 250);
+ok('local split: every part found in the table', ld2.every((i) => lookupOffline(i.name)) && ld.every((i) => lookupOffline(i.name)));
+const ld3 = localDecompose('zorblax pie and rice');
+ok('local split: an unknown food still gets a row', ld3.length === 2 && ld3[0].name === 'zorblax pie' && !lookupOffline('zorblax pie'));
+ok('local split: fried / curry methods read', localDecompose('fried chicken')[0].method === 'fried' && localDecompose('chicken curry')[0].method === 'saucy');
+ok('local split: empty and junk -> nothing', localDecompose('').length === 0 && localDecompose(', , and').length === 0);
+ok('local split: at most 12 parts', localDecompose(Array(30).fill('rice').join(', ')).length === 12);
 ok('cleanHint trims and caps', cleanHint('  chicken   curry!! with rice ') === 'chicken curry with rice' && cleanHint('a b c d e f g h') === 'a b c d e f');
 ok('empty hint -> null', cleanHint('   ') === null && cleanHint(5) === null);
 
