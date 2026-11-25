@@ -4,7 +4,12 @@ import { canOpenAppSettings, openAppSettings } from '../lib/appSettings';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { logMeal, updateMeal, deleteMeal } from '../services/dataService';
-import { analyzeMealImage, analyzeNutritionLabel, parseQuickAdd } from '../services/geminiService';
+import { analyzeNutritionLabel } from '../services/geminiService';
+import { analyzeMealText, analyzeMealPhoto, analyzeSingleItem, type MealAnalysis } from '../services/mealPipeline';
+import {
+  lineMacros, mealTotals, servingLine, needsOilChoice, suggestedOil, oilBaseGrams, oilGrams, oilMacros,
+  needsHint, cleanHint, diaryName, clampGrams, type ReviewLine, type OilLevel,
+} from '../lib/mealMath';
 import { searchFood, lookupBarcode, resolveLocalFood } from '../services/foodService';
 import { lookupCatalog } from '../services/foodCatalogService';
 import { searchBrandedFoods, fetchProductServing } from '../services/remoteFoodSearch';
@@ -33,7 +38,9 @@ const downscaleToJpegBase64 = async (file: File, maxSide: number): Promise<strin
   return canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
 };
 
-type AiReviewItem = { name: string; calories: number; protein: number; carbs: number; fats: number };
+const SOURCE_LABEL: Record<ReviewLine['source'], string> = {
+  table: '', bundled: '', usda: 'USDA', ai_density: 'estimate', serving: 'per serving', none: 'not found',
+};
 
 export const Track: React.FC = () => {
   const { profile } = useAuth();
@@ -50,7 +57,17 @@ export const Track: React.FC = () => {
     if (!tabVisible) setScanOpen(false);
   }, [tabVisible]);
   const [aiInput, setAiInput] = useState('');
-  const [aiReview, setAiReview] = useState<AiReviewItem[] | null>(null);
+  // Review list: every row carries its grams and per-100 g values; totals are
+  // computed in mealMath, never taken from the AI.
+  const [aiReview, setAiReview] = useState<ReviewLine[] | null>(null);
+  const [oilLevel, setOilLevel] = useState<OilLevel>('none');
+  // Low-confidence fallback: one 2-4 word hint per meal, then decomposition re-runs.
+  const [askHint, setAskHint] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
+  const [hintText, setHintText] = useState('');
+  const [lastMeal, setLastMeal] = useState<{ text?: string; b64?: string } | null>(null);
+  const [addText, setAddText] = useState('');
+  const [addBusy, setAddBusy] = useState(false);
   // Edit / delete a logged meal (there was no way to fix a typo or an AI misread).
   const [editMeal, setEditMeal] = useState<MealRecord | null>(null);
   const [editForm, setEditForm] = useState({ name: '', calories: 0, protein: 0, carbs: 0, fats: 0 });
@@ -93,7 +110,7 @@ export const Track: React.FC = () => {
   // Android Back closes the open sheet instead of the app.
   useBackHandler(aiOpen || scanOpen || manualOpen || !!editMeal, () => {
     if (editMeal) setEditMeal(null);
-    else if (aiReview) setAiReview(null);
+    else if (aiReview || askHint) { setAiReview(null); setAskHint(false); }
     else if (manualOpen) setManualOpen(false);
     else if (scanOpen) setScanOpen(false);
     else setAiOpen(false);
@@ -511,34 +528,24 @@ export const Track: React.FC = () => {
   // AI results are shown for review before anything is saved: the AI can
   // misread a phrase (autocorrect turned "teh tarik" into "the tarikn"), and
   // silently writing six items to the diary left no way to catch that.
-  const handleAiAnalyze = async () => {
-    if (!aiInput.trim() || !profile?.uid) return;
-    setIsAnalyzing(true);
-    const phrase = aiInput.trim();
-    let items: AiReviewItem[] = [];
-
-    // Fast path: someone already resolved this exact food — instant, no AI call.
-    try {
-      // The bundled list first (offline, instant), then the shared catalog.
-      const cat = (await resolveLocalFood(phrase)) || (await lookupCatalog(phrase));
-      if (cat && cat.calories > 0) {
-        items = [{ name: cat.name, calories: cat.calories, protein: cat.protein, carbs: cat.carbs, fats: cat.fats }];
-      }
-    } catch { /* fall through to parse */ }
-
-    if (items.length === 0) {
-      try {
-        const result = await parseQuickAdd(phrase);
-        items = result.items.map(it => ({ name: it.name, calories: it.calories, protein: it.protein, carbs: it.carbs, fats: it.fats }));
-      } catch { /* handled below as "nothing resolved" */ }
+  // Show an analysis for review. Low confidence asks for a short hint first
+  // (once per meal); otherwise the itemised list appears with the cooking-oil
+  // choice pre-set from how things were cooked.
+  const showAnalysis = (a: MealAnalysis, usedHint: boolean, fallbackName: string) => {
+    if (a.decomposed && needsHint(a.lines, a.obscured, usedHint)) {
+      setAskHint(true);
+      setAiReview(a.lines.length ? a.lines : null);
+      setOilLevel(suggestedOil(a.lines));
+      return;
     }
-    setIsAnalyzing(false);
-
-    if (items.length > 0) {
-      setAiReview(items);
+    setAskHint(false);
+    if (a.lines.length > 0) {
+      setAiReview(a.lines);
+      setOilLevel(suggestedOil(a.lines));
     } else {
       // Nothing resolved — slide into manual entry, pre-filled with their text.
-      setManualName(phrase);
+      setAiReview(null);
+      setManualName(fallbackName);
       setManualCals(0); setManualP(0); setManualC(0); setManualF(0);
       setAiOpen(false); setAiInput('');
       setManualOpen(true);
@@ -546,16 +553,94 @@ export const Track: React.FC = () => {
     }
   };
 
+  const handleAiAnalyze = async () => {
+    if (!aiInput.trim() || !profile?.uid) return;
+    setIsAnalyzing(true);
+    const phrase = aiInput.trim();
+    setHintUsed(false); setHintText(''); setLastMeal({ text: phrase });
+
+    // Fast path: a food someone already resolved exactly — instant, no AI call.
+    try {
+      // The bundled list first (offline, instant), then the shared catalog.
+      const cat = (await resolveLocalFood(phrase)) || (await lookupCatalog(phrase));
+      if (cat && cat.calories > 0) {
+        setIsAnalyzing(false);
+        showAnalysis({ lines: [servingLine(cat, 0.9)], obscured: false, decomposed: false }, false, phrase);
+        return;
+      }
+    } catch { /* fall through to the pipeline */ }
+
+    let a: MealAnalysis = { lines: [], obscured: false, decomposed: false };
+    try { a = await analyzeMealText(phrase); } catch { /* manual entry below */ }
+    setIsAnalyzing(false);
+    showAnalysis(a, false, phrase);
+  };
+
+  // Stage 3: re-run decomposition + lookup with the user's 2-4 word hint.
+  const submitHint = async () => {
+    const hint = cleanHint(hintText);
+    if (!hint || !lastMeal) return;
+    setIsAnalyzing(true);
+    setHintUsed(true);
+    let a: MealAnalysis = { lines: [], obscured: false, decomposed: false };
+    try {
+      a = lastMeal.b64
+        ? await analyzeMealPhoto(lastMeal.b64, 'image/jpeg', hint)
+        : await analyzeMealText(lastMeal.text || '', hint);
+    } catch { /* keep what we had */ }
+    setIsAnalyzing(false);
+    if (a.lines.length === 0 && aiReview?.length) { setAskHint(false); return; }
+    showAnalysis(a, true, lastMeal.text || hint);
+  };
+
+  const updateLine = (i: number, patch: Partial<ReviewLine>) =>
+    setAiReview((r) => (r ? r.map((l, j) => (j === i ? { ...l, ...patch } : l)) : r));
+
+  const stepLine = (i: number, dir: 1 | -1) => {
+    const l = aiReview?.[i];
+    if (!l) return;
+    if (l.grams != null) {
+      const step = l.grams >= 200 ? 25 : 10;
+      updateLine(i, { grams: Math.max(step, clampGrams(l.grams + dir * step)) });
+    } else {
+      updateLine(i, { servings: Math.max(0.5, Math.min(10, l.servings + dir * 0.5)) });
+    }
+  };
+
+  const addReviewItem = async () => {
+    const t = addText.trim();
+    if (t.length < 2) return;
+    setAddBusy(true);
+    const line = await analyzeSingleItem(t).catch(() => null);
+    setAddBusy(false);
+    if (line) {
+      setAiReview((r) => [...(r || []), line]);
+      setAddText('');
+    } else {
+      showToast(`Couldn't find "${t}"`, 'info');
+    }
+  };
+
   const confirmAiReview = async () => {
     if (!profile?.uid || !aiReview?.length) return;
     setIsAnalyzing(true);
     const mealType = mealTypeNow();
-    for (const it of aiReview) {
-      await logMeal(profile.uid, { ...it, mealType });
+    // Every number below comes from mealMath (grams x per-100 g), not the AI.
+    const rows = aiReview
+      .map((l) => ({ name: diaryName(l), ...lineMacros(l) }))
+      .filter((r) => r.calories > 0);
+    const oilG = oilGrams(oilLevel, oilBaseGrams(aiReview));
+    if (oilG > 0) rows.push({ name: `Cooking oil (${oilLevel}, ${oilG} g)`, ...oilMacros(oilLevel, oilBaseGrams(aiReview)) });
+    for (const r of rows) {
+      await logMeal(profile.uid, {
+        name: r.name, calories: r.calories,
+        protein: Math.round(r.protein), carbs: Math.round(r.carbs), fats: Math.round(r.fats),
+        mealType,
+      });
     }
     try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
-    showToast(aiReview.length === 1 ? 'Logged' : `Logged ${aiReview.length} items`, 'success');
-    setAiReview(null); setAiOpen(false); setAiInput('');
+    showToast(rows.length === 1 ? 'Logged' : `Logged ${rows.length} items`, 'success');
+    setAiReview(null); setAiOpen(false); setAiInput(''); setAskHint(false); setOilLevel('none');
     setIsAnalyzing(false);
   };
 
@@ -703,31 +788,22 @@ export const Track: React.FC = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !profile?.uid) return;
+    // Photos used to be logged straight away from one AI total. Now they go
+    // through the same itemised review as typed meals.
+    setAiOpen(true); setAiReview(null); setAskHint(false);
+    setHintUsed(false); setHintText('');
     setIsAnalyzing(true);
-    {
-      let result: any = null;
-      try {
-        // Phone photos are 5-10 MB; sent raw they blew the request limit and
-        // came back empty (the ramen bug). 1024px JPEG keeps every detail the
-        // model needs at ~150 KB.
-        const b64 = await downscaleToJpegBase64(file, 1024);
-        result = await analyzeMealImage(b64, 'image/jpeg');
-      } catch { result = null; }
-      if (result && result.calories > 0) {
-        await logMeal(profile.uid!, { name: result.name, calories: result.calories, protein: result.protein, carbs: result.carbs, fats: result.fats, mealType: 'snack' });
-        try { await checkAndAwardBadge(profile.uid!, 'nutrition_master'); } catch {}
-        showToast('Photo analyzed and logged', 'success');
-        setAiOpen(false);
-      } else {
-        // Photo analysis didn't return useful numbers — drop into manual entry.
-        setManualName('');
-        setManualCals(0); setManualP(0); setManualC(0); setManualF(0);
-        setAiOpen(false);
-        setManualOpen(true);
-        showToast('Enter the meal details yourself', 'info');
-      }
-      setIsAnalyzing(false);
-    }
+    let a: MealAnalysis = { lines: [], obscured: false, decomposed: false };
+    try {
+      // Phone photos are 5-10 MB; sent raw they blew the request limit and
+      // came back empty (the ramen bug). 1024px JPEG keeps every detail the
+      // model needs at ~150 KB.
+      const b64 = await downscaleToJpegBase64(file, 1024);
+      setLastMeal({ b64 });
+      a = await analyzeMealPhoto(b64, 'image/jpeg');
+    } catch { /* manual entry below */ }
+    setIsAnalyzing(false);
+    showAnalysis(a, false, '');
   };
 
   const filtered = meals.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
@@ -1241,37 +1317,151 @@ export const Track: React.FC = () => {
                   <X size={16} />
                 </button>
               </div>
-              {aiReview ? (
+              {askHint ? (
                 <div className="space-y-3">
-                  <p className="text-xs text-text-dim">Check before saving. Remove anything the AI got wrong.</p>
-                  <ul className="space-y-2">
-                    {aiReview.map((it, i) => (
-                      <li key={i} className="glass rounded-2xl px-4 py-3 flex items-center gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{it.name}</p>
-                          <p className="num text-[11px] text-text-dim">P {Math.round(it.protein)}g · C {Math.round(it.carbs)}g · F {Math.round(it.fats)}g</p>
-                        </div>
-                        <span className="num text-accent font-semibold text-sm">{Math.round(it.calories)}</span>
-                        <button
-                          onClick={() => setAiReview(r => (r && r.length > 1 ? r.filter((_, j) => j !== i) : null))}
-                          className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-text-dim"
-                          aria-label={`Remove ${it.name}`}
-                        >
-                          <X size={14} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-sm text-white font-medium">Not sure what's in this one</p>
+                  <p className="text-xs text-text-dim">Some of it is hidden or unclear. Name it in a few words and I'll check again.</p>
+                  <input
+                    value={hintText}
+                    onChange={e => setHintText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') submitHint(); }}
+                    maxLength={60}
+                    placeholder="e.g. chicken curry with rice"
+                    aria-label="What is in the meal"
+                    className="w-full glass rounded-2xl px-4 h-12 text-white text-sm placeholder:text-text-dim/50 focus:outline-none"
+                    autoFocus
+                  />
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setAiReview(null)} disabled={isAnalyzing} className="btn-ghost h-12 disabled:opacity-50">
-                      Edit text
+                    <button
+                      onClick={() => { setAskHint(false); if (!aiReview) { setLastMeal(null); } }}
+                      disabled={isAnalyzing}
+                      className="btn-ghost h-12 disabled:opacity-50"
+                    >
+                      {aiReview ? 'Skip' : 'Back'}
                     </button>
-                    <button onClick={confirmAiReview} disabled={isAnalyzing} className="btn-3d h-12 disabled:opacity-50">
-                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : `Log ${aiReview.reduce((a, b) => a + Math.round(b.calories), 0)} kcal`}
+                    <button onClick={submitHint} disabled={isAnalyzing || !cleanHint(hintText)} className="btn-3d h-12 disabled:opacity-50">
+                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : 'Check again'}
                     </button>
                   </div>
                 </div>
-              ) : (
+              ) : aiReview ? (() => {
+                const totals = mealTotals(aiReview, oilLevel);
+                const oilBase = oilBaseGrams(aiReview);
+                const oilG = oilGrams(oilLevel, oilBase);
+                return (
+                <div className="space-y-3">
+                  <p className="text-xs text-text-dim">Check before saving. Adjust grams, remove or add items. Calories are worked out from each food's per-100 g value.</p>
+                  <ul className="space-y-2" aria-label="Meal items">
+                    {aiReview.map((it, i) => {
+                      const m = lineMacros(it);
+                      const tag = SOURCE_LABEL[it.source];
+                      return (
+                      <li key={i} className="glass rounded-2xl px-3 py-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-medium truncate">
+                              {it.name}
+                              {tag && <span className={cn('ml-2 text-[10px] font-normal', it.source === 'none' ? 'text-red-400' : 'text-text-mute')}>{tag}</span>}
+                            </p>
+                            <p className="num text-[11px] text-text-dim">
+                              {it.per100 ? `${Math.round(it.per100.kcal)} kcal/100 g · ` : ''}P {Math.round(m.protein)}g · C {Math.round(m.carbs)}g · F {Math.round(m.fats)}g
+                            </p>
+                          </div>
+                          <span className="num text-accent font-semibold text-sm" data-testid="line-kcal">{m.calories}</span>
+                          <button
+                            onClick={() => setAiReview(r => (r && r.length > 1 ? r.filter((_, j) => j !== i) : null))}
+                            className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-text-dim"
+                            aria-label={`Remove ${it.name}`}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        {it.source === 'none' ? (
+                          <label className="flex items-center gap-2 text-[11px] text-text-dim">
+                            Not in the database — kcal for this portion:
+                            <input
+                              type="number" inputMode="numeric" min={0}
+                              aria-label={`Calories for ${it.name}`}
+                              className="w-20 h-8 rounded-lg bg-white/[0.04] px-2 text-white num"
+                              onBlur={e => {
+                                const kcal = Math.round(Number(e.target.value));
+                                if (kcal > 0) updateLine(i, { ...servingLine({ name: it.name, calories: kcal, protein: 0, carbs: 0, fats: 0 }, it.confidence), grams: null, name: it.grams ? `${it.name} (${it.grams} g)` : it.name });
+                              }}
+                            />
+                          </label>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => stepLine(i, -1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={`Less ${it.name}`}>−</button>
+                            {it.grams != null ? (
+                              <label className="flex items-center gap-1 text-[11px] text-text-dim">
+                                <input
+                                  type="number" inputMode="numeric" min={1} max={2000}
+                                  value={it.grams}
+                                  aria-label={`Grams of ${it.name}`}
+                                  onChange={e => updateLine(i, { grams: clampGrams(e.target.value) || 1 })}
+                                  className="w-16 h-8 rounded-lg bg-white/[0.04] px-2 text-white num text-center"
+                                />
+                                g
+                              </label>
+                            ) : (
+                              <span className="num text-[11px] text-text-dim w-16 text-center">×{it.servings} serving</span>
+                            )}
+                            <button onClick={() => stepLine(i, 1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={`More ${it.name}`}>+</button>
+                          </div>
+                        )}
+                      </li>
+                      );
+                    })}
+                  </ul>
+
+                  <div className="flex gap-2">
+                    <input
+                      value={addText}
+                      onChange={e => setAddText(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') addReviewItem(); }}
+                      placeholder="Add item, e.g. egg 50g"
+                      aria-label="Add an item"
+                      className="flex-1 glass rounded-xl px-3 h-10 text-white text-sm placeholder:text-text-dim/50 focus:outline-none"
+                    />
+                    <button onClick={addReviewItem} disabled={addBusy || addText.trim().length < 2} className="btn-ghost h-10 px-3 disabled:opacity-50" aria-label="Add item">
+                      {addBusy ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                    </button>
+                  </div>
+
+                  {needsOilChoice(aiReview) && (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] text-text-dim">Cooking oil {oilG > 0 ? <span className="num">· +{oilG} g, {oilMacros(oilLevel, oilBase).calories} kcal</span> : null}</p>
+                      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Cooking oil">
+                        {(['none', 'light', 'heavy'] as OilLevel[]).map(o => (
+                          <button
+                            key={o}
+                            role="radio"
+                            aria-checked={oilLevel === o}
+                            onClick={() => setOilLevel(o)}
+                            className={cn('h-9 rounded-xl text-xs font-semibold capitalize border',
+                              oilLevel === o ? 'bg-accent/15 border-accent/50 text-accent' : 'bg-white/[0.03] border-white/[0.06] text-text-dim')}
+                          >
+                            {o}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="num text-[11px] text-text-dim text-right" data-testid="meal-totals">
+                    P {Math.round(totals.protein)}g · C {Math.round(totals.carbs)}g · F {Math.round(totals.fats)}g
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => { setAiReview(null); setOilLevel('none'); }} disabled={isAnalyzing} className="btn-ghost h-12 disabled:opacity-50">
+                      Edit text
+                    </button>
+                    <button onClick={confirmAiReview} disabled={isAnalyzing || totals.calories <= 0} className="btn-3d h-12 disabled:opacity-50">
+                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : `Log ${totals.calories} kcal`}
+                    </button>
+                  </div>
+                </div>
+                );
+              })() : (
               <>
               <textarea
                 value={aiInput}
@@ -1305,7 +1495,7 @@ export const Track: React.FC = () => {
               </>
               )}
               <p className="text-center text-xs text-text-mute">
-                Powered by Gemini — estimates macros from text or photo
+                Gemini names the foods and portions; calories come from nutrition data
               </p>
             </motion.div>
           </div>

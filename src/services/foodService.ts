@@ -193,6 +193,12 @@ export const resolveLocalFood = async (phrase: string): Promise<FoodProduct | nu
   return f ? toProduct(f) : null;
 };
 
+/** The loaded bundled index (the meal pipeline reads per-100 g values from foods whose serving states grams). */
+export const getFoodIndex = async (): Promise<FoodIndex> => {
+  await ensureFoodIndex();
+  return foodIndex;
+};
+
 /** How many foods search can currently see (for diagnostics and the proof). */
 export const localFoodCount = (): number => foodIndex.size;
 
@@ -277,7 +283,8 @@ const dedupeUsda = (foods: any[]): FoodProduct[] => {
   return Array.from(seen.values());
 };
 
-const searchUsda = async (query: string): Promise<FoodProduct[]> => {
+// FoodData Central search results report nutrients per 100 g.
+export const searchUsda = async (query: string): Promise<FoodProduct[]> => {
   try {
     const res = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=20&api_key=${USDA_API_KEY}`);
     const data = await res.json();

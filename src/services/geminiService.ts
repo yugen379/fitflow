@@ -905,15 +905,70 @@ Return ONLY valid JSON, same shape: {"headline":string,"subtitle":string,"nudges
 // ---------------------------------------------------------------------------
 export type { QuickAddResult, QuickAddItem } from "./quickAddUtils";
 
+// ---------------------------------------------------------------------------
+// Meal decomposition — the model returns ingredients + grams + confidence ONLY.
+// Calories are computed in src/lib/mealMath.ts from per-100 g lookups.
+// Keep in step with decomposePrompt in functions/src/index.ts.
+// Returns null when the AI did not answer (or the server predates the action),
+// so the caller can use its older per-serving paths.
+// ---------------------------------------------------------------------------
+const DECOMPOSE_PROMPT = (source: string, hint: string) =>
+  `You split a meal into ingredients so a nutrition app can calculate the calories itself.
+${source}${hint ? `\nThe user adds this hint about what is in it: "${hint}"` : ''}
+List every distinct food actually eaten as a plain generic ingredient name (e.g. "white rice", "coconut rice", "fried chicken", "sambal", "fried anchovies", "peanuts", "cucumber", "boiled egg", "yellow noodles", "curry gravy", "teh tarik").
+For each, estimate the edible weight in grams of the portion described or shown (cooked weight for cooked food, ml for drinks). If no amount is given, use one typical serving.
+Do NOT list cooking oil as an item; report how each item was cooked in "method" instead.
+Do NOT give calorie totals and do NOT add anything up.
+"confidence" (0 to 1) is how sure you are the item is there AND the weight is right.
+"per_100g" is the generic reference nutrition per 100 g of that food; the app uses it only if its own database lacks the food.
+Set "obscured" to true if important ingredients are hidden or unclear (covered in sauce, wrapped, blurry, vague description).
+Return ONLY valid JSON, no markdown:
+{"items":[{"ingredient_name":string,"estimated_grams":number,"confidence":number,"method":"raw"|"boiled"|"grilled"|"fried"|"stir_fried"|"saucy","per_100g":{"kcal":number,"protein":number,"carbs":number,"fat":number}}],"obscured":boolean}
+If there is no food, return {"items":[],"obscured":true}.`;
+
+export const DECOMPOSE_TEXT_BUDGET_MS = 9_000;
+
+export const decomposeMeal = async (
+  input: { text?: string; base64Image?: string; mimeType?: string; hint?: string },
+): Promise<{ items: any[]; obscured: boolean } | null> => {
+  const hint = (input.hint || '').slice(0, 60).replace(/["\\\r\n]/g, ' ').trim();
+  const call = async () => {
+    if (useProxy) {
+      try {
+        const r = await callProxy('decomposeMeal', { ...input, hint });
+        return r && r.ok !== false && Array.isArray(r.items) ? { items: r.items, obscured: r.obscured === true } : null;
+      } catch { return null; }
+    }
+    if (!ai) return null;
+    const contents = input.base64Image
+      ? { parts: [
+          { inlineData: { data: input.base64Image, mimeType: input.mimeType || 'image/jpeg' } },
+          { text: DECOMPOSE_PROMPT('The meal is in the photo. Judge portion size from the plate or bowl.', hint) },
+        ] }
+      : DECOMPOSE_PROMPT(`Meal description: "${(input.text || '').slice(0, 500).replace(/"/g, "'")}"`, hint);
+    const out = await direct(contents, null);
+    if (!out) return null;
+    const items = Array.isArray(out.items) ? out.items : Array.isArray(out) ? out : null;
+    return items ? { items, obscured: out.obscured === true } : null;
+  };
+  // Typed meals get a budget so logging never stalls; photos wait for the proxy's own limit.
+  if (input.base64Image) return call();
+  return Promise.race([
+    call(),
+    new Promise<null>((r) => setTimeout(() => r(null), DECOMPOSE_TEXT_BUDGET_MS)),
+  ]);
+};
+
 export const QUICKADD_AI_BUDGET_MS = 8_000;
 
-export const parseQuickAdd = async (text: string): Promise<QuickAddResult> =>
+export const parseQuickAdd = async (text: string, { ai: aiAllowed = true }: { ai?: boolean } = {}): Promise<QuickAddResult> =>
   // Same phrase → same parse. Cache only successful parses (items found) so an
   // empty result is never pinned and the user can retry into a real answer.
-  memoize(`quickadd:${text.trim().toLowerCase()}`, DAY_MS, () =>
-    parseQuickAddUncached(text), (r) => r.items.length > 0);
+  // ai:false = offline resolver only (the meal pipeline already waited on the AI).
+  memoize(`quickadd${aiAllowed ? '' : ':offline'}:${text.trim().toLowerCase()}`, DAY_MS, () =>
+    parseQuickAddUncached(text, aiAllowed), (r) => r.items.length > 0);
 
-const parseQuickAddUncached = async (text: string): Promise<QuickAddResult> => {
+const parseQuickAddUncached = async (text: string, aiAllowed = true): Promise<QuickAddResult> => {
   const phrases = splitPhrases(text);
   if (phrases.length === 0) return buildResult([], undefined);
 
@@ -942,7 +997,7 @@ If you cannot parse any food, return [].`;
   // A slow model cascade made one boiled egg take ~25 s on a real phone. The
   // AI gets QUICKADD_AI_BUDGET_MS; past that the deterministic resolver below
   // (bundled foods -> USDA) answers instead, so logging never stalls.
-  const aiItems = await Promise.race([
+  const aiItems = !aiAllowed ? null : await Promise.race([
     tryAi(),
     new Promise<null>((r) => setTimeout(() => r(null), QUICKADD_AI_BUDGET_MS)),
   ]);

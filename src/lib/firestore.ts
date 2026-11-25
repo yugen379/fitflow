@@ -17,6 +17,7 @@
  */
 
 import {
+  connectFirestoreEmulator,
   getFirestore,
   initializeFirestore,
   memoryLocalCache,
@@ -77,6 +78,15 @@ const createDb = (): Firestore => {
 };
 
 export const db = createDb();
+
+// Emulator runs only (build-time constant: a normal build drops this branch).
+// It must happen HERE, synchronously, before anything can query: wired from
+// devEmulators' async chain it lost the race on a cold load straight into a
+// route that queries at once (/community), and that page then talked to the
+// PRODUCTION database with an emulator token and was refused.
+if (import.meta.env.VITE_USE_EMULATORS === 'true') {
+  try { connectFirestoreEmulator(db, '127.0.0.1', 8080); } catch { /* already connected (HMR) */ }
+}
 
 /**
  * Tear down an `onSnapshot` listener without ever throwing.

@@ -663,7 +663,25 @@ const PROXY_ACTIONS = new Set([
   "estimateCalories", "analyzeMealImage", "analyzeNutritionLabel", "analyzeFormFrame",
   "generateWorkoutPlan", "generateMealPlan", "getRecipe", "swapMeal", "dailyChallenge",
   "getAICoachInsight", "askCoach", "generateWeeklyRecap", "quickAdd", "coachBriefing",
+  "decomposeMeal",
 ]);
+
+// The model only names the ingredients and estimates grams. The app looks up
+// per-100 g values and does every calorie sum itself (src/lib/mealMath.ts).
+// Keep in step with DECOMPOSE_PROMPT in src/services/geminiService.ts.
+const decomposePrompt = (source: string, hint: string): string =>
+  `You split a meal into ingredients so a nutrition app can calculate the calories itself.
+${source}${hint ? `\nThe user adds this hint about what is in it: "${hint}"` : ""}
+List every distinct food actually eaten as a plain generic ingredient name (e.g. "white rice", "coconut rice", "fried chicken", "sambal", "fried anchovies", "peanuts", "cucumber", "boiled egg", "yellow noodles", "curry gravy", "teh tarik").
+For each, estimate the edible weight in grams of the portion described or shown (cooked weight for cooked food, ml for drinks). If no amount is given, use one typical serving.
+Do NOT list cooking oil as an item; report how each item was cooked in "method" instead.
+Do NOT give calorie totals and do NOT add anything up.
+"confidence" (0 to 1) is how sure you are the item is there AND the weight is right.
+"per_100g" is the generic reference nutrition per 100 g of that food; the app uses it only if its own database lacks the food.
+Set "obscured" to true if important ingredients are hidden or unclear (covered in sauce, wrapped, blurry, vague description).
+Return ONLY valid JSON, no markdown:
+{"items":[{"ingredient_name":string,"estimated_grams":number,"confidence":number,"method":"raw"|"boiled"|"grilled"|"fried"|"stir_fried"|"saucy","per_100g":{"kcal":number,"protein":number,"carbs":number,"fat":number}}],"obscured":boolean}
+If there is no food, return {"items":[],"obscured":true}.`;
 const MAX_IMAGE_CHARS = 10_000_000; // about 7.5 MB of image
 
 export const geminiProxy = functions.https.onRequest(
@@ -947,6 +965,25 @@ If you cannot parse any food, return [].`,
         );
         const out = fastText ? safeJsonParse(fastText, []) : [];
         res.json(Array.isArray(out) ? out.slice(0, 20) : []);
+        return;
+      }
+
+      case "decomposeMeal": {
+        const hint = clip(payload.hint, 60).replace(/["\\\r\n]/g, " ").trim();
+        const hasImage = typeof payload.base64Image === "string" && payload.base64Image.length > 0;
+        const text = hasImage
+          // Photos keep the accurate cascade: portion size is the whole game.
+          ? await cascadeOnce(ai, vision(payload.base64Image, payload.mimeType,
+            decomposePrompt("The meal is in the photo. Judge portion size from the plate or bowl.", hint)), deadline)
+          : await cascadeOnce(ai,
+            decomposePrompt(`Meal description: "${clip(payload.text, 500).replace(/"/g, "'")}"`, hint),
+            deadline,
+            { models: FAST_MODELS, callTimeoutMs: FAST_CALL_TIMEOUT_MS },
+          );
+        const out = text ? safeJsonParse(text, null) : null;
+        const items = Array.isArray(out?.items) ? out.items.slice(0, 15) : Array.isArray(out) ? out.slice(0, 15) : [];
+        // ok:false = the model never answered; the app falls back to its older paths.
+        res.json({ ok: !!out, items, obscured: out?.obscured === true });
         return;
       }
 

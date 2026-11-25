@@ -18,10 +18,11 @@ import { initTelemetry, identify } from './lib/telemetry';
 import { warmLikelyRoutes } from './lib/prefetch';
 import { LiquidSkeleton, ParticleField, SpatialPageTransition } from './components/layout/SpatialPageTransition';
 import { DockTabs, type DockTab } from './components/layout/DockTabs';
-import { LevelUpWatcher } from './components/LevelUpWatcher';
 // The bottom nav is the only other eager consumer of the animation library and
 // it never renders on the signed-out first paint, so it loads a beat later
 // rather than holding up the hero.
+// Lazy: its card animates with `motion`, which must stay off the boot path (proof:perf).
+const LevelUpWatcher = lazy(() => import('./components/LevelUpWatcher').then(m => ({ default: m.LevelUpWatcher })));
 const FloatingDock = lazy(() => import('./components/layout/FloatingDock').then(m => ({ default: m.FloatingDock })));
 
 initTelemetry();
@@ -231,7 +232,7 @@ const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) 
       {/* The five dock tabs stay alive between visits (see DockTabs); every
           other page mounts fresh through the transition as before. */}
       <DockTabs tabs={DOCK_TABS} pathname={pathname} />
-      {!isProfileIncomplete && <LevelUpWatcher />}
+      {!isProfileIncomplete && <Suspense fallback={null}><LevelUpWatcher /></Suspense>}
       {!DOCK_PATHS.has(pathname) && <SpatialPageTransition>{children}</SpatialPageTransition>}
       {!isProfileIncomplete && pathname !== '/onboarding' && (
         <Suspense fallback={null}>

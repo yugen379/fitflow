@@ -117,6 +117,10 @@ await page.addLocatorHandler(page.locator('[role="dialog"][aria-label^="Level"]'
 const pageErrors = [];
 const denied = [];
 page.on('pageerror', (e) => pageErrors.push(e.message));
+// A run must never talk to the PRODUCTION backend: an emulator token there is
+// refused, which looks exactly like a rules bug.
+const prodCalls = [];
+page.on('request', (r) => { const u = r.url(); if (/^https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com/.test(u)) prodCalls.push(`${page.url()} -> ${u.slice(0, 90)}`); });
 page.on('console', (m) => {
   const t = m.text();
   if (m.type() === 'error' && /permission|insufficient/i.test(t)) denied.push(t.slice(0, 700));
@@ -219,6 +223,80 @@ const wrongEggs = await mealNamed('Eggs (2 large')();
 check('"3 eggs" is logged as three eggs (234 kcal), not the listed two', !!three && three.calories === 234 && !wrongEggs,
   three ? `${three.name}: ${three.calories}` : wrongEggs ? `logged ${wrongEggs.name}: ${wrongEggs.calories}` : 'no meal written');
 
+// ── Meal pipeline: AI names ingredients + grams, the app does the math ────────
+// The proxy's decomposeMeal answer is fixed here (the model is not under test);
+// what is tested is that every number on screen and in Firestore is the app's
+// own (grams / 100) * per-100 g, the oil choice, gram edits and the hint retry.
+section('Track: itemised meal (grams x per-100 g, oil, hint)');
+{
+  const seen = [];
+  await page.route('**/geminiProxy', async (route) => {
+    let body = {};
+    try { body = route.request().postDataJSON() || {}; } catch { /* not JSON */ }
+    if (body.action !== 'decomposeMeal') return route.fallback();
+    const p = body.payload || {};
+    seen.push({ text: p.text, hint: p.hint || '' });
+    const reply = /mystery stew/.test(p.text || '')
+      ? (p.hint
+        ? { ok: true, obscured: false, items: [{ ingredient_name: 'beef rendang', estimated_grams: 150, confidence: 0.8, method: 'saucy', calories: 9999 }] }
+        : { ok: true, obscured: true, items: [] })
+      : { ok: true, obscured: false, items: [
+          // calories: 9999 is ignored on purpose: the app must never use a model total.
+          { ingredient_name: 'white rice', estimated_grams: 200, confidence: 0.9, method: 'boiled', calories: 9999 },
+          { ingredient_name: 'mixed vegetables', estimated_grams: 150, confidence: 0.9, method: 'stir_fried' },
+        ] };
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(reply) });
+  });
+
+  const open = async (text) => {
+    await dismissLevelUp();
+    await page.locator('button[aria-label="Add meal"]').click();
+    const box = page.locator('textarea[placeholder^="e.g. a bowl"]');
+    await box.waitFor({ timeout: 10000 });
+    await box.fill(text);
+    await page.locator('button.btn-3d', { hasText: 'Analyse' }).click();
+  };
+  const logBtn = page.locator('button.btn-3d', { hasText: /^Log \d+ kcal$/ });
+  const logLabel = async () => (await logBtn.innerText().catch(() => '')).trim();
+
+  await open('rice and stir fried veg');
+  await logBtn.waitFor({ timeout: 30000 }).catch(() => {});
+  const kcals = await page.locator('[data-testid="line-kcal"]').allInnerTexts().catch(() => []);
+  check('rows are grams x per-100 g: rice 200 g = 260, veg 150 g = 98', kcals.join(',') === '260,98', kcals.join(','));
+  const oilLight = page.locator('[role="radio"][aria-checked="true"]', { hasText: 'light' });
+  check('stir-fried food pre-selects light cooking oil', (await oilLight.count()) === 1);
+  check('total = 260 + 98 + 4 g oil (35) = 393, not the model\'s 9999', (await logLabel()) === 'Log 393 kcal', await logLabel());
+  await page.locator('button[aria-label="More white rice"]').click();
+  check('+ on rice: 225 g -> 293 kcal, total 426', (await logLabel()) === 'Log 426 kcal', await logLabel());
+  await page.locator('[role="radio"]', { hasText: 'none' }).click();
+  check('oil "none" removes exactly 35 kcal', (await logLabel()) === 'Log 391 kcal', await logLabel());
+  const early = await mealNamed('white rice')();
+  check('nothing is written before Log', !early);
+  await logBtn.click();
+  const riceRow = await until(mealNamed('white rice (225 g)'));
+  const vegRow = await until(mealNamed('mixed vegetables (150 g)'));
+  const oilRow = await mealNamed('Cooking oil')();
+  check('Firestore gets the app\'s numbers: rice 293, veg 98, no oil row',
+    riceRow?.calories === 293 && vegRow?.calories === 98 && !oilRow,
+    `${riceRow?.calories} / ${vegRow?.calories} / oil ${oilRow ? oilRow.calories : 'none'}`);
+
+  // Low confidence: the model says it can't see what is in it -> ask once.
+  await open('mystery stew');
+  const hintBox = page.locator('input[aria-label="What is in the meal"]');
+  await hintBox.waitFor({ timeout: 30000 }).catch(() => {});
+  check('an obscured meal asks for a short hint', (await hintBox.count()) === 1);
+  await hintBox.fill('beef rendang');
+  await page.locator('button.btn-3d', { hasText: 'Check again' }).click();
+  await logBtn.waitFor({ timeout: 30000 }).catch(() => {});
+  check('the hint is sent and decomposition re-runs', seen.some((s) => s.hint === 'beef rendang'), JSON.stringify(seen.slice(-2)));
+  check('rendang 150 g = 300 kcal; it already has its fat, so no oil choice',
+    (await logLabel()) === 'Log 300 kcal' && (await page.locator('[role="radiogroup"][aria-label="Cooking oil"]').count()) === 0, await logLabel());
+  await logBtn.click();
+  const rendang = await until(mealNamed('beef rendang (150 g)'));
+  check('logged as beef rendang (150 g), 300 kcal', rendang?.calories === 300, rendang ? `${rendang.name}: ${rendang.calories}` : 'none');
+  await page.unroute('**/geminiProxy');
+}
+
 // ── Edit / delete a logged meal (v1.6.10) ───────────────────────────────────
 section('Track: delete a logged meal');
 {
@@ -308,6 +386,7 @@ if (!myPost) {
   // write from a page that never rendered or a button that was never reached.
   const seen = (await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 400);
   console.log(`    ${C.d}on screen: ${seen}${C.x}`);
+  console.log(`    ${C.d}production calls: ${prodCalls.length} ${prodCalls.slice(0, 3).join(' | ')}${C.x}`);
   console.log(`    ${C.d}url: ${page.url()}  refused: ${denied.slice(0, 2).join(' | ') || 'none'}  page errors: ${pageErrors.slice(0, 2).join(' | ') || 'none'}${C.x}`);
   if (process.env.FLOWS_SHOT_DIR) await page.screenshot({ path: `${process.env.FLOWS_SHOT_DIR}/flows-community-fail.png` }).catch(() => {});
 }
@@ -392,6 +471,7 @@ section('Nothing was refused or thrown along the way');
 // In the control run the refused edit is the point, so it is reported, not hidden.
 check('no write was refused by the rules', denied.length === 0, denied[0] || '');
 check('no page error was thrown', pageErrors.length === 0, pageErrors[0]?.slice(0, 120) || '');
+check('the run never reached the production backend', prodCalls.length === 0, `${prodCalls.length}: ${prodCalls[0] || ''}`);
 
 await browser.close();
 console.log(`\n${C.b}Result: ${fail === 0 ? C.g : C.r}${pass}/${pass + fail}${C.x}${C.b} checks passed${C.x}`);
