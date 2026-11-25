@@ -13,7 +13,7 @@
 import { decomposeMeal, parseQuickAdd, analyzeMealImage } from './geminiService';
 import { getFoodIndex, searchUsda, type FoodProduct } from './foodService';
 import {
-  sanitizeDecomposition, lookupOffline, makeLine, servingLine, sanePer100,
+  sanitizeDecomposition, lookupOffline, makeLine, servingLine, sanePer100, isVagueMeal,
   type ReviewLine, type Found, type DecomposedItem,
 } from '../lib/mealMath';
 
@@ -62,7 +62,12 @@ export const analyzeMealText = async (text: string, hint?: string): Promise<Meal
   // A quick null is an older server (unknown action) or a network blip; a slow
   // one means the AI was already tried and failed.
   const timedOut = () => Date.now() - t0 > 2_500;
-  if (raw && raw.items.length) return resolveAll(raw);
+  // A description that names no food ("a plate of leftovers") always asks for
+  // a hint first, whatever the model guessed.
+  if (raw && raw.items.length) {
+    const a = await resolveAll(raw);
+    return hint === undefined && isVagueMeal(text) ? { ...a, obscured: true } : a;
+  }
   if (raw && raw.obscured && hint === undefined) return { lines: [], obscured: true, decomposed: true };
   // Older path: per-serving items from the quick-add parser. When the server
   // answered (just found nothing) or timed out, its AI is not asked again —

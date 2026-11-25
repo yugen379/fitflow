@@ -360,6 +360,26 @@ export const needsHint = (lines: ReviewLine[], obscured: boolean, hintUsed: bool
   return lines.some((l) => l.confidence < LOW_ITEM_CONFIDENCE && (l.grams ?? 0) >= 50);
 };
 
+/**
+ * Words that describe a meal without naming any food. A description made only
+ * of these ("a plate of leftovers", "my usual lunch") gives the model nothing to
+ * itemise, and on the phone it invented a confident nasi lemak plate instead of
+ * flagging it, so the app decides this itself rather than trusting the model.
+ */
+const VAGUE_WORDS = new Set((
+  'a an the of some my our this that same usual usually again just ate eat had have having '
+  + 'i we me plate plates bowl bowls box boxes pack packet portion portions serving servings '
+  + 'leftover leftovers food foods meal meals stuff thing things something anything whatever '
+  + 'breakfast brunch lunch dinner supper snack snacks tea dessert '
+  + 'little bit lot lots few small big large medium full half whole '
+  + 'home homemade cooked made random mixed misc yesterday today last night earlier '
+  + 'takeaway takeout delivery restaurant stall canteen cafeteria office party buffet and with from at for').split(' '));
+
+export const isVagueMeal = (text: string): boolean => {
+  const words = text.toLowerCase().replace(/[^\p{L}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+  return words.length > 0 && words.every((w) => VAGUE_WORDS.has(w));
+};
+
 /** Trim a hint to at most 6 words / 60 chars; empty -> null. */
 export const cleanHint = (v: unknown): string | null => {
   if (typeof v !== 'string') return null;
