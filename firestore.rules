@@ -82,9 +82,11 @@ service cloud.firestore {
 
     function isValidSleepLog(data) {
       return data.keys().hasAll(['userId', 'hours', 'timestamp']) &&
+             data.keys().hasOnly(['userId', 'hours', 'quality', 'timestamp', 'source', 'minutes', 'deepMin', 'remMin']) &&
              data.userId == request.auth.uid &&
-             data.hours is number && data.hours >= 0 &&
-             data.timestamp is timestamp;
+             data.hours is number && data.hours >= 0 && data.hours <= 24 &&
+             data.timestamp is timestamp &&
+             (!('source' in data) || data.source == 'health-connect');
     }
 
     function isValidWellnessLog(data) {
@@ -199,9 +201,13 @@ service cloud.firestore {
 
     function isValidWeightRecord(data) {
       return data.keys().hasAll(['userId', 'weight', 'timestamp']) &&
+             data.keys().hasOnly(['userId', 'weight', 'timestamp', 'source']) &&
              data.userId == request.auth.uid &&
-             data.weight is number && data.weight > 0 &&
-             data.timestamp is timestamp;
+             data.weight is number && data.weight > 0 && data.weight <= 500 &&
+             data.timestamp is timestamp &&
+             // Scale imports carry the measurement time; nothing from the future.
+             data.timestamp <= request.time + duration.value(5, 'm') &&
+             (!('source' in data) || data.source == 'health-connect');
     }
 
     // The name on a post or comment must be the author's own profile name, so

@@ -53,6 +53,7 @@
     "proof:mealmath": "tsx scripts/meal-math-proof.mjs",
     "proof:ingredients": "tsx scripts/ingredients-usda-proof.mjs",
     "proof:adaptive": "tsx scripts/adaptive-proof.mjs",
+    "proof:health": "tsx scripts/health-import-proof.mjs",
     "proof:mealpipeline": "tsx scripts/meal-pipeline-live.mjs"
   },
   "dependencies": {

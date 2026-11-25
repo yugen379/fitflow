@@ -13,7 +13,7 @@
 
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const stripDrive = (p) => p.replace(/^\/([A-Za-z]:)/, '$1');
 const ROOT = stripDrive(new URL('../', import.meta.url).pathname);
@@ -141,6 +141,19 @@ await attack('a barcode label over 900 kcal per 100 g is refused',
   setDoc(doc(alice, 'food_catalog', 'barcode-9555123456790'), food({ name: 'Biscuit', calories: 1880, protein: 7, carbs: 65, fats: 18 })));
 await works('a sensible barcode label is accepted',
   setDoc(doc(alice, 'food_catalog', 'barcode-9555123456791'), food({ name: 'Oat biscuit', calories: 450, protein: 7, carbs: 65, fats: 18 })));
+// Weight history: scale imports are allowed (past time, source tag); junk is not.
+const past = Timestamp.fromDate(new Date(Date.now() - 3 * 86400000));
+const future = Timestamp.fromDate(new Date(Date.now() + 3 * 86400000));
+await works('a weigh-in typed now is accepted', setDoc(doc(alice, 'weight_history', 'w_now'), { userId: ALICE, weight: 72.5, timestamp: serverTimestamp() }));
+await works('a scale weigh-in from Health Connect (past time) is accepted', setDoc(doc(alice, 'weight_history', 'w_hc'), { userId: ALICE, weight: 72.1, timestamp: past, source: 'health-connect' }));
+await attack('a weigh-in dated in the future is refused', setDoc(doc(alice, 'weight_history', 'w_future'), { userId: ALICE, weight: 72, timestamp: future }));
+await attack('a 9,000 kg weigh-in is refused', setDoc(doc(alice, 'weight_history', 'w_huge'), { userId: ALICE, weight: 9000, timestamp: serverTimestamp() }));
+await attack('a weigh-in with extra fields is refused', setDoc(doc(alice, 'weight_history', 'w_extra'), { userId: ALICE, weight: 72, timestamp: serverTimestamp(), note: 'x' }));
+await attack("a weigh-in for someone else is refused", setDoc(doc(alice, 'weight_history', 'w_bob'), { userId: BOB, weight: 72, timestamp: serverTimestamp() }));
+await works('a typed sleep log is accepted', setDoc(doc(alice, 'sleep_logs', 's_typed'), { userId: ALICE, hours: 7, quality: 4, timestamp: serverTimestamp() }));
+await works('a watch night from Health Connect is accepted', setDoc(doc(alice, 'sleep_logs', 's_hc'), { userId: ALICE, hours: 7.5, quality: 5, timestamp: serverTimestamp(), source: 'health-connect', minutes: 450, deepMin: 90, remMin: 180 }));
+await attack('a 30-hour night is refused', setDoc(doc(alice, 'sleep_logs', 's_30'), { userId: ALICE, hours: 30, timestamp: serverTimestamp() }));
+await attack('a sleep log with unknown fields is refused', setDoc(doc(alice, 'sleep_logs', 's_x'), { userId: ALICE, hours: 7, timestamp: serverTimestamp(), bonusXp: 999 }));
 await works('foods still cannot be deleted', assertFails(deleteDoc(doc(alice, 'food_catalog', 'banana'))));
 
 await testEnv.cleanup();

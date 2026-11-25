@@ -172,7 +172,12 @@ export const Home: React.FC = () => {
       const caloriesBurned = workouts.reduce((acc, w) => acc + (w.caloriesBurned || 0), 0);
       const workoutMinutes = workouts.reduce((acc, w) => acc + (w.duration || 0), 0);
       const currentWater = waterLogs.reduce((acc, w) => acc + w.amount, 0);
-      const currentSleep = sleepLogs.reduce((acc, s) => acc + s.hours, 0);
+      // A watch's night (Health Connect) is the measured figure; adding a
+      // typed estimate on top of it would count the same night twice.
+      const fromWatch = sleepLogs.filter((s) => s.source === 'health-connect');
+      const currentSleep = fromWatch.length
+        ? Math.max(...fromWatch.map((s) => Number(s.hours) || 0))
+        : sleepLogs.reduce((acc, s) => acc + (Number(s.hours) || 0), 0);
       
       setWater(currentWater);
       setSleep(currentSleep);

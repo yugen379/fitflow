@@ -54,20 +54,24 @@ export const HONEST_LIMITS =
 type PedometerModule = typeof import('@capgo/capacitor-pedometer');
 type Plugin = PedometerModule['CapacitorPedometer'];
 
-let cached: Plugin | null = null;
+// Held in a plain wrapper: a Capacitor plugin is a Proxy that answers to
+// `then`, so returning it from an async function makes the caller's await
+// wait on a native "then" call that never answers (this is what kept Health
+// Connect from ever connecting). Never return the plugin itself from async code.
+let cached: { p: Plugin } | null = null;
 let loadFailed = false;
 
 /**
  * Dynamic import, matching the pattern in `healthService.ts`: the native plugin
  * must never be pulled into the web bundle, where it cannot work anyway.
  */
-const getPlugin = async (): Promise<Plugin | null> => {
+const getPluginBox = async (): Promise<{ p: Plugin } | null> => {
   if (cached) return cached;
   if (loadFailed) return null;
   if (!Capacitor.isNativePlatform()) return null;
   try {
     const mod = await import('@capgo/capacitor-pedometer');
-    cached = mod.CapacitorPedometer;
+    cached = { p: mod.CapacitorPedometer };
     return cached;
   } catch {
     // Plugin not present in this build (e.g. an older APK) — fall through to
@@ -79,7 +83,7 @@ const getPlugin = async (): Promise<Plugin | null> => {
 
 /** True when this build can talk to a hardware step counter at all. */
 export const isNativePedometerAvailable = async (): Promise<boolean> => {
-  const plugin = await getPlugin();
+  const plugin = (await getPluginBox())?.p ?? null;
   if (!plugin) return false;
   try {
     const result = await plugin.isAvailable();
@@ -96,7 +100,7 @@ export const isNativePedometerAvailable = async (): Promise<boolean> => {
  * granted, because no runtime permission existed yet.
  */
 export const checkActivityPermission = async (): Promise<ActivityPermission> => {
-  const plugin = await getPlugin();
+  const plugin = (await getPluginBox())?.p ?? null;
   if (!plugin) return 'denied';
   try {
     const status = await plugin.checkPermissions();
@@ -112,7 +116,7 @@ export const checkActivityPermission = async (): Promise<ActivityPermission> => 
  * silent no-op would look like a broken button.
  */
 export const requestActivityPermission = async (): Promise<ActivityPermission> => {
-  const plugin = await getPlugin();
+  const plugin = (await getPluginBox())?.p ?? null;
   if (!plugin) return 'denied';
   try {
     const status = await plugin.requestPermissions();
@@ -135,7 +139,7 @@ interface Session {
 export const startNativeStepUpdates = async (
   onStep: (event: NativeStepEvent) => void,
 ): Promise<Session | null> => {
-  const plugin = await getPlugin();
+  const plugin = (await getPluginBox())?.p ?? null;
   if (!plugin) return null;
   if ((await checkActivityPermission()) !== 'granted') return null;
   if (!(await isNativePedometerAvailable())) return null;

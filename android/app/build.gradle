@@ -74,6 +74,10 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    // Sleep (health/SleepPlugin.java). Same connect-client version that
+    // capacitor-health-connect ships, so there is one copy at runtime.
+    implementation "androidx.health.connect:connect-client:1.1.0-alpha02"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
 }
 
 apply from: 'capacitor.build.gradle'
