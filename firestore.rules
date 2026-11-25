@@ -632,6 +632,61 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Squads — private groups of 2-10 friends (functions/src/squads.ts).
+    //
+    // Membership is SERVER-OWNED: create / join-by-code / leave / remove /
+    // rename all go through callable functions, so clients never write a squad
+    // doc. That is what stops a client adding itself to a squad, raising the
+    // member cap, or taking ownership — and it keeps invite codes out of any
+    // readable index (squad_codes has no client rule, so the default deny
+    // applies), so they cannot be enumerated.
+    //
+    // The squad doc carries only what members may see of each other: a display
+    // name and photo, copied by the function. Never email, weight or meals —
+    // /users stays owner-only and squads grant no path into it.
+    function isSquadMember(squadId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/squads/$(squadId)) &&
+             request.auth.uid in get(/databases/$(database)/documents/squads/$(squadId)).data.memberIds;
+    }
+
+    // A member's numbers for one squad week. weekKey is the Monday (YYYY-MM-DD)
+    // in the squad's time zone. Bounds mirror WEEK_LIMITS in src/lib/squadUtils.ts.
+    // The week must be the current one, give or take a time zone: from a day
+    // before that Monday (UTC) to eight days after — so nobody pre-fills next
+    // month or rewrites last month.
+    function isValidSquadWeek(data) {
+      return data.keys().hasAll(['uid', 'weekKey', 'steps', 'activeDays', 'workouts', 'updatedAt']) &&
+             data.keys().hasOnly(['uid', 'weekKey', 'steps', 'activeDays', 'workouts', 'updatedAt']) &&
+             data.uid == request.auth.uid &&
+             data.weekKey is string && data.weekKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+             data.steps is int && data.steps >= 0 && data.steps <= 700000 &&
+             data.activeDays is int && data.activeDays >= 0 && data.activeDays <= 7 &&
+             data.workouts is int && data.workouts >= 0 && data.workouts <= 50 &&
+             data.updatedAt == request.time &&
+             isCurrentSquadWeek(timestamp.date(int(data.weekKey[0:4]), int(data.weekKey[5:7]), int(data.weekKey[8:10])));
+    }
+    function isCurrentSquadWeek(monday) {
+      return monday.dayOfWeek() == 1 &&
+             request.time > monday - duration.value(1, 'd') &&
+             request.time < monday + duration.value(8, 'd');
+    }
+
+    match /squads/{squadId} {
+      allow get, list: if isSignedIn() && request.auth.uid in resource.data.memberIds;
+      allow create, update, delete: if false;
+
+      // id `<weekKey>_<uid>`: only that member writes it; every member reads it.
+      match /weekly/{docId} {
+        allow get, list: if isSquadMember(squadId);
+        allow create, update: if isSquadMember(squadId) &&
+                              docId == incoming().weekKey + '_' + request.auth.uid &&
+                              isValidSquadWeek(incoming());
+        // Leaving cleans these up server-side; a member cannot erase a week.
+        allow delete: if false;
+      }
+    }
+
     // Weekly AI Recaps — id format: <uid>_<weekId>, client reads, only server writes
     match /weekly_recaps/{docId} {
       allow read: if isSignedIn() && docId.matches('^' + request.auth.uid + '_.*$');

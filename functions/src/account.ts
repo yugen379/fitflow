@@ -19,6 +19,7 @@ import { ACCOUNT_DELETION } from "./capacity";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { DocumentReference, FieldPath } from "firebase-admin/firestore";
 import { db } from "./db";
+import { removeUserFromAllSquads } from "./squads";
 
 /** Top-level collections whose documents carry the owner in `userId`. */
 export const USER_COLLECTIONS = [
@@ -97,6 +98,10 @@ export const deleteUserData = async (uid: string): Promise<void> => {
     .where(FieldPath.documentId(), "<=", `${uid}_`) // upper bound is "<uid>_" + U+F8FF: every id starting "<uid>_"
     .get();
   if (!recaps.empty) await deleteRefs(recaps.docs.map((d) => d.ref));
+
+  // Squads: leave each one (ownership passes on; a squad left empty is deleted,
+  // and the user's weekly numbers go with them).
+  await removeUserFromAllSquads(uid);
 
   // The user doc and every subcollection (progression, blocks, following,
   // followers, xp_awards, xp_days). The public mirror is removed explicitly

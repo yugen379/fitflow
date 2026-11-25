@@ -20,6 +20,8 @@
     "test:rules": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-stepdays-test.mjs\"",
     "test:rules:privacy": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-privacy-test.mjs\"",
     "test:rules:security": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-security-test.mjs\"",
+    "test:rules:squads": "firebase emulators:exec --only firestore --project fitflow-rules-test \"node scripts/rules-squads-test.mjs\"",
+    "proof:squads": "tsx scripts/squad-proof.mjs",
     "proof:telemetry": "node scripts/telemetry-proof.mjs",
     "check:legal": "node scripts/check-legal.mjs",
     "proof:mission": "tsx scripts/mission-proof.mjs",
