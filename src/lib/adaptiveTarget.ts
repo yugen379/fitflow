@@ -17,6 +17,8 @@
  * raw weigh-ins. The same trend is what the chart shows.
  */
 
+import { t } from '../i18n/i18n';
+
 export interface WeighIn { date: string; kg: number }     // date = local YYYY-MM-DD
 export interface DayIntake { date: string; kcal: number }  // total logged that day
 export interface TrendPoint { date: string; kg: number | null; trend: number }
@@ -165,15 +167,19 @@ export const adaptiveTarget = (input: {
 
   if (days.length < MIN_LOGGED_DAYS || weighs.length < MIN_WEIGH_INS || spanDays < MIN_SPAN_DAYS) {
     const needs: string[] = [];
-    if (days.length < MIN_LOGGED_DAYS) needs.push(`${MIN_LOGGED_DAYS - days.length} more fully logged day${MIN_LOGGED_DAYS - days.length === 1 ? '' : 's'}`);
-    if (weighs.length < MIN_WEIGH_INS) needs.push(`${MIN_WEIGH_INS - weighs.length} more weigh-in${MIN_WEIGH_INS - weighs.length === 1 ? '' : 's'}`);
-    else if (spanDays < MIN_SPAN_DAYS) needs.push(`weigh-ins spread over ${MIN_SPAN_DAYS} days (now ${spanDays})`);
+    const moreDays = MIN_LOGGED_DAYS - days.length;
+    const moreWeighs = MIN_WEIGH_INS - weighs.length;
+    if (days.length < MIN_LOGGED_DAYS) needs.push(moreDays === 1 ? t('1 more fully logged day') : t('{n} more fully logged days', { n: moreDays }));
+    if (weighs.length < MIN_WEIGH_INS) needs.push(moreWeighs === 1 ? t('1 more weigh-in') : t('{n} more weigh-ins', { n: moreWeighs }));
+    else if (spanDays < MIN_SPAN_DAYS) needs.push(t('weigh-ins spread over {days} days (now {now})', { days: MIN_SPAN_DAYS, now: spanDays }));
     return {
       status: 'need_data',
       loggedDays: days.length,
       weighIns: weighs.length,
       spanDays,
-      message: `Your smart target needs ${needs.join(' and ')}.`,
+      message: needs.length > 1
+        ? t('Your smart target needs {first} and {second}.', { first: needs[0], second: needs[1] })
+        : t('Your smart target needs {first}.', { first: needs[0] }),
     };
   }
 
@@ -241,8 +247,20 @@ export const adaptiveMessage = (
   const change = fmt.weightChange ?? ((kg: number) => `${Math.abs(kg).toFixed(1)} kg`);
   const energy = fmt.energy ?? ((kcal: number) => `${Math.round(kcal)} kcal`);
   const bare = fmt.energyNumber ?? ((kcal: number) => String(kcal));
-  const dir = r.kgPerWeek < -0.05 ? `losing ${change(r.kgPerWeek)} a week` : r.kgPerWeek > 0.05 ? `gaining ${change(r.kgPerWeek)} a week` : 'holding steady';
-  return Math.abs(r.change) < 50
-    ? `You're ${dir} on about ${energy(r.avgIntake)}. Your target is right; keep it.`
-    : `You're ${dir} on about ${energy(r.avgIntake)}, so your real burn is about ${bare(r.burn)}. ${r.change < 0 ? 'Lower' : 'Raise'} your target to ${bare(r.target)}.`;
+  // Whole sentences (not glued pieces) so each language can order its words.
+  const dir = r.kgPerWeek < -0.05 ? 'losing' : r.kgPerWeek > 0.05 ? 'gaining' : 'steady';
+  const v = { weight: change(r.kgPerWeek), intake: energy(r.avgIntake), burn: bare(r.burn), target: bare(r.target) };
+  if (Math.abs(r.change) < 50) {
+    if (dir === 'losing') return t("You're losing {weight} a week on about {intake}. Your target is right; keep it.", v);
+    if (dir === 'gaining') return t("You're gaining {weight} a week on about {intake}. Your target is right; keep it.", v);
+    return t("You're holding steady on about {intake}. Your target is right; keep it.", v);
+  }
+  if (r.change < 0) {
+    if (dir === 'losing') return t("You're losing {weight} a week on about {intake}, so your real burn is about {burn}. Lower your target to {target}.", v);
+    if (dir === 'gaining') return t("You're gaining {weight} a week on about {intake}, so your real burn is about {burn}. Lower your target to {target}.", v);
+    return t("You're holding steady on about {intake}, so your real burn is about {burn}. Lower your target to {target}.", v);
+  }
+  if (dir === 'losing') return t("You're losing {weight} a week on about {intake}, so your real burn is about {burn}. Raise your target to {target}.", v);
+  if (dir === 'gaining') return t("You're gaining {weight} a week on about {intake}, so your real burn is about {burn}. Raise your target to {target}.", v);
+  return t("You're holding steady on about {intake}, so your real burn is about {burn}. Raise your target to {target}.", v);
 };

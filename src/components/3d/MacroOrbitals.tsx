@@ -19,6 +19,7 @@ import { Color, Mesh } from 'three';
 import { cn } from '../../lib/utils';
 import { useCanvasKey, useTabVisible } from '../layout/DockTabs';
 import { prefersReducedMotion } from '../../lib/motion';
+import { t } from '../../i18n/i18n';
 
 export interface MacroDatum {
   id: 'protein' | 'carbs' | 'fat';
@@ -258,7 +259,7 @@ export const MacroOrbitals: React.FC<{ macros: MacroDatum[]; className?: string 
       </div>
 
       <p className="sr-only">
-        {macros.map((m) => `${m.label}: ${Math.round(m.grams)} of ${Math.round(m.targetG)} grams`).join('. ')}
+        {macros.map((m) => t('{macro}: {grams} of {target} grams', { macro: m.label, grams: Math.round(m.grams), target: Math.round(m.targetG) })).join('. ')}
       </p>
     </div>
   );

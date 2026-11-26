@@ -12,8 +12,9 @@ import { cn } from '../lib/utils';
 import { useUnits } from '../hooks/useUnits';
 import { UnitInput } from '../components/UnitInput';
 import { SmartTargetCard } from '../components/SmartTargetCard';
+import { msg, t, tDyn } from '../i18n/i18n';
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS = [msg('Sun'), msg('Mon'), msg('Tue'), msg('Wed'), msg('Thu'), msg('Fri'), msg('Sat')];
 
 const numOr = (v: string, fallback = 0) => {
   const n = parseInt(v, 10);
@@ -58,7 +59,8 @@ export const NutritionGoals: React.FC = () => {
   const [workoutCarbs, setWorkoutCarbs] = useState(initialDt.workout?.carbsG ?? defGrams.carbsG + 75);
   const [restCals, setRestCals] = useState(initialDt.rest?.calories ?? baseCals - 200);
   const [restCarbs, setRestCarbs] = useState(initialDt.rest?.carbsG ?? Math.max(0, defGrams.carbsG - 60));
-  const [schedule, setSchedule] = useState<Record<string, 'workout' | 'rest'>>(initialDt.schedule ?? {});
+  const initialSchedule: Record<string, 'workout' | 'rest'> = initialDt.schedule ?? {};
+  const [schedule, setSchedule] = useState(initialSchedule);
 
   const pctSum = proteinPct + carbsPct + fatsPct;
   const pctValid = pctSum === 100;
@@ -104,7 +106,7 @@ export const NutritionGoals: React.FC = () => {
   const save = async () => {
     if (!profile?.uid) return;
     if (mode === 'percent' && !pctValid) {
-      showToast('Macro percentages must add up to 100%.', 'error');
+      showToast(t('Macro percentages must add up to 100%.'), 'error');
       return;
     }
     const keep = typeof chosenCals === 'number' && chosenCals > 0 ? { calorieTarget: chosenCals } : {};
@@ -122,10 +124,10 @@ export const NutritionGoals: React.FC = () => {
     setSaving(true);
     try {
       await updateDoc(doc(db, 'users', profile.uid), { macroTargets, dayTargets });
-      showToast('Nutrition targets saved', 'success');
+      showToast(t('Nutrition targets saved'), 'success');
       navigate(-1);
     } catch {
-      showToast('Could not save targets. Try again.', 'error');
+      showToast(t('Could not save targets. Try again.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -143,12 +145,12 @@ export const NutritionGoals: React.FC = () => {
   return (
     <div className="pb-28 pt-4 px-4 min-h-screen space-y-5">
       <header className="flex items-center gap-3 pt-2">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}>
           <ChevronLeft size={18} />
         </button>
         <div>
-          <p className="text-eyebrow text-accent">Nutrition</p>
-          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">Macro targets</h1>
+          <p className="text-eyebrow text-accent">{t('Nutrition')}</p>
+          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{t('Macro targets')}</h1>
         </div>
       </header>
 
@@ -157,11 +159,11 @@ export const NutritionGoals: React.FC = () => {
       {/* Live preview */}
       <div className="glass p-4">
         <div className="flex items-baseline justify-between mb-3">
-          <p className="text-eyebrow text-text-dim">Your daily target</p>
+          <p className="text-eyebrow text-text-dim">{t('Your daily target')}</p>
           <p className="num text-accent font-display text-xl font-bold">{units.formatEnergy(previewGrams.calories)}</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {([['Protein', bounded.protein], ['Carbs', bounded.carbs], ['Fats', bounded.fats]] as const).map(([label, g]) => (
+          {([[t('Protein'), bounded.protein], [t('Carbs'), bounded.carbs], [t('Fats'), bounded.fats]] as const).map(([label, g]) => (
             <div key={label} className="bg-white/[0.03] rounded-xl p-3 text-center border border-white/[0.05]">
               <p className="num text-white font-display text-lg font-bold">{g}g</p>
               <p className="text-[10px] text-text-dim uppercase tracking-wider mt-0.5">{label}</p>
@@ -170,34 +172,35 @@ export const NutritionGoals: React.FC = () => {
         </div>
         {adjusted && (
           <p className="text-xs text-text-dim mt-3 leading-relaxed">
-            Adjusted for safety: fat stays at least 20% of calories and protein at most
-            {profile?.weight ? ` ${units.perBodyWeightValue(2.5)} g per ${units.perBodyWeightUnit} of body weight` : ' 50% of calories'}. The difference moves to carbs.
+            {profile?.weight
+              ? t('Adjusted for safety: fat stays at least 20% of calories and protein at most {n} g per {unit} of body weight. The difference moves to carbs.', { n: units.perBodyWeightValue(2.5), unit: units.perBodyWeightUnit })
+              : t('Adjusted for safety: fat stays at least 20% of calories and protein at most 50% of calories. The difference moves to carbs.')}
           </p>
         )}
       </div>
 
       {/* Macro split */}
       <div className="space-y-2">
-        <h3 className="text-eyebrow text-text-dim px-1">Macro split</h3>
+        <h3 className="text-eyebrow text-text-dim px-1">{t('Macro split')}</h3>
         <div className="glass p-4 space-y-4">
           <div className="flex bg-surface rounded-xl p-1 border border-white/[0.06]">
             <button
               onClick={() => setMode('percent')}
               className={cn('flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all', mode === 'percent' ? 'bg-accent text-bg' : 'text-text-dim')}
             >
-              By percentage
+              {t('By percentage')}
             </button>
             <button
               onClick={() => { if (isPro) setMode('grams'); else navigate('/pro'); }}
               className={cn('flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5', mode === 'grams' ? 'bg-accent text-bg' : 'text-text-dim')}
             >
-              {!isPro && <Lock size={11} />} Exact grams
+              {!isPro && <Lock size={11} />} {t('Exact grams')}
             </button>
           </div>
 
           {mode === 'percent' ? (
             <>
-              {([['Protein', proteinPct, setProteinPct], ['Carbs', carbsPct, setCarbsPct], ['Fats', fatsPct, setFatsPct]] as const).map(([label, val, set]) => (
+              {([[t('Protein'), proteinPct, setProteinPct], [t('Carbs'), carbsPct, setCarbsPct], [t('Fats'), fatsPct, setFatsPct]] as const).map(([label, val, set]) => (
                 <div key={label} className="flex items-center gap-3">
                   <span className="text-sm text-white w-16">{label}</span>
                   <input
@@ -209,16 +212,16 @@ export const NutritionGoals: React.FC = () => {
                 </div>
               ))}
               <p className={cn('text-xs text-center', pctValid ? 'text-text-dim' : 'text-accent-2')}>
-                {pctValid ? 'Adds up to 100% ✓' : `Currently ${pctSum}% — must total 100%`}
+                {pctValid ? t('Adds up to 100% ✓') : t('Currently {pct}% — must total 100%', { pct: pctSum })}
               </p>
             </>
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-sm text-white">Lock exact grams</p>
+                <p className="text-sm text-white">{t('Lock exact grams')}</p>
                 <span className="flex items-center gap-1 text-eyebrow text-accent"><Crown size={12} /> Pro</span>
               </div>
-              {([['Protein', proteinG, setProteinG], ['Carbs', carbsG, setCarbsG], ['Fats', fatsG, setFatsG]] as const).map(([label, val, set]) => (
+              {([[t('Protein'), proteinG, setProteinG], [t('Carbs'), carbsG, setCarbsG], [t('Fats'), fatsG, setFatsG]] as const).map(([label, val, set]) => (
                 <div key={label} className="flex items-center gap-3">
                   <span className="text-sm text-white w-16">{label}</span>
                   <input
@@ -237,7 +240,7 @@ export const NutritionGoals: React.FC = () => {
       {/* Goal-by-day scheduling */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-eyebrow text-text-dim">Goal-by-day scheduling</h3>
+          <h3 className="text-eyebrow text-text-dim">{t('Goal-by-day scheduling')}</h3>
           {!isPro && <ProLock label="Pro" />}
         </div>
         <div className="glass p-4 space-y-4">
@@ -250,8 +253,8 @@ export const NutritionGoals: React.FC = () => {
                 <CalendarDays size={16} />
               </div>
               <div>
-                <p className="text-sm text-white font-medium">Carb-cycle by day type</p>
-                <p className="text-xs text-text-dim">Higher carbs on training days, lower on rest days</p>
+                <p className="text-sm text-white font-medium">{t('Carb-cycle by day type')}</p>
+                <p className="text-xs text-text-dim">{t('Higher carbs on training days, lower on rest days')}</p>
               </div>
             </div>
             <div className={cn('w-11 h-6 rounded-full p-0.5 transition-colors shrink-0', dayEnabled ? 'bg-accent' : 'bg-white/[0.1]')}>
@@ -263,28 +266,28 @@ export const NutritionGoals: React.FC = () => {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05] space-y-2">
-                  <p className="text-xs font-semibold text-accent">Workout day</p>
-                  <label className="block text-[11px] text-text-dim">Calories ({units.energyUnit})
+                  <p className="text-xs font-semibold text-accent">{t('Workout day')}</p>
+                  <label className="block text-[11px] text-text-dim">{t('Calories ({unit})', { unit: units.energyUnit })}
                     {/* Typed in kcal or kJ; stored in kcal (whole), converted once. */}
                     <UnitInput value={workoutCals} unit={units.energyUnit} inputMode="numeric"
                       toDisplay={units.energyInputValue} fromDisplay={units.energyToKcal}
                       onValue={k => setWorkoutCals(Math.round(k))}
                       className="w-full mt-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-white num" />
                   </label>
-                  <label className="block text-[11px] text-text-dim">Carbs (g)
+                  <label className="block text-[11px] text-text-dim">{t('Carbs (g)')}
                     <input type="number" inputMode="numeric" value={workoutCarbs} onChange={e => setWorkoutCarbs(numOr(e.target.value))}
                       className="w-full mt-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-white num" />
                   </label>
                 </div>
                 <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05] space-y-2">
-                  <p className="text-xs font-semibold text-text-dim">Rest day</p>
-                  <label className="block text-[11px] text-text-dim">Calories ({units.energyUnit})
+                  <p className="text-xs font-semibold text-text-dim">{t('Rest day')}</p>
+                  <label className="block text-[11px] text-text-dim">{t('Calories ({unit})', { unit: units.energyUnit })}
                     <UnitInput value={restCals} unit={units.energyUnit} inputMode="numeric"
                       toDisplay={units.energyInputValue} fromDisplay={units.energyToKcal}
                       onValue={k => setRestCals(Math.round(k))}
                       className="w-full mt-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-white num" />
                   </label>
-                  <label className="block text-[11px] text-text-dim">Carbs (g)
+                  <label className="block text-[11px] text-text-dim">{t('Carbs (g)')}
                     <input type="number" inputMode="numeric" value={restCarbs} onChange={e => setRestCarbs(numOr(e.target.value))}
                       className="w-full mt-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-white num" />
                   </label>
@@ -292,24 +295,24 @@ export const NutritionGoals: React.FC = () => {
               </div>
 
               <div>
-                <p className="text-[11px] text-text-dim mb-2">Tap a day to cycle: base → workout → rest</p>
+                <p className="text-[11px] text-text-dim mb-2">{t('Tap a day to cycle: base → workout → rest')}</p>
                 <div className="grid grid-cols-7 gap-1.5">
                   {WEEKDAYS.map((d, i) => {
-                    const t = schedule[String(i)];
+                    const kind = schedule[String(i)];
                     return (
                       <button
                         key={d}
                         onClick={() => cycleDay(i)}
                         className={cn(
                           'py-2 rounded-lg text-[11px] font-semibold border transition-all',
-                          t === 'workout' ? 'bg-accent text-bg border-accent'
-                            : t === 'rest' ? 'bg-white/[0.06] text-text-dim border-white/[0.1]'
+                          kind === 'workout' ? 'bg-accent text-bg border-accent'
+                            : kind === 'rest' ? 'bg-white/[0.06] text-text-dim border-white/[0.1]'
                               : 'bg-transparent text-text-mute border-white/[0.05]',
                         )}
                       >
-                        {d[0]}
+                        {tDyn(d).charAt(0)}
                         <span className="block text-[8px] font-normal mt-0.5">
-                          {t === 'workout' ? 'GYM' : t === 'rest' ? 'REST' : '—'}
+                          {kind === 'workout' ? t('GYM') : kind === 'rest' ? t('REST') : '—'}
                         </span>
                       </button>
                     );
@@ -322,7 +325,7 @@ export const NutritionGoals: React.FC = () => {
       </div>
 
       <button onClick={save} disabled={saving} className="btn-3d w-full h-13 disabled:opacity-60">
-        <Check size={16} /> {saving ? 'Saving…' : 'Save targets'}
+        <Check size={16} /> {saving ? t('Saving…') : t('Save targets')}
       </button>
     </div>
   );
