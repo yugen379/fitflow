@@ -554,7 +554,7 @@ export const Profile: React.FC = () => {
                   onChange={(e) => setNewWeight(e.target.value)}
                 />
                 {!!newWeight.trim() && newWeightKg == null && (
-                  <p className="text-xs text-accent-2 ml-1" role="alert">Try 75.5 kg, 165 lb or 11 st 6</p>
+                  <p className="text-xs text-accent-2 ml-1" role="alert">{t('Try 75.5 kg, 165 lb or 11 st 6')}</p>
                 )}
               </Field>
               <Field label={t('Body fat % (optional)')}>

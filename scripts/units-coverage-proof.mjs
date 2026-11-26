@@ -109,10 +109,10 @@ const ALLOWLIST = [
   { file: 'src/pages/Settings.tsx', match: /label: 'kcal'/, why: 'Settings energy toggle: this option IS the kcal unit' },
   { file: 'src/pages/Settings.tsx', match: /'Kilojoules \(1 kcal = 4\.184 kJ\)'/, why: 'Settings energy caption: states the kcal-to-kJ factor itself' },
   // Onboarding / Profile (units core): unit pickers and parse hints name units on purpose.
-  { file: 'src/pages/Onboarding.tsx', match: /^const weightHint = 'Try 72\.5 kg, 160 lb or 11 st 6';$/, why: 'parse hint: lists the formats the weight field accepts, in every unit' },
+  { file: 'src/pages/Onboarding.tsx', match: /^const weightHint = t\('Try 72\.5 kg, 160 lb or 11 st 6'\);$/, why: 'parse hint: lists the formats the weight field accepts, in every unit' },
   { file: 'src/pages/Onboarding.tsx', match: /^options=\{\[\{ id: 'kg', label: 'kg' \}, \{ id: 'lb', label: 'lb' \}, \{ id: 'st', label: 'st \+ lb' \}\]\}$/, why: 'weight unit picker: the options ARE the units' },
   { file: 'src/pages/Onboarding.tsx', match: /^options=\{\[\{ id: 'metric', label: 'cm' \}, \{ id: 'imperial', label: 'ft \+ in' \}\]\}$/, why: 'height unit picker: the options ARE the units' },
-  { file: 'src/pages/Profile.tsx', match: /role="alert">Try 75\.5 kg, 165 lb or 11 st 6</, why: 'parse hint: lists the formats the weight field accepts, in every unit' },
+  { file: 'src/pages/Profile.tsx', match: /role="alert">\{t\('Try 75\.5 kg, 165 lb or 11 st 6'\)\}</, why: 'parse hint: lists the formats the weight field accepts, in every unit' },
   // Stored text: storage stays metric, so a note written to Firestore stays metric.
   { file: 'src/pages/Lab.tsx', match: /^notes: `Biomechanics Lab · \$\{Math\.round\(volumeKg\)\} kg total volume`,$/, why: 'stored workout note (Firestore, never rendered): storage stays metric' },
   // GPS: the km/mi quick switch's own button labels.

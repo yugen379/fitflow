@@ -71,7 +71,7 @@ export const Onboarding: React.FC = () => {
   const setWeightUnit = (w: WeightUnit) => switchUnits({ ...unitPrefs, weight: w });
   const setSystem = (s: UnitSystem) => switchUnits({ ...unitPrefs, system: s });
   const weightPlaceholder = unitPrefs.weight === 'st' ? '11 st 6' : unitPrefs.weight === 'lb' ? '160' : '72';
-  const weightHint = 'Try 72.5 kg, 160 lb or 11 st 6';
+  const weightHint = t('Try 72.5 kg, 160 lb or 11 st 6');
 
   const [camPerm, setCamPerm] = useState<PermState>('idle');
   const [micPerm, setMicPerm] = useState<PermState>('idle');
