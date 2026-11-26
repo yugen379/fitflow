@@ -12,18 +12,20 @@ import { callAwardXp } from '../services/xpService';
 import { reportSwallowed } from '../lib/telemetry';
 import { useUnits, bindUnits } from '../hooks/useUnits';
 import { legacyWeightUnitFor, type UnitPrefs, type WeightUnit, type UnitSystem } from '../lib/units';
+import { msg, t, tDyn } from '../i18n/i18n';
 
 type Goal = 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic_performance';
 
 const GOAL_OPTIONS: { id: Goal; title: string; sub: string; emoji: string }[] = [
-  { id: 'fat_loss', title: 'Lose fat', sub: 'Lean down sustainably', emoji: '🔥' },
-  { id: 'muscle_gain', title: 'Build muscle', sub: 'Add strength and size', emoji: '💪' },
-  { id: 'maintenance', title: 'Stay healthy', sub: 'Maintain and feel great', emoji: '🌱' },
-  { id: 'athletic_performance', title: 'Train for performance', sub: 'Hit peaks in your sport', emoji: '🏃' },
+  { id: 'fat_loss', title: msg('Lose fat'), sub: msg('Lean down sustainably'), emoji: '🔥' },
+  { id: 'muscle_gain', title: msg('Build muscle'), sub: msg('Add strength and size'), emoji: '💪' },
+  { id: 'maintenance', title: msg('Stay healthy'), sub: msg('Maintain and feel great'), emoji: '🌱' },
+  { id: 'athletic_performance', title: msg('Train for performance'), sub: msg('Hit peaks in your sport'), emoji: '🏃' },
 ];
 
-const HEALTH_OPTIONS = ['Asthma', 'Diabetes', 'Heart condition', 'Injuries', 'None'];
-const DIET_OPTIONS = ['Vegan', 'Vegetarian', 'Keto', 'Paleo', 'Gluten free', 'High protein', 'None'];
+// Stored (and sent to the AI) in English; only the chip label is translated.
+const HEALTH_OPTIONS = [msg('Asthma'), msg('Diabetes'), msg('Heart condition'), msg('Injuries'), msg('None')];
+const DIET_OPTIONS = [msg('Vegan'), msg('Vegetarian'), msg('Keto'), msg('Paleo'), msg('Gluten free'), msg('High protein'), msg('None')];
 
 const TOTAL_STEPS = 8;
 
@@ -85,7 +87,7 @@ export const Onboarding: React.FC = () => {
     setCamPerm('requesting');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-      stream.getTracks().forEach(t => t.stop());
+      stream.getTracks().forEach(track => track.stop());
       setCamPerm('granted');
     } catch {
       setCamPerm('denied');
@@ -95,7 +97,7 @@ export const Onboarding: React.FC = () => {
     setMicPerm('requesting');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
+      stream.getTracks().forEach(track => track.stop());
       setMicPerm('granted');
     } catch {
       setMicPerm('denied');
@@ -119,7 +121,7 @@ export const Onboarding: React.FC = () => {
   const handleUpdate = async () => {
     if (!user) return;
     if (!formData.age || weightKg == null || heightCm == null) {
-      showToast('Please fill age, weight, and height to continue', 'error');
+      showToast(t('Please fill age, weight, and height to continue'), 'error');
       return;
     }
     setLoading(true);
@@ -184,20 +186,20 @@ export const Onboarding: React.FC = () => {
       try {
         await addDoc(collection(db, 'notifications'), {
           userId: user.uid,
-          title: 'Welcome to FitFlow',
-          body: 'You earned 100 XP and the Pioneer badge. Time to train.',
+          title: t('Welcome to FitFlow'),
+          body: t('You earned 100 XP and the Pioneer badge. Time to train.'),
           timestamp: serverTimestamp(),
         });
       } catch (e) { console.warn('Welcome notif skipped:', e); }
 
-      showToast('Profile saved');
+      showToast(t('Profile saved'));
       navigate('/', { replace: true });
     } catch (error: any) {
       console.error('Onboarding save failed:', error);
-      const msg = error?.code === 'permission-denied'
-        ? "Couldn't save (permissions). Update Firestore rules and try again."
-        : 'Could not save profile. Check your connection and try again.';
-      showToast(msg, 'error');
+      const message = error?.code === 'permission-denied'
+        ? t("Couldn't save (permissions). Update Firestore rules and try again.")
+        : t('Could not save profile. Check your connection and try again.');
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -242,14 +244,14 @@ export const Onboarding: React.FC = () => {
       <div className="flex-1 relative z-10">
         <AnimatePresence mode="wait">
           {step === 1 && (
-            <Step key="1" icon={<Calendar size={20} />} eyebrow="About you" title="How old are you?" subtitle="So we can set the right intensity and calorie targets.">
-              <NumberInput suffix="years" value={formData.age} onChange={v => setFormData({ ...formData, age: v })} placeholder="28" />
+            <Step key="1" icon={<Calendar size={20} />} eyebrow={t('About you')} title={t('How old are you?')} subtitle={t('So we can set the right intensity and calorie targets.')}>
+              <NumberInput suffix={t('years')} value={formData.age} onChange={v => setFormData({ ...formData, age: v })} placeholder="28" />
             </Step>
           )}
           {step === 2 && (
-            <Step key="2" icon={<Weight size={20} />} eyebrow="Body" title="Your current weight" subtitle="We'll track this over time to keep your plan adaptive.">
+            <Step key="2" icon={<Weight size={20} />} eyebrow={t('Body')} title={t('Your current weight')} subtitle={t("We'll track this over time to keep your plan adaptive.")}>
               <UnitToggle<WeightUnit>
-                ariaLabel="Weight unit"
+                ariaLabel={t('Weight unit')}
                 options={[{ id: 'kg', label: 'kg' }, { id: 'lb', label: 'lb' }, { id: 'st', label: 'st + lb' }]}
                 value={unitPrefs.weight}
                 onChange={setWeightUnit}
@@ -266,9 +268,9 @@ export const Onboarding: React.FC = () => {
             </Step>
           )}
           {step === 3 && (
-            <Step key="3" icon={<Ruler size={20} />} eyebrow="Body" title="And your height?" subtitle="Used for BMR and macro calculations.">
+            <Step key="3" icon={<Ruler size={20} />} eyebrow={t('Body')} title={t('And your height?')} subtitle={t('Used for BMR and macro calculations.')}>
               <UnitToggle<UnitSystem>
-                ariaLabel="Height unit"
+                ariaLabel={t('Height unit')}
                 options={[{ id: 'metric', label: 'cm' }, { id: 'imperial', label: 'ft + in' }]}
                 value={unitPrefs.system}
                 onChange={setSystem}
@@ -280,12 +282,12 @@ export const Onboarding: React.FC = () => {
                 onChange={v => setFormData({ ...formData, height: v })}
                 placeholder={unitPrefs.system === 'imperial' ? `5'10"` : '178'}
                 invalid={!!formData.height.trim() && heightCm == null}
-                hint={unitPrefs.system === 'imperial' ? `Try 5'10" or 5 10` : 'Try 178 or 1.78 m'}
+                hint={unitPrefs.system === 'imperial' ? t('Try 5\'10" or 5 10') : t('Try 178 or 1.78 m')}
               />
             </Step>
           )}
           {step === 4 && (
-            <Step key="4" icon={<Target size={20} />} eyebrow="Goal" title="What are you training for?" subtitle="Pick one. You can change this anytime.">
+            <Step key="4" icon={<Target size={20} />} eyebrow={t('Goal')} title={t('What are you training for?')} subtitle={t('Pick one. You can change this anytime.')}>
               <div className="grid grid-cols-1 gap-3 mt-2">
                 {GOAL_OPTIONS.map(g => {
                   const active = formData.goal === g.id;
@@ -301,8 +303,8 @@ export const Onboarding: React.FC = () => {
                     >
                       <span className="text-2xl">{g.emoji}</span>
                       <div className="flex-1">
-                        <div className={`font-semibold ${active ? 'text-accent' : 'text-white'}`}>{g.title}</div>
-                        <div className="text-xs text-text-dim mt-0.5">{g.sub}</div>
+                        <div className={`font-semibold ${active ? 'text-accent' : 'text-white'}`}>{tDyn(g.title)}</div>
+                        <div className="text-xs text-text-dim mt-0.5">{tDyn(g.sub)}</div>
                       </div>
                       {active && <span className="w-2 h-2 bg-accent rounded-full shadow-[0_0_10px_var(--accent)]" />}
                     </button>
@@ -312,17 +314,17 @@ export const Onboarding: React.FC = () => {
             </Step>
           )}
           {step === 5 && (
-            <Step key="5" icon={<HeartPulse size={20} />} eyebrow="Safety" title="Any health conditions?" subtitle="We'll adjust intensity and avoid contraindicated movements.">
+            <Step key="5" icon={<HeartPulse size={20} />} eyebrow={t('Safety')} title={t('Any health conditions?')} subtitle={t("We'll adjust intensity and avoid contraindicated movements.")}>
               <ChipGrid options={HEALTH_OPTIONS} values={formData.healthConditions} onToggle={v => toggle('healthConditions', v)} />
             </Step>
           )}
           {step === 6 && (
-            <Step key="6" icon={<Salad size={20} />} eyebrow="Nutrition" title="Any dietary preferences?" subtitle="Your meal plans will respect these.">
+            <Step key="6" icon={<Salad size={20} />} eyebrow={t('Nutrition')} title={t('Any dietary preferences?')} subtitle={t('Your meal plans will respect these.')}>
               <ChipGrid options={DIET_OPTIONS} values={formData.dietaryPreferences} onToggle={v => toggle('dietaryPreferences', v)} />
             </Step>
           )}
           {step === 7 && (
-            <Step key="7" icon={<Target size={20} />} eyebrow="Target" title="Your goal weight" subtitle="Optional — we'll plot your trajectory and adjust calories as you progress.">
+            <Step key="7" icon={<Target size={20} />} eyebrow={t('Target')} title={t('Your goal weight')} subtitle={t("Optional — we'll plot your trajectory and adjust calories as you progress.")}>
               <NumberInput
                 suffix={units.weightUnitLabel}
                 text={unitPrefs.weight === 'st'}
@@ -335,9 +337,9 @@ export const Onboarding: React.FC = () => {
             </Step>
           )}
           {step === 8 && (
-            <Step key="8" icon={<Sparkles size={20} />} eyebrow="One tap" title="Unlock the full FitFlow" subtitle={withMic
-              ? 'Allow camera, mic, and notifications in one go. Your browser will pop a prompt for each — tap Allow.'
-              : 'Allow camera and notifications in one go. Android will pop a prompt for each — tap Allow.'}>
+            <Step key="8" icon={<Sparkles size={20} />} eyebrow={t('One tap')} title={t('Unlock the full FitFlow')} subtitle={withMic
+              ? t('Allow camera, mic, and notifications in one go. Your browser will pop a prompt for each — tap Allow.')
+              : t('Allow camera and notifications in one go. Android will pop a prompt for each — tap Allow.')}>
               <div className="space-y-3 mt-2">
                 <button
                   onClick={allowEverything}
@@ -345,32 +347,32 @@ export const Onboarding: React.FC = () => {
                   className="btn-3d w-full h-14 disabled:opacity-70"
                 >
                   {allRunning ? (
-                    <><Loader2 className="animate-spin" size={16} /> Requesting…</>
+                    <><Loader2 className="animate-spin" size={16} /> {t('Requesting…')}</>
                   ) : (
-                    <><Sparkles size={16} /> Allow everything</>
+                    <><Sparkles size={16} /> {t('Allow everything')}</>
                   )}
                 </button>
 
                 <PermRow
                   icon={<Camera size={18} />}
-                  title="Camera"
-                  desc="Barcode scanner, meal photo log, AI form check"
+                  title={t('Camera')}
+                  desc={t('Barcode scanner, meal photo log, AI form check')}
                   state={camPerm}
                   onRequest={requestCamera}
                 />
                 {withMic && (
                   <PermRow
                     icon={<Mic size={18} />}
-                    title="Microphone"
-                    desc="Voice questions to the AI Coach, hands-free logging"
+                    title={t('Microphone')}
+                    desc={t('Voice questions to the AI Coach, hands-free logging')}
                     state={micPerm}
                     onRequest={requestMic}
                   />
                 )}
                 <PermRow
                   icon={<Bell size={18} />}
-                  title="Notifications"
-                  desc="Smart workout reminders, hydration nudges, weekly recap"
+                  title={t('Notifications')}
+                  desc={t('Smart workout reminders, hydration nudges, weekly recap')}
                   state={notifPerm}
                   onRequest={requestNotif}
                 />
@@ -379,19 +381,19 @@ export const Onboarding: React.FC = () => {
                     <ImageIcon size={18} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-white font-medium text-sm">Photos</p>
-                    <p className="text-xs text-text-dim mt-0.5">No prompt needed — the upload picker only sees the photo you choose, never your full library.</p>
+                    <p className="text-white font-medium text-sm">{t('Photos')}</p>
+                    <p className="text-xs text-text-dim mt-0.5">{t('No prompt needed — the upload picker only sees the photo you choose, never your full library.')}</p>
                   </div>
                   <Check size={16} className="text-accent mt-1" />
                 </div>
                 {(camPerm === 'denied' || (withMic && micPerm === 'denied') || notifPerm === 'denied') && (
                   <p className="text-xs text-accent-3 leading-snug px-1">
                     {withMic
-                      ? 'Denied one by accident? Tap the site lock icon in the address bar, set the permission to Allow, then reload.'
-                      : 'Denied one by accident? Open system Settings → Apps → FitFlow to allow it, or continue — you can enable it later in Settings.'}
+                      ? t('Denied one by accident? Tap the site lock icon in the address bar, set the permission to Allow, then reload.')
+                      : t('Denied one by accident? Open system Settings → Apps → FitFlow to allow it, or continue — you can enable it later in Settings.')}
                   </p>
                 )}
-                <p className="text-xs text-text-mute text-center pt-1">All optional — you can skip and start training right away.</p>
+                <p className="text-xs text-text-mute text-center pt-1">{t('All optional — you can skip and start training right away.')}</p>
               </div>
             </Step>
           )}
@@ -404,7 +406,7 @@ export const Onboarding: React.FC = () => {
             onClick={() => setStep(s => s - 1)}
             className="btn-ghost h-14 px-6"
           >
-            Back
+            {t('Back')}
           </button>
         )}
         <button
@@ -412,7 +414,7 @@ export const Onboarding: React.FC = () => {
           disabled={loading || !canContinue}
           className="btn-3d h-14 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span>{step < TOTAL_STEPS ? 'Continue' : loading ? 'Setting up...' : 'Start training'}</span>
+          <span>{step < TOTAL_STEPS ? t('Continue') : loading ? t('Setting up...') : t('Start training')}</span>
           {step < TOTAL_STEPS && <ChevronRight size={18} strokeWidth={2.5} />}
         </button>
       </div>
@@ -521,10 +523,10 @@ const PermRow: React.FC<{
         <p className="text-xs text-text-dim mt-0.5 leading-snug">{desc}</p>
       </div>
       <div className="mt-1 shrink-0">
-        {isGranted ? <Check size={16} className="text-accent" />
-          : state === 'requesting' ? <Loader2 size={16} className="text-accent animate-spin" />
-          : isDenied ? <XIcon size={16} className="text-accent-2" />
-          : <span className="text-xs text-accent font-semibold">Allow</span>}
+        {isGranted ? (<Check size={16} className="text-accent" />)
+          : state === 'requesting' ? (<Loader2 size={16} className="text-accent animate-spin" />)
+          : isDenied ? (<XIcon size={16} className="text-accent-2" />)
+          : (<span className="text-xs text-accent font-semibold">{t('Allow')}</span>)}
       </div>
     </button>
   );
@@ -544,7 +546,7 @@ const ChipGrid: React.FC<{ options: string[]; values: string[]; onToggle: (v: st
               : 'bg-surface text-white border-white/10 hover:border-white/25'
           }`}
         >
-          {o}
+          {tDyn(o)}
         </button>
       );
     })}

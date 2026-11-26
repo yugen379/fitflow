@@ -4,6 +4,7 @@ import { auth, completeRedirectSignIn, friendlyAuthError } from '../lib/firebase
 import { consumePendingDisplayName } from '../lib/authSession';
 import { UserProfile } from '../types';
 import { identify } from '../lib/telemetry';
+import { STORAGE_KEY as LANG_STORAGE_KEY, getLanguage, isLang, setLanguage } from '../i18n/i18n';
 
 interface AuthContextType {
   user: User | null;
@@ -60,6 +61,25 @@ const PROFILE_TIMEOUT_MS = 12000;
 const BOOT_TIMEOUT_MS = 12000;
 /** How many times a refused profile read is silently asked again before it is shown. */
 const MAX_PROFILE_RETRIES = 2;
+
+/**
+ * A fresh install signing in to an account that already chose a language.
+ *
+ * The language is a device setting (localStorage), so a new phone starts in
+ * its own locale even though the account picked, say, Malay on the old one.
+ * Adopt the account's choice ONLY when this device has never chosen: a choice
+ * made here always wins. setLanguage reloads once; the reload is skipped
+ * unless the choice actually persisted, so blocked storage can never turn
+ * this into a reload loop (the next boot would find no stored choice again).
+ */
+const adoptProfileLanguage = (lang: unknown): void => {
+  try {
+    if (!isLang(lang) || lang === getLanguage()) return;
+    if (localStorage.getItem(LANG_STORAGE_KEY)) return;
+    setLanguage(lang, false);
+    if (localStorage.getItem(LANG_STORAGE_KEY) === lang) location.reload();
+  } catch { /* storage blocked: stay in the device language */ }
+};
 
 /*
  * Why 6s and not something more cautious: being early is cheap. If the profile
@@ -227,6 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
             if (!ensuredOnce) {
               ensuredOnce = true;
+              adoptProfileLanguage(data.language);
               // Keep timezone in sync (cheap; server reminders need this)
               if (data.tzOffsetHours !== tzOffsetHours || data.tzId !== tzId) {
                 updateDoc(userRef, { tzOffsetHours, tzId }).catch(() => {});

@@ -14,6 +14,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
+import { t } from '../i18n/i18n';
 
 export type ToastVariant = 'success' | 'error' | 'info';
 
@@ -52,7 +53,7 @@ const ToastViewport: React.FC<Props> = ({ toasts, onDismiss }) => (
           <button
             onClick={() => onDismiss(toast.id)}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-text-dim hover:text-white transition-colors"
-            aria-label="Dismiss"
+            aria-label={t('Dismiss')}
           >
             <X size={14} />
           </button>

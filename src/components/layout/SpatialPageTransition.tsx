@@ -24,6 +24,7 @@ import { useLocation } from 'react-router-dom';
 
 import { cn } from '../../lib/utils';
 import { prefersReducedMotion } from '../../lib/motion';
+import { t } from '../../i18n/i18n';
 
 // ---------------------------------------------------------------------------
 // Atmosphere
@@ -122,7 +123,7 @@ export const ParticleField: React.FC<{ density?: number; className?: string }> =
  * than a re-layout.
  */
 export const LiquidSkeleton: React.FC = () => (
-  <div className="pb-32 pt-6 px-4 space-y-5" role="status" aria-label="Loading">
+  <div className="pb-32 pt-6 px-4 space-y-5" role="status" aria-label={t('Loading')}>
     <div className="space-y-2">
       <div className="liquid-skeleton h-3 w-24 rounded-full" />
       <div className="liquid-skeleton h-8 w-52 rounded-xl" />
@@ -133,7 +134,7 @@ export const LiquidSkeleton: React.FC = () => (
       <div className="liquid-skeleton h-28 rounded-[24px]" />
     </div>
     <div className="liquid-skeleton h-36 rounded-[28px]" />
-    <span className="sr-only">Loading</span>
+    <span className="sr-only">{t('Loading')}</span>
   </div>
 );
 

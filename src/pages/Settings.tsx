@@ -8,7 +8,7 @@ import {
   KeyRound, MailWarning, Flame,
 } from 'lucide-react';
 import { useUnits } from '../hooks/useUnits';
-import { LANGUAGES, getLanguage, setLanguage, t, type Lang } from '../i18n/i18n';
+import { LANGUAGES, getLanguage, msg, setLanguage, t, tDyn, type Lang } from '../i18n/i18n';
 import {
   presetOf, legacyWeightUnitFor, UNIT_PRESETS,
   type UnitPrefs, type UnitPreset, type EnergyUnit,
@@ -33,6 +33,7 @@ import { cn } from '../lib/utils';
 declare const __APP_VERSION__: string;
 
 const TZ_OFFSET_HOURS = -new Date().getTimezoneOffset() / 60;
+const SUPPORT_EMAIL = 'fitflow2000@gmail.com';
 
 export const Settings: React.FC = () => {
   const showRest = useAfterFirstPaint();
@@ -49,22 +50,23 @@ export const Settings: React.FC = () => {
 
   const ent = getEntitlement(profile);
   const billingLabel = allFeaturesFree()
-    ? 'FitFlow Pro · free during launch'
+    ? t('FitFlow Pro · free during launch')
     : ent.source === 'paid'
-      ? `Subscribed · ${ent.plan === 'yearly' ? 'Yearly' : 'Monthly'} plan${ent.cancelAtPeriodEnd ? ' · cancels at period end' : ''}`
+      ? (ent.plan === 'yearly' ? t('Subscribed · Yearly plan') : t('Subscribed · Monthly plan'))
+        + (ent.cancelAtPeriodEnd ? ` · ${t('cancels at period end')}` : '')
       : ent.source === 'trial'
-        ? `Free trial · ${ent.trialDaysLeft} ${ent.trialDaysLeft === 1 ? 'day' : 'days'} left`
+        ? (ent.trialDaysLeft === 1 ? t('Free trial · 1 day left') : t('Free trial · {n} days left', { n: ent.trialDaysLeft }))
         : ent.status === 'expired'
-          ? 'Trial ended · subscribe to unlock Pro'
-          : 'Free plan';
+          ? t('Trial ended · subscribe to unlock Pro')
+          : t('Free plan');
 
   const manageBilling = async () => {
     if (ent.source !== 'paid') { navigate('/pro'); return; }
     if (!isPortalConfigured()) {
       showToast(
         isPlayStoreBuild()
-          ? 'Manage your subscription from the FitFlow web app.'
-          : 'Subscription management is being set up.',
+          ? t('Manage your subscription from the FitFlow web app.')
+          : t('Subscription management is being set up.'),
         'info',
       );
       return;
@@ -72,22 +74,22 @@ export const Settings: React.FC = () => {
     setManagingBilling(true);
     const result = await openBillingPortal();
     setManagingBilling(false);
-    if (!result.ok) showToast(result.reason || 'Could not open billing portal', 'error');
+    if (!result.ok) showToast(result.reason || t('Could not open billing portal'), 'error');
   };
 
   const testCamera = async () => {
     setCamStatus('checking');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-      stream.getTracks().forEach(t => t.stop());
+      stream.getTracks().forEach(track => track.stop());
       setCamStatus('granted');
-      showToast('Camera works');
+      showToast(t('Camera works'));
     } catch (e: any) {
       setCamStatus('denied');
       showToast(
         e?.name === 'NotAllowedError'
-          ? 'Camera blocked — tap the site lock icon in the address bar to allow it'
-          : 'Camera unavailable on this device',
+          ? t('Camera blocked — tap the site lock icon in the address bar to allow it')
+          : t('Camera unavailable on this device'),
         'error',
       );
     }
@@ -96,12 +98,12 @@ export const Settings: React.FC = () => {
     setMicStatus('checking');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
+      stream.getTracks().forEach(track => track.stop());
       setMicStatus('granted');
-      showToast('Mic works');
+      showToast(t('Mic works'));
     } catch {
       setMicStatus('denied');
-      showToast('Mic blocked or unavailable', 'error');
+      showToast(t('Mic blocked or unavailable'), 'error');
     }
   };
 
@@ -111,17 +113,17 @@ export const Settings: React.FC = () => {
     if (profile.notificationsEnabled) {
       try {
         await updateDoc(doc(db, 'users', profile.uid), { notificationsEnabled: false, updatedAt: serverTimestamp() });
-        showToast('Push notifications disabled');
-      } catch { showToast('Failed to save', 'error'); }
+        showToast(t('Push notifications disabled'));
+      } catch { showToast(t('Failed to save'), 'error'); }
       return;
     }
     // Not enabled → OS prompt on Android, browser prompt on web; saves the FCM token.
     const r = await requestPushPermission(profile.uid);
-    if (r === 'granted') showToast('Push notifications enabled');
+    if (r === 'granted') showToast(t('Push notifications enabled'));
     else showToast(
       isNativeApp()
-        ? 'Blocked — allow notifications in Settings → Apps → FitFlow, then try again.'
-        : 'Allow notifications in your browser settings, then try again.',
+        ? t('Blocked — allow notifications in Settings → Apps → FitFlow, then try again.')
+        : t('Allow notifications in your browser settings, then try again.'),
       'info',
     );
   };
@@ -138,11 +140,11 @@ export const Settings: React.FC = () => {
         updatedAt: serverTimestamp(),
       });
       showToast(label);
-    } catch { showToast('Failed to save', 'error'); }
+    } catch { showToast(t('Failed to save'), 'error'); }
   };
   const setPreset = (k: UnitPreset) =>
-    saveUnits({ ...unitPrefs, ...UNIT_PRESETS[k] }, `Units set to ${PRESET_LABEL[k]}`);
-  const setEnergy = (e: EnergyUnit) => saveUnits({ ...unitPrefs, energy: e }, `Energy shown in ${e}`);
+    saveUnits({ ...unitPrefs, ...UNIT_PRESETS[k] }, t('Units set to {preset}', { preset: tDyn(PRESET_LABEL[k]) }));
+  const setEnergy = (e: EnergyUnit) => saveUnits({ ...unitPrefs, energy: e }, t('Energy shown in {unit}', { unit: e }));
 
   // Language is a device setting (the app restarts in it). The profile copy is
   // for server-written text; a failed save must not block the switch.
@@ -161,8 +163,8 @@ export const Settings: React.FC = () => {
         tzOffsetHours: TZ_OFFSET_HOURS,
         tzId: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
-      showToast('Timezone synced');
-    } catch { showToast('Failed to save', 'error'); }
+      showToast(t('Timezone synced'));
+    } catch { showToast(t('Failed to save'), 'error'); }
   };
 
   const exportData = async () => {
@@ -199,12 +201,12 @@ export const Settings: React.FC = () => {
       setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 0);
       showToast(
         missing.length
-          ? `Exported, but ${missing.length} section(s) could not be read — try again`
-          : 'Data exported',
+          ? t('Exported, but {n} section(s) could not be read — try again', { n: missing.length })
+          : t('Data exported'),
         missing.length ? 'error' : undefined,
       );
     } catch {
-      showToast('Export failed', 'error');
+      showToast(t('Export failed'), 'error');
     } finally {
       setExporting(false);
     }
@@ -229,14 +231,14 @@ export const Settings: React.FC = () => {
       try {
         const { getFunctions, httpsCallable } = await import('firebase/functions');
         await httpsCallable(getFunctions(app), 'deleteAccount')();
-        showToast('Account deleted');
+        showToast(t('Account deleted'));
         await signOut();
         navigate('/');
         return;
       } catch (e: any) {
         // Re-auth is the user's to resolve; do not fall through and half-delete.
         if (e?.code === 'functions/unauthenticated' || e?.code === 'auth/requires-recent-login') {
-          showToast('Please sign in again, then re-try delete', 'error');
+          showToast(t('Please sign in again, then re-try delete'), 'error');
           await signOut();
           return;
         }
@@ -263,7 +265,7 @@ export const Settings: React.FC = () => {
       try { await deleteDoc(doc(db, 'users', profile.uid)); } catch { incomplete = true; }
       try { await deleteUser(auth.currentUser); } catch (e: any) {
         if (e?.code === 'auth/requires-recent-login') {
-          showToast('Please sign in again, then re-try delete', 'error');
+          showToast(t('Please sign in again, then re-try delete'), 'error');
           await signOut();
           return;
         }
@@ -272,13 +274,13 @@ export const Settings: React.FC = () => {
       // Never claim a complete erasure we did not perform.
       showToast(
         incomplete
-          ? 'Account deleted, but some data could not be removed — email fitflow2000@gmail.com'
-          : 'Account deleted',
+          ? t('Account deleted, but some data could not be removed — email fitflow2000@gmail.com')
+          : t('Account deleted'),
         incomplete ? 'error' : undefined,
       );
       navigate('/');
     } catch {
-      showToast('Delete failed. Try signing out and back in first.', 'error');
+      showToast(t('Delete failed. Try signing out and back in first.'), 'error');
     } finally {
       setDeleting(false);
       setConfirmDelete(false);
@@ -293,7 +295,7 @@ export const Settings: React.FC = () => {
   const providerIds = (user?.providerData ?? []).map((p) => p.providerId);
   const signInMethods = providerIds.length
     ? providerIds.map((id) => providerLabel(id)).join(', ')
-    : 'email and password';
+    : t('email and password');
   const [verifiedNow, setVerifiedNow] = useState(user?.emailVerified ?? true);
   const [resending, setResending] = useState(false);
 
@@ -312,7 +314,7 @@ export const Settings: React.FC = () => {
     setResending(true);
     try {
       await resendVerificationEmail();
-      showToast('Verification email sent — check your inbox');
+      showToast(t('Verification email sent — check your inbox'));
     } catch (e: any) {
       showToast(friendlyAuthError(e?.code), 'error');
     } finally {
@@ -323,31 +325,31 @@ export const Settings: React.FC = () => {
   return (
     <div className="pb-28 pt-4 px-4 min-h-screen space-y-5">
       <header className="flex items-center gap-3 pt-2">
-        <button onClick={() => navigate('/profile')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back">
+        <button onClick={() => navigate('/profile')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}>
           <ChevronLeft size={18} />
         </button>
         <div>
-          <p className="text-eyebrow text-accent">Settings</p>
-          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">Preferences</h1>
+          <p className="text-eyebrow text-accent">{t('Settings')}</p>
+          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{t('Preferences')}</h1>
         </div>
       </header>
 
-      <Section title="Account">
-        <Row icon={KeyRound} label="Signed in with" sub={signInMethods} />
+      <Section title={t('Account')}>
+        <Row icon={KeyRound} label={t('Signed in with')} sub={signInMethods} />
         {showVerifyRow && (
-          <Row icon={MailWarning} label="Email not verified" sub={user?.email || undefined}>
+          <Row icon={MailWarning} label={t('Email not verified')} sub={user?.email || undefined}>
             <button
               onClick={resendVerification}
               disabled={resending}
               className="shrink-0 h-9 px-3 rounded-xl bg-accent/12 border border-accent/30 text-accent text-xs font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
             >
-              {resending ? 'Sending…' : 'Resend'}
+              {resending ? t('Sending…') : t('Resend')}
             </button>
           </Row>
         )}
       </Section>
 
-      <Section title="Subscription">
+      <Section title={t('Subscription')}>
         <Row icon={Crown} label="FitFlow Pro" sub={billingLabel} />
         {!allFeaturesFree() && (
           <div className="p-3">
@@ -357,28 +359,28 @@ export const Settings: React.FC = () => {
               className="btn-3d w-full h-12 disabled:opacity-60"
             >
               {managingBilling ? (
-                <><Loader2 size={16} className="animate-spin" /> Opening…</>
+                <><Loader2 size={16} className="animate-spin" /> {t('Opening…')}</>
               ) : ent.source === 'paid' ? (
-                <><Crown size={16} /> Manage subscription</>
+                <><Crown size={16} /> {t('Manage subscription')}</>
               ) : purchaseUiAllowed() ? (
-                <><Sparkles size={16} /> Upgrade to Pro</>
+                <><Sparkles size={16} /> {t('Upgrade to Pro')}</>
               ) : (
-                <><Sparkles size={16} /> About FitFlow Pro</>
+                <><Sparkles size={16} /> {t('About FitFlow Pro')}</>
               )}
             </button>
           </div>
         )}
       </Section>
 
-      <Section title="Nutrition">
+      <Section title={t('Nutrition')}>
         <button onClick={() => navigate('/nutrition-goals')} className="w-full text-left">
-          <Row icon={Ruler} label="Macro targets" sub="Calories, macro split, goal-by-day scheduling">
+          <Row icon={Ruler} label={t('Macro targets')} sub={t('Calories, macro split, goal-by-day scheduling')}>
             <ChevronRight size={16} className="text-text-dim" />
           </Row>
         </button>
       </Section>
 
-      <Section title="Display">
+      <Section title={t('Display')}>
         <Row icon={Languages} label={t('Language')} sub={t('The app restarts in the new language. Terms and Privacy Policy stay in English.')}>
           <select
             aria-label={t('Language')}
@@ -389,24 +391,24 @@ export const Settings: React.FC = () => {
             {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
           </select>
         </Row>
-        <Row icon={Ruler} label="Units" sub={PRESET_SUB[unitPreset ?? 'custom']}>
+        <Row icon={Ruler} label={t('Units')} sub={tDyn(PRESET_SUB[unitPreset ?? 'custom'])}>
           <Segmented
-            ariaLabel="Units"
-            options={(Object.keys(PRESET_LABEL) as UnitPreset[]).map(k => ({ id: k, label: PRESET_LABEL[k] }))}
+            ariaLabel={t('Units')}
+            options={(Object.keys(PRESET_LABEL) as UnitPreset[]).map(k => ({ id: k, label: tDyn(PRESET_LABEL[k]) }))}
             value={unitPreset}
             onChange={setPreset}
           />
         </Row>
-        <Row icon={Flame} label="Energy" sub={unitPrefs.energy === 'kJ' ? 'Kilojoules (1 kcal = 4.184 kJ)' : 'Kilocalories'}>
+        <Row icon={Flame} label={t('Energy')} sub={unitPrefs.energy === 'kJ' ? t('Kilojoules (1 kcal = 4.184 kJ)') : t('Kilocalories')}>
           <Segmented
-            ariaLabel="Energy unit"
+            ariaLabel={t('Energy unit')}
             options={[{ id: 'kcal' as const, label: 'kcal' }, { id: 'kJ' as const, label: 'kJ' }]}
             value={unitPrefs.energy}
             onChange={setEnergy}
           />
         </Row>
-        <Row icon={Globe} label="Timezone" sub={Intl.DateTimeFormat().resolvedOptions().timeZone}>
-          <button onClick={setTzOffset} className="text-xs font-semibold text-accent">Sync now</button>
+        <Row icon={Globe} label={t('Timezone')} sub={Intl.DateTimeFormat().resolvedOptions().timeZone}>
+          <button onClick={setTzOffset} className="text-xs font-semibold text-accent">{t('Sync now')}</button>
         </Row>
       </Section>
 
@@ -414,12 +416,12 @@ export const Settings: React.FC = () => {
           after the first paint, so opening Settings shows its top at once
           instead of waiting for eight sections to be laid out and painted. */}
       {showRest && (<>
-      <Section title="Notifications">
+      <Section title={t('Notifications')}>
         <button onClick={toggleNotifications} className="w-full text-left">
           <Row
             icon={Bell}
-            label="Push notifications"
-            sub={profile?.notificationsEnabled ? 'Enabled — tap to disable' : 'Disabled — tap to enable'}
+            label={t('Push notifications')}
+            sub={profile?.notificationsEnabled ? t('Enabled — tap to disable') : t('Disabled — tap to enable')}
           >
             <div className={cn(
               'w-11 h-6 rounded-full p-0.5 transition-colors',
@@ -434,57 +436,57 @@ export const Settings: React.FC = () => {
         </button>
       </Section>
 
-      <Section title="Device permissions">
+      <Section title={t('Device permissions')}>
         <button onClick={() => setPermsPromptOpen(true)} className="w-full text-left">
-          <Row icon={Sparkles} label="Allow everything" sub={micSupported()
-            ? 'One tap to grant camera, mic, and notifications in sequence'
-            : 'One tap to grant camera and notifications in sequence'}>
-            <span className="text-xs font-semibold text-accent">Open</span>
+          <Row icon={Sparkles} label={t('Allow everything')} sub={micSupported()
+            ? t('One tap to grant camera, mic, and notifications in sequence')
+            : t('One tap to grant camera and notifications in sequence')}>
+            <span className="text-xs font-semibold text-accent">{t('Open')}</span>
           </Row>
         </button>
         <button onClick={testCamera} className="w-full text-left">
           <Row
             icon={Camera}
-            label="Camera"
+            label={t('Camera')}
             sub={
-              camStatus === 'granted' ? 'Allowed — tap to re-test'
-              : camStatus === 'denied' ? 'Blocked — see browser site settings'
-              : camStatus === 'checking' ? 'Requesting…'
-              : 'Used by barcode scanner, meal photos, AI form check'
+              camStatus === 'granted' ? t('Allowed — tap to re-test')
+              : camStatus === 'denied' ? t('Blocked — see browser site settings')
+              : camStatus === 'checking' ? t('Requesting…')
+              : t('Used by barcode scanner, meal photos, AI form check')
             }
           >
             {camStatus === 'granted' ? <Check size={16} className="text-accent" />
               : camStatus === 'checking' ? <Loader2 className="animate-spin text-text-dim" size={16} />
-              : <span className="text-xs font-semibold text-accent">{camStatus === 'denied' ? 'Retry' : 'Allow'}</span>}
+              : <span className="text-xs font-semibold text-accent">{camStatus === 'denied' ? t('Retry') : t('Allow')}</span>}
           </Row>
         </button>
         {micSupported() && (
         <button onClick={testMic} className="w-full text-left">
           <Row
             icon={Mic}
-            label="Microphone"
+            label={t('Microphone')}
             sub={
-              micStatus === 'granted' ? 'Allowed — tap to re-test'
-              : micStatus === 'denied' ? 'Blocked — see browser site settings'
-              : micStatus === 'checking' ? 'Requesting…'
-              : 'Used by voice questions to AI Coach'
+              micStatus === 'granted' ? t('Allowed — tap to re-test')
+              : micStatus === 'denied' ? t('Blocked — see browser site settings')
+              : micStatus === 'checking' ? t('Requesting…')
+              : t('Used by voice questions to AI Coach')
             }
           >
             {micStatus === 'granted' ? <Check size={16} className="text-accent" />
               : micStatus === 'checking' ? <Loader2 className="animate-spin text-text-dim" size={16} />
-              : <span className="text-xs font-semibold text-accent">{micStatus === 'denied' ? 'Retry' : 'Allow'}</span>}
+              : <span className="text-xs font-semibold text-accent">{micStatus === 'denied' ? t('Retry') : t('Allow')}</span>}
           </Row>
         </button>
         )}
       </Section>
 
-      <Section title="Your data">
+      <Section title={t('Your data')}>
         <button
           onClick={exportData}
           disabled={exporting}
           className="w-full text-left disabled:opacity-50"
         >
-          <Row icon={Download} label="Export my data" sub="Download everything as JSON">
+          <Row icon={Download} label={t('Export my data')} sub={t('Download everything as JSON')}>
             {exporting ? <Loader2 className="animate-spin text-text-dim" size={16} /> : <ChevronRight size={16} className="text-text-dim" />}
           </Row>
         </button>
@@ -492,25 +494,25 @@ export const Settings: React.FC = () => {
           onClick={() => setConfirmDelete(true)}
           className="w-full text-left"
         >
-          <Row icon={Trash2} label="Delete account" sub="Permanently remove everything" danger>
+          <Row icon={Trash2} label={t('Delete account')} sub={t('Permanently remove everything')} danger>
             <ChevronRight size={16} className="text-accent-2" />
           </Row>
         </button>
       </Section>
 
-      <Section title="Legal">
+      <Section title={t('Legal')}>
         <button onClick={() => navigate('/privacy')} className="w-full text-left">
-          <Row icon={Shield} label="Privacy policy">
+          <Row icon={Shield} label={t('Privacy policy')}>
             <ChevronRight size={16} className="text-text-dim" />
           </Row>
         </button>
         <button onClick={() => navigate('/terms')} className="w-full text-left">
-          <Row icon={FileText} label="Terms of service">
+          <Row icon={FileText} label={t('Terms of service')}>
             <ChevronRight size={16} className="text-text-dim" />
           </Row>
         </button>
-        <a href="mailto:fitflow2000@gmail.com" className="block">
-          <Row icon={Mail} label="Contact support" sub="fitflow2000@gmail.com">
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
+          <Row icon={Mail} label={t('Contact support')} sub={SUPPORT_EMAIL}>
             <ChevronRight size={16} className="text-text-dim" />
           </Row>
         </a>
@@ -521,7 +523,7 @@ export const Settings: React.FC = () => {
         className="w-full glass h-12 flex items-center justify-center gap-2 text-accent-2 font-semibold"
       >
         <LogOut size={16} />
-        Sign out
+        {t('Sign out')}
       </button>
 
       <p className="text-center text-xs text-text-mute pt-2">
@@ -557,20 +559,20 @@ export const Settings: React.FC = () => {
                   <Trash2 className="text-accent-2" size={18} />
                 </div>
                 <div>
-                  <h3 className="font-display text-xl font-bold text-white">Delete your account?</h3>
+                  <h3 className="font-display text-xl font-bold text-white">{t('Delete your account?')}</h3>
                   <p className="text-sm text-text-dim mt-1 leading-relaxed">
-                    This permanently removes your profile, workouts, meals, posts, and all data. Cannot be undone.
+                    {t('This permanently removes your profile, workouts, meals, posts, and all data. Cannot be undone.')}
                   </p>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setConfirmDelete(false)} className="btn-ghost h-12 flex-1">Cancel</button>
+                <button onClick={() => setConfirmDelete(false)} className="btn-ghost h-12 flex-1">{t('Cancel')}</button>
                 <button
                   onClick={deleteAccount}
                   disabled={deleting}
                   className="h-12 flex-1 bg-accent-2 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {deleting ? <Loader2 className="animate-spin" size={16} /> : 'Delete'}
+                  {deleting ? <Loader2 className="animate-spin" size={16} /> : t('Delete')}
                 </button>
               </div>
             </motion.div>
@@ -581,12 +583,12 @@ export const Settings: React.FC = () => {
   );
 };
 
-const PRESET_LABEL: Record<UnitPreset, string> = { metric: 'Metric', us: 'US', uk: 'UK' };
+const PRESET_LABEL: Record<UnitPreset, string> = { metric: msg('Metric'), us: msg('US'), uk: msg('UK') };
 const PRESET_SUB: Record<UnitPreset | 'custom', string> = {
   metric: 'kg · cm · km · ml',
   us: 'lb · ft in · mi · fl oz',
   uk: 'st lb · cm · km · ml',
-  custom: 'Custom — pick one to reset',
+  custom: msg('Custom — pick one to reset'),
 };
 
 function Segmented<T extends string>({ options, value, onChange, ariaLabel }: {

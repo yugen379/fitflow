@@ -4,6 +4,7 @@ import { Camera, Mic, Bell, Check, X, Sparkles, Loader2 } from 'lucide-react';
 import { LogoMark } from './Logo';
 import { requestPushPermission, isNativeApp, micSupported } from '../lib/pushPermission';
 import { openAppSettings } from '../lib/appSettings';
+import { t } from '../i18n/i18n';
 
 type PermState = 'idle' | 'granted' | 'denied' | 'requesting';
 
@@ -30,27 +31,36 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
   const [running, setRunning] = useState(false);
   const [denyReason, setDenyReason] = useState<string | null>(null);
 
-  const reportError = (label: string, err: any) => {
+  const reportError = (kind: 'camera' | 'mic', err: any) => {
     const name = err?.name || err?.message || String(err);
-    console.warn(`[permissions] ${label} failed:`, name, err);
+    const cam = kind === 'camera';
+    console.warn(`[permissions] ${cam ? 'Camera' : 'Microphone'} failed:`, name, err);
     // Translate the WebRTC error names into something the user can act on.
     if (/NotAllowed|Permission/i.test(name)) {
-      return `${label} blocked. Tap the lock/⋮ icon in the address bar → Permissions → set ${label} to Allow → reload.`;
+      return cam
+        ? t('Camera blocked. Tap the lock/⋮ icon in the address bar → Permissions → set Camera to Allow → reload.')
+        : t('Microphone blocked. Tap the lock/⋮ icon in the address bar → Permissions → set Microphone to Allow → reload.');
     }
     if (/NotFound|DevicesNotFound/i.test(name)) {
-      return `No ${label.toLowerCase()} found on this device.`;
+      return cam ? t('No camera found on this device.') : t('No microphone found on this device.');
     }
     if (/NotReadable|TrackStart|in use/i.test(name)) {
-      return `${label} is in use by another app. Close it and try again.`;
+      return cam
+        ? t('Camera is in use by another app. Close it and try again.')
+        : t('Microphone is in use by another app. Close it and try again.');
     }
     if (/SecurityError|secure context/i.test(name)) {
-      return `${label} needs HTTPS. Make sure the URL starts with https://`;
+      return cam
+        ? t('Camera needs HTTPS. Make sure the URL starts with https://')
+        : t('Microphone needs HTTPS. Make sure the URL starts with https://');
     }
     if (/Overconstrained/i.test(name)) {
       // Constraint mismatch (e.g. no rear camera) — usually still fine for the app.
       return null;
     }
-    return `${label} request failed (${name}).`;
+    return cam
+      ? t('Camera request failed ({error}).', { error: name })
+      : t('Microphone request failed ({error}).', { error: name });
   };
 
   // Combine camera + mic into a single getUserMedia call. Mobile Chrome is far
@@ -83,7 +93,7 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
       setCam('granted');
       return 'granted';
     } catch (err: any) {
-      const msg = reportError('Camera', err || priorErr);
+      const msg = reportError('camera', err || priorErr);
       if (msg) setDenyReason(prev => prev || msg);
       setCam('denied');
       return 'denied';
@@ -96,7 +106,7 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
       setMic('granted');
       return 'granted';
     } catch (err: any) {
-      const msg = reportError('Microphone', err || priorErr);
+      const msg = reportError('mic', err || priorErr);
       if (msg) setDenyReason(prev => prev || msg);
       setMic('denied');
       return 'denied';
@@ -107,7 +117,7 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
     const r = await requestPushPermission(uid);
     setNotif(r);
     if (r === 'denied' && isNativeApp()) {
-      setDenyReason(prev => prev || 'Notifications blocked. Open system Settings → Apps → FitFlow → Notifications → Allow.');
+      setDenyReason(prev => prev || t('Notifications blocked. Open system Settings → Apps → FitFlow → Notifications → Allow.'));
     }
     return r;
   };
@@ -131,7 +141,7 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
           (navigator as any).permissions.query({ name: 'microphone' }).catch(() => null),
         ]);
         if (camState?.state === 'denied' || micState?.state === 'denied') {
-          setDenyReason('Permissions are blocked at the browser level. Tap the lock/⋮ icon in the address bar → Permissions → set Camera and Microphone to Allow → reload this page.');
+          setDenyReason(t('Permissions are blocked at the browser level. Tap the lock/⋮ icon in the address bar → Permissions → set Camera and Microphone to Allow → reload this page.'));
         }
       }
     } catch { /* permissions API is best-effort */ }
@@ -173,12 +183,12 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
               <div className="flex items-center gap-3">
                 <LogoMark size={32} />
                 <div>
-                  <p className="text-eyebrow text-accent">One tap</p>
-                  <p className="text-xs text-text-dim mt-0.5">All optional, all reversible</p>
+                  <p className="text-eyebrow text-accent">{t('One tap')}</p>
+                  <p className="text-xs text-text-dim mt-0.5">{t('All optional, all reversible')}</p>
                 </div>
               </div>
               {!running && (
-                <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white" aria-label="Close">
+                <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Close')}>
                   <X size={16} />
                 </button>
               )}
@@ -186,21 +196,21 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
 
             <div className="space-y-2">
               <h2 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">
-                Unlock the full FitFlow.
+                {t('Unlock the full FitFlow.')}
               </h2>
               <p className="text-text-dim text-sm leading-relaxed">
                 {withMic
-                  ? 'Allow camera, mic, and notifications in one go — your browser will pop a prompt for each.'
-                  : 'Allow camera and notifications in one go — Android will pop a prompt for each.'}
+                  ? t('Allow camera, mic, and notifications in one go — your browser will pop a prompt for each.')
+                  : t('Allow camera and notifications in one go — Android will pop a prompt for each.')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <PermLine icon={<Camera size={16} />} label="Camera" sub="Barcode scanner, meal photos, AI form check" state={cam} />
+              <PermLine icon={<Camera size={16} />} label={t('Camera')} sub={t('Barcode scanner, meal photos, AI form check')} state={cam} />
               {withMic && (
-                <PermLine icon={<Mic size={16} />} label="Microphone" sub="Voice questions to AI Coach, hands-free logging" state={mic} />
+                <PermLine icon={<Mic size={16} />} label={t('Microphone')} sub={t('Voice questions to AI Coach, hands-free logging')} state={mic} />
               )}
-              <PermLine icon={<Bell size={16} />} label="Notifications" sub="Smart workout reminders, weekly recap" state={notif} />
+              <PermLine icon={<Bell size={16} />} label={t('Notifications')} sub={t('Smart workout reminders, weekly recap')} state={notif} />
             </div>
 
             <div className="space-y-2 pt-1">
@@ -210,9 +220,9 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
                 className="btn-3d w-full h-14 disabled:opacity-70"
               >
                 {running ? (
-                  <><Loader2 className="animate-spin" size={16} /> Requesting…</>
+                  <><Loader2 className="animate-spin" size={16} /> {t('Requesting…')}</>
                 ) : (
-                  <><Sparkles size={16} /> Allow everything</>
+                  <><Sparkles size={16} /> {t('Allow everything')}</>
                 )}
               </button>
               {!running && (
@@ -220,7 +230,7 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
                   onClick={onClose}
                   className="w-full h-11 text-xs text-text-dim hover:text-white transition-colors"
                 >
-                  Maybe later
+                  {t('Maybe later')}
                 </button>
               )}
             </div>
@@ -229,12 +239,12 @@ export const PermissionsPrompt: React.FC<Props> = ({ open, uid, onClose, onCompl
               <div className="space-y-2">
                 <p className="text-xs text-accent-3 leading-snug">
                   {denyReason || (isNativeApp()
-                    ? 'Denied one by accident? Fix it in one tap:'
-                    : "Denied one by accident? Tap the site lock icon in your browser's address bar, set the permission to Allow, then reload.")}
+                    ? t('Denied one by accident? Fix it in one tap:')
+                    : t("Denied one by accident? Tap the site lock icon in your browser's address bar, set the permission to Allow, then reload."))}
                 </p>
                 {isNativeApp() && (
                   <button onClick={() => openAppSettings()} className="btn-ghost w-full h-10 text-xs">
-                    Open FitFlow system settings
+                    {t('Open FitFlow system settings')}
                   </button>
                 )}
               </div>
@@ -268,10 +278,10 @@ const PermLine: React.FC<{ icon: React.ReactNode; label: string; sub: string; st
         <p className="text-xs text-text-dim mt-0.5 leading-snug">{sub}</p>
       </div>
       <div className="mt-1.5 shrink-0">
-        {isGranted ? <Check size={14} className="text-accent" />
-          : isRequesting ? <Loader2 size={14} className="text-accent animate-spin" />
-          : isDenied ? <X size={14} className="text-accent-2" />
-          : <span className="w-2 h-2 rounded-full bg-white/15" />}
+        {isGranted ? (<Check size={14} className="text-accent" />)
+          : isRequesting ? (<Loader2 size={14} className="text-accent animate-spin" />)
+          : isDenied ? (<X size={14} className="text-accent-2" />)
+          : (<span className="w-2 h-2 rounded-full bg-white/15" />)}
       </div>
     </div>
   );

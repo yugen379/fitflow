@@ -1,6 +1,7 @@
 import React from 'react';
 import { LogoMark } from './Logo';
 import { noteReviewError } from '../lib/reviewPrompt';
+import { t } from '../i18n/i18n';
 
 interface Props { children: React.ReactNode; }
 interface State { hasError: boolean; error?: Error; }
@@ -59,9 +60,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 text-center">
         <LogoMark size={56} />
-        <h1 className="font-display text-3xl font-bold text-white mt-8 tracking-tight">Something broke.</h1>
+        <h1 className="font-display text-3xl font-bold text-white mt-8 tracking-tight">{t('Something broke.')}</h1>
         <p className="text-text-dim text-sm max-w-xs mt-3 leading-relaxed">
-          We hit an unexpected error. Your data is safe. Try reloading — if it keeps happening, tap “Reset &amp; reload”.
+          {t('We hit an unexpected error. Your data is safe. Try reloading — if it keeps happening, tap “Reset & reload”.')}
         </p>
         {this.state.error?.message && (
           <pre className="text-xs text-text-mute max-w-sm mt-4 px-4 py-3 bg-surface rounded-xl border border-white/[0.06] overflow-auto">
@@ -69,9 +70,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
           </pre>
         )}
         <div className="flex flex-col gap-2 mt-8 w-full max-w-xs">
-          <button onClick={this.reset} className="btn-3d h-12 px-8">Back to home</button>
+          <button onClick={this.reset} className="btn-3d h-12 px-8">{t('Back to home')}</button>
           <button onClick={this.hardReset} className="h-11 px-8 rounded-xl bg-white/[0.05] text-text-dim text-sm font-medium hover:text-white transition-colors">
-            Reset &amp; reload (clear cache)
+            {t('Reset & reload (clear cache)')}
           </button>
         </div>
       </div>

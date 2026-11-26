@@ -26,6 +26,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { cn } from '../lib/utils';
 import { prefersReducedMotion } from '../lib/motion';
+import { t } from '../i18n/i18n';
 
 export interface LoadingBarProps {
   /** Real progress 0..100. Omit for a time-estimated bar. */
@@ -50,7 +51,7 @@ const TIME_CONSTANT_MS = 2200;
 
 export const LoadingBar: React.FC<LoadingBarProps> = ({
   progress,
-  label = 'Loading',
+  label = t('Loading'),
   showPercent = true,
   fullScreen = false,
   className,
@@ -89,7 +90,7 @@ export const LoadingBar: React.FC<LoadingBarProps> = ({
       aria-live="polite"
       aria-busy="true"
       // The bar is decorative to a screen reader; the label carries the meaning.
-      aria-label={`${label}, ${rounded} percent`}
+      aria-label={t('{label}, {n} percent', { label, n: rounded })}
     >
       <span className="w-32 h-[3px] rounded-full bg-white/[0.08] overflow-hidden" aria-hidden="true">
         <span
@@ -104,7 +105,7 @@ export const LoadingBar: React.FC<LoadingBarProps> = ({
 
       {showPercent ? (
         <p className="num text-[11px] font-bold text-accent tabular-nums tracking-[0.04em]">
-          {rounded >= 100 ? 'Ready' : `${label} ${rounded}%`}
+          {rounded >= 100 ? t('Ready') : t('{label} {n}%', { label, n: rounded })}
         </p>
       ) : (
         <p className="text-[11px] text-text-dim font-medium">{label}</p>

@@ -34,6 +34,7 @@
 
 import type { UserProfile } from '../types';
 import { getEntitlement, type Entitlement } from './billing';
+import { msg } from '../i18n/i18n';
 
 export type Feature =
   | 'coach-chat'
@@ -44,7 +45,7 @@ export type Feature =
   | 'pro-challenges';
 
 export interface FeatureMeta {
-  /** Shown on the lock overlay. */
+  /** Shown on the lock overlay. Marked with msg(): render with tDyn(). */
   title: string;
   /** One line: what they get, phrased as the benefit, not the restriction. */
   pitch: string;
@@ -52,28 +53,28 @@ export interface FeatureMeta {
 
 export const PRO_FEATURES: Record<Feature, FeatureMeta> = {
   'coach-chat': {
-    title: 'AI Coach',
-    pitch: 'Ask your coach anything, any time — it knows your training, food and sleep.',
+    title: msg('AI Coach'),
+    pitch: msg('Ask your coach anything, any time — it knows your training, food and sleep.'),
   },
   'analytics-history': {
-    title: 'Full history',
-    pitch: 'See every week, month and year of your progress, not just the last 7 days.',
+    title: msg('Full history'),
+    pitch: msg('See every week, month and year of your progress, not just the last 7 days.'),
   },
   'weekly-recap': {
-    title: 'Weekly recap',
-    pitch: 'A written read on your week, every week, from your own numbers.',
+    title: msg('Weekly recap'),
+    pitch: msg('A written read on your week, every week, from your own numbers.'),
   },
   'biomechanics-lab': {
-    title: 'Biomechanics Lab',
-    pitch: 'Watch the lift in 3D and see which muscles are actually doing the work.',
+    title: msg('Biomechanics Lab'),
+    pitch: msg('Watch the lift in 3D and see which muscles are actually doing the work.'),
   },
   'unlimited-streak-freeze': {
-    title: 'Unlimited streak freezes',
-    pitch: 'Never lose a streak to a rest day, an illness or a flight.',
+    title: msg('Unlimited streak freezes'),
+    pitch: msg('Never lose a streak to a rest day, an illness or a flight.'),
   },
   'pro-challenges': {
-    title: 'Pro challenges',
-    pitch: 'Compete in the challenges reserved for members.',
+    title: msg('Pro challenges'),
+    pitch: msg('Compete in the challenges reserved for members.'),
   },
 };
 

@@ -27,16 +27,17 @@ import { haptic } from '../../lib/haptics';
 import { prefetchPathHandlers } from '../../lib/prefetch';
 import { SPRING } from '../../lib/motion';
 import { spawnRipple } from '../ui/WaterRipple';
+import { msg, t, tDyn } from '../../i18n/i18n';
 
 // Five tabs, not seven: at phone width seven made the labels 9.5px and the
 // targets cramped. Steps is reached from the Step Hub card on Home, Awards
 // from the Profile menu (and from the Steps page).
 const navItems = [
-  { id: 'home', label: 'Home', icon: Home, path: '/' },
-  { id: 'track', label: 'Fuel', icon: Utensils, path: '/track' },
-  { id: 'workout', label: 'Train', icon: Dumbbell, path: '/workout' },
-  { id: 'coach', label: 'Coach', icon: Sparkles, path: '/coach' },
-  { id: 'profile', label: 'You', icon: User, path: '/profile' },
+  { id: 'home', label: msg('Home'), icon: Home, path: '/' },
+  { id: 'track', label: msg('Fuel'), icon: Utensils, path: '/track' },
+  { id: 'workout', label: msg('Train'), icon: Dumbbell, path: '/workout' },
+  { id: 'coach', label: msg('Coach'), icon: Sparkles, path: '/coach' },
+  { id: 'profile', label: msg('You'), icon: User, path: '/profile' },
 ];
 
 export const FloatingDock: React.FC = () => {
@@ -97,7 +98,7 @@ export const FloatingDock: React.FC = () => {
 
             <nav
               id="bottom-nav"
-              aria-label="Primary"
+              aria-label={t('Primary')}
               className="glass-spatial relative h-[4.25rem] px-2 flex justify-between items-center gap-0.5"
               style={{ borderRadius: '1.5rem' }}
             >
@@ -155,7 +156,7 @@ export const FloatingDock: React.FC = () => {
                         )}
                       >
                         <item.icon size={21} strokeWidth={isActive ? 2.4 : 1.9} aria-hidden="true" />
-                        <span className="text-[11px] font-semibold tracking-tight leading-none">{item.label}</span>
+                        <span className="text-[11px] font-semibold tracking-tight leading-none">{tDyn(item.label)}</span>
                       </div>
                     </div>
                   )}
@@ -181,7 +182,7 @@ export const FloatingDock: React.FC = () => {
               void haptic('medium');
               setHidden(false);
             }}
-            aria-label="Show navigation"
+            aria-label={t('Show navigation')}
             className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] w-16 h-11 rounded-2xl glass-spatial flex items-center justify-center text-text-dim active:scale-95 transition-transform"
           >
             <ChevronUp size={18} aria-hidden="true" />

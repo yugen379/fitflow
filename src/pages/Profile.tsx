@@ -26,16 +26,17 @@ import { purchaseUiAllowed } from '../services/playBillingService';
 import { trendSeries, localDate } from '../lib/adaptiveTarget';
 import { SmartTargetCard } from '../components/SmartTargetCard';
 import { useUnits } from '../hooks/useUnits';
+import { t, tDyn } from '../i18n/i18n';
 
 const ACCENT = '#C6FF3D';
 
 const goalLabel = (g?: string) => {
   switch (g) {
-    case 'fat_loss': return 'Losing fat';
-    case 'muscle_gain': return 'Building muscle';
-    case 'maintenance': return 'Maintaining';
-    case 'athletic_performance': return 'Performance';
-    default: return 'Goal not set';
+    case 'fat_loss': return t('Losing fat');
+    case 'muscle_gain': return t('Building muscle');
+    case 'maintenance': return t('Maintaining');
+    case 'athletic_performance': return t('Performance');
+    default: return t('Goal not set');
   }
 };
 
@@ -67,12 +68,12 @@ export const Profile: React.FC = () => {
       const metrics = await connectAndPersist(profile.uid);
       if (metrics) {
         setHealthMetrics(metrics);
-        showToast(`${nativeHealthLabel} connected`);
+        showToast(t('{source} connected', { source: nativeHealthLabel }));
       } else {
-        showToast('Permission denied', 'error');
+        showToast(t('Permission denied'), 'error');
       }
     } catch {
-      showToast('Connection failed', 'error');
+      showToast(t('Connection failed'), 'error');
     } finally {
       setHealthSyncing(false);
     }
@@ -106,7 +107,7 @@ export const Profile: React.FC = () => {
       const trend = new Map(trendSeries(rows.map((r) => ({ date: localDate(r.at!), kg: Number(r.weight) }))).map((p) => [p.date, p.trend]));
       setWeightHistory(rows.map((r) => ({
         ...r,
-        date: r.at!.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: r.at!.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         trend: trend.get(localDate(r.at!)),
       })));
     }, (err) => {
@@ -134,11 +135,11 @@ export const Profile: React.FC = () => {
         muscleMass: newMuscleKg,
         timestamp: serverTimestamp(),
       });
-      showToast('Logged');
+      showToast(t('Logged'));
       setIsLoggingWeight(false);
       setNewWeight(''); setNewBodyFat(''); setNewMuscleMass('');
     } catch {
-      showToast('Failed to log', 'error');
+      showToast(t('Failed to log'), 'error');
     } finally {
       setIsSyncing(false);
     }
@@ -178,10 +179,10 @@ export const Profile: React.FC = () => {
         preferredWorkoutTime: profileData.preferredWorkoutTime,
         updatedAt: serverTimestamp(),
       });
-      showToast('Saved');
+      showToast(t('Saved'));
       setIsEditingProfile(false);
     } catch {
-      showToast('Failed to save', 'error');
+      showToast(t('Failed to save'), 'error');
     } finally {
       setIsSyncing(false);
     }
@@ -193,9 +194,9 @@ export const Profile: React.FC = () => {
       await updateDoc(doc(db, 'users', profile.uid), {
         voiceCoachingEnabled: !profile.voiceCoachingEnabled,
       });
-      showToast(`Voice coaching ${!profile.voiceCoachingEnabled ? 'on' : 'off'}`);
+      showToast(!profile.voiceCoachingEnabled ? t('Voice coaching on') : t('Voice coaching off'));
     } catch {
-      showToast('Toggle failed', 'error');
+      showToast(t('Toggle failed'), 'error');
     }
   };
 
@@ -222,7 +223,7 @@ export const Profile: React.FC = () => {
           </div>
           <div>
             <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">
-              {profile?.displayName?.split(' ')[0] || 'Athlete'}
+              {profile?.displayName?.split(' ')[0] || t('Athlete')}
             </h1>
             <p className="text-sm text-text-dim mt-0.5">{goalLabel(profile?.goal)}</p>
             <div className="flex items-center gap-3 mt-2 text-xs">
@@ -237,7 +238,7 @@ export const Profile: React.FC = () => {
           className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white transition-colors"
           // It opens the profile editor, so that is what a screen reader must
           // announce — "Settings" sent blind users to the wrong place.
-          aria-label="Edit profile"
+          aria-label={t('Edit profile')}
         >
           <Settings size={18} />
         </button>
@@ -259,13 +260,13 @@ export const Profile: React.FC = () => {
         >
           <div className="relative z-10">
             <span className="text-eyebrow text-bg">FitFlow Pro</span>
-            <h3 className="font-display text-xl font-bold text-bg mt-1">Unlock the full coach.</h3>
+            <h3 className="font-display text-xl font-bold text-bg mt-1">{t('Unlock the full coach.')}</h3>
             <p className="text-bg/80 text-sm mt-1 max-w-[80%]">
-              AI form check, voice coaching, advanced analytics, unlimited meal plans.
+              {t('AI form check, voice coaching, advanced analytics, unlimited meal plans.')}
             </p>
             <span className="inline-flex mt-3 px-4 py-2 bg-bg text-white rounded-xl text-sm font-semibold">
-              {!purchaseUiAllowed() ? 'About FitFlow Pro'
-                : ent.status === 'expired' ? 'Subscribe to FitFlow Pro' : 'See Pro plans'}
+              {!purchaseUiAllowed() ? t('About FitFlow Pro')
+                : ent.status === 'expired' ? t('Subscribe to FitFlow Pro') : t('See Pro plans')}
             </span>
           </div>
           <Crown className="absolute right-2 bottom-2 w-28 h-28 text-bg/10" />
@@ -282,10 +283,10 @@ export const Profile: React.FC = () => {
           <div className="flex-1">
             <p className="text-eyebrow text-accent">FitFlow Pro</p>
             <p className="text-white text-sm font-medium mt-0.5">
-              Subscribed · {ent.plan === 'yearly' ? 'Yearly' : 'Monthly'} plan
+              {ent.plan === 'yearly' ? t('Subscribed · Yearly plan') : t('Subscribed · Monthly plan')}
             </p>
           </div>
-          <span className="text-xs text-text-dim">Manage</span>
+          <span className="text-xs text-text-dim">{t('Manage')}</span>
         </button>
       )}
 
@@ -293,13 +294,13 @@ export const Profile: React.FC = () => {
       <div className="glass p-5 space-y-4">
         <div className="flex justify-between items-end">
           <div>
-            <h2 className="font-display text-lg font-bold text-white tracking-tight">Progress</h2>
-            <p className="text-xs text-text-dim mt-0.5">Weigh-ins, with the dashed trend line</p>
+            <h2 className="font-display text-lg font-bold text-white tracking-tight">{t('Progress')}</h2>
+            <p className="text-xs text-text-dim mt-0.5">{t('Weigh-ins, with the dashed trend line')}</p>
           </div>
           <button
             onClick={() => setIsLoggingWeight(true)}
             className="w-10 h-10 bg-accent/12 border border-accent/25 text-accent rounded-xl flex items-center justify-center"
-            aria-label="Log weight"
+            aria-label={t('Log weight')}
           >
             <Plus size={18} />
           </button>
@@ -321,7 +322,7 @@ export const Profile: React.FC = () => {
                 <Line
                   type="monotone"
                   dataKey="trend"
-                  name="Trend"
+                  name={t('Trend')}
                   isAnimationActive={false}
                   stroke="#8B92A3"
                   strokeWidth={2}
@@ -332,7 +333,7 @@ export const Profile: React.FC = () => {
                 <Line
                   type="monotone"
                   dataKey="weight"
-                  name="Weight"
+                  name={t('Weight')}
                   isAnimationActive={false}
                   stroke={ACCENT}
                   strokeWidth={2.5}
@@ -347,7 +348,7 @@ export const Profile: React.FC = () => {
             <div className="text-center space-y-2 px-6">
               <LineChartIcon className="mx-auto text-text-dim" size={22} />
               <p className="text-sm text-text-dim leading-snug">
-                {weightHistory.length === 1 ? 'One more log unlocks your progress chart.' : 'Log your weight to start tracking progress.'}
+                {weightHistory.length === 1 ? t('One more log unlocks your progress chart.') : t('Log your weight to start tracking progress.')}
               </p>
             </div>
           </div>
@@ -358,21 +359,21 @@ export const Profile: React.FC = () => {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={Weight} label="Weight" {...units.weightParts(profile?.weight)} />
-        <StatCard icon={Activity} label="Body fat" value={profile?.latestBodyFat?.toString() || '–'} unit="%" />
-        <StatCard icon={TrendingUp} label="Muscle mass" {...units.weightParts(profile?.latestMuscleMass)} />
+        <StatCard icon={Weight} label={t('Weight')} {...units.weightParts(profile?.weight)} />
+        <StatCard icon={Activity} label={t('Body fat')} value={profile?.latestBodyFat?.toString() || '–'} unit="%" />
+        <StatCard icon={TrendingUp} label={t('Muscle mass')} {...units.weightParts(profile?.latestMuscleMass)} />
         <StatCard icon={Zap} label="BMI" value={profile?.weight && profile?.height ? calculateBMI(profile.weight, profile.height) || '–' : '–'} unit="" />
       </div>
 
       {/* Preferences */}
       <div className="glass p-5 space-y-4">
-        <h2 className="font-display text-lg font-bold text-white tracking-tight">Preferences</h2>
+        <h2 className="font-display text-lg font-bold text-white tracking-tight">{t('Preferences')}</h2>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {profile?.voiceCoachingEnabled ? <Volume2 className="text-accent" size={18} /> : <VolumeX className="text-text-dim" size={18} />}
             <div>
-              <p className="text-white font-medium text-sm">Voice coaching</p>
-              <p className="text-xs text-text-dim">Real-time cues during workouts</p>
+              <p className="text-white font-medium text-sm">{t('Voice coaching')}</p>
+              <p className="text-xs text-text-dim">{t('Real-time cues during workouts')}</p>
             </div>
           </div>
           <Toggle on={!!profile?.voiceCoachingEnabled} onChange={toggleVoiceCoaching} />
@@ -387,7 +388,7 @@ export const Profile: React.FC = () => {
       {/* Recent workouts */}
       <div className="space-y-3">
         <div className="flex justify-between items-end px-1">
-          <h2 className="font-display text-lg font-bold text-white tracking-tight">Recent workouts</h2>
+          <h2 className="font-display text-lg font-bold text-white tracking-tight">{t('Recent workouts')}</h2>
         </div>
         {belowFoldReady && <WorkoutHistory limitCount={10} />}
       </div>
@@ -395,7 +396,7 @@ export const Profile: React.FC = () => {
       {/* Achievements */}
       <div className="glass p-5 space-y-4">
         <div className="flex justify-between items-end">
-          <h2 className="font-display text-lg font-bold text-white tracking-tight">Achievements</h2>
+          <h2 className="font-display text-lg font-bold text-white tracking-tight">{t('Achievements')}</h2>
           <span className="text-xs text-text-dim num">
             {profile?.badges?.length || 0} / {ALL_BADGES.length}
           </span>
@@ -416,7 +417,7 @@ export const Profile: React.FC = () => {
                 <p className={cn(
                   'text-[10px] text-center leading-tight font-medium',
                   isEarned ? 'text-white' : 'text-text-mute',
-                )}>{badge.name}</p>
+                )}>{tDyn(badge.name)}</p>
               </div>
             );
           })}
@@ -426,9 +427,9 @@ export const Profile: React.FC = () => {
       {/* Wearables */}
       <div className="glass p-5 space-y-3">
         <div className="flex justify-between items-end">
-          <h2 className="font-display text-lg font-bold text-white tracking-tight">Connected devices</h2>
+          <h2 className="font-display text-lg font-bold text-white tracking-tight">{t('Connected devices')}</h2>
           {(profile?.googleFitConnected || (profile as any)?.healthConnectConnected || (profile as any)?.healthKitConnected) && (
-            <span className="text-eyebrow text-accent">Live</span>
+            <span className="text-eyebrow text-accent">{t('Live')}</span>
           )}
         </div>
 
@@ -442,8 +443,8 @@ export const Profile: React.FC = () => {
                 <p className="text-white font-medium text-sm">{nativeHealthLabel}</p>
                 <p className="text-xs text-text-dim">
                   {healthMetrics
-                    ? `${healthMetrics.steps.toLocaleString()} steps · ${units.formatEnergy(healthMetrics.caloriesBurned)} today`
-                    : 'Steps · heart rate · sleep · workouts'}
+                    ? t('{steps} steps · {energy} today', { steps: healthMetrics.steps.toLocaleString(), energy: units.formatEnergy(healthMetrics.caloriesBurned) })
+                    : t('Steps · heart rate · sleep · workouts')}
                 </p>
               </div>
             </div>
@@ -453,7 +454,7 @@ export const Profile: React.FC = () => {
                 disabled={healthSyncing}
                 className="text-xs font-semibold text-accent border border-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/8 transition-colors disabled:opacity-50"
               >
-                {healthSyncing ? <Loader2 className="animate-spin" size={12} /> : 'Sync now'}
+                {healthSyncing ? <Loader2 className="animate-spin" size={12} /> : t('Sync now')}
               </button>
             ) : (
               <button
@@ -461,7 +462,7 @@ export const Profile: React.FC = () => {
                 disabled={healthSyncing}
                 className="text-xs font-semibold text-white border border-white/15 px-3 py-1.5 rounded-lg hover:border-accent/50 hover:text-accent transition-colors disabled:opacity-50"
               >
-                {healthSyncing ? <Loader2 className="animate-spin" size={12} /> : 'Connect'}
+                {healthSyncing ? <Loader2 className="animate-spin" size={12} /> : t('Connect')}
               </button>
             )}
           </div>
@@ -470,7 +471,7 @@ export const Profile: React.FC = () => {
         {!isNative && (
           <div className="p-3 bg-surface rounded-xl border border-white/[0.06]">
             <p className="text-xs text-text-dim leading-relaxed">
-              Install the FitFlow Android app to sync steps, heart rate, sleep, and workouts from Health Connect.
+              {t('Install the FitFlow Android app to sync steps, heart rate, sleep, and workouts from Health Connect.')}
             </p>
           </div>
         )}
@@ -478,18 +479,18 @@ export const Profile: React.FC = () => {
 
       {/* Menu */}
       <div className="space-y-2">
-        <ProfileMenuItem icon={Trophy} label="Achievements" onClick={() => navigate('/achievements')} />
-        <ProfileMenuItem icon={UserIcon} label="Account info" onClick={() => setIsEditingProfile(true)} />
-        <ProfileMenuItem icon={Settings} label="Settings" onClick={() => navigate('/settings')} />
-        <ProfileMenuItem icon={LogOut} label="Sign out" danger onClick={signOut} />
+        <ProfileMenuItem icon={Trophy} label={t('Achievements')} onClick={() => navigate('/achievements')} />
+        <ProfileMenuItem icon={UserIcon} label={t('Account info')} onClick={() => setIsEditingProfile(true)} />
+        <ProfileMenuItem icon={Settings} label={t('Settings')} onClick={() => navigate('/settings')} />
+        <ProfileMenuItem icon={LogOut} label={t('Sign out')} danger onClick={signOut} />
       </div>
 
       {/* Edit profile modal */}
       <AnimatePresence>
         {isEditingProfile && (
-          <Modal onClose={() => setIsEditingProfile(false)} title="Account info">
+          <Modal onClose={() => setIsEditingProfile(false)} title={t('Account info')}>
             <div className="space-y-4">
-              <Field label="Name">
+              <Field label={t('Name')}>
                 <input
                   className="modal-input"
                   value={profileData.displayName}
@@ -497,7 +498,7 @@ export const Profile: React.FC = () => {
                 />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Age">
+                <Field label={t('Age')}>
                   <input
                     type="number"
                     className="modal-input"
@@ -505,7 +506,7 @@ export const Profile: React.FC = () => {
                     onChange={(e) => setProfileData({ ...profileData, age: e.target.value })}
                   />
                 </Field>
-                <Field label="Daily reminder">
+                <Field label={t('Daily reminder')}>
                   <input
                     type="time"
                     className="modal-input"
@@ -514,14 +515,14 @@ export const Profile: React.FC = () => {
                   />
                 </Field>
               </div>
-              <Field label="Voice pace">
+              <Field label={t('Voice pace')}>
                 <select
                   className="modal-input appearance-none"
                   value={profileData.voiceSpeed}
                   onChange={(e) => setProfileData({ ...profileData, voiceSpeed: e.target.value as 'normal' | 'slow' })}
                 >
-                  <option value="normal">Normal</option>
-                  <option value="slow">Slow & steady</option>
+                  <option value="normal">{t('Normal')}</option>
+                  <option value="slow">{t('Slow & steady')}</option>
                 </select>
               </Field>
             </div>
@@ -530,7 +531,7 @@ export const Profile: React.FC = () => {
               disabled={isSyncing}
               className="btn-3d w-full h-12 mt-6 disabled:opacity-50"
             >
-              {isSyncing ? <Loader2 className="animate-spin" size={16} /> : 'Save changes'}
+              {isSyncing ? <Loader2 className="animate-spin" size={16} /> : t('Save changes')}
             </button>
           </Modal>
         )}
@@ -539,9 +540,9 @@ export const Profile: React.FC = () => {
       {/* Log weight modal */}
       <AnimatePresence>
         {isLoggingWeight && (
-          <Modal onClose={() => setIsLoggingWeight(false)} title="Log body metrics" size="sm">
+          <Modal onClose={() => setIsLoggingWeight(false)} title={t('Log body metrics')} size="sm">
             <div className="space-y-3">
-              <Field label={`Weight (${units.weightUnitLabel})`}>
+              <Field label={t('Weight ({unit})', { unit: units.weightUnitLabel })}>
                 <input
                   type="text"
                   inputMode={units.prefs.weight === 'st' ? 'text' : 'decimal'}
@@ -556,7 +557,7 @@ export const Profile: React.FC = () => {
                   <p className="text-xs text-accent-2 ml-1" role="alert">Try 75.5 kg, 165 lb or 11 st 6</p>
                 )}
               </Field>
-              <Field label="Body fat % (optional)">
+              <Field label={t('Body fat % (optional)')}>
                 <input
                   type="number"
                   placeholder="12.5"
@@ -565,7 +566,7 @@ export const Profile: React.FC = () => {
                   onChange={(e) => setNewBodyFat(e.target.value)}
                 />
               </Field>
-              <Field label={`Muscle mass (${units.weightUnitLabel}) (optional)`}>
+              <Field label={t('Muscle mass ({unit}) (optional)', { unit: units.weightUnitLabel })}>
                 <input
                   type="text"
                   inputMode={units.prefs.weight === 'st' ? 'text' : 'decimal'}
@@ -583,7 +584,7 @@ export const Profile: React.FC = () => {
               disabled={isSyncing || newWeightKg == null || muscleInvalid}
               className="btn-3d w-full h-12 mt-6 disabled:opacity-50"
             >
-              {isSyncing ? <Loader2 className="animate-spin" size={16} /> : 'Log metrics'}
+              {isSyncing ? <Loader2 className="animate-spin" size={16} /> : t('Log metrics')}
             </button>
           </Modal>
         )}
@@ -682,7 +683,7 @@ const Modal: React.FC<{ onClose: () => void; title: string; size?: 'sm' | 'md'; 
     >
       <div className="flex justify-between items-center mb-6">
         <h2 className="font-display text-2xl font-bold text-white tracking-tight">{title}</h2>
-        <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white" aria-label="Close">
+        <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Close')}>
           <X size={18} />
         </button>
       </div>
