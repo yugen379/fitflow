@@ -1668,7 +1668,7 @@ export const Track: React.FC = () => {
               />
               {manualBase && (
                 <div className="space-y-2">
-                  <label className="text-xs text-text-dim font-medium ml-1">{units.foodMassUnit === 'oz' ? 'Amount (oz)' : 'Amount (g or ml)'}</label>
+                  <label className="text-xs text-text-dim font-medium ml-1">{units.foodMassUnit === 'oz' ? t('Amount (oz)') : t('Amount (g or ml)')}</label>
                   {/* g, or oz on imperial; the amount is kept in whole grams (converted once). */}
                   <UnitInput
                     inputMode={units.foodMassUnit === 'oz' ? 'decimal' : 'numeric'}

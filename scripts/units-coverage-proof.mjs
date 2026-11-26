@@ -118,7 +118,7 @@ const ALLOWLIST = [
   // GPS: the km/mi quick switch's own button labels.
   { file: 'src/pages/TrackActivity.tsx', match: /^\{u === 'metric' \? 'km' : 'mi'\}$/, why: 'km / mi quick-switch buttons: the labels ARE the two choices (they write the profile units)' },
   // Track: the metric branch of a units-aware label (drinks are weighed by volume in metric).
-  { file: 'src/pages/Track.tsx', match: /'Amount \(oz\)' : 'Amount \(g or ml\)'/, why: 'label picked by foodMassUnit; "g or ml" is the metric side of the branch' },
+  { file: 'src/pages/Track.tsx', match: /t\('Amount \(oz\)'\) : t\('Amount \(g or ml\)'\)/, why: 'label picked by foodMassUnit; "g or ml" is the metric side of the branch' },
   // NotificationCenter: buildNudges is exported pure for tests; this is its
   // DEFAULT energy formatter, overridden with units.formatEnergy on screen.
   { file: 'src/components/ui/NotificationCenter.tsx', match: /^formatEnergy = \(kcal: number\) => `\$\{kcal\.toLocaleString\(\)\} kcal`,$/, why: 'default formatter for the pure buildNudges(); the component passes units.formatEnergy' },
