@@ -39,6 +39,7 @@ import { haptic } from '../lib/haptics';
 import { AnimatedNumber } from './AnimatedNumber';
 import { prefersReducedMotion } from '../lib/motion';
 import { useUnits } from '../hooks/useUnits';
+import { t } from '../i18n/i18n';
 
 export interface HydrationDropProps {
   /** Millilitres logged so far today. */
@@ -125,8 +126,8 @@ export const HydrationDrop: React.FC<HydrationDropProps> = ({
     if (atGoal && !wasAtGoal.current) {
       setCelebrating(true);
       void haptic('medium');
-      const t = setTimeout(() => setCelebrating(false), 1400);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setCelebrating(false), 1400);
+      return () => clearTimeout(timer);
     }
     wasAtGoal.current = atGoal;
   }, [atGoal]);
@@ -189,7 +190,9 @@ export const HydrationDrop: React.FC<HydrationDropProps> = ({
           viewBox="0 0 100 140"
           className="relative w-40 h-56 sm:w-44 sm:h-60"
           role="img"
-          aria-label={`Hydration: ${units.volumeValue(currentMl)} of ${units.volumeValue(goalMl)} ${units.volumeUnit === 'ml' ? 'millilitres' : 'fluid ounces'}`}
+          aria-label={units.volumeUnit === 'ml'
+            ? t('Hydration: {current} of {goal} millilitres', { current: units.volumeValue(currentMl), goal: units.volumeValue(goalMl) })
+            : t('Hydration: {current} of {goal} fluid ounces', { current: units.volumeValue(currentMl), goal: units.volumeValue(goalMl) })}
         >
           <defs>
             {/* The clip that makes the liquid take the drop's shape. */}
@@ -288,11 +291,11 @@ export const HydrationDrop: React.FC<HydrationDropProps> = ({
             <AnimatedNumber value={Math.round(units.volumeValue(currentMl))} fromZero={false} />
           </p>
           <p className="text-[11px] text-white/75 mt-1 drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)]">
-            of {units.volumeValue(goalMl).toLocaleString()} {units.volumeUnit}
+            {t('of {goal} {unit}', { goal: units.volumeValue(goalMl).toLocaleString(), unit: units.volumeUnit })}
           </p>
           {atGoal ? (
             <span className="text-eyebrow text-accent mt-1.5 drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)]">
-              Goal complete
+              {t('Goal complete')}
             </span>
           ) : null}
         </div>

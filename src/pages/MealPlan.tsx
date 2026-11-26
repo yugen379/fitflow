@@ -16,6 +16,7 @@ import { useUnits } from '../hooks/useUnits';
 import { UnitInput } from '../components/UnitInput';
 import { MealDayCard, MEAL_TYPES as DAY_MEAL_TYPES } from '../components/MealDayCard';
 import type { MealType as DayMealType, Recipe } from '../components/MealDayCard';
+import { t } from '../i18n/i18n';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 type MealType = typeof MEAL_TYPES[number];
@@ -78,6 +79,8 @@ export const MealPlan: React.FC = () => {
   const { profile } = useAuth();
   const units = useUnits();
   const { showToast } = useToast();
+  const mealTypeLabel = (k: string): string =>
+    ({ breakfast: t('Breakfast'), lunch: t('Lunch'), dinner: t('Dinner'), snack: t('Snack') } as Record<string, string>)[k] ?? k;
   const [days, setDays] = useState<PlanDay[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<{ name: string; type: string; dayIdx: number; mealKey: MealType } | null>(null);
@@ -299,10 +302,10 @@ export const MealPlan: React.FC = () => {
       await persistCalorieTarget(target);
       if (profile?.uid) checkAndAwardBadge(profile.uid, 'ai_chef').catch(() => {});
       celebrateSmall();
-      showToast(`Your ${units.formatEnergy(target)}/day plan is ready`, 'success');
+      showToast(t('Your {energy}/day plan is ready', { energy: units.formatEnergy(target) }), 'success');
     } catch (e) {
       console.error('Generate plan failed:', e);
-      showToast('Generation failed — using a starter plan', 'info');
+      showToast(t('Generation failed — using a starter plan'), 'info');
       const nextDays = fallbackWeek(dailyTarget).map(d => ({ ...d, calories: dailyTarget }));
       setDays(nextDays);
       await persistPlan(nextDays, dailyTarget);
@@ -318,7 +321,7 @@ export const MealPlan: React.FC = () => {
     setLoadingRecipe(true);
     setRecipe(null);
     try { setRecipe(await getRecipe(name)); }
-    catch { showToast('Recipe unavailable', 'error'); }
+    catch { showToast(t('Recipe unavailable'), 'error'); }
     finally { setLoadingRecipe(false); }
   };
 
@@ -337,9 +340,9 @@ export const MealPlan: React.FC = () => {
         setSelectedMeal({ ...selectedMeal, name: result.name });
         setRecipe(null);
         try { setRecipe(await getRecipe(result.name)); } catch {}
-        showToast(`Swapped to ${result.name}`, 'success');
+        showToast(t('Swapped to {name}', { name: result.name }), 'success');
       } else {
-        showToast('Could not find a swap', 'error');
+        showToast(t('Could not find a swap'), 'error');
       }
     } finally {
       setSwapping(null);
@@ -397,17 +400,17 @@ export const MealPlan: React.FC = () => {
   }, [days, recipes]);
 
   const shareShoppingList = async () => {
-    const text = `🛒 FitFlow shopping list this week:\n\n${shoppingList.map(i => '• ' + i).join('\n')}`;
+    const text = `🛒 ${t('FitFlow shopping list this week:')}\n\n${shoppingList.map(i => '• ' + i).join('\n')}`;
     haptic('medium');
     if (typeof navigator !== 'undefined' && (navigator as any).share) {
-      try { await (navigator as any).share({ title: 'Shopping list', text }); return; }
+      try { await (navigator as any).share({ title: t('Shopping list'), text }); return; }
       catch { /* user cancelled, fall through */ }
     }
     try {
       await navigator.clipboard.writeText(text);
-      showToast('Shopping list copied', 'success');
+      showToast(t('Shopping list copied'), 'success');
     } catch {
-      showToast('Open Settings to share', 'info');
+      showToast(t('Open Settings to share'), 'info');
     }
   };
 
@@ -417,22 +420,22 @@ export const MealPlan: React.FC = () => {
     <div className="pb-28 pt-4 px-4 min-h-screen space-y-5">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back"><ChevronLeft size={18} /></button>
+          <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}><ChevronLeft size={18} /></button>
           <div>
-            <p className="text-eyebrow text-accent">Meal plans</p>
-            <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">AI weekly menu</h1>
+            <p className="text-eyebrow text-accent">{t('Meal plans')}</p>
+            <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{t('AI weekly menu')}</h1>
           </div>
         </div>
         {days.length > 0 && (
           <div className="flex gap-2">
             <button onClick={generate} disabled={loading}
               className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-accent transition-colors disabled:opacity-50"
-              aria-label="Regenerate">
+              aria-label={t('Regenerate')}>
               {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             </button>
             <button onClick={() => { haptic('light'); setShoppingOpen(true); }}
               className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-accent transition-colors"
-              aria-label="Shopping list">
+              aria-label={t('Shopping list')}>
               <ShoppingCart size={16} />
             </button>
           </div>
@@ -459,24 +462,24 @@ export const MealPlan: React.FC = () => {
             </motion.div>
           </div>
           <div>
-            <p className="font-display text-2xl font-bold text-white tracking-tight">No plan yet</p>
+            <p className="font-display text-2xl font-bold text-white tracking-tight">{t('No plan yet')}</p>
             <p className="text-text-dim text-sm max-w-[280px] mx-auto leading-relaxed mt-2">
-              Set your daily calorie target and AI builds a 7-day menu around your goal and preferences.
+              {t('Set your daily calorie target and AI builds a 7-day menu around your goal and preferences.')}
             </p>
           </div>
 
           <div className="w-full max-w-xs glass p-5 space-y-3">
-            <p className="text-eyebrow text-accent text-center">Daily calorie target</p>
+            <p className="text-eyebrow text-accent text-center">{t('Daily calorie target')}</p>
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => updateDailyTarget(dailyTarget - 50)}
                 className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/15 text-white text-lg font-bold active:scale-95 transition-transform"
-                aria-label="Decrease target"
+                aria-label={t('Decrease target')}
               >−</button>
               {/* Typed in kcal or kJ; the target is kept in kcal (converted once). */}
               <UnitInput
                 inputMode="numeric"
-                aria-label={`Daily target in ${units.energyUnit}`}
+                aria-label={t('Daily target in {unit}', { unit: units.energyUnit })}
                 value={dailyTarget}
                 unit={units.energyUnit}
                 toDisplay={units.energyInputValue}
@@ -487,11 +490,11 @@ export const MealPlan: React.FC = () => {
               <button
                 onClick={() => updateDailyTarget(dailyTarget + 50)}
                 className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/15 text-white text-lg font-bold active:scale-95 transition-transform"
-                aria-label="Increase target"
+                aria-label={t('Increase target')}
               >+</button>
             </div>
             <p className="text-center text-xs text-text-mute">
-              {units.energyUnit} · scaled across 7 days = <span className="num text-accent font-semibold">{units.formatEnergyNumber(dailyTarget * 7)}</span>/wk
+              {t('{unit} · scaled across 7 days =', { unit: units.energyUnit })} <span className="num text-accent font-semibold">{units.formatEnergyNumber(dailyTarget * 7)}</span>{t('/wk')}
             </p>
             <div className="grid grid-cols-3 gap-1.5 pt-1">
               {[1800, 2200, 2800].map(v => (
@@ -508,8 +511,8 @@ export const MealPlan: React.FC = () => {
 
           <button onClick={generate} disabled={loading || dailyTarget < 1000}
             className="btn-3d h-13 px-6 disabled:opacity-60">
-            {loading ? <><Loader2 className="animate-spin" size={16} /> Building your week…</>
-              : <><Sparkles size={16} /> Generate my plan</>}
+            {loading ? <><Loader2 className="animate-spin" size={16} /> {t('Building your week…')}</>
+              : <><Sparkles size={16} /> {t('Generate my plan')}</>}
           </button>
         </div>
       ) : (
@@ -517,22 +520,22 @@ export const MealPlan: React.FC = () => {
           <div className="glass p-5 space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-eyebrow text-accent">Week summary</p>
+                <p className="text-eyebrow text-accent">{t('Week summary')}</p>
                 <p className="num font-display text-xl font-bold text-white mt-1">
-                  <AnimatedNumber value={Math.round(units.energyValue(totalCalsThisWeek))} /> <span className="text-sm text-text-dim font-medium">{units.energyUnit} · 7 days</span>
+                  <AnimatedNumber value={Math.round(units.energyValue(totalCalsThisWeek))} /> <span className="text-sm text-text-dim font-medium">{t('{unit} · 7 days', { unit: units.energyUnit })}</span>
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-text-dim font-medium">Daily target</p>
+                <p className="text-xs text-text-dim font-medium">{t('Daily target')}</p>
                 <div className="flex items-center gap-1.5 justify-end mt-0.5">
                   <button
                     onClick={() => { updateDailyTarget(dailyTarget - 50); setDays(d => d.map(day => ({ ...day, calories: dailyTarget - 50 }))); }}
                     className="w-6 h-6 rounded-md bg-white/[0.06] border border-white/15 text-white text-xs font-bold active:scale-95 transition-transform"
-                    aria-label="Decrease target"
+                    aria-label={t('Decrease target')}
                   >−</button>
                   <UnitInput
                     inputMode="numeric"
-                    aria-label={`Daily target in ${units.energyUnit}`}
+                    aria-label={t('Daily target in {unit}', { unit: units.energyUnit })}
                     value={dailyTarget}
                     unit={units.energyUnit}
                     toDisplay={units.energyInputValue}
@@ -543,7 +546,7 @@ export const MealPlan: React.FC = () => {
                   <button
                     onClick={() => { updateDailyTarget(dailyTarget + 50); setDays(d => d.map(day => ({ ...day, calories: dailyTarget + 50 }))); }}
                     className="w-6 h-6 rounded-md bg-white/[0.06] border border-white/15 text-white text-xs font-bold active:scale-95 transition-transform"
-                    aria-label="Increase target"
+                    aria-label={t('Increase target')}
                   >+</button>
                 </div>
               </div>
@@ -555,12 +558,12 @@ export const MealPlan: React.FC = () => {
                   <>
                     <MacroRing protein={macros.protein} carbs={macros.carbs} fats={macros.fats} />
                     <div className="flex-1 space-y-2">
-                      <p className="text-eyebrow text-text-dim">Daily macros</p>
+                      <p className="text-eyebrow text-text-dim">{t('Daily macros')}</p>
                       <div className="space-y-1.5">
                         {[
-                          { l: 'Protein', v: macros.protein, c: 'bg-accent',    t: 'text-accent' },
-                          { l: 'Carbs',   v: macros.carbs,   c: 'bg-accent-3',  t: 'text-accent-3' },
-                          { l: 'Fats',    v: macros.fats,    c: 'bg-accent-2',  t: 'text-accent-2' },
+                          { l: t('Protein'), v: macros.protein, c: 'bg-accent',    t: 'text-accent' },
+                          { l: t('Carbs'),   v: macros.carbs,   c: 'bg-accent-3',  t: 'text-accent-3' },
+                          { l: t('Fats'),    v: macros.fats,    c: 'bg-accent-2',  t: 'text-accent-2' },
                         ].map(m => (
                           <div key={m.l} className="flex items-center gap-2.5">
                             <span className={`w-2 h-2 rounded-full ${m.c}`} />
@@ -606,7 +609,7 @@ export const MealPlan: React.FC = () => {
                     disabled={loadingDay !== null}
                     className="w-full h-10 rounded-2xl bg-white/[0.03] border border-white/[0.07] text-text-dim text-[11px] font-semibold active:scale-[0.99] transition-transform disabled:opacity-50"
                   >
-                    {loadingDay === idx ? 'Loading ingredients…' : `Load ingredients for ${day.day}`}
+                    {loadingDay === idx ? t('Loading ingredients…') : t('Load ingredients for {day}', { day: day.day })}
                   </button>
                 ) : null}
               </div>
@@ -629,10 +632,10 @@ export const MealPlan: React.FC = () => {
               <div className="p-6 space-y-5 overflow-y-auto">
                 <div className="flex justify-between items-start gap-3">
                   <div className="min-w-0">
-                    <p className="text-eyebrow text-accent">{selectedMeal.type}</p>
+                    <p className="text-eyebrow text-accent">{mealTypeLabel(selectedMeal.type)}</p>
                     <h2 className="font-display text-2xl font-bold text-white tracking-tight leading-tight mt-1">{selectedMeal.name}</h2>
                   </div>
-                  <button onClick={() => setSelectedMeal(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim shrink-0" aria-label="Close"><X size={16} /></button>
+                  <button onClick={() => setSelectedMeal(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim shrink-0" aria-label={t('Close')}><X size={16} /></button>
                 </div>
 
                 <div className="flex gap-2">
@@ -642,27 +645,31 @@ export const MealPlan: React.FC = () => {
                     className="btn-ghost h-11 px-4 flex-1 disabled:opacity-50"
                   >
                     {swapping ? <Loader2 className="animate-spin" size={14} /> : <Replace size={14} />}
-                    Swap with AI
+                    {t('Swap with AI')}
                   </button>
                 </div>
 
                 {loadingRecipe ? (
                   <div className="py-12">
-                    <LoadingBar label="Fetching recipe" />
+                    <LoadingBar label={t('Fetching recipe')} />
                   </div>
                 ) : !recipe ? (
                   <div className="py-10 flex flex-col items-center gap-3 text-center">
                     <ChefHat className="text-text-dim/60" size={32} />
                     <p className="text-sm text-text-dim max-w-[260px] leading-relaxed">
-                      AI recipe details are taking a moment. Tap <span className="text-accent font-medium">Swap with AI</span> to pick a different option, or check back shortly.
+                      {(() => {
+                        // One whole sentence for translators; the button name keeps its accent.
+                        const [before, after] = t('AI recipe details are taking a moment. Tap {action} to pick a different option, or check back shortly.').split('{action}');
+                        return <>{before}<span className="text-accent font-medium">{t('Swap with AI')}</span>{after}</>;
+                      })()}
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-5">
                     <div className="grid grid-cols-3 gap-2">
-                      {[{ l: 'Protein', v: `${recipe.protein || 0}g`, c: 'text-accent' },
-                        { l: 'Carbs', v: `${recipe.carbs || 0}g`, c: 'text-accent-3' },
-                        { l: 'Fats', v: `${recipe.fats || 0}g`, c: 'text-accent-2' }].map(m => (
+                      {[{ l: t('Protein'), v: `${recipe.protein || 0}g`, c: 'text-accent' },
+                        { l: t('Carbs'), v: `${recipe.carbs || 0}g`, c: 'text-accent-3' },
+                        { l: t('Fats'), v: `${recipe.fats || 0}g`, c: 'text-accent-2' }].map(m => (
                         <div key={m.l} className="glass p-3 text-center">
                           <p className={`num font-display text-lg font-bold ${m.c}`}>{m.v}</p>
                           <p className="text-xs text-text-dim font-medium mt-0.5">{m.l}</p>
@@ -671,7 +678,7 @@ export const MealPlan: React.FC = () => {
                     </div>
                     {recipe.ingredients?.length > 0 && (
                       <div>
-                        <p className="text-eyebrow text-accent mb-3">Ingredients</p>
+                        <p className="text-eyebrow text-accent mb-3">{t('Ingredients')}</p>
                         <ul className="space-y-2">{recipe.ingredients.map((i: string, j: number) => (
                           <li key={j} className="flex items-center gap-3">
                             <div className="w-1.5 h-1.5 bg-accent rounded-full shrink-0" />
@@ -682,7 +689,7 @@ export const MealPlan: React.FC = () => {
                     )}
                     {recipe.instructions?.length > 0 && (
                       <div>
-                        <p className="text-eyebrow text-accent mb-3">Instructions</p>
+                        <p className="text-eyebrow text-accent mb-3">{t('Instructions')}</p>
                         <ol className="space-y-3">{recipe.instructions.map((step: string, j: number) => (
                           <li key={j} className="flex gap-3">
                             <span className="num text-accent font-semibold text-sm shrink-0 w-5">{j + 1}.</span>
@@ -712,27 +719,27 @@ export const MealPlan: React.FC = () => {
             >
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <p className="text-eyebrow text-accent">This week</p>
-                  <p className="font-display text-xl font-bold text-white tracking-tight">Shopping list</p>
+                  <p className="text-eyebrow text-accent">{t('This week')}</p>
+                  <p className="font-display text-xl font-bold text-white tracking-tight">{t('Shopping list')}</p>
                   <p className="text-xs text-text-dim mt-0.5 num">
-                    {shoppingChecked.size} / {shoppingList.length} ticked
+                    {t('{n} / {total} ticked', { n: shoppingChecked.size, total: shoppingList.length })}
                   </p>
                   {/* The list only covers meals whose recipes have been fetched.
                       Saying so beats implying the week is fully accounted for. */}
                   {recipeCoverage.total > 0 && recipeCoverage.loaded < recipeCoverage.total ? (
                     <p className="text-[11px] text-accent-4 mt-1 leading-snug max-w-[220px]">
-                      From {recipeCoverage.loaded} of {recipeCoverage.total} meals. Load more days to complete it.
+                      {t('From {loaded} of {total} meals. Load more days to complete it.', { loaded: recipeCoverage.loaded, total: recipeCoverage.total })}
                     </p>
                   ) : null}
                 </div>
-                <button onClick={() => setShoppingOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close"><X size={16} /></button>
+                <button onClick={() => setShoppingOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}><X size={16} /></button>
               </div>
               <div className="flex-1 overflow-y-auto space-y-1.5 -mx-1 px-1">
                 {shoppingList.length === 0 ? (
                   <p className="text-sm text-text-dim text-center py-8 leading-relaxed px-4">
                     {days.length === 0
-                      ? 'Generate a plan first, then load a day’s ingredients to start the list.'
-                      : 'No ingredients loaded yet. Open a day and tap “Load ingredients” — each one you load is added here.'}
+                      ? t('Generate a plan first, then load a day’s ingredients to start the list.')
+                      : t('No ingredients loaded yet. Open a day and tap “Load ingredients” — each one you load is added here.')}
                   </p>
                 ) : shoppingList.map(item => {
                   const checked = shoppingChecked.has(item);
@@ -758,10 +765,10 @@ export const MealPlan: React.FC = () => {
                 })}
               </div>
               <div className="flex gap-2 mt-4 pt-4 border-t border-white/[0.06]">
-                <button onClick={() => setShoppingChecked(new Set())} className="btn-ghost h-12 px-4">Reset</button>
+                <button onClick={() => setShoppingChecked(new Set())} className="btn-ghost h-12 px-4">{t('Reset')}</button>
                 <button onClick={shareShoppingList} disabled={shoppingList.length === 0}
                   className="btn-3d h-12 flex-1 disabled:opacity-50">
-                  <Share2 size={14} /> Share list
+                  <Share2 size={14} /> {t('Share list')}
                 </button>
               </div>
             </motion.div>

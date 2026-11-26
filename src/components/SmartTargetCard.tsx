@@ -8,6 +8,7 @@ import { getMealCaloriesSince, getWeightHistory } from '../services/dataService'
 import { computeDailyTargets } from '../lib/nutritionTargets';
 import { adaptiveTarget, adaptiveMessage, dailyIntake, localDate, WINDOW_DAYS, type AdaptiveResult } from '../lib/adaptiveTarget';
 import { useUnits } from '../hooks/useUnits';
+import { t } from '../i18n/i18n';
 
 /**
  * "Smart target": the user's real daily burn worked out from their weigh-ins
@@ -74,11 +75,11 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
         next.fatsG = Math.round(f * k);
       }
       await updateDoc(doc(db, 'users', profile.uid), { macroTargets: next });
-      showToast(`Daily target set to ${units.formatEnergy(result.target)}`, 'success');
+      showToast(t('Daily target set to {energy}', { energy: units.formatEnergy(result.target) }), 'success');
       onApplied?.(result.target);
       void import('../services/reviewService').then((m) => m.maybeAskForReview('smart_target')).catch(() => {});
     } catch {
-      showToast('Could not update your target. Try again.', 'error');
+      showToast(t('Could not update your target. Try again.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -88,7 +89,7 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
   if (loading) {
     return compact ? null : (
       <div className="glass p-4 flex items-center gap-2 text-sm text-text-dim" aria-busy="true">
-        <Loader2 size={14} className="animate-spin" /> Working out your real burn…
+        <Loader2 size={14} className="animate-spin" /> {t('Working out your real burn…')}
       </div>
     );
   }
@@ -99,26 +100,26 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
   const Icon = result.status !== 'ready' ? Sparkles : result.kgPerWeek < -0.05 ? TrendingDown : result.kgPerWeek > 0.05 ? TrendingUp : Minus;
 
   return (
-    <section className="glass p-4 space-y-3" aria-label="Smart calorie target" data-testid="smart-target">
+    <section className="glass p-4 space-y-3" aria-label={t('Smart calorie target')} data-testid="smart-target">
       <div className="flex items-center gap-2">
         <Icon size={16} className="text-accent" />
-        <p className="text-eyebrow text-accent">Smart target</p>
+        <p className="text-eyebrow text-accent">{t('Smart target')}</p>
       </div>
 
       {result.status === 'need_data' ? (
         <>
           <p className="text-sm text-white leading-relaxed">
-            Your target adjusts to your real body once there's enough to go on: weigh in a few times a week and log full days.
+            {t("Your target adjusts to your real body once there's enough to go on: weigh in a few times a week and log full days.")}
           </p>
           <p className="text-xs text-text-dim">{result.message}</p>
           <div className="grid grid-cols-2 gap-2 text-center">
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
               <p className="num text-white font-bold">{result.loggedDays}/10</p>
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">full days logged</p>
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">{t('full days logged')}</p>
             </div>
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
               <p className="num text-white font-bold">{result.weighIns}/3</p>
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">weigh-ins</p>
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">{t('weigh-ins')}</p>
             </div>
           </div>
         </>
@@ -135,7 +136,7 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
               <p className="num text-white font-bold">{units.formatEnergyNumber(result.burn)}</p>
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">real burn</p>
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">{t('real burn')}</p>
             </div>
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
               <p className="num text-white font-bold">{units.weightRateParts(result.kgPerWeek).value}</p>
@@ -143,7 +144,7 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
             </div>
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
               <p className="num text-accent font-bold">{units.formatEnergyNumber(result.target)}</p>
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">{result.change === 0 ? 'target' : 'new target'}</p>
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">{result.change === 0 ? t('target') : t('new target')}</p>
             </div>
           </div>
           {result.change !== 0 && (
@@ -153,11 +154,13 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
               className="w-full bg-accent text-bg font-semibold rounded-xl py-3 text-sm disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
-              {result.change < 0 ? 'Lower' : 'Raise'} target to {units.formatEnergy(result.target)}
+              {result.change < 0
+                ? t('Lower target to {energy}', { energy: units.formatEnergy(result.target) })
+                : t('Raise target to {energy}', { energy: units.formatEnergy(result.target) })}
             </button>
           )}
           <p className="text-[11px] text-text-dim leading-relaxed">
-            Based on {result.loggedDays} logged days and {result.weighIns} weigh-ins in the last 4 weeks. If you tend to under-log, this still works: the scale shows what you really ate.
+            {t('Based on {days} logged days and {weighIns} weigh-ins in the last 4 weeks. If you tend to under-log, this still works: the scale shows what you really ate.', { days: result.loggedDays, weighIns: result.weighIns })}
           </p>
         </>
       )}

@@ -19,6 +19,7 @@ import { ChevronDown, Clock, Flame, Replace } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
 import { useUnits } from '../hooks/useUnits';
+import { t } from '../i18n/i18n';
 
 export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
@@ -90,20 +91,26 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
   isToday,
 }) => {
   const units = useUnits();
+  const mealLabel: Record<MealType, string> = {
+    breakfast: t('Breakfast'),
+    lunch: t('Lunch'),
+    dinner: t('Dinner'),
+    snack: t('Snack'),
+  };
   return (
   <motion.section
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: Math.min(dayIndex * 0.04, 0.24), type: 'spring', stiffness: 220, damping: 22 }}
     className={cn('glass overflow-hidden', isToday && 'ring-1 ring-accent/30')}
-    aria-label={`${day.day} meals`}
+    aria-label={t('{day} meals', { day: day.day })}
   >
     <header className="px-5 py-3 border-b border-white/[0.06] flex justify-between items-center gap-3">
       <div className="flex items-center gap-2 min-w-0">
         <p className="text-eyebrow text-accent truncate">{day.day}</p>
         {isToday ? (
           <span className="text-[9px] uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full bg-accent/12 border border-accent/30 text-accent shrink-0">
-            Today
+            {t('Today')}
           </span>
         ) : null}
       </div>
@@ -139,7 +146,7 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
-                  <span className="text-eyebrow text-text-dim">{meal}</span>
+                  <span className="text-eyebrow text-text-dim">{mealLabel[meal]}</span>
                   <span className="num text-[10px] text-text-mute tabular-nums">~{units.formatEnergy(kcal)}</span>
                 </span>
                 <span className="block text-sm font-medium text-white leading-snug mt-1">
@@ -168,10 +175,10 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
                 >
                   <div className="px-5 pb-4 pt-1 space-y-4">
                     {isLoading ? (
-                      <p className="text-xs text-text-dim">Getting the ingredients…</p>
+                      <p className="text-xs text-text-dim">{t('Getting the ingredients…')}</p>
                     ) : !recipe ? (
                       <p className="text-xs text-text-mute leading-relaxed">
-                        No recipe yet. Tap “Load ingredients” on this day to fetch it.
+                        {t('No recipe yet. Tap “Load ingredients” on this day to fetch it.')}
                       </p>
                     ) : (
                       <>
@@ -199,7 +206,7 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
 
                         {recipe.ingredients?.length ? (
                           <div>
-                            <p className="text-eyebrow text-text-dim mb-2">Ingredients</p>
+                            <p className="text-eyebrow text-text-dim mb-2">{t('Ingredients')}</p>
                             <ul className="space-y-1.5">
                               {recipe.ingredients.map((item, i) => (
                                 <li key={i} className="flex gap-2.5 text-[13px] text-white/85 leading-snug">
@@ -215,7 +222,7 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
 
                         {recipe.instructions?.length ? (
                           <div>
-                            <p className="text-eyebrow text-text-dim mb-2">Method</p>
+                            <p className="text-eyebrow text-text-dim mb-2">{t('Method')}</p>
                             <ol className="space-y-2">
                               {recipe.instructions.map((step, i) => (
                                 <li key={i} className="flex gap-2.5 text-[13px] text-white/85 leading-relaxed">
@@ -237,7 +244,7 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
                         className="inline-flex items-center gap-2 h-9 px-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-text-dim text-[11px] font-semibold active:scale-95 transition-transform disabled:opacity-50"
                       >
                         <Replace size={12} aria-hidden="true" />
-                        {swapping ? 'Swapping…' : 'Swap this meal'}
+                        {swapping ? t('Swapping…') : t('Swap this meal')}
                       </button>
                     ) : null}
                   </div>

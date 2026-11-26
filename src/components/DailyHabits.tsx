@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Check, Droplet, Dumbbell, Utensils, Moon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useUnits } from '../hooks/useUnits';
+import { t } from '../i18n/i18n';
 
 interface Props {
   water: number;       // ml today
@@ -16,10 +17,10 @@ export const DailyHabits: React.FC<Props> = ({ water, meals, workouts, sleep }) 
   // `current` / `goal` stay in stored units (ml for water) for the progress
   // maths; `show` is what the label reads (fl oz on imperial).
   const habits = [
-    { id: 'water', label: 'Hydrate',  icon: Droplet,  goal: 2000,  current: water,    show: (n: number) => `${units.volumeValue(n)} ${units.volumeUnit}`, tone: 'accent-3' as const },
-    { id: 'meal',  label: 'Eat well', icon: Utensils, goal: 3,     current: meals,    show: (n: number) => String(n), tone: 'accent' as const },
-    { id: 'train', label: 'Move',     icon: Dumbbell, goal: 1,     current: workouts, show: (n: number) => String(n), tone: 'accent' as const },
-    { id: 'sleep', label: 'Recover',  icon: Moon,     goal: 7,     current: sleep,    show: (n: number) => `${n}h`, tone: 'accent-2' as const },
+    { id: 'water', label: t('Hydrate'),  icon: Droplet,  goal: 2000,  current: water,    show: (n: number) => `${units.volumeValue(n)} ${units.volumeUnit}`, tone: 'accent-3' as const },
+    { id: 'meal',  label: t('Eat well'), icon: Utensils, goal: 3,     current: meals,    show: (n: number) => String(n), tone: 'accent' as const },
+    { id: 'train', label: t('Move'),     icon: Dumbbell, goal: 1,     current: workouts, show: (n: number) => String(n), tone: 'accent' as const },
+    { id: 'sleep', label: t('Recover'),  icon: Moon,     goal: 7,     current: sleep,    show: (n: number) => `${n}h`, tone: 'accent-2' as const },
   ];
 
   const completed = habits.filter(h => h.current >= h.goal).length;
@@ -29,12 +30,12 @@ export const DailyHabits: React.FC<Props> = ({ water, meals, workouts, sleep }) 
     <div className="glass p-5">
       <div className="flex items-end justify-between mb-4">
         <div>
-          <p className="text-eyebrow text-accent">Today</p>
-          <p className="font-display text-lg font-bold text-white tracking-tight">Daily habits</p>
+          <p className="text-eyebrow text-accent">{t('Today')}</p>
+          <p className="font-display text-lg font-bold text-white tracking-tight">{t('Daily habits')}</p>
         </div>
         <div className="text-right">
           <p className="num font-display text-2xl font-bold text-white leading-none">{completed}<span className="text-base text-text-dim font-medium">/{habits.length}</span></p>
-          <p className="text-xs text-text-dim mt-1">{pct === 100 ? 'Done · streak +1' : `${4 - completed} to go`}</p>
+          <p className="text-xs text-text-dim mt-1">{pct === 100 ? t('Done · streak +1') : t('{n} to go', { n: 4 - completed })}</p>
         </div>
       </div>
 

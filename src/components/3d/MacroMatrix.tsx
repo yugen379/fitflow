@@ -14,6 +14,7 @@ import { Flame } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AnimatedNumber } from '../AnimatedNumber';
 import { useUnits } from '../../hooks/useUnits';
+import { t } from '../../i18n/i18n';
 import type { MacroDatum } from './MacroOrbitals';
 
 const MacroOrbitals = lazy(() => import('./MacroOrbitals').then((m) => ({ default: m.MacroOrbitals })));
@@ -68,7 +69,7 @@ const LiquidFill: React.FC<{ ratio: number; color: string }> = ({ ratio, color }
           <path d="M0 8 Q 25 16 50 8 T 100 8 T 150 8 T 200 8 V16 H0 Z" style={{ fill: color }} opacity="0.14" />
         </svg>
       </div>
-      <span className="sr-only">{Math.round(clamped * 100)}% of target</span>
+      <span className="sr-only">{t('{pct}% of target', { pct: Math.round(clamped * 100) })}</span>
     </div>
   );
 };
@@ -111,9 +112,9 @@ export const MacroMatrix: React.FC<MacroMatrixProps> = ({
   const units = useUnits();
   const macros = useMemo<MacroDatum[]>(
     () => [
-      { id: 'protein', label: 'Protein', grams: proteinG, targetG: proteinTargetG, color: '#CCFF00' },
-      { id: 'carbs', label: 'Carbs', grams: carbsG, targetG: carbsTargetG, color: '#00F5FF' },
-      { id: 'fat', label: 'Fat', grams: fatsG, targetG: fatsTargetG, color: '#FF3366' },
+      { id: 'protein', label: t('Protein'), grams: proteinG, targetG: proteinTargetG, color: '#CCFF00' },
+      { id: 'carbs', label: t('Carbs'), grams: carbsG, targetG: carbsTargetG, color: '#00F5FF' },
+      { id: 'fat', label: t('Fat'), grams: fatsG, targetG: fatsTargetG, color: '#FF3366' },
     ],
     [proteinG, proteinTargetG, carbsG, carbsTargetG, fatsG, fatsTargetG],
   );
@@ -129,9 +130,9 @@ export const MacroMatrix: React.FC<MacroMatrixProps> = ({
       <div className="relative z-10 p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-eyebrow text-accent">Daily fuel</p>
+            <p className="text-eyebrow text-accent">{t('Daily fuel')}</p>
             <h2 id="fuel-heading" className="font-display text-xl font-bold text-white mt-0.5 tracking-tight">
-              Macro matrix
+              {t('Macro matrix')}
             </h2>
           </div>
           <div className="text-right">
@@ -141,7 +142,7 @@ export const MacroMatrix: React.FC<MacroMatrixProps> = ({
               <span className="text-sm text-text-dim font-medium"> / {units.formatEnergyNumber(calorieTarget)}</span>
             </p>
             <p className={cn('text-[11px] mt-1 font-medium', over ? 'text-accent-2' : 'text-text-dim')}>
-              {over ? `${units.formatEnergy(Math.round(caloriesConsumed - calorieTarget))} over` : `${units.formatEnergy(Math.round(remaining))} left`}
+              {over ? t('{energy} over', { energy: units.formatEnergy(Math.round(caloriesConsumed - calorieTarget)) }) : t('{energy} left', { energy: units.formatEnergy(Math.round(remaining)) })}
             </p>
           </div>
         </div>
@@ -158,7 +159,7 @@ export const MacroMatrix: React.FC<MacroMatrixProps> = ({
 
         <p className="text-[11px] text-text-mute leading-relaxed inline-flex items-center gap-1.5">
           <Flame size={12} className="text-accent-4 shrink-0" aria-hidden="true" />
-          Spheres fill as you log. Targets come from your goal and today's day type.
+          {t("Spheres fill as you log. Targets come from your goal and today's day type.")}
         </p>
       </div>
     </section>

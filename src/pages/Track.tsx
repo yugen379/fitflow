@@ -30,6 +30,7 @@ import { MacroMatrix } from '../components/3d/MacroMatrix';
 import { useTabVisible } from '../components/layout/DockTabs';
 import { useUnits } from '../hooks/useUnits';
 import { UnitInput } from '../components/UnitInput';
+import { msg, t, tDyn } from '../i18n/i18n';
 
 const downscaleToJpegBase64 = async (file: File, maxSide: number): Promise<string> => {
   const bitmap = await createImageBitmap(file);
@@ -43,8 +44,20 @@ const downscaleToJpegBase64 = async (file: File, maxSide: number): Promise<strin
 };
 
 const SOURCE_LABEL: Record<ReviewLine['source'], string> = {
-  table: '', bundled: '', usda: 'USDA', ai_density: 'estimate', serving: 'per serving', none: 'not found',
+  table: '', bundled: '', usda: 'USDA', ai_density: msg('estimate'), serving: msg('per serving'), none: msg('not found'),
 };
+
+/**
+ * A translated sentence whose {placeholders} are JSX (a bold button name, an
+ * icon), so translators get the whole sentence and can move the parts.
+ */
+const withParts = (sentence: string, parts: Record<string, React.ReactNode>): React.ReactNode[] =>
+  sentence.split(/(\{\w+\})/).map((piece, i) => {
+    const m = /^\{(\w+)\}$/.exec(piece);
+    return m && m[1] in parts ? <React.Fragment key={i}>{parts[m[1]]}</React.Fragment> : piece;
+  });
+/** The bold, white button / setting name inside a camera-permission step. */
+const strong = (node: React.ReactNode) => <span className="font-semibold text-white">{node}</span>;
 
 export const Track: React.FC = () => {
   const { profile } = useAuth();
@@ -87,16 +100,16 @@ export const Track: React.FC = () => {
   const saveEdit = async () => {
     if (!editMeal?.id || !editForm.name.trim()) return;
     setEditBusy(true);
-    try { await updateMeal(editMeal.id, editForm); showToast('Meal updated', 'success'); setEditMeal(null); }
-    catch { showToast('Could not save. Try again.', 'error'); }
+    try { await updateMeal(editMeal.id, editForm); showToast(t('Meal updated'), 'success'); setEditMeal(null); }
+    catch { showToast(t('Could not save. Try again.'), 'error'); }
     finally { setEditBusy(false); }
   };
   const removeMeal = async () => {
     if (!editMeal?.id) return;
     if (!confirmDelete) { setConfirmDelete(true); return; }
     setEditBusy(true);
-    try { await deleteMeal(editMeal.id); showToast(`Removed ${editMeal.name}`, 'success'); setEditMeal(null); }
-    catch { showToast('Could not delete. Try again.', 'error'); }
+    try { await deleteMeal(editMeal.id); showToast(t('Removed {name}', { name: editMeal.name }), 'success'); setEditMeal(null); }
+    catch { showToast(t('Could not delete. Try again.'), 'error'); }
     finally { setEditBusy(false); }
   };
   useEffect(() => { if (!aiOpen) setAiReview(null); }, [aiOpen]);
@@ -178,7 +191,7 @@ export const Track: React.FC = () => {
 
     // Secure-context guard — getUserMedia silently fails over plain http on LAN IPs.
     if (typeof window !== 'undefined' && !window.isSecureContext && location.hostname !== 'localhost') {
-      setScanError('Camera requires HTTPS. Use the upload button to scan a photo of the barcode instead.');
+      setScanError(t('Camera requires HTTPS. Use the upload button to scan a photo of the barcode instead.'));
       return;
     }
 
@@ -259,17 +272,17 @@ export const Track: React.FC = () => {
         const name = (err && (err.name || err.message || err.toString())) || 'Unknown';
         console.warn('[barcode] camera start failed:', name, err);
         if (/NotAllowed|Permission|SecurityError/i.test(name)) {
-          setScanError("Camera permission is blocked. Open Settings → Device permissions → Camera to grant access.");
+          setScanError(t("Camera permission is blocked. Open Settings → Device permissions → Camera to grant access."));
         } else if (/NotReadable|TrackStart|in use/i.test(name)) {
-          setScanError("Another app is using the camera. Close other camera apps/tabs, then reopen the scanner.");
+          setScanError(t("Another app is using the camera. Close other camera apps/tabs, then reopen the scanner."));
         } else if (/NoCameras|NotFound|Overconstrained|DevicesNotFound/i.test(name)) {
-          setScanError("No camera available. Upload a photo of the barcode instead.");
+          setScanError(t("No camera available. Upload a photo of the barcode instead."));
         } else if (/transition/i.test(name)) {
-          setScanError("Camera is busy starting — tap Retry in a moment.");
+          setScanError(t("Camera is busy starting — tap Retry in a moment."));
         } else if (/secure context|HTTPS/i.test(name)) {
-          setScanError("Camera needs HTTPS. Use the upload button to scan a photo.");
+          setScanError(t("Camera needs HTTPS. Use the upload button to scan a photo."));
         } else {
-          setScanError(`Couldn't start the camera (${name}). Upload a photo of the barcode instead.`);
+          setScanError(t("Couldn't start the camera ({error}). Upload a photo of the barcode instead.", { error: name }));
         }
       });
     }, 300);
@@ -334,8 +347,8 @@ export const Track: React.FC = () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setScanBlocked(true);
       setScanError(inAppBrowser()
-        ? 'This in-app browser blocks the camera. Tap the ••• menu → "Open in browser", then scan. Or upload a photo of the barcode below.'
-        : 'Camera needs a secure (https) page. Upload a photo of the barcode below instead.');
+        ? t('This in-app browser blocks the camera. Tap the ••• menu → "Open in browser", then scan. Or upload a photo of the barcode below.')
+        : t('Camera needs a secure (https) page. Upload a photo of the barcode below instead.'));
       setScanOpen(true);
       return;
     }
@@ -352,14 +365,14 @@ export const Track: React.FC = () => {
       setScanBlocked(true);
       if (/NotAllowed|Permission|SecurityError/i.test(name)) {
         setScanError(inAppBrowser()
-          ? 'Camera blocked by this in-app browser. Tap ••• → "Open in Safari/Chrome", then try again — or upload a photo of the barcode below.'
-          : 'Camera permission was blocked. Tap the lock / "AA" icon by the address bar → Camera → Allow → reload. Meanwhile, upload a photo of the barcode below.');
+          ? t('Camera blocked by this in-app browser. Tap ••• → "Open in Safari/Chrome", then try again — or upload a photo of the barcode below.')
+          : t('Camera permission was blocked. Tap the lock / "AA" icon by the address bar → Camera → Allow → reload. Meanwhile, upload a photo of the barcode below.'));
       } else if (/NotReadable|TrackStart|in use/i.test(name)) {
-        setScanError('Another app is using the camera. Close it, then tap Retry — or upload a photo of the barcode below.');
+        setScanError(t('Another app is using the camera. Close it, then tap Retry — or upload a photo of the barcode below.'));
       } else if (/NotFound|Devices|Overconstrained/i.test(name)) {
-        setScanError('No usable camera found. Upload a photo of the barcode below instead.');
+        setScanError(t('No usable camera found. Upload a photo of the barcode below instead.'));
       } else {
-        setScanError(`Couldn't open the camera (${name}). Upload a photo of the barcode below instead.`);
+        setScanError(t("Couldn't open the camera ({error}). Upload a photo of the barcode below instead.", { error: name }));
       }
       setScanOpen(true); // open in fallback mode — the photo-upload path still works
     }
@@ -394,7 +407,7 @@ export const Track: React.FC = () => {
     setLabelFor(null);
     setScannedProduct({
       barcode: barcode || null,
-      name: p.name || 'Scanned product',
+      name: p.name || t('Scanned product'),
       brand: p.brand || '',
       calories100g: Math.round(p.calories) || 0,
       protein100g: Math.round(p.protein) || 0,
@@ -404,10 +417,10 @@ export const Track: React.FC = () => {
     });
   };
 
-  const fallToManual = (barcode: string | null, msg: string) => {
-    showToast(msg, 'info');
+  const fallToManual = (barcode: string | null, message: string) => {
+    showToast(message, 'info');
     setScanOpen(false);
-    setManualName(barcode ? `Barcode ${barcode}` : '');
+    setManualName(barcode ? t('Barcode {code}', { code: barcode }) : '');
     setManualCals(0); setManualP(0); setManualC(0); setManualF(0);
     setManualOpen(true);
   };
@@ -442,7 +455,7 @@ export const Track: React.FC = () => {
       // 4) A barcode nobody knows: ask for its nutrition label. Reading it also
       //    teaches the shared catalog, so the next person's scan is instant.
       if (barcode) { setLabelFor(barcode); return; }
-      fallToManual(null, 'Could not read that — log it manually');
+      fallToManual(null, t('Could not read that — log it manually'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -501,12 +514,12 @@ export const Track: React.FC = () => {
     setIsAnalyzing(true);
     try {
       const base64 = await fileToBase64(file);
-      if (!base64) { showToast("Couldn't open that photo. Try again.", "info"); return; }
+      if (!base64) { showToast(t("Couldn't open that photo. Try again."), "info"); return; }
       const ai = await analyzeNutritionLabel(base64).catch(() => null);
       if (ai && labelPlausible(ai)) { showProduct({ ...ai, source: 'LABEL' }, labelFor); return; }
       showToast(ai
-        ? "Those numbers don't add up. Take the photo straight on, with the whole table in view."
-        : "Couldn't read the label. Try again in better light, or enter it by hand.", 'info');
+        ? t("Those numbers don't add up. Take the photo straight on, with the whole table in view.")
+        : t("Couldn't read the label. Try again in better light, or enter it by hand."), 'info');
     } finally {
       setIsAnalyzing(false);
     }
@@ -519,7 +532,7 @@ export const Track: React.FC = () => {
       const reader = document.getElementById('ff-reader');
       const video = reader?.querySelector('video') as HTMLVideoElement | null;
       if (!video || video.readyState < 2) {
-        setScanError('Camera not ready yet — wait a moment and try again.');
+        setScanError(t('Camera not ready yet — wait a moment and try again.'));
         return;
       }
       const canvas = document.createElement('canvas');
@@ -529,7 +542,7 @@ export const Track: React.FC = () => {
       if (!ctx) return;
       ctx.drawImage(video, 0, 0);
       const blob: Blob | null = await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', 0.92));
-      if (!blob) { setScanError('Could not grab the frame.'); return; }
+      if (!blob) { setScanError(t('Could not grab the frame.')); return; }
       const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
       await qrInstanceRef.current?.stop().catch(() => {});
       scannedRef.current = true;
@@ -563,7 +576,7 @@ export const Track: React.FC = () => {
         carbs: scannedProduct.carbs100g, fats: scannedProduct.fats100g,
       });
     }
-    showToast(shared ? 'Logged, and saved so the next scan of this product is instant' : 'Logged', 'success');
+    showToast(shared ? t('Logged, and saved so the next scan of this product is instant') : t('Logged'), 'success');
     setScanOpen(false); setScannedProduct(null); setLabelFor(null);
   };
 
@@ -584,7 +597,7 @@ export const Track: React.FC = () => {
   // (once per meal); otherwise the itemised list appears with the cooking-oil
   // choice pre-set from how things were cooked.
   const showAnalysis = (a: MealAnalysis, usedHint: boolean, fallbackName: string) => {
-    if (a.offline) showToast('AI is busy, so these are typical portions. Check the grams before logging.', 'info');
+    if (a.offline) showToast(t('AI is busy, so these are typical portions. Check the grams before logging.'), 'info');
     if (a.decomposed && needsHint(a.lines, a.obscured, usedHint)) {
       setAskHint(true);
       setAiReview(a.lines.length ? a.lines : null);
@@ -602,7 +615,7 @@ export const Track: React.FC = () => {
       setManualCals(0); setManualP(0); setManualC(0); setManualF(0);
       setAiOpen(false); setAiInput('');
       setManualOpen(true);
-      showToast('Enter the calories yourself', 'info');
+      showToast(t('Enter the calories yourself'), 'info');
     }
   };
 
@@ -661,16 +674,16 @@ export const Track: React.FC = () => {
   };
 
   const addReviewItem = async () => {
-    const t = addText.trim();
-    if (t.length < 2) return;
+    const item = addText.trim();
+    if (item.length < 2) return;
     setAddBusy(true);
-    const line = await analyzeSingleItem(t).catch(() => null);
+    const line = await analyzeSingleItem(item).catch(() => null);
     setAddBusy(false);
     if (line) {
       setAiReview((r) => [...(r || []), line]);
       setAddText('');
     } else {
-      showToast(`Couldn't find "${t}"`, 'info');
+      showToast(t('Couldn\'t find "{item}"', { item }), 'info');
     }
   };
 
@@ -683,7 +696,10 @@ export const Track: React.FC = () => {
       .map((l) => ({ name: diaryName(l), ...lineMacros(l) }))
       .filter((r) => r.calories > 0);
     const oilG = oilGrams(oilLevel, oilBaseGrams(aiReview));
-    if (oilG > 0) rows.push({ name: `Cooking oil (${oilLevel}, ${oilG} g)`, ...oilMacros(oilLevel, oilBaseGrams(aiReview)) });
+    // The diary name stays English: it is stored data, like the food names.
+    if (oilG > 0) {
+      rows.push({ name: `Cooking oil (${oilLevel}, ${oilG} g)`, ...oilMacros(oilLevel, oilBaseGrams(aiReview)) });
+    }
     for (const r of rows) {
       await logMeal(profile.uid, {
         name: r.name, calories: r.calories,
@@ -692,7 +708,7 @@ export const Track: React.FC = () => {
       });
     }
     try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
-    showToast(rows.length === 1 ? 'Logged' : `Logged ${rows.length} items`, 'success');
+    showToast(rows.length === 1 ? t('Logged') : t('Logged {n} items', { n: rows.length }), 'success');
     setAiReview(null); setAiOpen(false); setAiInput(''); setAskHint(false); setOilLevel('none');
     setIsAnalyzing(false);
   };
@@ -709,7 +725,7 @@ export const Track: React.FC = () => {
       mealType: 'snack',
     });
     try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
-    showToast('Logged', 'success');
+    showToast(t('Logged'), 'success');
     setManualOpen(false);
     setManualName(''); setManualCals(0); setManualP(0); setManualC(0); setManualF(0);
     setIsAnalyzing(false);
@@ -734,7 +750,7 @@ export const Track: React.FC = () => {
     if (term.length < 2) { setAiSuggestions([]); return; }
     let cancelled = false;
     setAiSearching(true);
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const results = (await searchFood(term)).filter(r => r.calories > 0).slice(0, 8);
         if (!cancelled) setAiSuggestions(results);
@@ -751,7 +767,7 @@ export const Track: React.FC = () => {
         if (!cancelled) setAiSearching(false);
       }
     }, 350);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [search]);
 
   // Recent distinct meals for one-tap re-log — the fastest possible logging path.
@@ -794,7 +810,7 @@ export const Track: React.FC = () => {
       mealType: 'snack',
     });
     try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
-    showToast(`Re-logged ${m.name}`, 'success');
+    showToast(t('Re-logged {name}', { name: m.name }), 'success');
   };
 
   const logSuggestion = async (s: any) => {
@@ -832,7 +848,7 @@ export const Track: React.FC = () => {
       mealType: 'snack',
     });
     try { await checkAndAwardBadge(profile.uid, 'nutrition_master'); } catch {}
-    showToast('Logged', 'success');
+    showToast(t('Logged'), 'success');
     setSearch('');
     setAiSuggestions([]);
   };
@@ -871,8 +887,8 @@ export const Track: React.FC = () => {
     <div className="pb-28 pt-4 px-4 space-y-5">
       <div className="pt-2 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-eyebrow text-accent">Nutrition</p>
-          <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">Today's intake</h1>
+          <p className="text-eyebrow text-accent">{t('Nutrition')}</p>
+          <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">{t("Today's intake")}</h1>
         </div>
         {/* The second door to the meal plan. Someone hunting for "meals" comes
             to the Fuel tab first, so the link belongs here as well as on Home. */}
@@ -881,7 +897,7 @@ export const Track: React.FC = () => {
           className="shrink-0 h-11 px-3 rounded-2xl bg-accent-4/12 border border-accent-4/30 text-accent-4 text-[11px] font-semibold inline-flex items-center gap-1.5 active:scale-95 transition-transform"
         >
           <ChefHat size={14} aria-hidden="true" />
-          Meal plan
+          {t('Meal plan')}
         </button>
       </div>
 
@@ -908,7 +924,7 @@ export const Track: React.FC = () => {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search foods or today's meals…"
+          placeholder={t("Search foods or today's meals…")}
           className="w-full h-12 glass rounded-2xl pl-11 pr-10 text-white text-sm placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30 transition-colors"
         />
         {aiSearching && (
@@ -918,7 +934,7 @@ export const Track: React.FC = () => {
           // Up to eight rows now: the list scrolls inside a capped height, so the
           // last results stay reachable above the on-screen keyboard.
           <div className="absolute z-30 left-0 right-0 top-full mt-2 bg-surface border border-white/[0.06] rounded-2xl overflow-y-auto overscroll-contain max-h-[42vh] shadow-2xl">
-            <p className="sticky top-0 z-10 bg-surface px-4 py-2 text-eyebrow text-accent border-b border-white/[0.04]">Tap to log instantly</p>
+            <p className="sticky top-0 z-10 bg-surface px-4 py-2 text-eyebrow text-accent border-b border-white/[0.04]">{t('Tap to log instantly')}</p>
             {aiSuggestions.map((s, i) => (
               <button
                 key={i}
@@ -935,7 +951,7 @@ export const Track: React.FC = () => {
             {/* Required by the Open Database Licence whenever their data is shown. */}
             {aiSuggestions.some(s => s.source === 'OFF') && (
               <p className="px-4 py-2 text-[10px] text-text-dim border-t border-white/[0.04]">
-                Packaged products from Open Food Facts (ODbL). Check the label.
+                {t('Packaged products from Open Food Facts (ODbL). Check the label.')}
               </p>
             )}
           </div>
@@ -947,10 +963,10 @@ export const Track: React.FC = () => {
         <div className="flex justify-between items-baseline">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-text-dim">{units.energyUnit === 'kJ' ? 'Energy (kJ)' : 'Calories'}</p>
+              <p className="text-xs text-text-dim">{units.energyUnit === 'kJ' ? t('Energy (kJ)') : t('Calories')}</p>
               {targets.dayType !== 'base' && (
                 <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-accent/15 text-accent">
-                  {targets.dayType === 'workout' ? 'Gym day' : 'Rest day'}
+                  {targets.dayType === 'workout' ? t('Gym day') : t('Rest day')}
                 </span>
               )}
             </div>
@@ -959,7 +975,7 @@ export const Track: React.FC = () => {
             </p>
           </div>
           <button onClick={() => navigate('/nutrition-goals')} className="num text-sm text-accent font-semibold flex items-center gap-1">
-            {units.formatEnergyNumber(Math.max(targetCals - totalCals, 0))} left
+            {t('{energy} left', { energy: units.formatEnergyNumber(Math.max(targetCals - totalCals, 0)) })}
           </button>
         </div>
         <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
@@ -969,15 +985,15 @@ export const Track: React.FC = () => {
           />
         </div>
         <div className="grid grid-cols-3 gap-3 pt-2">
-          <Macro label="Protein" value={totalProtein} target={targets.proteinG} color="text-accent" />
-          <Macro label="Carbs" value={totalCarbs} target={targets.carbsG} color="text-accent-3" />
-          <Macro label="Fats" value={totalFats} target={targets.fatsG} color="text-accent-2" />
+          <Macro label={t('Protein')} value={totalProtein} target={targets.proteinG} color="text-accent" />
+          <Macro label={t('Carbs')} value={totalCarbs} target={targets.carbsG} color="text-accent-3" />
+          <Macro label={t('Fats')} value={totalFats} target={targets.fatsG} color="text-accent-2" />
         </div>
         <button
           onClick={() => navigate('/nutrition-goals')}
           className="w-full text-center text-xs text-text-dim hover:text-white transition-colors pt-1"
         >
-          Adjust macro targets →
+          {t('Adjust macro targets →')}
         </button>
       </div>
 
@@ -994,7 +1010,7 @@ export const Track: React.FC = () => {
           <div className="w-10 h-10 ai-gradient-box rounded-xl flex items-center justify-center">
             <Sparkles size={18} className="text-accent" />
           </div>
-          <span className="text-[11px] font-medium text-white">AI log</span>
+          <span className="text-[11px] font-medium text-white">{t('AI log')}</span>
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.96 }}
@@ -1004,7 +1020,7 @@ export const Track: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-accent-3/12 border border-accent-3/25 flex items-center justify-center">
             <Camera size={18} className="text-accent-3" />
           </div>
-          <span className="text-[11px] font-medium text-white">Photo</span>
+          <span className="text-[11px] font-medium text-white">{t('Photo')}</span>
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.96 }}
@@ -1014,7 +1030,7 @@ export const Track: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-accent-2/12 border border-accent-2/25 flex items-center justify-center">
             <ScanBarcode size={18} className="text-accent-2" />
           </div>
-          <span className="text-[11px] font-medium text-white">Scan</span>
+          <span className="text-[11px] font-medium text-white">{t('Scan')}</span>
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.96 }}
@@ -1024,7 +1040,7 @@ export const Track: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/15 flex items-center justify-center">
             <Pencil size={18} className="text-white/85" />
           </div>
-          <span className="text-[11px] font-medium text-white">Manual</span>
+          <span className="text-[11px] font-medium text-white">{t('Manual')}</span>
         </motion.button>
       </div>
 
@@ -1035,7 +1051,7 @@ export const Track: React.FC = () => {
       {/* One-tap re-log — your recent foods, logged again instantly */}
       {recentLogs.length > 0 && (
         <div className="space-y-2">
-          <p className="text-eyebrow text-text-dim px-1">Re-log in one tap</p>
+          <p className="text-eyebrow text-text-dim px-1">{t('Re-log in one tap')}</p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
             {recentLogs.map((m, i) => (
               <motion.button
@@ -1056,12 +1072,12 @@ export const Track: React.FC = () => {
       {/* Meal list */}
       <div className="space-y-3">
         <div className="flex justify-between items-end px-1">
-          <h2 className="font-display text-lg font-bold text-white tracking-tight">Logged</h2>
-          <span className="num text-xs text-text-dim">{meals.length} {meals.length === 1 ? 'item' : 'items'}</span>
+          <h2 className="font-display text-lg font-bold text-white tracking-tight">{t('Logged')}</h2>
+          <span className="num text-xs text-text-dim">{meals.length === 1 ? t('1 item') : t('{n} items', { n: meals.length })}</span>
         </div>
         {loading ? (
           <div className="py-10">
-            <LoadingBar label="Loading meals" />
+            <LoadingBar label={t('Loading meals')} />
           </div>
         ) : filtered.length ? filtered.map((m, i) => (
           <motion.div
@@ -1072,7 +1088,7 @@ export const Track: React.FC = () => {
             className="glass p-4 flex justify-between items-center cursor-pointer active:scale-[0.99] transition-transform"
             role="button"
             tabIndex={0}
-            aria-label={`Edit ${m.name}`}
+            aria-label={t('Edit {name}', { name: m.name })}
             onClick={() => openEdit(m)}
           >
             <div className="min-w-0">
@@ -1091,9 +1107,9 @@ export const Track: React.FC = () => {
         )) : (
           <div className="glass p-10 flex flex-col items-center justify-center text-center gap-3">
             <span className="text-3xl opacity-70">🍽️</span>
-            <p className="text-sm text-text-dim">Nothing logged yet today.</p>
+            <p className="text-sm text-text-dim">{t('Nothing logged yet today.')}</p>
             <button onClick={() => setAiOpen(true)} className="btn-primary mt-2 px-4 py-2 text-xs">
-              <Sparkles size={12} /> Log with AI
+              <Sparkles size={12} /> {t('Log with AI')}
             </button>
           </div>
         )}
@@ -1105,7 +1121,7 @@ export const Track: React.FC = () => {
           whileTap={{ scale: 0.92 }}
           onClick={() => setAiOpen(true)}
           className="relative w-14 h-14 bg-accent rounded-full flex items-center justify-center text-bg shadow-[0_16px_40px_-8px_rgba(198,255,61,0.5)]"
-          aria-label="Add meal"
+          aria-label={t('Add meal')}
         >
           <Plus size={26} strokeWidth={2.5} />
         </motion.button>
@@ -1129,10 +1145,10 @@ export const Track: React.FC = () => {
               <div id="ff-reader-file" className="hidden" />
               <div className="p-5 border-b border-white/[0.06] flex justify-between items-center">
                 <div>
-                  <p className="text-eyebrow text-accent">Barcode</p>
-                  <p className="text-white font-medium">{scannedProduct ? 'Product found' : 'Aim at barcode'}</p>
+                  <p className="text-eyebrow text-accent">{t('Barcode')}</p>
+                  <p className="text-white font-medium">{scannedProduct ? t('Product found') : t('Aim at barcode')}</p>
                 </div>
-                <button onClick={() => setScanOpen(false)} className="w-9 h-9 glass rounded-xl flex items-center justify-center text-white" aria-label="Close">
+                <button onClick={() => setScanOpen(false)} className="w-9 h-9 glass rounded-xl flex items-center justify-center text-white" aria-label={t('Close')}>
                   <X size={16} />
                 </button>
               </div>
@@ -1145,37 +1161,37 @@ export const Track: React.FC = () => {
                     <CameraOff size={28} className="text-accent-2" />
                   </div>
                   <div className="space-y-1.5">
-                    <h3 className="font-display text-xl font-bold text-white tracking-tight">Turn the camera on</h3>
+                    <h3 className="font-display text-xl font-bold text-white tracking-tight">{t('Turn the camera on')}</h3>
                     <p className="text-sm text-text-dim leading-relaxed">
-                      {scanError || 'FitFlow needs camera access to scan barcodes.'}
+                      {scanError || t('FitFlow needs camera access to scan barcodes.')}
                     </p>
                   </div>
                   {canOpenAppSettings() ? (
                     /* Native app: real one-tap deep-link to the app's settings. */
                     <ol className="text-left text-sm text-white/80 space-y-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
-                      <li className="flex gap-2.5"><span className="text-accent font-bold num">1</span><span>Tap <span className="font-semibold text-white">Open app settings</span> below.</span></li>
-                      <li className="flex gap-2.5"><span className="text-accent font-bold num">2</span><span>Open <span className="font-semibold text-white">Permissions</span> → <span className="font-semibold text-white">Camera</span> → <span className="font-semibold text-white">Allow</span>.</span></li>
-                      <li className="flex gap-2.5"><span className="text-accent font-bold num">3</span><span>Come back — the scanner turns on automatically.</span></li>
+                      <li className="flex gap-2.5"><span className="text-accent font-bold num">1</span><span>{withParts(t('Tap {button} below.'), { button: strong(t('Open app settings')) })}</span></li>
+                      <li className="flex gap-2.5"><span className="text-accent font-bold num">2</span><span>{withParts(t('Open {permissions} → {camera} → {allow}.'), { permissions: strong(t('Permissions')), camera: strong(t('Camera')), allow: strong(t('Allow')) })}</span></li>
+                      <li className="flex gap-2.5"><span className="text-accent font-bold num">3</span><span>{t('Come back — the scanner turns on automatically.')}</span></li>
                     </ol>
                   ) : (
                     /* Web: browsers forbid opening settings, so guide precisely. */
                     <ol className="text-left text-sm text-white/80 space-y-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
-                      <li className="flex gap-2.5"><span className="text-accent font-bold num">1</span><span>Tap the <span className="font-semibold text-white">🔒 / ⓘ</span> icon just left of the web address.</span></li>
-                      <li className="flex gap-2.5"><span className="text-accent font-bold num">2</span><span>Open <span className="font-semibold text-white">Permissions</span> → <span className="font-semibold text-white">Camera</span>.</span></li>
-                      <li className="flex gap-2.5"><span className="text-accent font-bold num">3</span><span>Choose <span className="font-semibold text-white">Allow</span> — the scanner turns on automatically.</span></li>
+                      <li className="flex gap-2.5"><span className="text-accent font-bold num">1</span><span>{withParts(t('Tap the {icon} icon just left of the web address.'), { icon: strong('🔒 / ⓘ') })}</span></li>
+                      <li className="flex gap-2.5"><span className="text-accent font-bold num">2</span><span>{withParts(t('Open {permissions} → {camera}.'), { permissions: strong(t('Permissions')), camera: strong(t('Camera')) })}</span></li>
+                      <li className="flex gap-2.5"><span className="text-accent font-bold num">3</span><span>{withParts(t('Choose {allow} — the scanner turns on automatically.'), { allow: strong(t('Allow')) })}</span></li>
                     </ol>
                   )}
                   <div className="space-y-2">
                     {canOpenAppSettings() && (
                       <button onClick={() => openAppSettings()} className="btn-3d w-full h-12">
-                        <Settings size={16} /> Open app settings
+                        <Settings size={16} /> {t('Open app settings')}
                       </button>
                     )}
                     <button onClick={openScanner} className={canOpenAppSettings() ? 'btn-ghost w-full h-12' : 'btn-3d w-full h-12'}>
-                      <Camera size={16} /> Try the camera again
+                      <Camera size={16} /> {t('Try the camera again')}
                     </button>
                     <button onClick={() => barcodeFileRef.current?.click()} className="btn-ghost w-full h-12">
-                      <ImageIcon size={16} /> Upload a photo of the barcode instead
+                      <ImageIcon size={16} /> {t('Upload a photo of the barcode instead')}
                     </button>
                   </div>
                   <input ref={barcodeFileRef} type="file" accept="image/*" onChange={handleBarcodeFile} className="hidden" data-testid="barcode-file-blocked" />
@@ -1185,9 +1201,9 @@ export const Track: React.FC = () => {
               {!scannedProduct && labelFor && (
                 <div className="p-6 space-y-4" data-testid="label-step">
                   <div>
-                    <p className="font-display text-xl font-bold text-white leading-tight tracking-tight">New product</p>
+                    <p className="font-display text-xl font-bold text-white leading-tight tracking-tight">{t('New product')}</p>
                     <p className="text-sm text-text-dim mt-1 leading-relaxed">
-                      Barcode {labelFor} isn't in any database yet. Photograph its nutrition table and FitFlow reads it, then saves it so the next person who scans it gets it instantly.
+                      {t("Barcode {code} isn't in any database yet. Photograph its nutrition table and FitFlow reads it, then saves it so the next person who scans it gets it instantly.", { code: labelFor })}
                     </p>
                   </div>
                   <button
@@ -1196,14 +1212,14 @@ export const Track: React.FC = () => {
                     className="btn-3d w-full h-12 disabled:opacity-50"
                   >
                     {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
-                    {isAnalyzing ? 'Reading the label…' : 'Photograph the label'}
+                    {isAnalyzing ? t('Reading the label…') : t('Photograph the label')}
                   </button>
                   <button
-                    onClick={() => { const code = labelFor; setLabelFor(null); fallToManual(code, 'Enter it from the pack'); }}
+                    onClick={() => { const code = labelFor; setLabelFor(null); fallToManual(code, t('Enter it from the pack')); }}
                     disabled={isAnalyzing}
                     className="btn-ghost w-full h-11 disabled:opacity-50"
                   >
-                    Enter it by hand
+                    {t('Enter it by hand')}
                   </button>
                   <input ref={labelFileRef} type="file" accept="image/*" capture="environment" onChange={handleLabelFile} className="hidden" data-testid="label-file" />
                 </div>
@@ -1225,7 +1241,7 @@ export const Track: React.FC = () => {
                     {isAnalyzing && (
                       <div className="absolute inset-0 bg-bg/85 flex flex-col items-center justify-center gap-2 z-10">
                         <Loader2 className="text-accent animate-spin" size={26} />
-                        <span className="text-sm text-white">Identifying…</span>
+                        <span className="text-sm text-white">{t('Identifying…')}</span>
                       </div>
                     )}
                   </div>
@@ -1238,7 +1254,7 @@ export const Track: React.FC = () => {
                           onClick={openScanner}
                           className="shrink-0 text-accent underline-offset-2 hover:underline font-medium"
                         >
-                          Retry
+                          {t('Retry')}
                         </button>
                       </div>
                     )}
@@ -1249,19 +1265,19 @@ export const Track: React.FC = () => {
                         className="btn-3d flex-1 h-12 disabled:opacity-50"
                       >
                         <Aperture size={16} />
-                        Capture
+                        {t('Capture')}
                       </button>
                       <button
                         onClick={() => barcodeFileRef.current?.click()}
                         disabled={isAnalyzing}
                         className="btn-ghost h-12 px-4 disabled:opacity-50"
-                        aria-label="Upload barcode image"
+                        aria-label={t('Upload barcode image')}
                       >
                         <ImageIcon size={16} />
                       </button>
                     </div>
                     <p className="text-xs text-text-mute text-center">
-                      Live scanning runs automatically. Tap Capture to force a read on the current frame, or pick a photo.
+                      {t('Live scanning runs automatically. Tap Capture to force a read on the current frame, or pick a photo.')}
                     </p>
                     <input
                       ref={barcodeFileRef}
@@ -1281,15 +1297,15 @@ export const Track: React.FC = () => {
                     {scannedProduct.brand && <p className="text-eyebrow text-accent">{scannedProduct.brand}</p>}
                     <p className="font-display text-xl font-bold text-white leading-tight tracking-tight mt-1">{scannedProduct.name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <p className="text-xs text-text-dim">Nutrition per 100g</p>
+                      <p className="text-xs text-text-dim">{t('Nutrition per 100g')}</p>
                       {scannedProduct.source === 'SHARED' && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-accent bg-accent/10 rounded-full px-2 py-0.5">
-                          From a FitFlow user's label
+                          {t("From a FitFlow user's label")}
                         </span>
                       )}
                       {(scannedProduct.source === 'AI' || scannedProduct.source === 'LABEL') && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-accent-2 bg-accent-2/10 rounded-full px-2 py-0.5">
-                          <Sparkles size={10} /> Read by AI
+                          <Sparkles size={10} /> {t('Read by AI')}
                         </span>
                       )}
                     </div>
@@ -1301,7 +1317,7 @@ export const Track: React.FC = () => {
                     <NutritionCell label="F" v={`${scannedProduct.fats100g}g`} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs text-text-dim font-medium" htmlFor="ff-portion">Portion ({units.foodMassUnit})</label>
+                    <label className="text-xs text-text-dim font-medium" htmlFor="ff-portion">{t('Portion ({unit})', { unit: units.foodMassUnit })}</label>
                     <div className="flex gap-2">
                       {/* Typed in g or oz; kept in whole grams (converted once). */}
                       <UnitInput
@@ -1313,14 +1329,14 @@ export const Track: React.FC = () => {
                         onValue={g => setPortionSize(Math.round(g))}
                         className="flex-1 glass rounded-xl h-12 px-3 text-white num focus:outline-none focus:border-accent/40"
                       />
-                      <button onClick={logScanned} className="btn-3d px-5 h-12">Log</button>
+                      <button onClick={logScanned} className="btn-3d px-5 h-12">{t('Log')}</button>
                     </div>
                     <p className="num text-xs text-text-dim">
-                      = {units.formatEnergy(Math.round(scannedProduct.calories100g * portionSize / 100))} for {units.formatFoodMass(portionSize)}
+                      {t('= {energy} for {amount}', { energy: units.formatEnergy(Math.round(scannedProduct.calories100g * portionSize / 100)), amount: units.formatFoodMass(portionSize) })}
                     </p>
                   </div>
                   <button onClick={() => setScannedProduct(null)} className="w-full text-center text-sm text-text-dim hover:text-white transition-colors">
-                    ← Scan another
+                    {t('← Scan another')}
                   </button>
                 </div>
               )}
@@ -1342,10 +1358,10 @@ export const Track: React.FC = () => {
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-eyebrow text-accent">Logged meal</p>
-                  <p className="text-white font-medium text-sm">Edit or remove</p>
+                  <p className="text-eyebrow text-accent">{t('Logged meal')}</p>
+                  <p className="text-white font-medium text-sm">{t('Edit or remove')}</p>
                 </div>
-                <button onClick={() => setEditMeal(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+                <button onClick={() => setEditMeal(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}>
                   <X size={16} />
                 </button>
               </div>
@@ -1353,7 +1369,7 @@ export const Track: React.FC = () => {
                 value={editForm.name}
                 onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                 maxLength={100}
-                aria-label="Meal name"
+                aria-label={t('Meal name')}
                 className="w-full glass rounded-2xl px-4 py-3 text-white text-sm focus:outline-none"
               />
               <div className="grid grid-cols-4 gap-2">
@@ -1389,10 +1405,10 @@ export const Track: React.FC = () => {
                   disabled={editBusy}
                   className={cn('btn-ghost h-12 disabled:opacity-50', confirmDelete && 'border-accent-2/50 text-accent-2')}
                 >
-                  <Trash2 size={15} /> {confirmDelete ? 'Tap to confirm' : 'Delete'}
+                  <Trash2 size={15} /> {confirmDelete ? t('Tap to confirm') : t('Delete')}
                 </button>
                 <button onClick={saveEdit} disabled={editBusy || !editForm.name.trim()} className="btn-3d h-12 disabled:opacity-50">
-                  {editBusy ? <Loader2 className="animate-spin" size={16} /> : 'Save'}
+                  {editBusy ? <Loader2 className="animate-spin" size={16} /> : t('Save')}
                 </button>
               </div>
             </motion.div>
@@ -1419,25 +1435,25 @@ export const Track: React.FC = () => {
                     <Sparkles size={16} className="text-accent" />
                   </div>
                   <div>
-                    <p className="text-eyebrow text-accent">AI nutrition</p>
-                    <p className="text-white font-medium text-sm">Describe what you ate</p>
+                    <p className="text-eyebrow text-accent">{t('AI nutrition')}</p>
+                    <p className="text-white font-medium text-sm">{t('Describe what you ate')}</p>
                   </div>
                 </div>
-                <button onClick={() => setAiOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+                <button onClick={() => setAiOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}>
                   <X size={16} />
                 </button>
               </div>
               {askHint ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-white font-medium">Not sure what's in this one</p>
-                  <p className="text-xs text-text-dim">Some of it is hidden or unclear. Name it in a few words and I'll check again.</p>
+                  <p className="text-sm text-white font-medium">{t("Not sure what's in this one")}</p>
+                  <p className="text-xs text-text-dim">{t("Some of it is hidden or unclear. Name it in a few words and I'll check again.")}</p>
                   <input
                     value={hintText}
                     onChange={e => setHintText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') submitHint(); }}
                     maxLength={60}
-                    placeholder="e.g. chicken curry with rice"
-                    aria-label="What is in the meal"
+                    placeholder={t('e.g. chicken curry with rice')}
+                    aria-label={t('What is in the meal')}
                     className="w-full glass rounded-2xl px-4 h-12 text-white text-sm placeholder:text-text-dim/50 focus:outline-none"
                     autoFocus
                   />
@@ -1447,10 +1463,10 @@ export const Track: React.FC = () => {
                       disabled={isAnalyzing}
                       className="btn-ghost h-12 disabled:opacity-50"
                     >
-                      {aiReview ? 'Skip' : 'Back'}
+                      {aiReview ? t('Skip') : t('Back')}
                     </button>
                     <button onClick={submitHint} disabled={isAnalyzing || !cleanHint(hintText)} className="btn-3d h-12 disabled:opacity-50">
-                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : 'Check again'}
+                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : t('Check again')}
                     </button>
                   </div>
                 </div>
@@ -1458,10 +1474,11 @@ export const Track: React.FC = () => {
                 const totals = mealTotals(aiReview, oilLevel);
                 const oilBase = oilBaseGrams(aiReview);
                 const oilG = oilGrams(oilLevel, oilBase);
+                const logLabel = t('Log {energy}', { energy: units.formatEnergy(totals.calories) });
                 return (
                 <div className="space-y-3">
-                  <p className="text-xs text-text-dim">Check before saving. Adjust grams, remove or add items. Calories are worked out from each food's per-100 g value.</p>
-                  <ul className="space-y-2" aria-label="Meal items">
+                  <p className="text-xs text-text-dim">{t("Check before saving. Adjust grams, remove or add items. Calories are worked out from each food's per-100 g value.")}</p>
+                  <ul className="space-y-2" aria-label={t('Meal items')}>
                     {aiReview.map((it, i) => {
                       const m = lineMacros(it);
                       const tag = SOURCE_LABEL[it.source];
@@ -1471,7 +1488,7 @@ export const Track: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-sm font-medium truncate">
                               {it.name}
-                              {tag && <span className={cn('ml-2 text-[10px] font-normal', it.source === 'none' ? 'text-red-400' : 'text-text-mute')}>{tag}</span>}
+                              {tag && <span className={cn('ml-2 text-[10px] font-normal', it.source === 'none' ? 'text-red-400' : 'text-text-mute')}>{tDyn(tag)}</span>}
                             </p>
                             <p className="num text-[11px] text-text-dim">
                               {it.per100 ? `${units.formatEnergy(Math.round(it.per100.kcal))}/100 g · ` : ''}P {Math.round(m.protein)}g · C {Math.round(m.carbs)}g · F {Math.round(m.fats)}g
@@ -1481,28 +1498,28 @@ export const Track: React.FC = () => {
                           <button
                             onClick={() => setAiReview(r => (r && r.length > 1 ? r.filter((_, j) => j !== i) : null))}
                             className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-text-dim"
-                            aria-label={`Remove ${it.name}`}
+                            aria-label={t('Remove {name}', { name: it.name })}
                           >
                             <X size={14} />
                           </button>
                         </div>
                         {it.source === 'none' ? (
                           <label className="flex items-center gap-2 text-[11px] text-text-dim">
-                            Not in the database — {units.energyUnit} for this portion:
+                            {t('Not in the database — {unit} for this portion:', { unit: units.energyUnit })}
                             <input
                               type="number" inputMode="numeric" min={0}
-                              aria-label={`Calories for ${it.name}`}
+                              aria-label={t('Calories for {name}', { name: it.name })}
                               className="w-20 h-8 rounded-lg bg-white/[0.04] px-2 text-white num"
                               onBlur={e => {
                                 // Typed in kcal or kJ; stored as whole kcal.
                                 const kcal = Math.round(units.energyToKcal(e.target.value) ?? 0);
-                                if (kcal > 0) updateLine(i, { ...servingLine({ name: it.name, calories: kcal, protein: 0, carbs: 0, fats: 0 }, it.confidence), grams: null, name: it.grams ? `${it.name} (${it.grams} g)` : it.name });
+                                if (kcal > 0) { updateLine(i, { ...servingLine({ name: it.name, calories: kcal, protein: 0, carbs: 0, fats: 0 }, it.confidence), grams: null, name: it.grams ? `${it.name} (${it.grams} g)` : it.name }); }
                               }}
                             />
                           </label>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <button onClick={() => stepLine(i, -1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={`Less ${it.name}`}>−</button>
+                            <button onClick={() => stepLine(i, -1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={t('Less {name}', { name: it.name })}>−</button>
                             {it.grams != null ? (
                               <label className="flex items-center gap-1 text-[11px] text-text-dim">
                                 {/* g, or oz on imperial; the line keeps whole grams (converted once). */}
@@ -1512,15 +1529,15 @@ export const Track: React.FC = () => {
                                   toDisplay={units.foodMassValue}
                                   fromDisplay={units.foodMassToG}
                                   onValue={g => updateLine(i, { grams: clampGrams(g) || 1 })}
-                                  aria-label={`${units.foodMassUnit === 'oz' ? 'Ounces' : 'Grams'} of ${it.name}`}
+                                  aria-label={units.foodMassUnit === 'oz' ? t('Ounces of {name}', { name: it.name }) : t('Grams of {name}', { name: it.name })}
                                   className="w-16 h-8 rounded-lg bg-white/[0.04] px-2 text-white num text-center"
                                 />
                                 {units.foodMassUnit}
                               </label>
                             ) : (
-                              <span className="num text-[11px] text-text-dim min-w-16 px-1 text-center whitespace-nowrap">×{it.servings} {it.servings === 1 ? 'serving' : 'servings'}</span>
+                              <span className="num text-[11px] text-text-dim min-w-16 px-1 text-center whitespace-nowrap">{it.servings === 1 ? t('×{n} serving', { n: it.servings }) : t('×{n} servings', { n: it.servings })}</span>
                             )}
-                            <button onClick={() => stepLine(i, 1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={`More ${it.name}`}>+</button>
+                            <button onClick={() => stepLine(i, 1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={t('More {name}', { name: it.name })}>+</button>
                           </div>
                         )}
                       </li>
@@ -1533,19 +1550,19 @@ export const Track: React.FC = () => {
                       value={addText}
                       onChange={e => setAddText(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') addReviewItem(); }}
-                      placeholder="Add item, e.g. egg 50g"
-                      aria-label="Add an item"
+                      placeholder={t('Add item, e.g. egg 50g')}
+                      aria-label={t('Add an item')}
                       className="flex-1 glass rounded-xl px-3 h-10 text-white text-sm placeholder:text-text-dim/50 focus:outline-none"
                     />
-                    <button onClick={addReviewItem} disabled={addBusy || addText.trim().length < 2} className="btn-ghost h-10 px-3 disabled:opacity-50" aria-label="Add item">
+                    <button onClick={addReviewItem} disabled={addBusy || addText.trim().length < 2} className="btn-ghost h-10 px-3 disabled:opacity-50" aria-label={t('Add item')}>
                       {addBusy ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
                     </button>
                   </div>
 
                   {needsOilChoice(aiReview) && (
                     <div className="space-y-1.5">
-                      <p className="text-[11px] text-text-dim">Cooking oil {oilG > 0 ? <span className="num">· +{units.formatFoodMass(oilG)}, {units.formatEnergy(oilMacros(oilLevel, oilBase).calories)}</span> : null}</p>
-                      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Cooking oil">
+                      <p className="text-[11px] text-text-dim">{t('Cooking oil')} {oilG > 0 ? <span className="num">· +{units.formatFoodMass(oilG)}, {units.formatEnergy(oilMacros(oilLevel, oilBase).calories)}</span> : null}</p>
+                      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('Cooking oil')}>
                         {(['none', 'light', 'heavy'] as OilLevel[]).map(o => (
                           <button
                             key={o}
@@ -1555,7 +1572,7 @@ export const Track: React.FC = () => {
                             className={cn('h-9 rounded-xl text-xs font-semibold capitalize border',
                               oilLevel === o ? 'bg-accent/15 border-accent/50 text-accent' : 'bg-white/[0.03] border-white/[0.06] text-text-dim')}
                           >
-                            {o}
+                            {o === 'none' ? t('none') : o === 'light' ? t('light') : t('heavy')}
                           </button>
                         ))}
                       </div>
@@ -1567,10 +1584,10 @@ export const Track: React.FC = () => {
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => { setAiReview(null); setOilLevel('none'); }} disabled={isAnalyzing} className="btn-ghost h-12 disabled:opacity-50">
-                      Edit text
+                      {t('Edit text')}
                     </button>
                     <button onClick={confirmAiReview} disabled={isAnalyzing || totals.calories <= 0} className="btn-3d h-12 disabled:opacity-50">
-                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : `Log ${units.formatEnergy(totals.calories)}`}
+                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : logLabel}
                     </button>
                   </div>
                 </div>
@@ -1581,12 +1598,12 @@ export const Track: React.FC = () => {
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
                 disabled={isAnalyzing}
-                placeholder="e.g. a bowl of oatmeal with blueberries and honey"
+                placeholder={t('e.g. a bowl of oatmeal with blueberries and honey')}
                 className="w-full glass rounded-2xl p-4 text-white min-h-[110px] text-sm placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30 resize-none"
               />
               {isAnalyzing && (
                 <p className="text-xs text-accent flex items-center gap-2" role="status">
-                  <Loader2 className="animate-spin" size={12} /> Reading your meal and estimating portions…
+                  <Loader2 className="animate-spin" size={12} /> {t('Reading your meal and estimating portions…')}
                 </p>
               )}
               <div className="grid grid-cols-2 gap-3">
@@ -1596,20 +1613,20 @@ export const Track: React.FC = () => {
                   className="btn-ghost h-12 disabled:opacity-50"
                 >
                   <Camera size={16} className="text-accent" />
-                  Photo
+                  {t('Photo')}
                 </button>
                 <button
                   onClick={handleAiAnalyze}
                   disabled={isAnalyzing || !aiInput.trim()}
                   className="btn-3d h-12 disabled:opacity-50"
                 >
-                  {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <><Sparkles size={14} /> Analyse</>}
+                  {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <><Sparkles size={14} /> {t('Analyse')}</>}
                 </button>
               </div>
               </>
               )}
               <p className="text-center text-xs text-text-mute">
-                Gemini names the foods and portions; calories come from nutrition data
+                {t('Gemini names the foods and portions; calories come from nutrition data')}
               </p>
             </motion.div>
           </div>
@@ -1635,18 +1652,18 @@ export const Track: React.FC = () => {
                     <Pencil size={16} className="text-white/85" />
                   </div>
                   <div>
-                    <p className="text-eyebrow text-accent">{manualBase ? 'Packaged food' : 'Manual log'}</p>
-                    <p className="text-white font-medium text-sm">{manualBase ? 'Set how much you had' : 'Type the numbers yourself'}</p>
+                    <p className="text-eyebrow text-accent">{manualBase ? t('Packaged food') : t('Manual log')}</p>
+                    <p className="text-white font-medium text-sm">{manualBase ? t('Set how much you had') : t('Type the numbers yourself')}</p>
                   </div>
                 </div>
-                <button onClick={() => setManualOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+                <button onClick={() => setManualOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}>
                   <X size={16} />
                 </button>
               </div>
               <input
                 value={manualName}
                 onChange={e => setManualName(e.target.value)}
-                placeholder="Food name"
+                placeholder={t('Food name')}
                 className="w-full glass rounded-2xl h-12 px-4 text-white text-sm placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30"
               />
               {manualBase && (
@@ -1655,7 +1672,7 @@ export const Track: React.FC = () => {
                   {/* g, or oz on imperial; the amount is kept in whole grams (converted once). */}
                   <UnitInput
                     inputMode={units.foodMassUnit === 'oz' ? 'decimal' : 'numeric'}
-                    aria-label={units.foodMassUnit === 'oz' ? 'Amount in ounces' : 'Amount in grams'}
+                    aria-label={units.foodMassUnit === 'oz' ? t('Amount in ounces') : t('Amount in grams')}
                     value={manualGrams}
                     unit={units.foodMassUnit}
                     showZero={false}
@@ -1673,7 +1690,7 @@ export const Track: React.FC = () => {
                         className={cn('flex-1 h-10 rounded-xl text-xs font-medium border transition-colors truncate px-2',
                           manualGrams === manualServing.grams ? 'border-accent/50 text-accent bg-accent/10' : 'border-white/[0.08] text-text-dim')}
                       >
-                        1 serving · {manualServing.label}
+                        {t('1 serving · {label}', { label: manualServing.label })}
                       </button>
                       <button
                         type="button"
@@ -1686,12 +1703,12 @@ export const Track: React.FC = () => {
                     </div>
                   )}
                   <p className="text-[10px] text-text-dim ml-1">
-                    {units.formatEnergy(Math.round(manualBase.calories))} per 100 g, from Open Food Facts. Check it against the label.
+                    {t('{energy} per 100 g, from Open Food Facts. Check it against the label.', { energy: units.formatEnergy(Math.round(manualBase.calories)) })}
                   </p>
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-xs text-text-dim font-medium ml-1">Calories ({units.energyUnit})</label>
+                <label className="text-xs text-text-dim font-medium ml-1">{t('Calories ({unit})', { unit: units.energyUnit })}</label>
                 {/* Typed in kcal or kJ; logged as whole kcal (converted once). */}
                 <UnitInput
                   inputMode="numeric"
@@ -1706,16 +1723,16 @@ export const Track: React.FC = () => {
                 />
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <MacroInput label="Protein (g)" value={manualP} onChange={setManualP} />
-                <MacroInput label="Carbs (g)" value={manualC} onChange={setManualC} />
-                <MacroInput label="Fats (g)" value={manualF} onChange={setManualF} />
+                <MacroInput label={t('Protein (g)')} value={manualP} onChange={setManualP} />
+                <MacroInput label={t('Carbs (g)')} value={manualC} onChange={setManualC} />
+                <MacroInput label={t('Fats (g)')} value={manualF} onChange={setManualF} />
               </div>
               <button
                 onClick={submitManual}
                 disabled={isAnalyzing || !manualName.trim() || manualCals <= 0}
                 className="btn-3d w-full h-12 disabled:opacity-50"
               >
-                {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <><Plus size={14} /> Log meal</>}
+                {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <><Plus size={14} /> {t('Log meal')}</>}
               </button>
             </motion.div>
           </div>
