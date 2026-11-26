@@ -7,6 +7,7 @@ import { warmDataLayer, preloadAllRoutes, prefetchAllowed } from './lib/prefetch
 import { hasPersistedAuthSession } from './lib/authSession';
 import { runPreload, PRELOAD_DEADLINE_MS, ROUTES_GRACE_MS } from './lib/preload';
 import type { PreloadTask } from './lib/preload';
+import { startReviewSignals } from './lib/reviewPrompt';
 
 // Both are kicked off before React renders and both are mutually exclusive in
 // practice: a signed-out user gets the Google sign-in widget warming, a signed-in
@@ -57,6 +58,11 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+// Days of use, session starts, last interaction, last visible error — the
+// inputs to the in-app review policy (lib/reviewPrompt.ts). A few listeners
+// and one localStorage write; the review code itself loads only on a win.
+startReviewSignals();
 
 /**
  * The boot preload.

@@ -87,5 +87,33 @@ const oldHealth = "const mod: any = await import('capacitor-health-connect');\n 
 const oldPedo = "const mod = await import('@capgo/capacitor-pedometer');\n    cached = mod.CapacitorPedometer;\n    return cached;";
 ok('CONTROL: the scan flags the old Health Connect and pedometer code', THENABLE_TRAP.test(oldHealth) && THENABLE_TRAP.test(oldPedo));
 
+// Same trap, second shape: a plugin made with registerPlugin() (GpsTracker,
+// FitSleep, BackgroundSteps, AppSettings, Review…) is just as thenable. Flag a
+// file that returns that const, awaits it bare, resolves a promise with it, or
+// returns it from an async arrow. Calling its METHODS (`await Review.x()`) is fine.
+// Comments are stripped first: a comment WARNING about `await Plugin` is not code.
+const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+const registeredPluginTraps = (raw) => {
+  const src = stripComments(raw);
+  const names = [...src.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*registerPlugin\b/g)].map((m) => m[1]);
+  return names.filter((n) => new RegExp(
+    String.raw`\breturn\s+${n}\s*;|\bawait\s+${n}\b(?!\s*\.)|\bresolve\(\s*${n}\s*\)|async\s*(?:\([^)]*\)|[\w$]+)\s*=>\s*${n}\b(?!\s*\.)`,
+  ).test(src));
+};
+const pluginFiles = walkSrc('src').filter((f) => /registerPlugin\s*</.test(fs.readFileSync(f, 'utf8')));
+const pluginOffenders = pluginFiles.flatMap((f) => registeredPluginTraps(fs.readFileSync(f, 'utf8')).map((n) => `${f.split(path.sep).join('/')}:${n}`));
+ok(`every registerPlugin() file is scanned (${pluginFiles.length} files, incl. reviewService)`, pluginFiles.some((f) => f.endsWith(`services${path.sep}reviewService.ts`)) && pluginFiles.length >= 5);
+ok(`no registerPlugin() const is returned or awaited bare (${pluginOffenders.join(', ') || 'none'})`, pluginOffenders.length === 0);
+const BAD_REVIEW = "const Review = registerPlugin<P>('Review');\nexport const getReview = async () => { return Review; };";
+const BAD_AWAIT = "const Review = registerPlugin<P>('Review');\nconst p = await Review;";
+const BAD_ARROW = "const Review = registerPlugin<P>('Review');\nexport const load = async () => Review;";
+const GOOD = "const Review = registerPlugin<P>('Review');\nexport const ask = async () => { await Review.requestReview(); return { p: Review }; };";
+ok('CONTROL: the registerPlugin scan flags return / bare await / async-arrow of a plugin',
+  registeredPluginTraps(BAD_REVIEW).length === 1 && registeredPluginTraps(BAD_AWAIT).length === 1 && registeredPluginTraps(BAD_ARROW).length === 1);
+ok('CONTROL: calling a plugin method or wrapping it ({ p: plugin }) is not flagged', registeredPluginTraps(GOOD).length === 0);
+ok('CONTROL: a comment that warns about `await Review` is not flagged, the same text as code is',
+  registeredPluginTraps("const Review = registerPlugin<P>('Review');\n// never `await Review` or return Review;\n/* await Review */").length === 0 &&
+  registeredPluginTraps("const Review = registerPlugin<P>('Review');\nconst x = await Review;").length === 1);
+
 console.log(`\n${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

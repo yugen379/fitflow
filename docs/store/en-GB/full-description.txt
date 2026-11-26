@@ -1,0 +1,43 @@
+FitFlow is a fitness and food tracker with a coach built in. Log your meals, count your steps, record walks, runs and rides, and get a daily calorie target that adjusts to how your body actually responds.
+
+QUICK FOOD LOGGING
+• Describe a meal as you'd say it, such as "jacket potato with beans and cheese". FitFlow's AI breaks it into ingredients with gram weights, then the app works out the calories and macros from nutrition data. Every ingredient is shown, and you can change any amount.
+• Nutrition data from USDA FoodData Central, plus a shared food catalogue that grows as people log.
+• Scan a barcode. If a product isn't in any database yet, take a photo of the nutrition label and FitFlow reads the values for you.
+• Photograph your plate for a quick AI estimate.
+• Re-log your regular meals in one tap.
+
+A CALORIE TARGET THAT LEARNS
+After roughly two weeks of weigh-ins and logged meals, Smart Target works out what you really burn and suggests a new daily target. Your target only changes when you tap to accept it. Smart-scale weigh-ins can arrive via Health Connect.
+
+STEPS, WALKS, RUNS AND RIDES
+• A step counter that keeps going when the app is closed, using your phone's built-in step sensor. A notification stays visible while it runs, and you can turn it off whenever you like.
+• Record GPS walks, runs and bike rides, even with the screen off: distance, time, pace or speed, elevation gain and the shape of your route, in kilometres or miles.
+• Health Connect: with your permission, FitFlow can read steps, sleep, weight, heart rate, resting heart rate and active calories from your other apps and devices.
+
+TRAIN WITH PURPOSE
+• Guided workouts with set logging, timers and personal records.
+• AI form check: point your camera at your set for coaching cues.
+• 3D Form Lab (Pro): view lifts on a 3D body from any angle, move through each phase and see which muscles are doing the work.
+
+A COACH THAT CHECKS IN
+• A daily briefing on the Home screen that looks at your day so far and suggests a sensible next step.
+• Today's Mission: three simple goals each day — a workout, your calories and your steps.
+• Coach chat (Pro): ask about training, food or recovery. The coach can see what you've logged today.
+• Optional reminders, such as a nudge when your streak is at risk.
+
+KEEP IT GOING, TOGETHER
+• Streaks with streak freezes, so a day off doesn't undo your progress.
+• Badges, XP and levels.
+• Squads: private groups of 2 to 10 friends with a weekly challenge and leaderboard.
+
+YOUR UNITS
+Weigh yourself in stones and pounds, kilograms or pounds, and choose metric, UK or US units.
+
+FITFLOW PRO
+Food logging, step counting and GPS tracking are free. FitFlow Pro is an optional subscription with a free trial, adding coach chat, the 3D Form Lab, the weekly recap and deeper analytics.
+
+YOUR DATA
+FitFlow shows no adverts and doesn't sell your data. Health Connect data is used only to run FitFlow's features for you. You can delete your account and data at any time from Settings.
+
+FitFlow is a fitness and nutrition tracker, not a medical device. AI estimates can be wrong, so do check them, and speak to a health professional before making big changes to your diet or training.

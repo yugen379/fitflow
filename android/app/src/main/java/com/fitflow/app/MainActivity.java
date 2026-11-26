@@ -5,6 +5,7 @@ import com.getcapacitor.BridgeActivity;
 import com.fitflow.app.steps.BackgroundStepsPlugin;
 import com.fitflow.app.health.SleepPlugin;
 import com.fitflow.app.gps.GpsTrackerPlugin;
+import com.fitflow.app.review.ReviewPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -18,6 +19,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SleepPlugin.class);
         // GPS walk / run / ride recording; see gps/LocationTrackingService.java.
         registerPlugin(GpsTrackerPlugin.class);
+        // Google Play in-app review; WHEN to ask lives in src/lib/reviewPrompt.ts.
+        registerPlugin(ReviewPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

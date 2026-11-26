@@ -38,6 +38,8 @@ export const TodayMission: React.FC<Props> = ({
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, '1');
     celebrateSession();
+    // A genuine win: the day's mission is done. The policy decides if it asks.
+    void import('../services/reviewService').then((m) => m.maybeAskForReview('daily_goal')).catch(() => {});
   }, [mission.complete, loading, uid]);
 
   return (

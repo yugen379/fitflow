@@ -1,5 +1,6 @@
 import React from 'react';
 import { LogoMark } from './Logo';
+import { noteReviewError } from '../lib/reviewPrompt';
 
 interface Props { children: React.ReactNode; }
 interface State { hasError: boolean; error?: Error; }
@@ -18,6 +19,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    noteReviewError();
     if (typeof console !== 'undefined') {
       console.error('FitFlow error boundary:', error, info.componentStack);
     }

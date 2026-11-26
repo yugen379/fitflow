@@ -315,6 +315,9 @@ export const Workout: React.FC = () => {
       if (newPRs.length > 0) {
         speak(`New personal record on ${newPRs[0].name}!`);
         setTimeout(() => celebratePR(), 250);
+        // Asked on the session summary, never mid-set (the Lab's per-set PRs
+        // deliberately do not ask).
+        void import('../services/reviewService').then((m) => m.maybeAskForReview('personal_record')).catch(() => {});
       } else {
         setTimeout(() => celebrateSession(), 250);
       }

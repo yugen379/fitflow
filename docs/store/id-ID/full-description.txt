@@ -1,0 +1,45 @@
+FitFlow adalah aplikasi pencatat kebugaran dan makanan dengan pelatih bawaan. Catat makananmu, hitung langkah, rekam jalan kaki, lari, dan bersepeda, lalu dapatkan target kalori harian yang menyesuaikan dengan kondisi tubuhmu yang sebenarnya.
+
+CATAT MAKANAN DALAM HITUNGAN DETIK
+• Tulis menu seperti kamu mengucapkannya, misalnya "nasi goreng telur ceplok dan es teh". AI FitFlow memecahnya menjadi bahan-bahan lengkap dengan beratnya dalam gram, lalu aplikasi menghitung kalori dan makro dari data gizi. Semua bahan ditampilkan dan jumlahnya bisa kamu ubah.
+• Data gizi dari USDA FoodData Central, ditambah katalog makanan bersama yang terus bertambah setiap kali pengguna mencatat.
+• Pindai barcode. Kalau produknya belum ada di database mana pun, foto label informasi nilai gizinya dan FitFlow akan membacakan angkanya untukmu.
+• Foto piringmu untuk perkiraan cepat dari AI.
+• Catat ulang menu langgananmu dengan sekali ketuk.
+
+TARGET KALORI YANG TERUS BELAJAR
+Setelah sekitar dua minggu menimbang berat badan dan mencatat makanan, Target Pintar menghitung berapa kalori yang benar-benar kamu bakar dan menyarankan target harian baru. Targetmu hanya berubah setelah kamu mengetuk untuk menyetujuinya. Hasil timbangan pintar bisa masuk lewat Health Connect.
+
+LANGKAH, JALAN KAKI, LARI, DAN BERSEPEDA
+• Penghitung langkah yang tetap berjalan saat aplikasi ditutup, memakai sensor langkah bawaan ponselmu. Notifikasi tetap tampil selama penghitungan berjalan, dan kamu bisa mematikannya kapan saja.
+• Rekam jalan kaki, lari, dan bersepeda dengan GPS, bahkan saat layar mati: jarak, waktu, pace atau kecepatan, kenaikan elevasi, dan bentuk rutemu.
+• Health Connect: dengan izinmu, FitFlow bisa membaca langkah, tidur, berat badan, detak jantung, detak jantung istirahat, dan kalori aktif dari aplikasi dan perangkat lain.
+
+LATIHAN LEBIH TERARAH
+• Latihan terpandu dengan pencatatan set, timer, dan rekor pribadi.
+• Cek form dengan AI: arahkan kamera ke set-mu dan dapatkan masukan teknik.
+• Lab Form 3D (Pro): lihat gerakan angkatan pada model tubuh 3D dari sudut mana pun, ikuti tiap fasenya, dan lihat otot mana yang bekerja.
+
+PELATIH YANG RAJIN MENYAPA
+• Ringkasan harian di layar Beranda yang melihat harimu sejauh ini dan menyarankan langkah berikutnya.
+• Misi Hari Ini: tiga target sederhana setiap hari — latihan, kalori, dan langkah.
+• Chat dengan pelatih (Pro): tanyakan soal latihan, makanan, atau pemulihan. Pelatih bisa melihat apa saja yang sudah kamu catat hari ini.
+• Pengingat opsional, misalnya saat streak-mu hampir putus.
+
+KONSISTEN BERSAMA TEMAN
+• Streak dengan pembeku streak, jadi satu hari libur tidak menghapus progresmu.
+• Lencana, XP, dan level.
+• Squad: grup pribadi berisi 2 sampai 10 teman dengan tantangan mingguan dan papan peringkat.
+
+SATUAN SESUAI SELERAMU
+Metrik (kg, cm, km), AS (pon, kaki dan inci, mil), atau Inggris (stone).
+
+FITFLOW PRO
+Pencatatan makanan, penghitung langkah, dan pelacakan GPS gratis. FitFlow Pro adalah langganan opsional dengan uji coba gratis, yang menambahkan chat dengan pelatih, Lab Form 3D, rekap mingguan, dan analisis yang lebih dalam.
+
+DATAMU
+FitFlow tidak menampilkan iklan dan tidak menjual datamu. Data Health Connect hanya dipakai untuk menjalankan fitur FitFlow untukmu. Kamu bisa menghapus akun dan datamu kapan saja dari Pengaturan (Settings).
+
+FitFlow adalah pencatat kebugaran dan gizi, bukan perangkat medis. Perkiraan AI bisa saja keliru, jadi periksa kembali, dan konsultasikan dengan tenaga kesehatan profesional sebelum membuat perubahan besar pada pola makan atau latihanmu.
+
+Catatan: tampilan aplikasi FitFlow saat ini berbahasa Inggris.

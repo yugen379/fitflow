@@ -72,6 +72,7 @@ const BANNED = [
   ['motion', 'the boot screens use CSS keyframes'],
   ['gemini', 'AI features are not on the boot path'],
   ['qrcode', 'the scanner is a lazy route'],
+  ['reviewService', 'in-app review loads on the first win, never at boot'],
 ];
 
 for (const [chunk, why] of BANNED) {
@@ -80,6 +81,13 @@ for (const [chunk, why] of BANNED) {
 }
 
 check('entry chunk was found', Boolean(entryName), 'no index-*.js referenced from index.html');
+// A static import would MERGE reviewService into the entry rather than make a
+// chunk the BANNED list can see, so also look for its plugin registration.
+check(
+  'entry does not register the in-app review plugin (reviewService stays lazy)',
+  !/\(\s*["']Review["']\s*\)/.test(entrySource),
+  'something imports services/reviewService statically',
+);
 
 // A ceiling, not a target: this is what has to arrive before anything can run.
 const criticalBytes = staticImports
@@ -198,6 +206,7 @@ check('signed-out boot never downloads Firestore', !signedOut.chunks.some((c) =>
 check('signed-out boot renders the sign-in screen', signedOut.state.text.includes('Train smarter'));
 check('signed-out boot removes the splash', signedOut.state.splashGone);
 check('signed-out boot throws nothing', signedOut.errors.length === 0, signedOut.errors[0] || '');
+check('signed-out boot never downloads the in-app review code', !signedOut.chunks.some((c) => c.startsWith('reviewService')));
 
 const returning = await boot(true);
 check(
@@ -207,6 +216,7 @@ check(
 );
 check('returning boot removes the splash', returning.state.splashGone);
 check('returning boot throws nothing', returning.errors.length === 0, returning.errors[0] || '');
+check('returning boot never downloads the in-app review code', !returning.chunks.some((c) => c.startsWith('reviewService')));
 
 server.close();
 

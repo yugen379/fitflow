@@ -190,7 +190,7 @@ export const TrackActivity: React.FC = () => {
         lng: Math.round(p.lng * 1e6) / 1e6,
       }));
       const meta = ACTIVITIES.find((a) => a.id === activity)!;
-      await logWorkout(profile.uid, {
+      const saved = await logWorkout(profile.uid, {
         type: meta.type,
         title: `${meta.label} · ${formatDistance(summary.distanceM, units).value} ${formatDistance(summary.distanceM, units).unit}`,
         duration: Math.max(1, Math.round(summary.movingS / 60)),
@@ -202,6 +202,11 @@ export const TrackActivity: React.FC = () => {
         notes: '',
       });
       showToast('Saved to your workouts', 'success');
+      // Finishing a walk / run / ride is a win. A queued (offline or failed)
+      // save is not: the review card cannot load offline anyway.
+      if (saved !== 'queued' && saved !== 'offline-queued') {
+        void import('../services/reviewService').then((m) => m.maybeAskForReview('gps_activity')).catch(() => {});
+      }
       await reset();
       navigate('/workout');
     } catch {
