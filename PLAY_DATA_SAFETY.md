@@ -6,7 +6,7 @@ Every answer below was derived from the actual code (manifest permissions,
 so it will match what Google's automated scanners see. **Mismatches are the #1 cause
 of Data Safety rejections — do not "round up" or guess.**
 
-Package: `com.fitflow.app` · Category: Health & Fitness · Privacy policy URL required (see end).
+Package: `com.fitflow.fitness` · Category: Health & Fitness · Privacy policy URL required (see end).
 
 ---
 

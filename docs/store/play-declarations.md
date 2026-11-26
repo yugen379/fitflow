@@ -45,21 +45,12 @@ activity, sleep and body data inside FitFlow and to personalise their daily
 plan and calorie target. Data is read only, it is never used for advertising,
 and it is never sold or shared with third parties."*
 
-### Declared in the manifest but never requested (fix before you submit)
+### Removed: declared earlier but never read
 
-| Permission | Status |
-|---|---|
-| `READ_TOTAL_CALORIES_BURNED` | **Not in `HC_PERMISSIONS`, and no code reads it.** |
-| `READ_EXERCISE` | **Not requested, and no code reads `ExerciseSession`.** |
-| `READ_DISTANCE` | **Not requested.** Distance is worked out from steps (see the comment above `HC_READ_TYPES`). |
-
-**Recommendation:** remove these three `<uses-permission>` lines from
-`AndroidManifest.xml` before you file the declaration. Play reviews Health
-Connect permissions against actual use, and a declared but unused permission
-is a common reason for rejection. If you keep them, you have to justify a
-feature that doesn't exist. The capacitor-health-connect library manifest
-declares no permissions, so deleting the lines removes them completely.
-(This commit does not change the manifest. That's your call.)
+`READ_TOTAL_CALORIES_BURNED`, `READ_EXERCISE` and `READ_DISTANCE` are no longer
+declared. `AndroidManifest.xml` removes them with `tools:node="remove"`, so a
+library manifest cannot add them back. Distance is worked out from steps. Do not
+list them in the Health Connect declaration.
 
 ### Other Health Connect requirements already in place
 

@@ -3,7 +3,7 @@
 Paste into **Play Console → Grow → Store presence → Main store listing**.
 Character limits are enforced by Play; counts below are within limits.
 
-Package: `com.fitflow.app` · Default language: English (United States) · Category: **Health & Fitness**
+Package: `com.fitflow.fitness` · Default language: English (United States) · Category: **Health & Fitness**
 
 ---
 
