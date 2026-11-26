@@ -6,6 +6,11 @@ import { buildBriefing, applyPolish, CoachContext, CoachBriefing } from "./coach
 import { unitsPromptLine, type UnitPrefs } from "../lib/units";
 import { splitPhrases, buildResult, normalizeItem, QuickAddResult, QuickAddItem } from "./quickAddUtils";
 import { decidePolish, polishBaseKey, polishSlot, readPolish, savePolish } from "./briefingPolishCache";
+// Both import-free. The language line goes ONLY into prompts whose text the user
+// reads; the parsing prompts (decompose, quick-add, photo, label, workout
+// exercises) stay English because the app looks their names up in English tables.
+import { getLanguage } from "../i18n/i18n";
+import { languageLineAfter } from "../i18n/aiLanguage";
 
 // Every client build sends every Gemini call through the geminiProxy Cloud
 // Function — the API key never ships in the bundle (vite.config.ts inlines ''
@@ -18,6 +23,13 @@ const LOCAL_KEY = (process.env.GEMINI_API_KEY as string | undefined) || undefine
 const useProxy = !!PROXY_URL;
 
 const ai = !useProxy && LOCAL_KEY ? new GoogleGenAI({ apiKey: LOCAL_KEY }) : null;
+
+// Test seam for proofs: stands in for the model on the direct (no-proxy) path,
+// so a harness can see the exact prompt every public function sends.
+type TestModel = (contents: any) => Promise<string | null>;
+let testModel: TestModel | null = null;
+export const __setModelForTest = (fn: TestModel | null): void => { testModel = fn; };
+const hasModel = (): boolean => !!ai || !!testModel;
 
 // Free-tier quota is enforced PER MODEL (5 req/min/model), so a single model
 // 429s after a handful of messages. We cascade across several models that each
@@ -170,6 +182,7 @@ const callProxy = async (action: string, payload: any, retried = false): Promise
 // failed. On a retryable (quota/transient) error we move to the next model; on a
 // hard error (bad request) we stop — trying other models won't help. Never throws.
 const generateOnce = async (contents: any): Promise<string | null> => {
+  if (testModel) return ((await testModel(contents)) || '').trim() || null;
   if (!ai) return null;
   for (const model of MODELS) {
     try {
@@ -189,7 +202,7 @@ const generateOnce = async (contents: any): Promise<string | null> => {
 // is momentarily exhausted/overloaded, wait and sweep again (the quota buckets
 // refill quickly) before giving the caller a null to degrade on.
 const generate = async (contents: any, retries = 2, baseMs = 500): Promise<string | null> => {
-  if (!ai) return null;
+  if (!hasModel()) return null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const text = await generateOnce(contents);
     if (text) return text;
@@ -217,7 +230,7 @@ const directRawRetry = async (
   contents: any,
   { retries = 2, minChars = 12, backoffMs = 500 }: { retries?: number; minChars?: number; backoffMs?: number } = {},
 ): Promise<string | null> => {
-  if (!ai) return null;
+  if (!hasModel()) return null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const text = await generateOnce(contents);
     if (text && text.length >= minChars) return text;
@@ -520,11 +533,11 @@ Return ONLY valid JSON: {"title": string, "description": string, "type": string,
 export const generateMealPlan = async (dietaryPreferences: string, kCalTarget: number) => {
   const fallback: any[] = [];
   if (useProxy) {
-    try { return await callProxy('generateMealPlan', { dietaryPreferences, kCalTarget }); }
+    try { return await callProxy('generateMealPlan', { dietaryPreferences, kCalTarget, language: getLanguage() }); }
     catch { return fallback; }
   }
   return direct(
-    `Generate a 7-day meal plan. Preferences: ${dietaryPreferences}. Target: ${kCalTarget} kcal/day.
+    `Generate a 7-day meal plan. Preferences: ${dietaryPreferences}. Target: ${kCalTarget} kcal/day.${languageLineAfter(getLanguage())}
 Return ONLY a valid JSON array of 7 objects:
 [{"day": string, "breakfast": string, "lunch": string, "dinner": string, "snack": string, "calories": number}]`,
     fallback,
@@ -533,17 +546,17 @@ Return ONLY a valid JSON array of 7 objects:
 
 export const getRecipe = async (mealName: string) =>
   // A recipe for a given dish is stable — cache it (only when we got a real one).
-  memoize(`recipe:${mealName.trim().toLowerCase()}`, DAY_MS, () =>
+  memoize(`recipe:${getLanguage() === 'en' ? '' : `${getLanguage()}:`}${mealName.trim().toLowerCase()}`, DAY_MS, () =>
     getRecipeUncached(mealName), (r) => !!r);
 
 const getRecipeUncached = async (mealName: string) => {
   const fallback = null;
   if (useProxy) {
-    try { return await callProxy('getRecipe', { mealName }); }
+    try { return await callProxy('getRecipe', { mealName, language: getLanguage() }); }
     catch { return fallback; }
   }
   return direct(
-    `Healthy recipe for "${mealName}". Return ONLY valid JSON:
+    `Healthy recipe for "${mealName}".${languageLineAfter(getLanguage())} Return ONLY valid JSON:
 {"ingredients": string[], "instructions": string[], "prepTime": string, "protein": number, "carbs": number, "fats": number}`,
     fallback,
   );
@@ -553,13 +566,13 @@ export const getAICoachInsight = async (summary: { calories: number; water: numb
   const fallback = 'Stay consistent — every rep compounds your results.';
   if (useProxy) {
     try {
-      const r = await callProxy('getAICoachInsight', summary);
+      const r = await callProxy('getAICoachInsight', { ...summary, language: getLanguage() });
       return typeof r === 'string' ? r : (r?.text || fallback);
     } catch { return fallback; }
   }
   return directRaw(
     `You are an elite fitness AI. Give ONE sharp, motivational insight (max 20 words) based on:
-Calories today: ${summary.calories}, Water: ${summary.water}ml, Workouts: ${summary.workouts}, Streak: ${summary.streak} days.
+Calories today: ${summary.calories}, Water: ${summary.water}ml, Workouts: ${summary.workouts}, Streak: ${summary.streak} days.${languageLineAfter(getLanguage())}
 Return ONLY plain text, no JSON.`,
     fallback,
   );
@@ -585,7 +598,7 @@ export const analyzeFormFrame = async (
     cue: 'Show your full body for a check.',
   };
   if (useProxy) {
-    try { return await callProxy('analyzeFormFrame', { base64Image, mimeType, exerciseName }) as FormFeedback; }
+    try { return await callProxy('analyzeFormFrame', { base64Image, mimeType, exerciseName, language: getLanguage() }) as FormFeedback; }
     catch { return fallback; }
   }
   return direct(
@@ -596,7 +609,7 @@ export const analyzeFormFrame = async (
           text: `You are an elite strength coach. Analyze ONLY this exact frame for ${exerciseName} form.
 Return ONLY valid JSON, no markdown:
 {"exercise":"${exerciseName}","rating":<1-10 form score>,"status":"good"|"fix"|"danger","cue":"<single short coaching cue, max 12 words, imperative voice>","details":"<one optional secondary detail, max 18 words>"}
-If no person visible, return rating 0 status "fix" cue "Step into frame so I can see your full body."`,
+If no person visible, return rating 0 status "fix" cue "Step into frame so I can see your full body."${languageLineAfter(getLanguage())}`,
         },
       ],
     },
@@ -681,14 +694,14 @@ export const swapMeal = async (original: string, reason: string, dietaryPreferen
     // If the AI is slow, the built-in swap (same macros logic) shows instantly.
     try {
       result = await Promise.race([
-        callProxy('swapMeal', { original, reason, dietaryPreferences }),
+        callProxy('swapMeal', { original, reason, dietaryPreferences, language: getLanguage() }),
         new Promise((resolve) => setTimeout(() => resolve(fallback), 2500)),
       ]);
     } catch { return fallback; }
   } else {
     result = await direct(
       `Suggest ONE alternative ${mealType} meal that replaces "${original}". Reason: ${reason}. Preferences: ${dietaryPreferences}. Do NOT return "${original}" — return a different dish.
-Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number, "why": string}`,
+Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number, "why": string}${languageLineAfter(getLanguage())}`,
       fallback,
     );
   }
@@ -747,7 +760,7 @@ export const askCoach = async (
   const fallback = heuristicCoachReply(message, profile);
   if (useProxy) {
     try {
-      const r = await callProxy('askCoach', { message, history, profile });
+      const r = await callProxy('askCoach', { message, history, profile, language: getLanguage() });
       const text = typeof r === 'string' ? r : (r?.text || '');
       return text.trim() || fallback;
     } catch (e: any) {
@@ -766,7 +779,7 @@ export const askCoach = async (
 The user's goal is ${profile.goal || 'general fitness'}. Weight: ${profile.weight || 'n/a'}kg. Age: ${profile.age || 'n/a'}.
 Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
 Accuracy rules: when you compare foods or give calories/macros, use standard USDA-style values per stated portion and name the portion. If you are not sure, say it is an estimate. Never invent a number to sound confident. If the message includes "FitFlow app data for today", treat it as the user's real log and use it.
-${unitsPromptLine(profile.units)}
+${unitsPromptLine(profile.units)}${languageLineAfter(getLanguage())}
 
 ${transcript ? 'Conversation so far:\n' + transcript + '\n\n' : ''}User: ${message}
 Coach:`,
@@ -795,13 +808,13 @@ export const generateDailyChallenge = async (profile: { goal?: string; streak?: 
     category: 'movement',
   };
   if (useProxy) {
-    try { return await callProxy('dailyChallenge', { profile }) as DailyChallenge; }
+    try { return await callProxy('dailyChallenge', { profile, language: getLanguage() }) as DailyChallenge; }
     catch { return fallback; }
   }
   return direct(
     `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${profile.goal || 'general fitness'}" and a ${profile.streak || 0}-day streak.
 Pick something they can finish in a single day. Vary the category.
-${unitsPromptLine(profile.units)}
+${unitsPromptLine(profile.units)}${languageLineAfter(getLanguage())}
 Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
     fallback,
   ) as Promise<DailyChallenge>;
@@ -836,7 +849,7 @@ export const generateWeeklyRecap = async (data: {
     nextStep: 'Set a 10am hydration alarm and refill once before lunch.',
   };
   if (useProxy) {
-    try { return await callProxy('generateWeeklyRecap', data) as WeeklyRecap; }
+    try { return await callProxy('generateWeeklyRecap', { ...data, language: getLanguage() }) as WeeklyRecap; }
     catch { return fallback; }
   }
   return direct(
@@ -846,7 +859,7 @@ Goal: ${data.goal || 'general fitness'}. This week:
 - ${data.caloriesBurned} kcal burned, ${data.caloriesConsumed} consumed
 - ${data.waterMl}ml water, ${data.sleepHours} hours sleep
 - ${data.streak}-day streak${data.topExercise ? `, top exercise: ${data.topExercise}` : ''}
-${unitsPromptLine(data.units)}
+${unitsPromptLine(data.units)}${languageLineAfter(getLanguage())}
 
 Return ONLY valid JSON, no markdown:
 {"headline":"<≤8 word title>","highlight":"<1-2 sentence summary in plain English, sentence case>","win":"<1 short positive observation>","focus":"<one thing to focus on next week, plain language>","nextStep":"<one specific action they can take Monday>"}
@@ -869,7 +882,8 @@ export type { CoachContext, CoachBriefing } from "./coachBriefing";
 export const getCoachBriefing = async (ctx: CoachContext): Promise<CoachBriefing> => {
   const base = buildBriefing(ctx);
   if (useProxy) {
-    const slot = polishSlot(new Date(), ctx.hour);
+    // Keyed on the language too: an English rewrite must never show to a Malay user.
+    const slot = polishSlot(new Date(), ctx.hour, getLanguage());
     const baseKey = polishBaseKey(base);
     const stored = readPolish();
     const decision = decidePolish(stored, slot, baseKey);
@@ -879,21 +893,21 @@ export const getCoachBriefing = async (ctx: CoachContext): Promise<CoachBriefing
     // call, can't spend another request. No storage means no way to limit it.
     if (!savePolish({ slot, baseKey, polished: null })) return base;
     try {
-      const polished = applyPolish(base, await callProxy('coachBriefing', { ctx, base }));
+      const polished = applyPolish(base, await callProxy('coachBriefing', { ctx, base, language: getLanguage() }));
       if (polished !== base) savePolish({ slot, baseKey, polished });
       return polished;
     } catch {
       return base;
     }
   }
-  if (!ai) return base;
+  if (!hasModel()) return base;
 
   const nudgeBrief = base.nudges.map(n => ({ id: n.id, title: n.title, message: n.message }));
   const polished = await direct(
     `You are FitFlow Coach. Rewrite this daily briefing in your own voice: direct, warm, specific, motivating.
 Plain text only — no markdown, no emojis. Keep each "message" to ONE or TWO short sentences.
 Preserve every "id" EXACTLY. Do NOT add, drop, or reorder nudges, and do NOT change any numbers or targets mentioned.
-User goal: ${ctx.goal || 'general fitness'}.
+User goal: ${ctx.goal || 'general fitness'}.${languageLineAfter(getLanguage())}
 Briefing to rewrite:
 ${JSON.stringify({ headline: base.headline, subtitle: base.subtitle, nudges: nudgeBrief })}
 Return ONLY valid JSON, same shape: {"headline":string,"subtitle":string,"nudges":[{"id":string,"title":string,"message":string}]}`,
@@ -946,7 +960,7 @@ export const decomposeMeal = async (
         return r && r.ok !== false && Array.isArray(r.items) ? { items: r.items, obscured: r.obscured === true } : null;
       } catch { return null; }
     }
-    if (!ai) return null;
+    if (!hasModel()) return null;
     const contents = input.base64Image
       ? { parts: [
           { inlineData: { data: input.base64Image, mimeType: input.mimeType || 'image/jpeg' } },
@@ -991,7 +1005,7 @@ If you cannot parse any food, return [].`;
     let raw: any = null;
     if (useProxy) {
       try { raw = await callProxy('quickAdd', { text }); } catch { return null; }
-    } else if (ai) {
+    } else if (hasModel()) {
       raw = await direct(prompt, []);
     } else {
       return null;

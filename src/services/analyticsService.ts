@@ -11,6 +11,7 @@ import { dayKey, computeRetention, streakWithFreezes, daysBetweenKeys, Retention
 import { getFreezeDays } from './streakFreezeService';
 import { reportSwallowed } from '../lib/telemetry';
 import { checkAndAwardBadge, checkStreakBadge } from './badgeService';
+import { getLanguage } from '../i18n/i18n';
 
 /**
  * Mark today active for this user. Idempotent (one doc per uid+day). Never throws.
@@ -84,6 +85,9 @@ export const recordActiveDay = async (uid: string): Promise<void> => {
       // One streak, one number, everywhere.
       streak: currentStreak,
       winbackLastTier: 0,
+      // The device's app language, so scheduled pushes and recaps (server-written)
+      // follow it even for someone who never opened the language picker.
+      language: getLanguage(),
       updatedAt: serverTimestamp(),
     });
     recordedFor = { uid, day };
