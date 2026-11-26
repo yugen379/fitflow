@@ -8,6 +8,7 @@ import { hasPersistedAuthSession } from './lib/authSession';
 import { runPreload, PRELOAD_DEADLINE_MS, ROUTES_GRACE_MS } from './lib/preload';
 import type { PreloadTask } from './lib/preload';
 import { startReviewSignals } from './lib/reviewPrompt';
+import { loadLanguage, resolveLanguage } from './i18n/i18n';
 
 // Both are kicked off before React renders and both are mutually exclusive in
 // practice: a signed-out user gets the Google sign-in widget warming, a signed-in
@@ -53,11 +54,23 @@ const dismissSplash = () => {
   });
 };
 
-createRoot(document.getElementById('root')!).render(
+const renderApp = () => createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>,
 );
+
+// The app's language (src/i18n/i18n.ts). English renders at once with nothing
+// to load, exactly as before. Another language loads its one dictionary chunk
+// first so the first screen is already translated; loadLanguage never throws
+// and gives up after 2.5 s, rendering in English rather than holding the splash.
+const appLanguage = resolveLanguage();
+if (appLanguage === 'en') {
+  void loadLanguage('en');
+  renderApp();
+} else {
+  void loadLanguage(appLanguage).finally(renderApp);
+}
 
 // Days of use, session starts, last interaction, last visible error — the
 // inputs to the in-app review policy (lib/reviewPrompt.ts). A few listeners

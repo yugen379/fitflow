@@ -122,6 +122,8 @@ export interface UserProfile {
    * other stored number stays metric. Absent → derived from the device locale.
    */
   units?: UnitPrefs;
+  /** App language (src/i18n/i18n.ts). The device's localStorage choice is what the UI uses; this copy lets server-written text (recaps, pushes) follow it. */
+  language?: 'en' | 'ms' | 'id' | 'es' | 'pt' | 'hi';
   goalWeight?: number;
 }
 

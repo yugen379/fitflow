@@ -63,7 +63,8 @@
     "proof:health": "tsx scripts/health-import-proof.mjs",
     "proof:mealpipeline": "tsx scripts/meal-pipeline-live.mjs",
     "proof:reviewprompt": "tsx scripts/review-prompt-proof.mjs",
-    "proof:storetext": "node scripts/store-text-proof.mjs"
+    "proof:storetext": "node scripts/store-text-proof.mjs",
+    "proof:i18n": "tsx scripts/i18n-proof.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/app-check": "^8.3.0",

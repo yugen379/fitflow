@@ -371,6 +371,9 @@ service cloud.firestore {
           'weightUnit',
           // Display units map — shape checked by isValidUnits below.
           'units',
+          // App language (src/i18n/i18n.ts), so server-written text (recaps,
+          // pushes) can follow it. One of six codes, checked below.
+          'language',
           // googleFitAccessToken/googleFitExpiry were removed: user docs are
           // readable by other signed-in users (leaderboards), so OAuth tokens
           // must never be written here. The token now lives in localStorage.
@@ -392,6 +395,10 @@ service cloud.firestore {
         !incoming().diff(existing()).affectedKeys().hasAny(['units']) ||
         !('units' in incoming()) ||
         isValidUnits(incoming().units)
+      ) && (
+        !incoming().diff(existing()).affectedKeys().hasAny(['language']) ||
+        !('language' in incoming()) ||
+        incoming().language in ['en', 'ms', 'id', 'es', 'pt', 'hi']
       );
       allow delete: if isOwner(userId);
 

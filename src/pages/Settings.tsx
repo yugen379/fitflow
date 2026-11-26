@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAfterFirstPaint } from '../hooks/useAfterFirstPaint';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ChevronLeft, Globe, Ruler, Bell, Shield, FileText, Download, Trash2,
+  ChevronLeft, Globe, Ruler, Languages, Bell, Shield, FileText, Download, Trash2,
   LogOut, ChevronRight, X, Loader2, Mail, Camera, Mic, Check, Sparkles, Crown,
   KeyRound, MailWarning, Flame,
 } from 'lucide-react';
 import { useUnits } from '../hooks/useUnits';
+import { LANGUAGES, getLanguage, setLanguage, t, type Lang } from '../i18n/i18n';
 import {
   presetOf, legacyWeightUnitFor, UNIT_PRESETS,
   type UnitPrefs, type UnitPreset, type EnergyUnit,
@@ -142,6 +143,16 @@ export const Settings: React.FC = () => {
   const setPreset = (k: UnitPreset) =>
     saveUnits({ ...unitPrefs, ...UNIT_PRESETS[k] }, `Units set to ${PRESET_LABEL[k]}`);
   const setEnergy = (e: EnergyUnit) => saveUnits({ ...unitPrefs, energy: e }, `Energy shown in ${e}`);
+
+  // Language is a device setting (the app restarts in it). The profile copy is
+  // for server-written text; a failed save must not block the switch.
+  const changeLanguage = async (lang: Lang) => {
+    if (lang === getLanguage()) return;
+    if (profile?.uid) {
+      await updateDoc(doc(db, 'users', profile.uid), { language: lang, updatedAt: serverTimestamp() }).catch(() => {});
+    }
+    setLanguage(lang);
+  };
 
   const setTzOffset = async () => {
     if (!profile?.uid) return;
@@ -368,6 +379,16 @@ export const Settings: React.FC = () => {
       </Section>
 
       <Section title="Display">
+        <Row icon={Languages} label={t('Language')} sub={t('The app restarts in the new language. Terms and Privacy Policy stay in English.')}>
+          <select
+            aria-label={t('Language')}
+            value={getLanguage()}
+            onChange={(e) => void changeLanguage(e.target.value as Lang)}
+            className="bg-white/[0.06] border border-white/10 rounded-lg text-sm text-white px-2 py-1.5 max-w-[9.5rem]"
+          >
+            {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+          </select>
+        </Row>
         <Row icon={Ruler} label="Units" sub={PRESET_SUB[unitPreset ?? 'custom']}>
           <Segmented
             ariaLabel="Units"
