@@ -21,21 +21,32 @@ import { prefetchHandlers } from '../lib/prefetch';
 import { AnatomyViewer } from '../components/3d/AnatomyViewer';
 import { hasClipFor } from '../biomechanics/motions';
 import { exerciseMotionNote } from '../biomechanics/exerciseMotions';
-import { coachCueFor, modalityOf } from '../lib/coachCue';
+import { coachCueFor, modalityOf, speechLang } from '../lib/coachCue';
+import { msg, t, tDyn } from '../i18n/i18n';
 import { useBackHandler } from '../lib/backButton';
 import { parseExercise, prettyLabel } from '../lib/exerciseParse';
 import { useUnits } from '../hooks/useUnits';
 import { UnitInput } from '../components/UnitInput';
 
 const WORKOUT_TYPES = [
-  { id: 'strength', name: 'Strength', icon: Dumbbell, hint: 'Lift heavy' },
-  { id: 'cardio',   name: 'Cardio',   icon: Zap,      hint: 'Burn hard' },
-  { id: 'cycling',  name: 'Cycling',  icon: Bike,     hint: 'Push miles' },
-  { id: 'swimming', name: 'Swimming', icon: Waves,    hint: 'Smooth & long' },
+  { id: 'strength', name: msg('Strength'), icon: Dumbbell, hint: msg('Lift heavy') },
+  { id: 'cardio',   name: msg('Cardio'),   icon: Zap,      hint: msg('Burn hard') },
+  { id: 'cycling',  name: msg('Cycling'),  icon: Bike,     hint: msg('Push miles') },
+  { id: 'swimming', name: msg('Swimming'), icon: Waves,    hint: msg('Smooth & long') },
 ];
 
 const MET: Record<string, number> = { Strength: 5, Cardio: 8, Cycling: 7.5, Swimming: 8.5 };
 const DEFAULT_REST = 60;
+
+/**
+ * A translated sentence with some values emphasised: `{name}` placeholders in
+ * the (already translated) template are replaced by the given nodes, so the
+ * translator sees the whole sentence and the styling survives.
+ */
+const emphasise = (template: string, values: Record<string, React.ReactNode>): React.ReactNode[] =>
+  template.split(/\{(\w+)\}/).map((part, i) =>
+    i % 2 === 1 ? <React.Fragment key={i}>{part in values ? values[part] : `{${part}}`}</React.Fragment> : part,
+  );
 
 interface ExLog { exerciseId: string; name: string; sets: number; reps: number; weight: number; difficulty: number; }
 
@@ -80,7 +91,7 @@ export const Workout: React.FC = () => {
     }
     if (!confirmQuit) {
       setConfirmQuit(true);
-      showToast('Workout in progress. Tap "Tap again to discard" to quit.', 'info');
+      showToast(t('Workout in progress. Tap "Tap again to discard" to quit.'), 'info');
     }
     return true;
   });
@@ -91,7 +102,7 @@ export const Workout: React.FC = () => {
 
   const buildCustom = async () => {
     if (!customPrompt.trim()) {
-      showToast('Describe what you want in this session', 'info');
+      showToast(t('Describe what you want in this session'), 'info');
       return;
     }
     setCustomBuilding(true);
@@ -100,14 +111,14 @@ export const Workout: React.FC = () => {
       const plan = await generateWorkoutPlan(goalText, []);
       const exercises = Array.isArray(plan?.exercises) ? plan.exercises : [];
       if (exercises.length === 0) {
-        showToast("Couldn't build a plan — try a different description", 'error');
+        showToast(t("Couldn't build a plan — try a different description"), 'error');
         return;
       }
       setCustomOpen(false);
       setCustomPrompt('');
       startSession(plan.type || customFocus, exercises);
     } catch {
-      showToast('Build failed — try again', 'error');
+      showToast(t('Build failed — try again'), 'error');
     } finally {
       setCustomBuilding(false);
     }
@@ -118,15 +129,24 @@ export const Workout: React.FC = () => {
     setSharing(true);
     try {
       const totalSets = exLogsToShare.reduce((a, e) => a + e.sets, 0);
-      const content = `Crushed a ${activeWorkout?.toLowerCase()} session — ${Math.floor(timer / 60)} min, ${totalSets} sets, ${units.formatEnergy(calsBurned)} burned.${exLogsToShare.length ? `\nTop lift: ${exLogsToShare[0].name} @ ${units.formatLoad(exLogsToShare[0].weight)}` : ''}`;
+      const summary = t('Crushed a {type} session — {min} min, {sets} sets, {energy} burned.', {
+        type: tDyn(activeWorkout).toLowerCase(),
+        min: Math.floor(timer / 60),
+        sets: totalSets,
+        energy: units.formatEnergy(calsBurned),
+      });
+      const topLift = exLogsToShare.length
+        ? `\n${t('Top lift: {name} @ {load}', { name: exLogsToShare[0].name, load: units.formatLoad(exLogsToShare[0].weight) })}`
+        : '';
+      const content = `${summary}${topLift}`;
       await createPost(profile.uid, profile.displayName || 'Athlete', profile.photoURL, content);
       setShared(true);
-      showToast('Shared to your feed');
+      showToast(t('Shared to your feed'));
     } catch (err) {
       // createPost already logs the failure — confirm the action positively to the user.
       console.warn('Share post hiccup:', err);
       setShared(true);
-      showToast('Posted to your feed');
+      showToast(t('Posted to your feed'));
     } finally {
       setSharing(false);
     }
@@ -148,6 +168,7 @@ export const Workout: React.FC = () => {
     if (!voiceOn || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
+    u.lang = speechLang();
     u.rate = 1.0;
     window.speechSynthesis.speak(u);
   }, [voiceOn]);
@@ -182,11 +203,11 @@ export const Workout: React.FC = () => {
       if (away > 0) setTimer(v => v + away);
       last = prev + away * 1000; // carry the partial second
     }
-    const t = setInterval(() => {
+    const tick = setInterval(() => {
       const whole = Math.floor((Date.now() - last) / 1000);
       if (whole > 0) { last += whole * 1000; setTimer(v => v + whole); }
     }, 1000);
-    return () => { clearInterval(t); clockRef.current = { key, at: last }; };
+    return () => { clearInterval(tick); clockRef.current = { key, at: last }; };
   }, [activeWorkout, step, restRemaining]);
 
   useEffect(() => {
@@ -212,13 +233,14 @@ export const Workout: React.FC = () => {
     if (restRemaining === null) return;
     if (restRemaining <= 0) {
       if (restRef.current) clearInterval(restRef.current);
-      speak(`Rest over. Next: ${stack[curIdx]?.name || 'continue'}.`);
+      const nextName = stack[curIdx]?.name;
+      speak(nextName ? t('Rest over. Next: {name}.', { name: nextName }) : t('Rest over. Next: continue.'));
       setRestRemaining(null);
       return;
     }
-    if (restRemaining === 3) speak('Three');
-    if (restRemaining === 2) speak('Two');
-    if (restRemaining === 1) speak('One');
+    if (restRemaining === 3) speak(t('Three'));
+    if (restRemaining === 2) speak(t('Two'));
+    if (restRemaining === 1) speak(t('One'));
     restRef.current = setTimeout(() => setRestRemaining(r => (r ?? 0) - 1), 1000);
     return () => { if (restRef.current) clearTimeout(restRef.current); };
   }, [restRemaining]);
@@ -233,7 +255,7 @@ export const Workout: React.FC = () => {
     );
     setStack(s); setActiveWorkout(type); setStep('active'); setCurIdx(0); setTimer(0); setExLogs([]);
     setPrs([]); setShared(false); setRestRemaining(null); setFormChecks([]);
-    speak(`Starting ${type}. First up: ${s[0].name}.`);
+    speak(t('Starting {type}. First up: {name}.', { type: tDyn(type), name: s[0].name }));
   };
 
   // A session handed over from the Library's saved plans.
@@ -267,7 +289,7 @@ export const Workout: React.FC = () => {
     const updated = [...exLogs, log];
     setExLogs(updated);
     if (curIdx < stack.length - 1) {
-      speak(`Set logged. Rest ${DEFAULT_REST} seconds.`);
+      speak(t('Set logged. Rest {n} seconds.', { n: DEFAULT_REST }));
       setRestRemaining(DEFAULT_REST);
       setCurIdx(curIdx + 1);
     } else {
@@ -278,7 +300,7 @@ export const Workout: React.FC = () => {
   const skipRest = () => {
     if (restRef.current) clearTimeout(restRef.current);
     setRestRemaining(null);
-    speak('Skipping rest.');
+    speak(t('Skipping rest.'));
   };
 
   const [prs, setPrs] = useState<{ name: string; type: 'weight' | 'reps' | '1rm'; value: number }[]>([]);
@@ -311,13 +333,13 @@ export const Workout: React.FC = () => {
           weight: log.weight,
           reps: log.reps,
         });
-        if (pr.isOneRMPR && log.weight > 0) newPRs.push({ name: log.name, type: '1rm', value: Math.round(log.weight * (1 + log.reps / 30) * 10) / 10 });
-        else if (pr.isWeightPR && log.weight > 0) newPRs.push({ name: log.name, type: 'weight', value: log.weight });
+        if (pr.isOneRMPR && 0 < log.weight) newPRs.push({ name: log.name, type: '1rm', value: Math.round(log.weight * (1 + log.reps / 30) * 10) / 10 });
+        else if (pr.isWeightPR && 0 < log.weight) newPRs.push({ name: log.name, type: 'weight', value: log.weight });
         else if (pr.isRepsPR) newPRs.push({ name: log.name, type: 'reps', value: log.reps });
       }
       setPrs(newPRs);
       if (newPRs.length > 0) {
-        speak(`New personal record on ${newPRs[0].name}!`);
+        speak(t('New personal record on {name}!', { name: newPRs[0].name }));
         setTimeout(() => celebratePR(), 250);
         // Asked on the session summary, never mid-set (the Lab's per-set PRs
         // deliberately do not ask).
@@ -328,7 +350,10 @@ export const Workout: React.FC = () => {
       try { await checkAndAwardBadge(profile.uid, 'iron_will'); } catch {}
       try { await checkWorkoutTimeBadge(profile.uid); } catch {}
       try { await checkCalorieBadge(profile.uid, cals); } catch {}
-      speak(`Session complete. ${Math.floor(timer / 60)} minutes. ${units.formatEnergyNumber(cals)} ${units.energyUnit === 'kJ' ? 'kilojoules' : 'calories'}.`);
+      const spoken = { min: Math.floor(timer / 60), n: units.formatEnergyNumber(cals) };
+      speak(units.energyUnit === 'kJ'
+        ? t('Session complete. {min} minutes. {n} kilojoules.', spoken)
+        : t('Session complete. {min} minutes. {n} calories.', spoken));
       setStep('summary');
     } catch (err) {
       // logWorkout already queues offline on failure, so the data is safe — just move
@@ -346,14 +371,14 @@ export const Workout: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-end pt-2">
         <div>
-          <p className="text-eyebrow text-accent">Train</p>
-          <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">Today's session</h1>
+          <p className="text-eyebrow text-accent">{t('Train')}</p>
+          <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">{t("Today's session")}</h1>
         </div>
         <button
           onClick={() => { haptic('light'); setCustomOpen(true); }}
           className="w-11 h-11 glass rounded-2xl flex items-center justify-center text-white"
-          aria-label="Build custom workout"
-          title="Build a custom AI workout"
+          aria-label={t('Build custom workout')}
+          title={t('Build a custom AI workout')}
         >
           <Plus size={20} />
         </button>
@@ -375,8 +400,8 @@ export const Workout: React.FC = () => {
               <w.icon size={20} className="text-accent" />
             </div>
             <div>
-              <p className="text-white font-semibold text-base">{w.name}</p>
-              <p className="text-xs text-text-dim mt-0.5">{w.hint}</p>
+              <p className="text-white font-semibold text-base">{tDyn(w.name)}</p>
+              <p className="text-xs text-text-dim mt-0.5">{tDyn(w.hint)}</p>
             </div>
           </motion.button>
         ))}
@@ -392,8 +417,8 @@ export const Workout: React.FC = () => {
           <MapPin size={20} className="text-accent" aria-hidden="true" />
         </div>
         <div className="flex-1">
-          <p className="text-white font-semibold text-base">Record a walk / run</p>
-          <p className="text-xs text-text-dim mt-0.5">GPS route, pace, splits — walk, run or ride.</p>
+          <p className="text-white font-semibold text-base">{t('Record a walk / run')}</p>
+          <p className="text-xs text-text-dim mt-0.5">{t('GPS route, pace, splits — walk, run or ride.')}</p>
         </div>
       </button>
 
@@ -412,10 +437,10 @@ export const Workout: React.FC = () => {
           <Boxes size={20} className="text-accent-3" />
         </div>
         <div className="flex-1 relative z-10">
-          <p className="text-eyebrow text-accent-3">New</p>
-          <p className="text-white font-semibold text-base mt-0.5">Biomechanics Lab</p>
+          <p className="text-eyebrow text-accent-3">{t('New')}</p>
+          <p className="text-white font-semibold text-base mt-0.5">{t('Biomechanics Lab')}</p>
           <p className="text-xs text-text-dim mt-0.5 leading-relaxed">
-            Rotate a 3D model of the lift, scrub every phase, see which muscles take the load.
+            {t('Rotate a 3D model of the lift, scrub every phase, see which muscles take the load.')}
           </p>
         </div>
         <ArrowRight size={18} className="text-text-mute shrink-0 relative z-10" />
@@ -429,22 +454,22 @@ export const Workout: React.FC = () => {
             <Sparkles size={16} className="text-accent" />
           </div>
           <div className="flex-1">
-            <p className="text-eyebrow text-accent">AI plan</p>
-            <p className="text-white font-semibold text-sm mt-0.5">Adapted to your goal</p>
+            <p className="text-eyebrow text-accent">{t('AI plan')}</p>
+            <p className="text-white font-semibold text-sm mt-0.5">{t('Adapted to your goal')}</p>
           </div>
           {aiPlan && !isGenerating && (
             <button
               onClick={() => startSession(aiPlan.type || 'Strength', aiPlan.exercises || [], aiPlan.title)}
               className="btn-primary px-4 py-2 text-xs"
             >
-              <Play size={12} fill="currentColor" /> Start
+              <Play size={12} fill="currentColor" /> {t('Start')}
             </button>
           )}
         </div>
         {isGenerating ? (
           <div className="flex items-center gap-2 relative z-10">
             <Loader2 className="animate-spin text-accent" size={14} />
-            <span className="text-sm text-text-dim">Building your session…</span>
+            <span className="text-sm text-text-dim">{t('Building your session…')}</span>
           </div>
         ) : aiPlan ? (
           <div className="relative z-10">
@@ -457,7 +482,7 @@ export const Workout: React.FC = () => {
                 ))}
                 {aiPlan.exercises.length > 6 && (
                   <li className="text-xs text-accent px-3 py-2 rounded-lg border border-accent/20 bg-accent/5 flex items-center">
-                    + {aiPlan.exercises.length - 6} more · {aiPlan.exercises.length} total
+                    {t('+ {n} more · {total} total', { n: aiPlan.exercises.length - 6, total: aiPlan.exercises.length })}
                   </li>
                 )}
               </ul>
@@ -481,17 +506,17 @@ export const Workout: React.FC = () => {
                 {/* Header bar */}
                 <div className="p-5 flex justify-between items-center border-b border-white/[0.06] bg-surface/60 backdrop-blur-xl">
                   <div>
-                    <p className="text-eyebrow text-accent">{prettyLabel(activeWorkout)}</p>
+                    <p className="text-eyebrow text-accent">{tDyn(prettyLabel(activeWorkout))}</p>
                     <h3 className="font-display text-xl font-bold text-white tracking-tight">{stack[curIdx]?.name}</h3>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => { setVoiceOn(v => { const n = !v; showToast(n ? 'Voice on' : 'Voice off', 'info'); return n; }); }}
+                      onClick={() => { setVoiceOn(v => { const n = !v; showToast(n ? t('Voice on') : t('Voice off'), 'info'); return n; }); }}
                       className={cn(
                         'w-10 h-10 rounded-xl flex items-center justify-center border transition-colors',
                         voiceOn ? 'bg-accent/12 border-accent/30 text-accent' : 'glass text-text-dim',
                       )}
-                      aria-label="Toggle voice"
+                      aria-label={t('Toggle voice')}
                     >
                       {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
                     </button>
@@ -524,9 +549,9 @@ export const Workout: React.FC = () => {
                     <div className="h-52 rounded-[28px] overflow-hidden glass-spatial relative">
                       <AnatomyViewer exerciseId={stack[curIdx]?.id} showAngles={false} />
                       <div className="absolute top-3 left-4 pointer-events-none">
-                        <p className="text-eyebrow text-accent-3">Muscle activation</p>
+                        <p className="text-eyebrow text-accent-3">{t('Muscle activation')}</p>
                         {exerciseMotionNote(stack[curIdx]?.id) && (
-                          <p className="text-[10px] text-white/60 mt-0.5">Simplified demo</p>
+                          <p className="text-[10px] text-white/60 mt-0.5">{t('Simplified demo')}</p>
                         )}
                       </div>
                       <button
@@ -535,11 +560,11 @@ export const Workout: React.FC = () => {
                         onClick={() => { haptic('light'); navigate(`/lab?exercise=${encodeURIComponent(stack[curIdx]?.id ?? '')}`); }}
                         className="absolute bottom-3 right-3 h-9 px-3 rounded-xl bg-black/40 border border-white/10 text-[11px] font-semibold text-white"
                       >
-                        See it in 3D
+                        {t('See it in 3D')}
                       </button>
                       <div className="absolute top-3 right-4 inline-flex items-center gap-1.5 pointer-events-none">
                         <span className="w-1.5 h-1.5 rounded-full bg-accent-2 breathing-glow" />
-                        <span className="text-[10px] uppercase tracking-[0.14em] text-white/70 font-semibold">Live</span>
+                        <span className="text-[10px] uppercase tracking-[0.14em] text-white/70 font-semibold">{t('Live')}</span>
                       </div>
                     </div>
                   )}
@@ -557,8 +582,9 @@ export const Workout: React.FC = () => {
                     >
                       <Flame size={17} className="text-accent-4 shrink-0" aria-hidden="true" />
                       <p className="text-sm text-white font-medium">
-                        Progressive overload —{' '}
-                        <span className="num font-semibold text-accent-4">+{units.formatLoad(2.5)}</span> vs your last session
+                        {emphasise(t('Progressive overload — {load} vs your last session'), {
+                          load: <span className="num font-semibold text-accent-4">+{units.formatLoad(2.5)}</span>,
+                        })}
                       </p>
                     </div>
                   )}
@@ -569,14 +595,18 @@ export const Workout: React.FC = () => {
                         <TrendingUp size={16} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-eyebrow text-accent">Coach</p>
+                        <p className="text-eyebrow text-accent">{t('Coach')}</p>
                         <p className="text-sm text-white mt-0.5">
                           {/* Kilograms and reps are the wrong vocabulary for a
                               swim or a ride, so the sentence comes from
                               coachCue.ts and only strength carries a load. */}
                           {coachCue.highlight ? (
+                            // The highlight is always a substring of the (translated)
+                            // sentence, so split on it rather than on English words.
                             <>
-                              Try <span className="text-accent font-semibold num">{coachCue.highlight}</span>
+                              {coachCue.text.slice(0, coachCue.text.indexOf(coachCue.highlight))}
+                              <span className="text-accent font-semibold num">{coachCue.highlight}</span>
+                              {coachCue.text.slice(coachCue.text.indexOf(coachCue.highlight) + coachCue.highlight.length)}
                             </>
                           ) : (
                             coachCue.text
@@ -593,12 +623,12 @@ export const Workout: React.FC = () => {
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
-                    <NumberField label="Sets" value={sets} onChange={setSets} />
-                    <NumberField label="Reps" value={reps} onChange={setReps} />
+                    <NumberField label={t('Sets')} value={sets} onChange={setSets} />
+                    <NumberField label={t('Reps')} value={reps} onChange={setReps} />
                     <div className="col-span-2">
                       {/* Typed in kg or lb; stored in kg, converted once (units.loadToKg).
                           A suggested load stays exact kg until the field is edited. */}
-                      <label className="text-xs text-text-dim font-medium ml-1 mb-1.5 block" htmlFor="ff-set-weight">Weight ({units.loadUnit})</label>
+                      <label className="text-xs text-text-dim font-medium ml-1 mb-1.5 block" htmlFor="ff-set-weight">{t('Weight ({unit})', { unit: units.loadUnit })}</label>
                       <UnitInput
                         id="ff-set-weight"
                         value={weight}
@@ -610,7 +640,7 @@ export const Workout: React.FC = () => {
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="text-xs text-text-dim font-medium ml-1 mb-1.5 block">Effort</label>
+                      <label className="text-xs text-text-dim font-medium ml-1 mb-1.5 block">{t('Effort')}</label>
                       <div className="flex glass rounded-2xl h-14 items-center justify-center gap-1.5 px-2">
                         {[1, 2, 3, 4, 5].map(v => (
                           <button
@@ -635,7 +665,7 @@ export const Workout: React.FC = () => {
                   >
                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : (
                       <>
-                        <span>{curIdx < stack.length - 1 ? 'Log set & rest' : 'Finish session'}</span>
+                        <span>{curIdx < stack.length - 1 ? t('Log set & rest') : t('Finish session')}</span>
                         <ArrowRight size={16} />
                       </>
                     )}
@@ -666,14 +696,14 @@ export const Workout: React.FC = () => {
                         : 'text-accent-2',
                     )}
                   >
-                    {confirmQuit ? 'Tap again to discard' : "I don't want to workout"}
+                    {confirmQuit ? t('Tap again to discard') : t("I don't want to workout")}
                   </button>
                   <button
                     onClick={() => setShowFormCheck(true)}
                     className="ai-gradient-box flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-accent"
                   >
                     <Camera size={14} />
-                    Form check
+                    {t('Form check')}
                   </button>
                   <span className="text-text-dim text-sm num shrink-0">{curIdx + 1} / {stack.length}</span>
                 </div>
@@ -699,7 +729,7 @@ export const Workout: React.FC = () => {
                       exit={{ opacity: 0 }}
                       className="absolute inset-0 z-10 bg-bg/95 backdrop-blur-xl flex flex-col items-center justify-center px-6"
                     >
-                      <div className="text-eyebrow text-accent mb-4">Rest</div>
+                      <div className="text-eyebrow text-accent mb-4">{t('Rest')}</div>
                       <div className="relative w-56 h-56 mb-8">
                         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                           <circle cx="50" cy="50" r="46" stroke="rgba(255,255,255,0.06)" strokeWidth="4" fill="none" />
@@ -717,17 +747,19 @@ export const Workout: React.FC = () => {
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <span className="num text-7xl font-bold text-white">{restRemaining}</span>
-                          <span className="text-sm text-text-dim mt-1">seconds</span>
+                          <span className="text-sm text-text-dim mt-1">{t('seconds')}</span>
                         </div>
                       </div>
                       <p className="text-white/80 text-center max-w-xs">
-                        Up next: <span className="text-accent font-semibold">{stack[curIdx]?.name}</span>
+                        {emphasise(t('Up next: {name}'), {
+                          name: <span className="text-accent font-semibold">{stack[curIdx]?.name}</span>,
+                        })}
                       </p>
                       <button
                         onClick={skipRest}
                         className="btn-ghost mt-6 h-12 px-6"
                       >
-                        <Timer size={14} /> Skip rest
+                        <Timer size={14} /> {t('Skip rest')}
                       </button>
                     </motion.div>
                   )}
@@ -741,7 +773,7 @@ export const Workout: React.FC = () => {
                 <button
                   onClick={() => { window.speechSynthesis?.cancel(); setActiveWorkout(null); }}
                   className="self-end w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white"
-                  aria-label="Close"
+                  aria-label={t('Close')}
                 >
                   <X size={18} />
                 </button>
@@ -753,26 +785,26 @@ export const Workout: React.FC = () => {
                     <div className="absolute inset-0 bg-accent/20 rounded-full ring-pulse" />
                   </div>
                   <div>
-                    <h2 className="font-display text-4xl font-bold text-white tracking-tight">Session complete.</h2>
-                    <p className="text-text-dim text-sm mt-1">Saved to your training log.</p>
+                    <h2 className="font-display text-4xl font-bold text-white tracking-tight">{t('Session complete.')}</h2>
+                    <p className="text-text-dim text-sm mt-1">{t('Saved to your training log.')}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 relative">
                   <div className="glass p-5">
-                    <p className="text-eyebrow text-text-dim">Calories</p>
+                    <p className="text-eyebrow text-text-dim">{t('Calories')}</p>
                     <p className="num text-3xl font-bold text-accent mt-1">
                       <AnimatedNumber value={Math.round(units.energyValue(calsBurned))} duration={1400} />
                     </p>
-                    <p className="text-xs text-text-dim mt-0.5">{units.energyUnit} burned</p>
+                    <p className="text-xs text-text-dim mt-0.5">{t('{unit} burned', { unit: units.energyUnit })}</p>
                   </div>
                   <div className="glass p-5">
-                    <p className="text-eyebrow text-text-dim">Duration</p>
+                    <p className="text-eyebrow text-text-dim">{t('Duration')}</p>
                     <p className="num text-3xl font-bold text-white mt-1">
                       <AnimatedNumber value={Math.floor(timer / 60)} duration={1400} />
                       <span className="text-base text-text-dim">m</span>
                     </p>
-                    <p className="text-xs text-text-dim mt-0.5">total time</p>
+                    <p className="text-xs text-text-dim mt-0.5">{t('total time')}</p>
                   </div>
                 </div>
 
@@ -785,7 +817,7 @@ export const Workout: React.FC = () => {
                   >
                     <div className="flex items-center gap-2">
                       <Trophy size={14} className="text-accent" />
-                      <span className="text-eyebrow text-accent">New personal record{prs.length > 1 ? 's' : ''}</span>
+                      <span className="text-eyebrow text-accent">{prs.length > 1 ? t('New personal records') : t('New personal record')}</span>
                     </div>
                     <div className="space-y-2">
                       {prs.map((pr, i) => (
@@ -793,7 +825,7 @@ export const Workout: React.FC = () => {
                           <p className="text-white font-medium text-sm">{pr.name}</p>
                           <p className="num text-sm">
                             <span className="text-accent font-semibold">
-                              {pr.type === 'weight' ? units.formatLoad(pr.value) : pr.type === 'reps' ? `${pr.value} reps` : `${units.formatLoad(pr.value)} 1RM`}
+                              {pr.type === 'weight' ? units.formatLoad(pr.value) : pr.type === 'reps' ? t('{n} reps', { n: pr.value }) : t('{load} 1RM', { load: units.formatLoad(pr.value) })}
                             </span>
                           </p>
                         </div>
@@ -822,11 +854,11 @@ export const Workout: React.FC = () => {
                   >
                     <div className="flex items-center gap-2">
                       <Camera size={14} className="text-accent" />
-                      <span className="text-eyebrow text-accent">AI form check</span>
+                      <span className="text-eyebrow text-accent">{t('AI form check')}</span>
                       <span className="num text-xs text-text-dim ml-auto">
-                        avg {Math.round(
+                        {t('avg {n}/10', { n: Math.round(
                           (formChecks.reduce((a, c) => a + c.avgRating, 0) / formChecks.length) * 10
-                        ) / 10}/10
+                        ) / 10 })}
                       </span>
                     </div>
                     <div className="space-y-2">
@@ -841,7 +873,7 @@ export const Workout: React.FC = () => {
                             }`}>{c.avgRating}/10</span>
                           </div>
                           {c.topCues[0] && (
-                            <p className="text-xs text-text-dim leading-snug">{c.topCues[0]}</p>
+                            <p className="text-xs text-text-dim leading-snug">{tDyn(c.topCues[0])}</p>
                           )}
                         </div>
                       ))}
@@ -855,15 +887,15 @@ export const Workout: React.FC = () => {
                     disabled={sharing || shared}
                     className="w-full h-12 glass flex items-center justify-center gap-2 text-white font-semibold disabled:opacity-60"
                   >
-                    {sharing ? <Loader2 className="animate-spin" size={16} />
-                      : shared ? <><Check size={16} className="text-accent" /> Shared to feed</>
-                      : <><Share2 size={16} /> Share to community feed</>}
+                    {sharing ? (<Loader2 className="animate-spin" size={16} />)
+                      : shared ? (<><Check size={16} className="text-accent" /> {t('Shared to feed')}</>)
+                      : (<><Share2 size={16} /> {t('Share to community feed')}</>)}
                   </button>
                   <button
                     onClick={() => { window.speechSynthesis?.cancel(); setActiveWorkout(null); setShared(false); }}
                     className="btn-3d w-full h-14"
                   >
-                    Done
+                    {t('Done')}
                   </button>
                 </div>
               </div>
@@ -891,17 +923,17 @@ export const Workout: React.FC = () => {
                     <Sparkles size={16} className="text-accent" />
                   </div>
                   <div>
-                    <p className="text-eyebrow text-accent">Custom AI workout</p>
-                    <p className="text-white font-medium text-sm">Build your own session</p>
+                    <p className="text-eyebrow text-accent">{t('Custom AI workout')}</p>
+                    <p className="text-white font-medium text-sm">{t('Build your own session')}</p>
                   </div>
                 </div>
-                <button onClick={() => setCustomOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+                <button onClick={() => setCustomOpen(false)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}>
                   <X size={16} />
                 </button>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-text-dim font-medium ml-1">Focus</label>
+                <label className="text-xs text-text-dim font-medium ml-1">{t('Focus')}</label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {(['Strength', 'Cardio', 'Cycling', 'Swimming'] as const).map(f => (
                     <button
@@ -912,14 +944,14 @@ export const Workout: React.FC = () => {
                         customFocus === f ? 'bg-accent text-bg border-accent' : 'bg-surface text-text-dim border-white/[0.06]',
                       )}
                     >
-                      {f}
+                      {tDyn(f)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-text-dim font-medium ml-1">Duration · {customDuration} min</label>
+                <label className="text-xs text-text-dim font-medium ml-1">{t('Duration · {n} min', { n: customDuration })}</label>
                 <input
                   type="range" min="10" max="90" step="5"
                   value={customDuration}
@@ -932,22 +964,22 @@ export const Workout: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-text-dim font-medium ml-1">What do you want to train?</label>
+                <label className="text-xs text-text-dim font-medium ml-1">{t('What do you want to train?')}</label>
                 <textarea
                   value={customPrompt}
                   onChange={e => setCustomPrompt(e.target.value)}
                   disabled={customBuilding}
-                  placeholder="e.g. upper body push focus, no equipment, no jumping"
+                  placeholder={t('e.g. upper body push focus, no equipment, no jumping')}
                   className="w-full glass rounded-2xl p-4 text-white min-h-[100px] text-sm placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30 resize-none"
                 />
                 <div className="flex flex-wrap gap-1.5">
-                  {['Upper body', 'Lower body', 'Full body', 'Fat burn', 'Hypertrophy', 'Core', 'No equipment'].map(chip => (
+                  {[msg('Upper body'), msg('Lower body'), msg('Full body'), msg('Fat burn'), msg('Hypertrophy'), msg('Core'), msg('No equipment')].map(chip => (
                     <button
                       key={chip}
                       onClick={() => setCustomPrompt(p => p ? `${p}, ${chip.toLowerCase()}` : chip.toLowerCase())}
                       className="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/80 hover:border-accent/30 hover:text-accent transition-colors"
                     >
-                      {chip}
+                      {tDyn(chip)}
                     </button>
                   ))}
                 </div>
@@ -958,10 +990,10 @@ export const Workout: React.FC = () => {
                 disabled={customBuilding || !customPrompt.trim()}
                 className="btn-3d w-full h-13 disabled:opacity-50"
               >
-                {customBuilding ? <><Loader2 className="animate-spin" size={16} /> Building…</> : <><Sparkles size={14} /> Build & start</>}
+                {customBuilding ? <><Loader2 className="animate-spin" size={16} /> {t('Building…')}</> : <><Sparkles size={14} /> {t('Build & start')}</>}
               </button>
               <p className="text-center text-xs text-text-mute">
-                AI tailors exercises to your focus, duration, and preferences.
+                {t('AI tailors exercises to your focus, duration, and preferences.')}
               </p>
             </motion.div>
           </div>

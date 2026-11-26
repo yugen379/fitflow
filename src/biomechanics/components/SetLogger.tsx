@@ -13,6 +13,7 @@ import { Check, Minus, Plus, SkipForward, Timer } from 'lucide-react';
 
 import { haptic } from '../../lib/haptics';
 import { useUnits } from '../../hooks/useUnits';
+import { t } from '../../i18n/i18n';
 import { cn } from '../../lib/utils';
 import {
   selectCurrentExercise,
@@ -112,7 +113,7 @@ const Stepper: React.FC<{
           haptic('selection');
           onChange(Math.max(min, value - step));
         }}
-        aria-label={`Decrease ${label}`}
+        aria-label={t('Decrease {label}', { label })}
         className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-dim active:scale-95 transition-transform"
       >
         <Minus size={16} aria-hidden="true" />
@@ -127,7 +128,7 @@ const Stepper: React.FC<{
           haptic('selection');
           onChange(Math.min(max, value + step));
         }}
-        aria-label={`Increase ${label}`}
+        aria-label={t('Increase {label}', { label })}
         className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-dim active:scale-95 transition-transform"
       >
         <Plus size={16} aria-hidden="true" />
@@ -224,15 +225,15 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
     <section className={cn('glass p-4 space-y-4', className)} aria-labelledby="set-logger-heading">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-eyebrow text-accent">Live set</p>
+          <p className="text-eyebrow text-accent">{t('Live set')}</p>
           <h2 id="set-logger-heading" className="font-display text-lg font-semibold text-white mt-0.5">
-            {exercise?.name ?? 'No exercise loaded'}
+            {exercise?.name ?? t('No exercise loaded')}
           </h2>
         </div>
         <div className="text-right">
           <p className="num text-sm text-white tabular-nums">{formatClock(elapsed)}</p>
           <p className="text-[11px] text-text-mute">
-            {volume.setCount} {volume.setCount === 1 ? 'set' : 'sets'} · {units.formatLoadVolume(volume.volumeKg)}
+            {volume.setCount === 1 ? t('1 set') : t('{n} sets', { n: volume.setCount })} · {units.formatLoadVolume(volume.volumeKg)}
           </p>
         </div>
       </div>
@@ -240,7 +241,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
       <div className="flex items-center gap-4">
         <ProgressRing progress={targetReps > 0 ? reps / targetReps : 0} pulse={pulse}>
           <span className="num text-4xl font-bold text-white tabular-nums leading-none">{reps}</span>
-          <span className="text-[11px] text-text-dim mt-1">of {targetReps} reps</span>
+          <span className="text-[11px] text-text-dim mt-1">{t('of {n} reps', { n: targetReps })}</span>
         </ProgressRing>
 
         <div className="flex-1 space-y-2">
@@ -250,7 +251,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
             disabled={status !== 'active'}
             className="w-full h-14 rounded-2xl bg-accent text-bg font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
           >
-            Count rep
+            {t('Count rep')}
           </button>
           <button
             type="button"
@@ -261,7 +262,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
             disabled={reps === 0}
             className="w-full h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] text-text-dim text-sm font-medium active:scale-[0.98] transition-transform disabled:opacity-40"
           >
-            Undo rep
+            {t('Undo rep')}
           </button>
         </div>
       </div>
@@ -271,7 +272,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
             load is kept in kg. An untouched pre-fill stays the exact stored kg;
             a stepped value is converted to kg once (units.loadToKg). */}
         <Stepper
-          label="Load"
+          label={t('Load')}
           value={units.loadValue(weightKg)}
           suffix={units.loadUnit}
           step={units.loadStep}
@@ -287,9 +288,9 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
           <Timer size={18} className="text-accent-3 shrink-0" aria-hidden="true" />
           <div className="flex-1">
             <p className="text-sm font-medium text-white" aria-live="polite">
-              Resting — {formatClock(restRemaining)}
+              {t('Resting — {time}', { time: formatClock(restRemaining) })}
             </p>
-            <p className="text-[11px] text-text-dim">Next set when the clock hits zero.</p>
+            <p className="text-[11px] text-text-dim">{t('Next set when the clock hits zero.')}</p>
           </div>
           <button
             type="button"
@@ -300,7 +301,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
             className="h-11 px-4 rounded-xl bg-white/[0.06] text-white text-sm font-medium inline-flex items-center gap-1.5 active:scale-95 transition-transform"
           >
             <SkipForward size={14} aria-hidden="true" />
-            Skip
+            {t('Skip')}
           </button>
         </div>
       ) : (
@@ -311,7 +312,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
           className="w-full h-12 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-white font-semibold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
         >
           <Check size={17} aria-hidden="true" />
-          Log set {volume.setCount + 1}
+          {t('Log set {n}', { n: volume.setCount + 1 })}
         </button>
       )}
     </section>

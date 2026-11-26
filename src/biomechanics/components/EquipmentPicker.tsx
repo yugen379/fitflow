@@ -12,6 +12,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import { haptic } from '../../lib/haptics';
 import { useUnits } from '../../hooks/useUnits';
+import { t, tDyn } from '../../i18n/i18n';
 import { cn } from '../../lib/utils';
 import { EQUIPMENT, resolveEquipment } from '../motions';
 import { selectActiveClip, selectEquipment } from '../selectors';
@@ -44,11 +45,11 @@ export const EquipmentPicker: React.FC<{ className?: string }> = ({ className })
   return (
     <div className={cn('glass p-4 space-y-3', className)}>
       <div>
-        <p className="text-eyebrow text-accent">Equipment</p>
-        <p className="text-white font-semibold text-sm mt-0.5">{EQUIPMENT[active].label}</p>
+        <p className="text-eyebrow text-accent">{t('Equipment')}</p>
+        <p className="text-white font-semibold text-sm mt-0.5">{tDyn(EQUIPMENT[active].label)}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Equipment">
+      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('Equipment')}>
         {options.map((id) => {
           const Icon = ICONS[id];
           const selected = id === active;
@@ -70,15 +71,14 @@ export const EquipmentPicker: React.FC<{ className?: string }> = ({ className })
               )}
             >
               <Icon size={19} aria-hidden="true" />
-              <span className="text-[11px] font-medium">{EQUIPMENT[id].label}</span>
+              <span className="text-[11px] font-medium">{tDyn(EQUIPMENT[id].label)}</span>
             </button>
           );
         })}
       </div>
 
       <p className="text-[11px] text-text-mute leading-relaxed">
-        Grip width {units.formatShortLength(EQUIPMENT[active].gripHalfWidth * 200)} — this drives the shoulder abduction the model
-        solves for, so the arm path changes with the implement.
+        {t('Grip width {width} — this drives the shoulder abduction the model solves for, so the arm path changes with the implement.', { width: units.formatShortLength(EQUIPMENT[active].gripHalfWidth * 200) })}
       </p>
     </div>
   );

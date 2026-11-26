@@ -21,9 +21,10 @@ import exerciseLibrary from '../data/exerciseLibrary.json';
 import { StreakHeatmap } from '../components/StreakHeatmap';
 import { RetentionCard } from '../components/RetentionCard';
 import { getRetentionStats } from '../services/analyticsService';
+import { getLanguage, msg, t, tDyn } from '../i18n/i18n';
 
 const COLORS = ['#C6FF3D','#7DD3FC','#FF6B6B','#E7FF8C','#FFD38F','#D8B4FE'];
-const RADAR_GROUPS = ['Chest','Back','Legs','Shoulders','Arms','Core'];
+const RADAR_GROUPS = [msg('Chest'), msg('Back'), msg('Legs'), msg('Shoulders'), msg('Arms'), msg('Core')];
 
 function normaliseMuscle(raw: string): string | null {
   const r = raw.toLowerCase();
@@ -117,15 +118,15 @@ export const Analytics: React.FC = () => {
 
   const buildActivity = (docs: any[]) => {
     const map: Record<string,number> = {};
-    for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); map[d.toLocaleDateString('en-US',{weekday:'short'})]=0; }
-    docs.forEach(d=>{ const ts=d.timestamp?.toDate?.(); if(!ts)return; const k=ts.toLocaleDateString('en-US',{weekday:'short'}); if(map[k]!==undefined) map[k]+=d.duration||0; });
+    for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); map[d.toLocaleDateString(getLanguage(),{weekday:'short'})]=0; }
+    docs.forEach(d=>{ const ts=d.timestamp?.toDate?.(); if(!ts)return; const k=ts.toLocaleDateString(getLanguage(),{weekday:'short'}); if(map[k]!==undefined) map[k]+=d.duration||0; });
     setActivityData(Object.entries(map).map(([day,active])=>({day,active})));
   };
   const buildCalorie = (docs: any[]) => {
     const map:Record<string,number>={};
-    docs.forEach(d=>{ const t=(d.type as string)||'Other'; map[t]=(map[t]||0)+(d.caloriesBurned||0); });
-    const data=Object.entries(map).map(([name,value])=>({name,value})).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
-    setCalorieData(data.length?data:[{name:'No data',value:1}]);
+    docs.forEach(d=>{ const kind=(d.type as string)||msg('Other'); map[kind]=(map[kind]||0)+(d.caloriesBurned||0); });
+    const data=Object.entries(map).map(([name,value])=>({name:tDyn(name),value})).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
+    setCalorieData(data.length?data:[{name:t('No data'),value:1}]);
   };
   const buildMuscle = (docs: any[]) => {
     const counts:Record<string,number>=Object.fromEntries(RADAR_GROUPS.map(g=>[g,0]));
@@ -138,12 +139,12 @@ export const Analytics: React.FC = () => {
       });
     });
     const max=Math.max(...Object.values(counts),1);
-    setMuscleFocus(RADAR_GROUPS.map(subject=>({subject,A:counts[subject],fullMark:max})));
+    setMuscleFocus(RADAR_GROUPS.map(subject=>({subject:tDyn(subject),A:counts[subject],fullMark:max})));
   };
   const buildVolume = (docs: any[]) => {
     const map:Record<string,number>={};
-    for(let i=5;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i); map[d.toLocaleDateString('en-US',{month:'short'})]=0; }
-    docs.forEach(doc=>{ const ts=doc.timestamp?.toDate?.(); if(!ts)return; const m=ts.toLocaleDateString('en-US',{month:'short'}); if(map[m]===undefined)return; (doc.exerciseLogs||[]).forEach((log:any)=>{ map[m]+=(log.sets||0)*(log.reps||0)*(log.weight||0); }); });
+    for(let i=5;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i); map[d.toLocaleDateString(getLanguage(),{month:'short'})]=0; }
+    docs.forEach(doc=>{ const ts=doc.timestamp?.toDate?.(); if(!ts)return; const m=ts.toLocaleDateString(getLanguage(),{month:'short'}); if(map[m]===undefined)return; (doc.exerciseLogs||[]).forEach((log:any)=>{ map[m]+=(log.sets||0)*(log.reps||0)*(log.weight||0); }); });
     setVolumeTrend(Object.entries(map).map(([month,volume])=>({month,volume:Math.round(volume)})));
   };
 
@@ -152,17 +153,17 @@ export const Analytics: React.FC = () => {
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={()=>navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back"><ChevronLeft size={18}/></button>
+          <button onClick={()=>navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}><ChevronLeft size={18}/></button>
           <div>
-            <p className="text-eyebrow text-accent">Analytics</p>
-            <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">Your performance</h1>
+            <p className="text-eyebrow text-accent">{t('Analytics')}</p>
+            <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{t('Your performance')}</h1>
           </div>
         </div>
       </header>
 
       {loading ? (
         <div className="py-24">
-          <LoadingBar label="Crunching your data" />
+          <LoadingBar label={t('Crunching your data')} />
         </div>
       ) : (
         <div className="space-y-5">
@@ -176,9 +177,9 @@ export const Analytics: React.FC = () => {
 
           {/* Stat row */}
           <div className="grid grid-cols-3 gap-3">
-            <Stat3D icon={<Zap size={14} className="text-accent"/>}  label="Sessions" value={String(totalWorkouts)} />
-            <Stat3D icon={<Clock size={14} className="text-accent"/>} label="Minutes"  value={`${totalMins}`} />
-            <Stat3D icon={<Flame size={14} className="text-accent"/>} label={units.energyUnit === 'kJ' ? 'kJ' : 'Calories'} value={units.formatEnergyNumber(totalCals)} />
+            <Stat3D icon={<Zap size={14} className="text-accent"/>}  label={t('Sessions')} value={String(totalWorkouts)} />
+            <Stat3D icon={<Clock size={14} className="text-accent"/>} label={t('Minutes')}  value={`${totalMins}`} />
+            <Stat3D icon={<Flame size={14} className="text-accent"/>} label={units.energyUnit === 'kJ' ? 'kJ' : t('Calories')} value={units.formatEnergyNumber(totalCals)} />
           </div>
 
           {/* Consistency / retention (#4) */}
@@ -195,8 +196,8 @@ export const Analytics: React.FC = () => {
             className="glass p-5">
             <div className="flex justify-between items-end mb-4">
               <div>
-                <p className="text-eyebrow text-accent">Active minutes</p>
-                <h3 className="font-display text-lg font-bold text-white tracking-tight mt-1">This week</h3>
+                <p className="text-eyebrow text-accent">{t('Active minutes')}</p>
+                <h3 className="font-display text-lg font-bold text-white tracking-tight mt-1">{t('This week')}</h3>
               </div>
               <TrendingUp className="text-accent" size={18}/>
             </div>
@@ -208,19 +209,19 @@ export const Analytics: React.FC = () => {
                   <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill:'#8B92A3',fontSize:10}}/>
                   <YAxis hide/>
                   <Tooltip {...chartTooltipStyle} cursor={{fill:'rgba(255,255,255,0.03)'}}/>
-                  <Bar dataKey="active" fill="url(#barGrad)" radius={[8,8,0,0]} name="Mins"/>
+                  <Bar dataKey="active" fill="url(#barGrad)" radius={[8,8,0,0]} name={t('Mins')}/>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </motion.div>
 
           {/* Premium: Calorie split + Muscle radar */}
-          <PremiumGate feature="Calorie & Muscle Analysis">
+          <PremiumGate feature={t('Calorie & Muscle Analysis')}>
             <div className="grid grid-cols-1 gap-5">
               <motion.div initial={{opacity:0,scale:0.96}} animate={{opacity:1,scale:1}}
                 className="stat-card-3d p-6 rounded-[2rem]">
-                <p className="text-[9px] font-black text-accent uppercase tracking-widest mb-1">Exertion Profile</p>
-                <h3 className="font-display text-lg font-bold text-white tracking-tight mb-4">Calories by type</h3>
+                <p className="text-[9px] font-black text-accent uppercase tracking-widest mb-1">{t('Exertion Profile')}</p>
+                <h3 className="font-display text-lg font-bold text-white tracking-tight mb-4">{t('Calories by type')}</h3>
                 <div className="h-52 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -244,15 +245,15 @@ export const Analytics: React.FC = () => {
 
               <motion.div initial={{opacity:0,scale:0.96}} animate={{opacity:1,scale:1}}
                 className="stat-card-3d p-6 rounded-[2rem]">
-                <p className="text-[9px] font-black text-accent uppercase tracking-widest mb-1">Focus Biometrics</p>
-                <h3 className="font-display text-lg font-bold text-white tracking-tight mb-4">Muscle group focus</h3>
+                <p className="text-[9px] font-black text-accent uppercase tracking-widest mb-1">{t('Focus Biometrics')}</p>
+                <h3 className="font-display text-lg font-bold text-white tracking-tight mb-4">{t('Muscle group focus')}</h3>
                 <div className="h-52 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="72%" data={muscleFocus}>
                       <defs><radialGradient id="radarGrad"><stop offset="0%" stopColor="#00D1FF" stopOpacity={0.4}/><stop offset="100%" stopColor="#7000FF" stopOpacity={0.1}/></radialGradient></defs>
                       <PolarGrid stroke="rgba(255,255,255,0.06)"/>
                       <PolarAngleAxis dataKey="subject" tick={{fill:'#64748B',fontSize:9,fontWeight:900}}/>
-                      <Radar name="Volume" dataKey="A" stroke="#00D1FF" fill="url(#radarGrad)" fillOpacity={1}/>
+                      <Radar name={t('Volume')} dataKey="A" stroke="#00D1FF" fill="url(#radarGrad)" fillOpacity={1}/>
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
@@ -261,11 +262,11 @@ export const Analytics: React.FC = () => {
           </PremiumGate>
 
           {/* Premium: Volume trend */}
-          <PremiumGate feature="Volume Trend">
+          <PremiumGate feature={t('Volume Trend')}>
             <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}}
               className="stat-card-3d p-6 rounded-[2rem]">
-              <p className="text-[9px] font-black text-accent uppercase tracking-widest mb-1">Load History</p>
-              <h3 className="font-display text-lg font-bold text-white tracking-tight mb-4">Total lifting volume</h3>
+              <p className="text-[9px] font-black text-accent uppercase tracking-widest mb-1">{t('Load History')}</p>
+              <h3 className="font-display text-lg font-bold text-white tracking-tight mb-4">{t('Total lifting volume')}</h3>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={volumeTrend}>
@@ -279,7 +280,7 @@ export const Analytics: React.FC = () => {
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill:'#64748B',fontSize:9,fontWeight:900}}/>
                     {/* Volume stays kg x reps (as stored); only the label converts. */}
                     <Tooltip {...chartTooltipStyle} formatter={(v) => (typeof v === 'number' ? units.formatLoadVolume(v) : String(v ?? ''))}/>
-                    <Area type="monotone" dataKey="volume" stroke="#00D1FF" strokeWidth={2} fillOpacity={1} fill="url(#volGrad)" name={`Volume (${units.loadUnit})`}/>
+                    <Area type="monotone" dataKey="volume" stroke="#00D1FF" strokeWidth={2} fillOpacity={1} fill="url(#volGrad)" name={t('Volume ({unit})', { unit: units.loadUnit })}/>
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

@@ -11,6 +11,7 @@ import { Activity, Box, Route, Thermometer, Waypoints } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { haptic } from '../../lib/haptics';
+import { msg, t, tDyn } from '../../i18n/i18n';
 import { cn } from '../../lib/utils';
 import { selectPerf } from '../selectors';
 import { useAppDispatch, useAppSelector } from '../store';
@@ -20,37 +21,37 @@ import type { LayerVisibility } from '../viewportSlice';
 import { qualitySet } from '../viewportSlice';
 
 const LAYERS: { id: keyof LayerVisibility; label: string; icon: LucideIcon; hint: string }[] = [
-  { id: 'heatmap', label: 'Heatmap', icon: Activity, hint: 'Muscle activation shading' },
-  { id: 'jointVectors', label: 'Angles', icon: Waypoints, hint: 'Joint angle arcs and readouts' },
-  { id: 'barPath', label: 'Bar path', icon: Route, hint: 'Trajectory of the implement' },
-  { id: 'skeleton', label: 'Skeleton', icon: Box, hint: 'Underlying segment wireframe' },
+  { id: 'heatmap', label: msg('Heatmap'), icon: Activity, hint: msg('Muscle activation shading') },
+  { id: 'jointVectors', label: msg('Angles'), icon: Waypoints, hint: msg('Joint angle arcs and readouts') },
+  { id: 'barPath', label: msg('Bar path'), icon: Route, hint: msg('Trajectory of the implement') },
+  { id: 'skeleton', label: msg('Skeleton'), icon: Box, hint: msg('Underlying segment wireframe') },
 ];
 
 const PRESETS: { id: 'front' | 'side' | 'rear' | 'three-quarter'; label: string }[] = [
-  { id: 'front', label: 'Front' },
-  { id: 'side', label: 'Side' },
-  { id: 'rear', label: 'Rear' },
+  { id: 'front', label: msg('Front') },
+  { id: 'side', label: msg('Side') },
+  { id: 'rear', label: msg('Rear') },
   { id: 'three-quarter', label: '3/4' },
 ];
 
 const TIERS: { id: QualityTier; label: string }[] = [
-  { id: 'high', label: 'High' },
-  { id: 'balanced', label: 'Balanced' },
-  { id: 'low', label: 'Battery saver' },
+  { id: 'high', label: msg('High') },
+  { id: 'balanced', label: msg('Balanced') },
+  { id: 'low', label: msg('Battery saver') },
 ];
 
 const throttleExplanation = (reason: string): string => {
   switch (reason) {
     case 'fps':
-      return 'Detail reduced automatically to hold a smooth frame rate.';
+      return t('Detail reduced automatically to hold a smooth frame rate.');
     case 'thermal':
-      return 'Detail reduced because the device is running hot.';
+      return t('Detail reduced because the device is running hot.');
     case 'device':
-      return 'Started at a lower detail level to match this device.';
+      return t('Started at a lower detail level to match this device.');
     case 'battery':
-      return 'Detail reduced to save battery.';
+      return t('Detail reduced to save battery.');
     default:
-      return 'Running at full detail.';
+      return t('Running at full detail.');
   }
 };
 
@@ -64,8 +65,8 @@ export const ViewControls: React.FC<{ controls: BiomechanicsControls; className?
   return (
     <div className={cn('glass p-4 space-y-4', className)}>
       <div>
-        <p className="text-eyebrow text-accent">Layers</p>
-        <div className="grid grid-cols-2 gap-2 mt-2" role="group" aria-label="Visual layers">
+        <p className="text-eyebrow text-accent">{t('Layers')}</p>
+        <div className="grid grid-cols-2 gap-2 mt-2" role="group" aria-label={t('Visual layers')}>
           {LAYERS.map((layer) => {
             const on = controls.layers[layer.id];
             const Icon = layer.icon;
@@ -74,7 +75,7 @@ export const ViewControls: React.FC<{ controls: BiomechanicsControls; className?
                 key={layer.id}
                 type="button"
                 aria-pressed={on}
-                title={layer.hint}
+                title={tDyn(layer.hint)}
                 onClick={() => {
                   haptic('selection');
                   controls.toggleLayer(layer.id);
@@ -85,7 +86,7 @@ export const ViewControls: React.FC<{ controls: BiomechanicsControls; className?
                 )}
               >
                 <Icon size={15} aria-hidden="true" />
-                <span className="truncate">{layer.label}</span>
+                <span className="truncate">{tDyn(layer.label)}</span>
               </button>
             );
           })}
@@ -93,8 +94,8 @@ export const ViewControls: React.FC<{ controls: BiomechanicsControls; className?
       </div>
 
       <div>
-        <p className="text-eyebrow text-accent">Camera</p>
-        <div className="grid grid-cols-4 gap-2 mt-2" role="group" aria-label="Camera angle">
+        <p className="text-eyebrow text-accent">{t('Camera')}</p>
+        <div className="grid grid-cols-4 gap-2 mt-2" role="group" aria-label={t('Camera angle')}>
           {PRESETS.map((preset) => (
             <button
               key={preset.id}
@@ -105,7 +106,7 @@ export const ViewControls: React.FC<{ controls: BiomechanicsControls; className?
               }}
               className="h-11 rounded-xl bg-white/[0.02] border border-white/[0.06] text-text-dim text-xs font-medium active:scale-[0.97] transition-transform"
             >
-              {preset.label}
+              {tDyn(preset.label)}
             </button>
           ))}
         </div>
@@ -113,13 +114,13 @@ export const ViewControls: React.FC<{ controls: BiomechanicsControls; className?
 
       <div>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-eyebrow text-accent">Detail</p>
+          <p className="text-eyebrow text-accent">{t('Detail')}</p>
           <span className="num text-[11px] text-text-mute tabular-nums inline-flex items-center gap-1.5">
             {perf.throttled ? <Thermometer size={12} className="text-accent-2" aria-hidden="true" /> : null}
             {perf.fps > 0 ? `${perf.fps} fps` : '—'}
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-2" role="radiogroup" aria-label="Render detail">
+        <div className="grid grid-cols-3 gap-2 mt-2" role="radiogroup" aria-label={t('Render detail')}>
           {TIERS.map((tier) => {
             const selected = perf.tier === tier.id;
             return (
@@ -134,7 +135,7 @@ export const ViewControls: React.FC<{ controls: BiomechanicsControls; className?
                   selected ? 'bg-accent/10 border-accent/25 text-accent' : 'bg-white/[0.02] border-white/[0.06] text-text-dim',
                 )}
               >
-                {tier.label}
+                {tDyn(tier.label)}
               </button>
             );
           })}
