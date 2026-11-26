@@ -74,6 +74,7 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
       await updateDoc(doc(db, 'users', profile.uid), { macroTargets: next });
       showToast(`Daily target set to ${result.target} kcal`, 'success');
       onApplied?.(result.target);
+      void import('../services/reviewService').then((m) => m.maybeAskForReview('smart_target')).catch(() => {});
     } catch {
       showToast('Could not update your target. Try again.', 'error');
     } finally {

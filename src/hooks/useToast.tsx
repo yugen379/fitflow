@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, Suspense, lazy } from 'react';
 
 import type { Toast, ToastVariant } from '../components/ToastViewport';
+import { noteReviewError } from '../lib/reviewPrompt';
 
 // Loaded on the first toast, not at boot — see components/ToastViewport.tsx.
 const ToastViewport = lazy(() => import('../components/ToastViewport'));
@@ -16,6 +17,8 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const showToast = useCallback((message: string, variant: ToastVariant = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
+    // Never ask for a review right after the user saw something go wrong.
+    if (variant === 'error') noteReviewError();
     setToasts((prev) => [...prev, { id, message, variant }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));

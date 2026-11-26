@@ -92,6 +92,11 @@ export const recordActiveDay = async (uid: string): Promise<void> => {
     // "On A Roll", "Consistency King" and "Unstoppable" were displayed in the
     // Profile gallery as goals nobody could ever reach.
     await checkStreakBadge(uid, currentStreak);
+    // A 7-day (or longer) streak is a win worth a review ask; the policy
+    // allows at most one ask per 120 days, so a long streak cannot nag.
+    if (currentStreak >= 7) {
+      void import('./reviewService').then((m) => m.maybeAskForReview('streak_7')).catch(() => {});
+    }
     const gap = previousDay ? daysBetweenKeys(previousDay, day) : null;
     if (gap !== null && gap >= 7) await checkAndAwardBadge(uid, 'comeback_kid');
   } catch (err) {
