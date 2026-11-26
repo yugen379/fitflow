@@ -44,7 +44,9 @@ interface GpsTrackerPlugin {
   checkPermissions(): Promise<{ location: PermissionValue; notifications: PermissionValue }>;
   requestPermissions(opts?: { permissions: ('location' | 'notifications')[] }): Promise<{ location: PermissionValue; notifications: PermissionValue }>;
   openLocationSettings(): Promise<void>;
-  start(opts: { activity: GpsActivity }): Promise<GpsSnapshot>;
+  /** distanceUnit only changes the ongoing notification's text; data stays metres. */
+  start(opts: { activity: GpsActivity; distanceUnit?: 'km' | 'mi' }): Promise<GpsSnapshot>;
+  setDistanceUnit(opts: { unit: 'km' | 'mi' }): Promise<void>;
   pause(): Promise<GpsSnapshot>;
   resume(): Promise<GpsSnapshot>;
   stop(): Promise<GpsSnapshot>;

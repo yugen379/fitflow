@@ -99,6 +99,15 @@ export const TrackActivity: React.FC = () => {
     return () => clearInterval(id);
   }, [state, native, apply]);
 
+  // The ongoing notification shows distance too: keep it in the chosen unit
+  // when the km / mi switch (or Settings) changes mid-recording. An APK older
+  // than this method just rejects, and its notification stays in km.
+  const recording = state === 'recording' || state === 'paused';
+  useEffect(() => {
+    if (!native || !recording) return;
+    GpsTracker.setDistanceUnit({ unit: units === 'imperial' ? 'mi' : 'km' }).catch(() => {});
+  }, [native, recording, units]);
+
   const summary = useMemo(
     () => summarize(points, activity, { weightKg: profile?.weight || 70, units }),
     [points, activity, units, profile?.weight],
@@ -137,7 +146,7 @@ export const TrackActivity: React.FC = () => {
           await GpsTracker.requestPermissions({ permissions: ['notifications'] }).catch(() => {});
         }
         pointsRef.current = [];
-        apply(await GpsTracker.start({ activity }), true);
+        apply(await GpsTracker.start({ activity, distanceUnit: units === 'imperial' ? 'mi' : 'km' }), true);
       } catch (e) {
         if ((e as { code?: string })?.code === 'GPS_DISABLED') setGpsOff(true);
         setError(gpsErrorMessage(e));

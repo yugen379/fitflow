@@ -286,7 +286,10 @@ public class LocationTrackingService extends Service implements LocationListener
         String time = secs >= 3600
                 ? String.format(Locale.US, "%d:%02d:%02d", secs / 3600, (secs % 3600) / 60, secs % 60)
                 : String.format(Locale.US, "%d:%02d", secs / 60, secs % 60);
-        String km = String.format(Locale.US, "%.2f km", store.getDistanceM() / 1000.0);
+        // 1 mi = 1609.344 m exactly (same factor as src/lib/units.ts).
+        String km = store.isMiles()
+                ? String.format(Locale.US, "%.2f mi", store.getDistanceM() / 1609.344)
+                : String.format(Locale.US, "%.2f km", store.getDistanceM() / 1000.0);
         boolean paused = GpsTrackStore.STATE_PAUSED.equals(store.getState());
         String text = !providerEnabled
                 ? "GPS is off — turn on Location to keep recording"

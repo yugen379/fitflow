@@ -79,7 +79,7 @@ public class GpsTrackerPlugin extends Plugin {
             return;
         }
         if (!preflight(call)) return;
-        store.begin(activity);
+        store.begin(activity, "mi".equals(call.getString("distanceUnit", "km")));
         try {
             LocationTrackingService.send(getContext(), LocationTrackingService.ACTION_START, activity);
         } catch (Exception e) {
@@ -90,6 +90,13 @@ public class GpsTrackerPlugin extends Plugin {
             return;
         }
         call.resolve(current(0));
+    }
+
+    /** The km / mi switch flipped mid-recording: the notification follows on its next tick. */
+    @PluginMethod
+    public void setDistanceUnit(PluginCall call) {
+        store.setMiles("mi".equals(call.getString("unit", "km")));
+        call.resolve();
     }
 
     @PluginMethod

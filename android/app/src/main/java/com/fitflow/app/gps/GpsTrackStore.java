@@ -61,6 +61,15 @@ public class GpsTrackStore {
         return prefs().getString("activity", "walk");
     }
 
+    /** Notification distance unit: the user's profile choice (km or mi). Display only. */
+    public synchronized boolean isMiles() {
+        return prefs().getBoolean("miles", false);
+    }
+
+    public synchronized void setMiles(boolean miles) {
+        prefs().edit().putBoolean("miles", miles).apply();
+    }
+
     public synchronized int getSegment() {
         return prefs().getInt("segment", 0);
     }
@@ -88,7 +97,7 @@ public class GpsTrackStore {
         return active;
     }
 
-    public synchronized void begin(String activity) {
+    public synchronized void begin(String activity, boolean miles) {
         //noinspection ResultOfMethodCallIgnored
         file().delete();
         long now = System.currentTimeMillis();
@@ -96,6 +105,7 @@ public class GpsTrackStore {
                 .clear()
                 .putString("state", STATE_RECORDING)
                 .putString("activity", activity)
+                .putBoolean("miles", miles)
                 .putLong("startedAt", now)
                 .putLong("resumedAt", now)
                 .putLong("activeMs", 0L)
