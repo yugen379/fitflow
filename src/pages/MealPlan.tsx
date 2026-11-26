@@ -12,6 +12,8 @@ import { checkAndAwardBadge } from '../services/badgeService';
 import { haptic } from '../lib/haptics';
 import { celebrateSmall } from '../lib/celebrate';
 import { AnimatedNumber } from '../components/AnimatedNumber';
+import { useUnits } from '../hooks/useUnits';
+import { UnitInput } from '../components/UnitInput';
 import { MealDayCard, MEAL_TYPES as DAY_MEAL_TYPES } from '../components/MealDayCard';
 import type { MealType as DayMealType, Recipe } from '../components/MealDayCard';
 
@@ -74,6 +76,7 @@ const TARGET_KEY = (uid: string) => `ff_mealplan_target_${uid}`;
 export const MealPlan: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const [days, setDays] = useState<PlanDay[]>([]);
   const [loading, setLoading] = useState(false);
@@ -296,7 +299,7 @@ export const MealPlan: React.FC = () => {
       await persistCalorieTarget(target);
       if (profile?.uid) checkAndAwardBadge(profile.uid, 'ai_chef').catch(() => {});
       celebrateSmall();
-      showToast(`Your ${target} kcal/day plan is ready`, 'success');
+      showToast(`Your ${units.formatEnergy(target)}/day plan is ready`, 'success');
     } catch (e) {
       console.error('Generate plan failed:', e);
       showToast('Generation failed — using a starter plan', 'info');
@@ -470,11 +473,15 @@ export const MealPlan: React.FC = () => {
                 className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/15 text-white text-lg font-bold active:scale-95 transition-transform"
                 aria-label="Decrease target"
               >−</button>
-              <input
-                type="number"
+              {/* Typed in kcal or kJ; the target is kept in kcal (converted once). */}
+              <UnitInput
                 inputMode="numeric"
+                aria-label={`Daily target in ${units.energyUnit}`}
                 value={dailyTarget}
-                onChange={(e) => updateDailyTarget(parseInt(e.target.value) || 0)}
+                unit={units.energyUnit}
+                toDisplay={units.energyInputValue}
+                fromDisplay={units.energyToKcal}
+                onValue={(k) => updateDailyTarget(Math.round(k))}
                 className="num text-4xl font-bold text-white text-center bg-transparent w-32 focus:outline-none"
               />
               <button
@@ -484,7 +491,7 @@ export const MealPlan: React.FC = () => {
               >+</button>
             </div>
             <p className="text-center text-xs text-text-mute">
-              kcal · scaled across 7 days = <span className="num text-accent font-semibold">{(dailyTarget * 7).toLocaleString()}</span>/wk
+              {units.energyUnit} · scaled across 7 days = <span className="num text-accent font-semibold">{units.formatEnergyNumber(dailyTarget * 7)}</span>/wk
             </p>
             <div className="grid grid-cols-3 gap-1.5 pt-1">
               {[1800, 2200, 2800].map(v => (
@@ -493,7 +500,7 @@ export const MealPlan: React.FC = () => {
                   onClick={() => updateDailyTarget(v)}
                   className={`py-2 rounded-lg text-xs font-semibold border transition-all ${dailyTarget === v ? 'bg-accent text-bg border-accent' : 'bg-white/[0.03] text-text-dim border-white/[0.06]'}`}
                 >
-                  {v}
+                  {units.formatEnergyNumber(v)}
                 </button>
               ))}
             </div>
@@ -512,7 +519,7 @@ export const MealPlan: React.FC = () => {
               <div>
                 <p className="text-eyebrow text-accent">Week summary</p>
                 <p className="num font-display text-xl font-bold text-white mt-1">
-                  <AnimatedNumber value={totalCalsThisWeek} /> <span className="text-sm text-text-dim font-medium">kcal · 7 days</span>
+                  <AnimatedNumber value={Math.round(units.energyValue(totalCalsThisWeek))} /> <span className="text-sm text-text-dim font-medium">{units.energyUnit} · 7 days</span>
                 </p>
               </div>
               <div className="text-right">
@@ -523,11 +530,14 @@ export const MealPlan: React.FC = () => {
                     className="w-6 h-6 rounded-md bg-white/[0.06] border border-white/15 text-white text-xs font-bold active:scale-95 transition-transform"
                     aria-label="Decrease target"
                   >−</button>
-                  <input
-                    type="number"
+                  <UnitInput
                     inputMode="numeric"
+                    aria-label={`Daily target in ${units.energyUnit}`}
                     value={dailyTarget}
-                    onChange={(e) => { const n = parseInt(e.target.value) || 0; updateDailyTarget(n); setDays(d => d.map(day => ({ ...day, calories: Math.max(1000, Math.min(5000, n)) }))); }}
+                    unit={units.energyUnit}
+                    toDisplay={units.energyInputValue}
+                    fromDisplay={units.energyToKcal}
+                    onValue={(k) => { const n = Math.round(k); updateDailyTarget(n); setDays(d => d.map(day => ({ ...day, calories: Math.max(1000, Math.min(5000, n)) }))); }}
                     className="num text-lg text-accent font-semibold bg-transparent w-16 text-right focus:outline-none"
                   />
                   <button

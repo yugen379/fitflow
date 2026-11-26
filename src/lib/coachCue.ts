@@ -94,6 +94,8 @@ export const coachCueFor = (
   modality: Modality,
   trend: Trend,
   suggestion: { suggestedWeight?: number | null; suggestedReps?: number | null } = {},
+  /** Shows the suggested load (kg in) in the person's unit; units.formatLoad on screen. Default "22.5kg". */
+  formatLoad: (kg: number) => string = (kg) => `${tidyWeight(kg)}kg`,
 ): CoachCue => {
   const safeTrend: Trend = trend === 'up' || trend === 'down' ? trend : 'stable';
   const trendLabel = TREND_LABEL[modality][safeTrend];
@@ -106,6 +108,8 @@ export const coachCueFor = (
     };
   }
 
-  const highlight = `${tidyWeight(suggestion.suggestedWeight)}kg × ${tidyReps(suggestion.suggestedReps)} reps`;
+  const n = Number(suggestion.suggestedWeight);
+  const load = formatLoad(Number.isFinite(n) && n >= 0 ? n : 0);
+  const highlight = `${load} × ${tidyReps(suggestion.suggestedReps)} reps`;
   return { text: `Try ${highlight}`, highlight, trendLabel };
 };

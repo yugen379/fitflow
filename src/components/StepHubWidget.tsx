@@ -36,6 +36,7 @@ import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
 import { AnimatedNumber } from './AnimatedNumber';
 import { formatActiveTime } from '../lib/pedometer';
+import { useUnits } from '../hooks/useUnits';
 import { spawnRipple } from './ui/WaterRipple';
 import { prefetchRoute } from '../lib/prefetch';
 import { SPRING, prefersReducedMotion } from '../lib/motion';
@@ -115,6 +116,7 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
   className,
 }) => {
   const navigate = useNavigate();
+  const units = useUnits();
   const cardRef = useRef<HTMLDivElement>(null);
   const reduced = prefersReducedMotion();
 
@@ -266,8 +268,8 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
       </p>
 
       <div className="grid grid-cols-3 gap-3 mt-4 relative" style={layer(10)}>
-        <Metric icon={<MapPin size={14} />} value={`${distanceKm.toFixed(1)} km`} label="Distance" />
-        <Metric icon={<Flame size={14} />} value={`${Math.round(calories)} kcal`} label="Burned" />
+        <Metric icon={<MapPin size={14} />} value={units.formatDistance(distanceKm)} label="Distance" />
+        <Metric icon={<Flame size={14} />} value={units.formatEnergy(Math.round(calories))} label="Burned" />
         <Metric icon={<Timer size={14} />} value={formatActiveTime(activeMs)} label="Active" />
       </div>
 

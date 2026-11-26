@@ -9,6 +9,8 @@ import { isProUnlocked } from '../lib/billing';
 import { baseCaloriesFor, defaultSplitFor, computeDailyTargets, applySafetyBounds } from '../lib/nutritionTargets';
 import type { MacroTargets, DayTargets } from '../types';
 import { cn } from '../lib/utils';
+import { useUnits } from '../hooks/useUnits';
+import { UnitInput } from '../components/UnitInput';
 import { SmartTargetCard } from '../components/SmartTargetCard';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -21,6 +23,7 @@ const numOr = (v: string, fallback = 0) => {
 export const NutritionGoals: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const isPro = isProUnlocked(profile);
   const goal = profile?.goal;
@@ -155,7 +158,7 @@ export const NutritionGoals: React.FC = () => {
       <div className="glass p-4">
         <div className="flex items-baseline justify-between mb-3">
           <p className="text-eyebrow text-text-dim">Your daily target</p>
-          <p className="num text-accent font-display text-xl font-bold">{previewGrams.calories.toLocaleString()} kcal</p>
+          <p className="num text-accent font-display text-xl font-bold">{units.formatEnergy(previewGrams.calories)}</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {([['Protein', bounded.protein], ['Carbs', bounded.carbs], ['Fats', bounded.fats]] as const).map(([label, g]) => (
@@ -168,7 +171,7 @@ export const NutritionGoals: React.FC = () => {
         {adjusted && (
           <p className="text-xs text-text-dim mt-3 leading-relaxed">
             Adjusted for safety: fat stays at least 20% of calories and protein at most
-            {profile?.weight ? ' 2.5 g per kg' : ' 50% of calories'}. The difference moves to carbs.
+            {profile?.weight ? ` ${units.perBodyWeightValue(2.5)} g per ${units.perBodyWeightUnit} of body weight` : ' 50% of calories'}. The difference moves to carbs.
           </p>
         )}
       </div>
@@ -261,8 +264,11 @@ export const NutritionGoals: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05] space-y-2">
                   <p className="text-xs font-semibold text-accent">Workout day</p>
-                  <label className="block text-[11px] text-text-dim">Calories
-                    <input type="number" inputMode="numeric" value={workoutCals} onChange={e => setWorkoutCals(numOr(e.target.value))}
+                  <label className="block text-[11px] text-text-dim">Calories ({units.energyUnit})
+                    {/* Typed in kcal or kJ; stored in kcal (whole), converted once. */}
+                    <UnitInput value={workoutCals} unit={units.energyUnit} inputMode="numeric"
+                      toDisplay={units.energyInputValue} fromDisplay={units.energyToKcal}
+                      onValue={k => setWorkoutCals(Math.round(k))}
                       className="w-full mt-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-white num" />
                   </label>
                   <label className="block text-[11px] text-text-dim">Carbs (g)
@@ -272,8 +278,10 @@ export const NutritionGoals: React.FC = () => {
                 </div>
                 <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05] space-y-2">
                   <p className="text-xs font-semibold text-text-dim">Rest day</p>
-                  <label className="block text-[11px] text-text-dim">Calories
-                    <input type="number" inputMode="numeric" value={restCals} onChange={e => setRestCals(numOr(e.target.value))}
+                  <label className="block text-[11px] text-text-dim">Calories ({units.energyUnit})
+                    <UnitInput value={restCals} unit={units.energyUnit} inputMode="numeric"
+                      toDisplay={units.energyInputValue} fromDisplay={units.energyToKcal}
+                      onValue={k => setRestCals(Math.round(k))}
                       className="w-full mt-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-white num" />
                   </label>
                   <label className="block text-[11px] text-text-dim">Carbs (g)

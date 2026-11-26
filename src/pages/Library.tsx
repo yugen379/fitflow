@@ -10,6 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import { logWorkout } from '../services/dataService';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
+import { useUnits } from '../hooks/useUnits';
+import { UnitInput } from '../components/UnitInput';
 import { saveWorkoutPlan, listWorkoutPlans, deleteWorkoutPlan, WorkoutPlan } from '../services/workoutPlanService';
 import { MUSCLE_GROUPS, EQUIPMENT, CATEGORIES as TAXONOMY_CATEGORIES, DIFFICULTIES as TAXONOMY_DIFFICULTIES } from '../data/taxonomy';
 
@@ -24,6 +26,7 @@ const DIFFICULTIES = ['All', ...TAXONOMY_DIFFICULTIES];
 export const Library: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   
   // Filtering & Sorting State
@@ -338,7 +341,7 @@ export const Library: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-white truncate">{plan.name}</p>
                     <p className="text-xs text-text-dim num mt-0.5">
-                      {plan.exercises.length} exercises · {plan.duration} min · ~{plan.calories} kcal
+                      {plan.exercises.length} exercises · {plan.duration} min · ~{units.formatEnergy(plan.calories)}
                     </p>
                   </div>
                   <button
@@ -410,11 +413,15 @@ export const Library: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[7px] font-black text-text-dim uppercase">Weight (kg)</label>
-                        <input 
-                          type="number"
+                        <label className="text-[7px] font-black text-text-dim uppercase">Weight ({units.loadUnit})</label>
+                        {/* Typed in kg or lb, saved in kg (converted once). */}
+                        <UnitInput
                           value={ex.weight}
-                          onChange={(e) => updateBuilderExercise(ex.id, 'weight', parseInt(e.target.value) || 0)}
+                          unit={units.loadUnit}
+                          toDisplay={units.loadValue}
+                          fromDisplay={units.loadToKg}
+                          onValue={(kg) => updateBuilderExercise(ex.id, 'weight', kg)}
+                          aria-label={`Weight for ${ex.name} in ${units.loadUnit}`}
                           className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-1 text-[10px] text-white font-black"
                         />
                       </div>

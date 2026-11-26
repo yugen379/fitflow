@@ -44,6 +44,13 @@ export interface NudgeContext {
   workoutsToday: number;
   /** Minutes since the app last saw movement, when known. */
   sedentaryMinutes?: number | null;
+  /**
+   * Energy with unit in the person's choice: the caller passes
+   * units.formatEnergy. Default "1,200 kcal". (Passed in rather than read from
+   * useUnits here, so this file stays free of the auth/Firebase import chain:
+   * proof:steps imports buildNudges straight from it.)
+   */
+  formatEnergy?: (kcal: number) => string;
 }
 
 export interface Nudge {
@@ -83,6 +90,7 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
     recovery,
     workoutsToday,
     sedentaryMinutes,
+    formatEnergy = (kcal: number) => `${kcal.toLocaleString()} kcal`,
   } = context;
 
   const who = name ? `, ${name}` : '';
@@ -117,7 +125,7 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
       icon: Salad,
       tone: 'aqua',
       title: 'Fuel alert',
-      body: `You are ${calorieGap.toLocaleString()} kcal under target with ${proteinGap}g protein remaining.`,
+      body: `You are ${formatEnergy(calorieGap)} under target with ${proteinGap}g protein remaining.`,
       action: { label: 'Quick log meal', route: '/track' },
       urgency: hour >= 19 ? 88 : 70,
     });
@@ -127,7 +135,7 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
       icon: Salad,
       tone: 'coral',
       title: 'Over target',
-      body: `${Math.abs(calorieGap).toLocaleString()} kcal above your goal today. Worth a lighter dinner.`,
+      body: `${formatEnergy(Math.abs(calorieGap))} above your goal today. Worth a lighter dinner.`,
       action: { label: 'Review intake', route: '/track' },
       urgency: 55,
     });

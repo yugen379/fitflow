@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Minus, Plus, SkipForward, Timer } from 'lucide-react';
 
 import { haptic } from '../../lib/haptics';
+import { useUnits } from '../../hooks/useUnits';
 import { cn } from '../../lib/utils';
 import {
   selectCurrentExercise,
@@ -160,6 +161,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
   const restRemaining = useAppSelector(selectRestRemaining);
   const elapsed = useAppSelector(selectElapsedSec);
   const volume = useAppSelector(selectSessionVolume);
+  const units = useUnits();
 
   const [weightKg, setWeightKg] = useState<number>(exercise?.targetWeightKg ?? 60);
   const [rpe, setRpe] = useState(7);
@@ -230,7 +232,7 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
         <div className="text-right">
           <p className="num text-sm text-white tabular-nums">{formatClock(elapsed)}</p>
           <p className="text-[11px] text-text-mute">
-            {volume.setCount} {volume.setCount === 1 ? 'set' : 'sets'} · {volume.volumeKg} kg
+            {volume.setCount} {volume.setCount === 1 ? 'set' : 'sets'} · {units.formatLoadVolume(volume.volumeKg)}
           </p>
         </div>
       </div>
@@ -265,7 +267,18 @@ export const SetLogger: React.FC<Props> = ({ className, onSetLogged }) => {
       </div>
 
       <div className="flex gap-3">
-        <Stepper label="Load" value={weightKg} suffix="kg" step={2.5} min={0} max={400} onChange={setWeightKg} />
+        {/* The stepper works in the display unit (2.5 kg or 5 lb plates); the
+            load is kept in kg. An untouched pre-fill stays the exact stored kg;
+            a stepped value is converted to kg once (units.loadToKg). */}
+        <Stepper
+          label="Load"
+          value={units.loadValue(weightKg)}
+          suffix={units.loadUnit}
+          step={units.loadStep}
+          min={0}
+          max={units.loadValue(400)}
+          onChange={(v) => setWeightKg(units.loadToKg(v) ?? 0)}
+        />
         <Stepper label="RPE" value={rpe} step={1} min={1} max={10} onChange={setRpe} />
       </div>
 

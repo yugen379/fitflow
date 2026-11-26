@@ -23,6 +23,8 @@ import { hasClipFor } from '../biomechanics/motions';
 import { coachCueFor, modalityOf } from '../lib/coachCue';
 import { useBackHandler } from '../lib/backButton';
 import { parseExercise, prettyLabel } from '../lib/exerciseParse';
+import { useUnits } from '../hooks/useUnits';
+import { UnitInput } from '../components/UnitInput';
 
 const WORKOUT_TYPES = [
   { id: 'strength', name: 'Strength', icon: Dumbbell, hint: 'Lift heavy' },
@@ -38,6 +40,7 @@ interface ExLog { exerciseId: string; name: string; sets: number; reps: number; 
 
 export const Workout: React.FC = () => {
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [activeWorkout, setActiveWorkout] = useState<string | null>(null);
@@ -114,7 +117,7 @@ export const Workout: React.FC = () => {
     setSharing(true);
     try {
       const totalSets = exLogsToShare.reduce((a, e) => a + e.sets, 0);
-      const content = `Crushed a ${activeWorkout?.toLowerCase()} session — ${Math.floor(timer / 60)} min, ${totalSets} sets, ${calsBurned} kcal burned.${exLogsToShare.length ? `\nTop lift: ${exLogsToShare[0].name} @ ${exLogsToShare[0].weight}kg` : ''}`;
+      const content = `Crushed a ${activeWorkout?.toLowerCase()} session — ${Math.floor(timer / 60)} min, ${totalSets} sets, ${units.formatEnergy(calsBurned)} burned.${exLogsToShare.length ? `\nTop lift: ${exLogsToShare[0].name} @ ${units.formatLoad(exLogsToShare[0].weight)}` : ''}`;
       await createPost(profile.uid, profile.displayName || 'Athlete', profile.photoURL, content);
       setShared(true);
       showToast('Shared to your feed');
@@ -135,6 +138,7 @@ export const Workout: React.FC = () => {
     modalityOf(activeWorkout),
     progression?.trend ?? 'stable',
     { suggestedWeight: progression?.suggestedWeight, suggestedReps: progression?.suggestedReps },
+    units.formatLoad,
   );
 
   useEffect(() => { if (profile?.voiceCoachingEnabled !== undefined) setVoiceOn(profile.voiceCoachingEnabled); }, [profile?.voiceCoachingEnabled]);
@@ -320,7 +324,7 @@ export const Workout: React.FC = () => {
       try { await checkAndAwardBadge(profile.uid, 'iron_will'); } catch {}
       try { await checkWorkoutTimeBadge(profile.uid); } catch {}
       try { await checkCalorieBadge(profile.uid, cals); } catch {}
-      speak(`Session complete. ${Math.floor(timer / 60)} minutes. ${cals} calories.`);
+      speak(`Session complete. ${Math.floor(timer / 60)} minutes. ${units.formatEnergyNumber(cals)} ${units.energyUnit === 'kJ' ? 'kilojoules' : 'calories'}.`);
       setStep('summary');
     } catch (err) {
       // logWorkout already queues offline on failure, so the data is safe — just move
@@ -539,7 +543,7 @@ export const Workout: React.FC = () => {
                       <Flame size={17} className="text-accent-4 shrink-0" aria-hidden="true" />
                       <p className="text-sm text-white font-medium">
                         Progressive overload —{' '}
-                        <span className="num font-semibold text-accent-4">+2.5kg</span> vs your last session
+                        <span className="num font-semibold text-accent-4">+{units.formatLoad(2.5)}</span> vs your last session
                       </p>
                     </div>
                   )}
@@ -577,7 +581,18 @@ export const Workout: React.FC = () => {
                     <NumberField label="Sets" value={sets} onChange={setSets} />
                     <NumberField label="Reps" value={reps} onChange={setReps} />
                     <div className="col-span-2">
-                      <NumberField label="Weight (kg)" value={weight} onChange={setWeight} float />
+                      {/* Typed in kg or lb; stored in kg, converted once (units.loadToKg).
+                          A suggested load stays exact kg until the field is edited. */}
+                      <label className="text-xs text-text-dim font-medium ml-1 mb-1.5 block" htmlFor="ff-set-weight">Weight ({units.loadUnit})</label>
+                      <UnitInput
+                        id="ff-set-weight"
+                        value={weight}
+                        unit={units.loadUnit}
+                        toDisplay={units.loadValue}
+                        fromDisplay={units.loadToKg}
+                        onValue={setWeight}
+                        className="num w-full h-14 glass rounded-2xl text-center text-2xl font-semibold text-white focus:outline-none focus:border-accent/40 transition-colors"
+                      />
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs text-text-dim font-medium ml-1 mb-1.5 block">Effort</label>
@@ -732,9 +747,9 @@ export const Workout: React.FC = () => {
                   <div className="glass p-5">
                     <p className="text-eyebrow text-text-dim">Calories</p>
                     <p className="num text-3xl font-bold text-accent mt-1">
-                      <AnimatedNumber value={calsBurned} duration={1400} />
+                      <AnimatedNumber value={Math.round(units.energyValue(calsBurned))} duration={1400} />
                     </p>
-                    <p className="text-xs text-text-dim mt-0.5">kcal burned</p>
+                    <p className="text-xs text-text-dim mt-0.5">{units.energyUnit} burned</p>
                   </div>
                   <div className="glass p-5">
                     <p className="text-eyebrow text-text-dim">Duration</p>
@@ -763,7 +778,7 @@ export const Workout: React.FC = () => {
                           <p className="text-white font-medium text-sm">{pr.name}</p>
                           <p className="num text-sm">
                             <span className="text-accent font-semibold">
-                              {pr.type === 'weight' ? `${pr.value}kg` : pr.type === 'reps' ? `${pr.value} reps` : `${pr.value}kg 1RM`}
+                              {pr.type === 'weight' ? units.formatLoad(pr.value) : pr.type === 'reps' ? `${pr.value} reps` : `${units.formatLoad(pr.value)} 1RM`}
                             </span>
                           </p>
                         </div>
@@ -777,7 +792,7 @@ export const Workout: React.FC = () => {
                     <div key={i} className="glass p-4 flex justify-between items-center">
                       <div>
                         <p className="text-white font-medium text-sm">{log.name}</p>
-                        <p className="num text-xs text-text-dim mt-0.5">{log.sets} × {log.reps} @ {log.weight}kg</p>
+                        <p className="num text-xs text-text-dim mt-0.5">{log.sets} × {log.reps} @ {units.formatLoad(log.weight)}</p>
                       </div>
                       <CheckCircle2 className="text-accent" size={18} />
                     </div>

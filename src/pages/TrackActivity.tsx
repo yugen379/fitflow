@@ -19,6 +19,8 @@ import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { useUnits } from '../hooks/useUnits';
+import { saveUnitPrefs } from '../services/unitsService';
 import { logWorkout } from '../services/dataService';
 import {
   summarize, simplifyForStorage, formatDistance, formatDuration, formatPace, formatSpeed, routeToSvgPoints,
@@ -33,10 +35,12 @@ const ACTIVITIES: { id: GpsActivity; label: string; icon: typeof Bike; type: str
   { id: 'cycle', label: 'Ride', icon: Bike, type: 'Cycling' },
 ];
 
-const UNITS_KEY = 'fitflow.gps.units';
-const readUnits = (): UnitSystem => {
-  try { return localStorage.getItem(UNITS_KEY) === 'imperial' ? 'imperial' : 'metric'; } catch { return 'metric'; }
-};
+// km / mi used to be a per-device toggle kept in localStorage under this key.
+// It now comes from the profile's units (Settings), so every screen agrees;
+// the old key is cleared once so it cannot linger.
+const LEGACY_UNITS_KEY = 'fitflow.gps.units';
+/** "5.00 km", "8:03 /mi", "18.2 mph" from gpsMath's { value, unit }. */
+const joinVU = ({ value, unit }: { value: string; unit: string }) => `${value} ${unit}`;
 
 export const TrackActivity: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +52,9 @@ export const TrackActivity: React.FC = () => {
   const webAvailable = useMemo(() => !native && WebGpsRecorder.available(), [native]);
 
   const [activity, setActivity] = useState<GpsActivity>('run');
-  const [units, setUnits] = useState<UnitSystem>(readUnits);
+  const unitPrefs = useUnits();
+  const units: UnitSystem = unitPrefs.prefs.system;
+  useEffect(() => { try { localStorage.removeItem(LEGACY_UNITS_KEY); } catch { /* storage blocked: nothing to clear */ } }, []);
   const [state, setState] = useState<RecordingState>('idle');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [points, setPoints] = useState<GpsPoint[]>([]);
@@ -98,9 +104,14 @@ export const TrackActivity: React.FC = () => {
     [points, activity, units, profile?.weight],
   );
 
+  // The quick km / mi switch changes the PROFILE setting (distance system
+  // only; body weight and energy stay as chosen), so Settings, Steps and the
+  // rest of the app follow it. The profile snapshot re-renders this screen.
   const setUnitsPersist = (u: UnitSystem) => {
-    setUnits(u);
-    try { localStorage.setItem(UNITS_KEY, u); } catch { /* per-viewer convenience only */ }
+    if (u === units) return;
+    if (!profile?.uid) { showToast('Sign in to change units', 'info'); return; }
+    void saveUnitPrefs(profile.uid, { ...unitPrefs.prefs, system: u })
+      .catch(() => showToast('Could not change units. Try again.', 'error'));
   };
 
   const start = async () => {
@@ -192,7 +203,7 @@ export const TrackActivity: React.FC = () => {
       const meta = ACTIVITIES.find((a) => a.id === activity)!;
       await logWorkout(profile.uid, {
         type: meta.type,
-        title: `${meta.label} · ${formatDistance(summary.distanceM, units).value} ${formatDistance(summary.distanceM, units).unit}`,
+        title: `${meta.label} · ${joinVU(formatDistance(summary.distanceM, units))}`,
         duration: Math.max(1, Math.round(summary.movingS / 60)),
         caloriesBurned: Math.max(1, Math.round(summary.calories)),
         distanceKm: Math.round(summary.distanceM) / 1000,
@@ -294,8 +305,8 @@ export const TrackActivity: React.FC = () => {
         <div className="grid grid-cols-2 gap-2 mt-4">
           <Stat value={dist.value} unit={dist.unit} label="Distance" />
           <Stat value={paceOrSpeed.value} unit={paceOrSpeed.unit} label={activity === 'cycle' ? 'Avg speed' : 'Avg pace'} />
-          <Stat value={String(Math.round(summary.calories))} unit="kcal" label="Calories" />
-          <Stat value={String(Math.round(units === 'imperial' ? summary.elevationGainM * 3.28084 : summary.elevationGainM))} unit={units === 'imperial' ? 'ft' : 'm'} label="Climb" />
+          <Stat value={unitPrefs.formatEnergyNumber(Math.round(summary.calories))} unit={unitPrefs.energyUnit} label="Calories" />
+          <Stat {...unitPrefs.elevationParts(summary.elevationGainM)} label="Climb" />
         </div>
 
         {gpsOff ? (
@@ -391,12 +402,12 @@ export const TrackActivity: React.FC = () => {
               return (
                 <li key={s.index} className="flex items-center justify-between py-2 text-sm">
                   <span className="text-text-dim">
-                    {s.partial ? `${formatDistance(s.distanceM, units).value} ${units === 'imperial' ? 'mi' : 'km'}` : `${units === 'imperial' ? 'Mile' : 'Km'} ${s.index}`}
+                    {s.partial ? joinVU(formatDistance(s.distanceM, units)) : `${units === 'imperial' ? 'Mile' : 'Km'} ${s.index}`}
                   </span>
                   <span className="num text-white tabular-nums">
                     {activity === 'cycle'
-                      ? `${formatSpeed(s.seconds > 0 ? s.distanceM / s.seconds : 0, units).value} ${units === 'imperial' ? 'mph' : 'km/h'}`
-                      : `${formatPace(units === 'imperial' ? perUnit / 1.609344 : perUnit, units).value} ${units === 'imperial' ? '/mi' : '/km'}`}
+                      ? joinVU(formatSpeed(s.seconds > 0 ? s.distanceM / s.seconds : 0, units))
+                      : joinVU(formatPace(units === 'imperial' ? perUnit / 1.609344 : perUnit, units))}
                   </span>
                 </li>
               );

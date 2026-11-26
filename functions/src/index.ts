@@ -1,6 +1,7 @@
 import * as functions from "firebase-functions";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { boundBriefing, briefingPrompt, sanitizePolish } from "./coachPolish";
+import { unitsPromptLine } from "./unitsPrompt";
 import {
   checkAiAllowance, coolModel, isQuotaError, modelIsCooling, secondsUntilAnyModel,
 } from "./aiGuard";
@@ -901,7 +902,7 @@ Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, 
         const out = await json(
           `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${clip(p.goal, 100) || "general fitness"}" and a ${Number(p.streak) || 0}-day streak.
 Pick something they can finish in a single day. Vary the category.
-Use METRIC units only (ml, litres, km, kg, minutes) — the app shows water in ml, never ounces or miles.
+${unitsPromptLine(p.units)}
 Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
           { title: "Move 30 minutes", description: "Any sustained movement — walk, lift, ride.", target: 30, unit: "minutes", category: "movement" },
         );
@@ -931,6 +932,7 @@ Return ONLY plain text, no JSON.`,
 The user's goal is ${clip(profile.goal, 100) || "general fitness"}. Weight: ${Number(profile.weight) || "n/a"}kg. Age: ${Number(profile.age) || "n/a"}.
 Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
 Accuracy rules: when you compare foods or give calories/macros, use standard USDA-style values per stated portion and name the portion (e.g. "a medium potato, ~160 kcal"). If you are not sure, say it is an estimate. Never invent a number to sound confident. If the message includes "FitFlow app data for today", treat it as the user's real log and use it.
+${unitsPromptLine(profile.units)}
 
 ${transcript ? "Conversation so far:\n" + transcript + "\n\n" : ""}User: ${clip(payload.message, 2000)}
 Coach:`,
@@ -951,6 +953,7 @@ Goal: ${clip(payload.goal, 100) || "general fitness"}. This week:
 - ${Number(payload.caloriesBurned) || 0} kcal burned, ${Number(payload.caloriesConsumed) || 0} consumed
 - ${Number(payload.waterMl) || 0}ml water, ${Number(payload.sleepHours) || 0} hours sleep
 - ${Number(payload.streak) || 0}-day streak${payload.topExercise ? `, top exercise: ${clip(payload.topExercise, 100)}` : ""}
+${unitsPromptLine(payload.units)}
 
 Return ONLY valid JSON, no markdown:
 {"headline":"<≤8 word title>","highlight":"<1-2 sentence summary in plain English, sentence case>","win":"<1 short positive observation>","focus":"<one thing to focus on next week, plain language>","nextStep":"<one specific action they can take Monday>"}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { motion, AnimatePresence } from 'motion/react';
 import { query, collection, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, limit, orderBy } from 'firebase/firestore';
 import { auth, handleFirestoreError } from '../lib/firebase';
@@ -44,6 +45,7 @@ const WATER_GOAL_ML = 3000;
 
 export const Home: React.FC = () => {
   const { profile } = useAuth();
+  const units = useUnits();
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   // Matches Tailwind's `sm` breakpoint: where the water sheet's drop renders.
@@ -393,6 +395,7 @@ export const Home: React.FC = () => {
               proteinTargetG: nutritionTargets.proteinG,
               recovery: recoveryScore,
               workoutsToday: summary?.workoutCount || 0,
+              formatEnergy: units.formatEnergy,
             }}
             history={notifications}
           />
@@ -436,6 +439,7 @@ export const Home: React.FC = () => {
             ? parseInt(profile.preferredWorkoutTime.split(':')[0], 10)
             : null,
           daysSinceLastWorkout: daysSinceWorkout,
+          unitSystem: units.prefs.system,
         }}
       />
 
@@ -512,8 +516,9 @@ export const Home: React.FC = () => {
           </div>
           <div className="z-10">
             <h3 className="num font-display text-2xl font-bold text-white leading-none">
-              <AnimatedNumber value={water} />
-              <span className="text-sm text-text-dim font-medium ml-0.5">ml</span>
+              {/* water is ml (as stored); fl oz on imperial. */}
+              <AnimatedNumber value={Math.round(units.volumeValue(water))} />
+              <span className="text-sm text-text-dim font-medium ml-0.5">{units.volumeUnit}</span>
             </h3>
             <p className="text-xs text-text-dim mt-1">Hydration · <AnimatedNumber value={Math.min(Math.round((water / 3000) * 100), 100)} />%</p>
           </div>
@@ -571,9 +576,9 @@ export const Home: React.FC = () => {
                   <div>
                     <p className="text-eyebrow text-accent-3">Hydration</p>
                     <p className="num text-white font-display text-xl font-bold tracking-tight">
-                      {water.toLocaleString()}
+                      {units.volumeValue(water).toLocaleString()}
                       <span className="text-base text-text-dim font-medium ml-1">
-                        / {WATER_GOAL_ML.toLocaleString()} ml
+                        / {units.volumeValue(WATER_GOAL_ML).toLocaleString()} {units.volumeUnit}
                       </span>
                     </p>
                   </div>
@@ -590,14 +595,15 @@ export const Home: React.FC = () => {
                 {/* The sheet keeps the buttons. The drop reacts to `water`
                     rising, so the splash fires wherever the add came from. */}
                 <div className="grid grid-cols-4 gap-2">
-                  {[100, 250, 500, 750].map(ml => (
+                  {/* Imperial presets are 4/8/12/16 fl oz, stored as whole ml. */}
+                  {units.waterPresetsMl.map(ml => (
                     <button
                       key={ml}
                       onClick={() => addWater(ml)}
                       className="glass p-3 flex flex-col items-center gap-1 hover:border-accent-3/30 active:scale-95 transition-all"
                     >
-                      <span className="num font-display text-lg font-bold text-white">{ml}</span>
-                      <span className="text-[10px] text-text-dim font-medium">ml</span>
+                      <span className="num font-display text-lg font-bold text-white">{units.volumeValue(ml)}</span>
+                      <span className="text-[10px] text-text-dim font-medium">{units.volumeUnit}</span>
                     </button>
                   ))}
                 </div>

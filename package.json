@@ -38,6 +38,7 @@
     "proof:seed": "tsx scripts/seed-proof.mjs",
     "proof:subscription": "tsx scripts/subscription-proof.mjs",
     "proof:units": "tsx scripts/units-proof.mjs",
+    "proof:unitscoverage": "node scripts/units-coverage-proof.mjs",
     "proof:scanner": "node scripts/gen-barcode-y4m.mjs && python scripts/scanner_cam_test.py",
     "proof:preload": "tsx scripts/preload-proof.mjs",
     "proof:offline": "tsx scripts/offline-proof.mjs",

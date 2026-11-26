@@ -34,7 +34,7 @@ export interface RingDatum {
   label: string;
   value: number;
   goal: number;
-  /** Rendered under the value, e.g. "steps" or "kcal". */
+  /** Rendered under the value, e.g. "steps", or the energy unit the caller converted `value` to. */
   unit: string;
   color: string;
 }

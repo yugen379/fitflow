@@ -349,3 +349,200 @@ export const parseHeight = (input: unknown, p: SystemPrefs): number | null => {
   }
   return null;
 };
+
+// ── Screen helpers: lifts, food, water, energy input, rates, parts ──────────
+//
+// Same rule as everything above: in = metric, out = display; the *ToKg /
+// *ToG / *ToKcal readers take what a person typed in THEIR unit and hand back
+// metric exactly once. Display rounding (0.5 plate steps, 1 dp oz) never
+// reaches storage: a screen keeps the stored kg/g untouched until the person
+// edits the field, and then stores their typed number converted once.
+
+/** Bar and dumbbell loads: lb for pound users; kg for kg AND stone users (UK gyms load plates in kg). */
+export type LoadUnit = 'kg' | 'lb';
+export const loadUnit = (p: WeightPrefs): LoadUnit => (p.weight === 'lb' ? 'lb' : 'kg');
+/** The +/- step a load stepper moves by: 2.5 kg or 5 lb (the smallest pair of plates). */
+export const loadStep = (p: WeightPrefs): number => (loadUnit(p) === 'lb' ? 5 : 2.5);
+/** Heaviest load a screen accepts, in kg (well over any human lift). */
+export const LOAD_KG_MAX = 1000;
+
+/** A stored load (kg) in the display unit, to the nearest 0.5 (the plate step). 0 for none. */
+export const loadValue = (kg: number | null | undefined, p: WeightPrefs): number => {
+  if (!ok(kg) || kg <= 0) return 0;
+  return roundTo((loadUnit(p) === 'lb' ? kgToLb(kg) : kg) * 2, 0) / 2;
+};
+/** "62.5 kg" | "137.5 lb" | "0 kg" (bodyweight). */
+export const formatLoad = (kg: number | null | undefined, p: WeightPrefs): string => {
+  if (!ok(kg) || kg < 0) return DASH;
+  return `${fixed(loadValue(kg, p), 1, true)} ${loadUnit(p)}`;
+};
+/** Lifted volume, sum of kg x reps, as whole display units: "12,450 kg" | "27,447 lb". */
+export const formatLoadVolume = (kgReps: number | null | undefined, p: WeightPrefs): string => {
+  if (!ok(kgReps) || kgReps < 0) return DASH;
+  return `${group(loadUnit(p) === 'lb' ? kgToLb(kgReps) : kgReps)} ${loadUnit(p)}`;
+};
+
+/** A number, optionally followed by a unit word, as typed. */
+const leadNumber = (input: unknown): { v: number; unit: string } | null => {
+  if (typeof input === 'number') return ok(input) ? { v: input, unit: '' } : null;
+  const s = clean(input);
+  const m = s.match(new RegExp(`^${NUM} ?([a-z. ]*)$`));
+  return m ? { v: num(m[1]), unit: m[2].replace(/[. ]/g, '') } : null;
+};
+
+/**
+ * A load typed in the display unit, to kg (0.01), or null for junk. "135" is
+ * 135 lb for a pound user; "60 kg" / "135 lb" override the unit. 0 is a valid
+ * load (bodyweight work). 0.01 kg is 0.022 lb, so what was typed reads back
+ * exactly at the 0.5 display step.
+ */
+export const loadToKg = (input: unknown, p: WeightPrefs): number | null => {
+  const r = leadNumber(input);
+  if (!r) return null;
+  let kg: number;
+  if (/^(?:kgs?|kilos?|kilograms?)$/.test(r.unit)) kg = r.v;
+  else if (/^(?:lbs?|pounds?|#)$/.test(r.unit)) kg = lbToKg(r.v);
+  else if (r.unit === '') kg = loadUnit(p) === 'lb' ? lbToKg(r.v) : r.v;
+  else return null;
+  return ok(kg) && kg >= 0 && kg <= LOAD_KG_MAX ? roundTo(kg, 2) : null;
+};
+
+/** Food portions: grams, or ounces (avoirdupois) on imperial. */
+export const foodMassUnit = (p: SystemPrefs): 'g' | 'oz' => (p.system === 'imperial' ? 'oz' : 'g');
+/** Stored grams in the display unit: whole g, or oz to 1 dp. */
+export const foodMassValue = (g: number | null | undefined, p: SystemPrefs): number => {
+  if (!ok(g) || g <= 0) return 0;
+  return p.system === 'imperial' ? roundTo(gToOz(g), 1) : Math.round(g);
+};
+/** "150 g" | "5.3 oz". */
+export const formatFoodMass = (g: number | null | undefined, p: SystemPrefs): string => {
+  if (!ok(g) || g < 0) return DASH;
+  return p.system === 'imperial' ? `${fixed(gToOz(g), 1, false)} oz` : `${Math.round(g)} g`;
+};
+/** Heaviest single food portion a screen accepts, in grams. */
+export const FOOD_G_MAX = 5000;
+/** A portion typed in the display unit (or with "g"/"oz") to grams (0.1), or null. */
+export const foodMassToG = (input: unknown, p: SystemPrefs): number | null => {
+  const r = leadNumber(input);
+  if (!r) return null;
+  let g: number;
+  if (/^(?:g|gs|grams?|gm)$/.test(r.unit)) g = r.v;
+  else if (/^(?:oz|ounces?)$/.test(r.unit)) g = ozToG(r.v);
+  else if (r.unit === '') g = p.system === 'imperial' ? ozToG(r.v) : r.v;
+  else return null;
+  return ok(g) && g > 0 && g <= FOOD_G_MAX ? roundTo(g, 1) : null;
+};
+
+/** Drinks: ml, or US fl oz on imperial. */
+export const volumeUnit = (p: SystemPrefs): 'ml' | 'fl oz' => (p.system === 'imperial' ? 'fl oz' : 'ml');
+/** Stored ml in the display unit: whole ml, or fl oz to 1 dp. */
+export const volumeValue = (ml: number | null | undefined, p: SystemPrefs): number => {
+  if (!ok(ml) || ml <= 0) return 0;
+  return p.system === 'imperial' ? roundTo(mlToFlOz(ml), 1) : Math.round(ml);
+};
+/**
+ * One-tap water amounts, as the ml that gets STORED. Imperial gets round cup
+ * sizes (4, 8, 12, 16 fl oz) converted once to whole ml (water logs are whole
+ * ml), so 8 fl oz is stored as 237 ml and reads back as 8 fl oz.
+ */
+export const WATER_PRESETS_ML: Record<UnitSystem, readonly number[]> = {
+  metric: [100, 250, 500, 750],
+  imperial: [4, 8, 12, 16].map((oz) => Math.round(flOzToMl(oz))),
+};
+export const waterPresetsMl = (p: SystemPrefs): readonly number[] => WATER_PRESETS_ML[p.system];
+
+/** Energy as a bare grouped whole number in the chosen unit: "1,883". */
+export const formatEnergyNumber = (kcal: number | null | undefined, p: EnergyPrefs): string =>
+  ok(kcal) ? group(energyValue(kcal, p)) : DASH;
+/** What to pre-fill an energy input with: a whole number in the chosen unit. */
+export const energyInputValue = (kcal: number | null | undefined, p: EnergyPrefs): number =>
+  ok(kcal) && kcal > 0 ? Math.round(energyValue(kcal, p)) : 0;
+/** Energy typed in the chosen unit (or with "kcal"/"kJ") to kcal (0.1), or null. */
+export const energyToKcal = (input: unknown, p: EnergyPrefs): number | null => {
+  const r = leadNumber(input);
+  if (!r) return null;
+  let kcal: number;
+  if (/^(?:kcals?|cals?|calories?)$/.test(r.unit)) kcal = r.v;
+  else if (/^(?:kj|kilojoules?)$/.test(r.unit)) kcal = kjToKcal(r.v);
+  else if (r.unit === '') kcal = p.energy === 'kJ' ? kjToKcal(r.v) : r.v;
+  else return null;
+  return ok(kcal) && kcal >= 0 ? roundTo(kcal, 1) : null;
+};
+
+/** Body-weight change unit: kg, or lb for pound AND stone users (nobody counts stones a week). */
+const rateUnit = (p: WeightPrefs): 'kg' | 'lb' => (p.weight === 'kg' ? 'kg' : 'lb');
+/** A body-weight change, unsigned: "0.5 kg" | "1.1 lb". */
+export const formatWeightChange = (kg: number | null | undefined, p: WeightPrefs): string => {
+  if (!ok(kg)) return DASH;
+  const v = Math.abs(rateUnit(p) === 'lb' ? kgToLb(kg) : kg);
+  return `${fixed(v, 1, false)} ${rateUnit(p)}`;
+};
+/** Weekly trend for a stat tile: { value: "+0.45", unit: "kg / week" } | { value: "-1.0", unit: "lb / week" }. */
+export const weightRateParts = (kgPerWeek: number | null | undefined, p: WeightPrefs): { value: string; unit: string } => {
+  const unit = `${rateUnit(p)} / week`;
+  if (!ok(kgPerWeek)) return { value: DASH, unit };
+  const lb = rateUnit(p) === 'lb';
+  const v = lb ? kgToLb(kgPerWeek) : kgPerWeek;
+  const s = fixed(v, lb ? 1 : 2, false);
+  return { value: roundTo(v, lb ? 1 : 2) > 0 ? `+${s}` : s, unit };
+};
+/** Per-body-weight dose label (protein g per ...): kg, or lb for pound users. */
+export const perBodyWeightUnit = (p: WeightPrefs): 'kg' | 'lb' => (p.weight === 'lb' ? 'lb' : 'kg');
+/** A per-kg dose in the per-body-weight unit: 2.5 g/kg is 1.1 g/lb. */
+export const perBodyWeightValue = (perKg: number, p: WeightPrefs): number =>
+  roundTo(p.weight === 'lb' ? perKg * KG_PER_LB : perKg, 1);
+
+/** Short lengths (grip width, stride): "62 cm" | "24.4 in". */
+export const formatShortLength = (cm: number | null | undefined, p: SystemPrefs): string => {
+  if (!ok(cm) || cm < 0) return DASH;
+  return p.system === 'imperial' ? `${fixed(cmToIn(cm), 1, true)} in` : `${Math.round(cm)} cm`;
+};
+/** Elevation / climb in whole metres or whole feet. */
+export const elevationParts = (m: number | null | undefined, p: SystemPrefs): { value: string; unit: string } => {
+  const unit = p.system === 'imperial' ? 'ft' : 'm';
+  if (!ok(m) || m < 0) return { value: DASH, unit };
+  return { value: group(p.system === 'imperial' ? mToFt(m) : m), unit };
+};
+
+/**
+ * One instruction line for an AI prompt. The DATA in a prompt stays metric
+ * (kg, km, ml, g, kcal); this tells the model which units to PRESENT in.
+ * Metric + kg + kcal gives the app's original line, word for word.
+ * Keep in step with functions/src/unitsPrompt.ts (the server's copy, which
+ * proof:units checks is identical for every combination).
+ */
+export const unitsPromptLine = (raw?: unknown): string => {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const imperial = o.system === 'imperial';
+  const w: WeightUnit = (WEIGHT_UNITS as readonly unknown[]).includes(o.weight) ? (o.weight as WeightUnit) : imperial ? 'lb' : 'kg';
+  const e: EnergyUnit = o.energy === 'kJ' ? 'kJ' : 'kcal';
+  if (!imperial && w === 'kg' && e === 'kcal') {
+    return 'Use METRIC units only (ml, litres, km, kg, minutes) — the app shows water in ml, never ounces or miles.';
+  }
+  const parts = [
+    `body weight in ${w === 'st' ? 'stones and pounds' : w}`,
+    `lifting loads in ${w === 'lb' ? 'lb' : 'kg'}`,
+    imperial ? 'height in feet and inches' : 'height in cm',
+    imperial ? 'distance in miles and pace per mile' : 'distance in km and pace per km',
+    imperial ? 'water and drinks in US fl oz' : 'water and drinks in ml or litres',
+    imperial ? 'food portions in oz (macros stay in grams)' : 'food portions in grams',
+    `food and burned energy in ${e}`,
+  ];
+  return `Present every quantity in the user's units: ${parts.join(', ')}. ` +
+    'Numbers given to you here are metric (kg, km, ml, g, kcal); convert them ' +
+    '(1 kg = 2.2046 lb, 1 km = 0.6214 mi, 1 US fl oz = 29.57 ml, 1 oz = 28.35 g, 1 kcal = 4.184 kJ) ' +
+    'and never mix unit systems in one reply.';
+};
+
+/** formatDistance split for big-number tiles: { value: "3.11", unit: "mi" }. */
+export const distanceParts = (km: number | null | undefined, p: SystemPrefs): { value: string; unit: string } => {
+  const s = formatDistance(km, p);
+  const i = s.lastIndexOf(' ');
+  return i < 0 ? { value: s, unit: p.system === 'imperial' ? 'mi' : 'km' } : { value: s.slice(0, i), unit: s.slice(i + 1) };
+};
+/** formatPace split: { value: "8:03", unit: "/mi" }. */
+export const paceParts = (secPerKm: number | null | undefined, p: SystemPrefs): { value: string; unit: string } => {
+  const s = formatPace(secPerKm, p);
+  const i = s.lastIndexOf(' ');
+  return { value: s.slice(0, i), unit: s.slice(i + 1) };
+};

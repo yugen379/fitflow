@@ -2,6 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { searchFood, searchLocalFoods, ensureFoodIndex } from "./foodService";
 import { scaleToPhrase } from "./foodSearchIndex";
 import { buildBriefing, applyPolish, CoachContext, CoachBriefing } from "./coachBriefing";
+// Pure, import-free (no Firebase): safe for the proof harnesses that import this file.
+import { unitsPromptLine, type UnitPrefs } from "../lib/units";
 import { splitPhrases, buildResult, normalizeItem, QuickAddResult, QuickAddItem } from "./quickAddUtils";
 import { decidePolish, polishBaseKey, polishSlot, readPolish, savePolish } from "./briefingPolishCache";
 
@@ -739,7 +741,8 @@ const heuristicCoachReply = (
 export const askCoach = async (
   message: string,
   history: CoachChatMessage[],
-  profile: { goal?: string; weight?: number; age?: number } = {},
+  /** `units` only changes how the coach PRESENTS numbers; the data sent stays metric. */
+  profile: { goal?: string; weight?: number; age?: number; units?: UnitPrefs } = {},
 ): Promise<string> => {
   const fallback = heuristicCoachReply(message, profile);
   if (useProxy) {
@@ -763,6 +766,7 @@ export const askCoach = async (
 The user's goal is ${profile.goal || 'general fitness'}. Weight: ${profile.weight || 'n/a'}kg. Age: ${profile.age || 'n/a'}.
 Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
 Accuracy rules: when you compare foods or give calories/macros, use standard USDA-style values per stated portion and name the portion. If you are not sure, say it is an estimate. Never invent a number to sound confident. If the message includes "FitFlow app data for today", treat it as the user's real log and use it.
+${unitsPromptLine(profile.units)}
 
 ${transcript ? 'Conversation so far:\n' + transcript + '\n\n' : ''}User: ${message}
 Coach:`,
@@ -782,7 +786,7 @@ export interface DailyChallenge {
   category: 'movement' | 'nutrition' | 'recovery' | 'mindfulness';
 }
 
-export const generateDailyChallenge = async (profile: { goal?: string; streak?: number } = {}): Promise<DailyChallenge> => {
+export const generateDailyChallenge = async (profile: { goal?: string; streak?: number; units?: UnitPrefs } = {}): Promise<DailyChallenge> => {
   const fallback: DailyChallenge = {
     title: 'Move 30 minutes',
     description: 'Any sustained movement — walk, lift, ride. Consistency over intensity.',
@@ -797,7 +801,7 @@ export const generateDailyChallenge = async (profile: { goal?: string; streak?: 
   return direct(
     `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${profile.goal || 'general fitness'}" and a ${profile.streak || 0}-day streak.
 Pick something they can finish in a single day. Vary the category.
-Use METRIC units only (ml, litres, km, kg, minutes) — the app shows water in ml, never ounces or miles.
+${unitsPromptLine(profile.units)}
 Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
     fallback,
   ) as Promise<DailyChallenge>;
@@ -821,6 +825,8 @@ export const generateWeeklyRecap = async (data: {
   streak: number;
   goal?: string;
   topExercise?: string;
+  /** How to PRESENT the (metric) numbers above. */
+  units?: UnitPrefs;
 }): Promise<WeeklyRecap> => {
   const fallback: WeeklyRecap = {
     headline: 'A solid week of work.',
@@ -840,6 +846,7 @@ Goal: ${data.goal || 'general fitness'}. This week:
 - ${data.caloriesBurned} kcal burned, ${data.caloriesConsumed} consumed
 - ${data.waterMl}ml water, ${data.sleepHours} hours sleep
 - ${data.streak}-day streak${data.topExercise ? `, top exercise: ${data.topExercise}` : ''}
+${unitsPromptLine(data.units)}
 
 Return ONLY valid JSON, no markdown:
 {"headline":"<≤8 word title>","highlight":"<1-2 sentence summary in plain English, sentence case>","win":"<1 short positive observation>","focus":"<one thing to focus on next week, plain language>","nextStep":"<one specific action they can take Monday>"}

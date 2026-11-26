@@ -4,6 +4,7 @@ import { Dumbbell, Zap, Bike, Waves, Activity, Clock, Flame, ChevronDown } from 
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { cn } from '../lib/utils';
 
 interface WorkoutEntry {
@@ -39,6 +40,7 @@ const formatRelative = (date: Date) => {
 
 export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount = 20 }) => {
   const { profile } = useAuth();
+  const units = useUnits();
   const [workouts, setWorkouts] = useState<WorkoutEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -108,7 +110,7 @@ export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount =
                 </div>
                 <div className="flex items-center gap-3 mt-1 num text-xs text-text-dim">
                   <span className="flex items-center gap-1"><Clock size={11} />{w.duration || 0}m</span>
-                  <span className="flex items-center gap-1"><Flame size={11} />{w.caloriesBurned || 0} kcal</span>
+                  <span className="flex items-center gap-1"><Flame size={11} />{units.formatEnergy(w.caloriesBurned || 0)}</span>
                   {hasDetails && <span>{w.exerciseLogs!.length} {w.exerciseLogs!.length === 1 ? 'set' : 'sets'}</span>}
                 </div>
               </div>
@@ -133,7 +135,7 @@ export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount =
                         <span className="text-white/85 text-sm">{log.name || log.exerciseName || 'Exercise'}</span>
                         <span className="num text-xs text-text-dim">
                           {log.sets || 0} × {log.reps || 0}
-                          {log.weight ? ` @ ${log.weight}kg` : ''}
+                          {log.weight ? ` @ ${units.formatLoad(Number(log.weight))}` : ''}
                         </span>
                       </div>
                     ))}

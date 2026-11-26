@@ -442,7 +442,7 @@ export const Profile: React.FC = () => {
                 <p className="text-white font-medium text-sm">{nativeHealthLabel}</p>
                 <p className="text-xs text-text-dim">
                   {healthMetrics
-                    ? `${healthMetrics.steps.toLocaleString()} steps · ${healthMetrics.caloriesBurned} kcal today`
+                    ? `${healthMetrics.steps.toLocaleString()} steps · ${units.formatEnergy(healthMetrics.caloriesBurned)} today`
                     : 'Steps · heart rate · sleep · workouts'}
                 </p>
               </div>

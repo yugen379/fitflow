@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Send, Sparkles, Loader2, Volume2, Mic, MicOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { PremiumGate } from '../components/PremiumGate';
 import { canUse } from '../lib/features';
 import { askCoach, CoachChatMessage } from '../services/geminiService';
@@ -26,6 +27,7 @@ const STARTERS = [
 export const Coach: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const [messages, setMessages] = useState<CoachChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -125,6 +127,8 @@ export const Coach: React.FC = () => {
         goal: profile?.goal,
         weight: profile?.weight,
         age: profile?.age,
+        // The data above stays metric; the coach is told to answer in these.
+        units: units.prefs,
       });
       setMessages([...next, { role: 'coach', text: reply }]);
       if (!isPro) bumpFree(freeUsed + 1);

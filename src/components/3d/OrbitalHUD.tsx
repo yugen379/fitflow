@@ -16,6 +16,7 @@ import { cn } from '../../lib/utils';
 import { haptic } from '../../lib/haptics';
 import { AnimatedNumber } from '../AnimatedNumber';
 import type { RingDatum } from './VolumetricRings';
+import { useUnits } from '../../hooks/useUnits';
 
 const VolumetricRings = lazy(() =>
   import('./VolumetricRings').then((m) => ({ default: m.VolumetricRings })),
@@ -51,14 +52,16 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
   className,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const units = useUnits();
 
   const rings = useMemo<RingDatum[]>(
     () => [
       { id: 'move', label: 'Move', value: steps ?? 0, goal: stepGoal, unit: 'steps', color: '#CCFF00' },
-      { id: 'eat', label: 'Eat', value: caloriesConsumed, goal: calorieGoal, unit: 'kcal', color: '#00F5FF' },
+      // Both scaled by the same factor, so the ring's progress is unchanged.
+      { id: 'eat', label: 'Eat', value: units.energyValue(caloriesConsumed), goal: units.energyValue(calorieGoal), unit: units.energyUnit, color: '#00F5FF' },
       { id: 'recover', label: 'Recover', value: recovery ?? 0, goal: 100, unit: 'percent', color: '#FF3366' },
     ],
-    [steps, stepGoal, caloriesConsumed, calorieGoal, recovery],
+    [steps, stepGoal, caloriesConsumed, calorieGoal, recovery, units],
   );
 
   const values: { id: string; primary: React.ReactNode; secondary: string }[] = [
@@ -69,8 +72,8 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
     },
     {
       id: 'eat',
-      primary: <AnimatedNumber value={Math.round(caloriesConsumed)} />,
-      secondary: `of ${Math.round(calorieGoal).toLocaleString()} kcal`,
+      primary: <AnimatedNumber value={Math.round(units.energyValue(caloriesConsumed))} />,
+      secondary: `of ${units.formatEnergy(Math.round(calorieGoal))}`,
     },
     {
       id: 'recover',

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Check, Droplet, Dumbbell, Utensils, Moon } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useUnits } from '../hooks/useUnits';
 
 interface Props {
   water: number;       // ml today
@@ -11,11 +12,14 @@ interface Props {
 }
 
 export const DailyHabits: React.FC<Props> = ({ water, meals, workouts, sleep }) => {
+  const units = useUnits();
+  // `current` / `goal` stay in stored units (ml for water) for the progress
+  // maths; `show` is what the label reads (fl oz on imperial).
   const habits = [
-    { id: 'water', label: 'Hydrate',  icon: Droplet,  goal: 2000,  current: water,    unit: 'ml', tone: 'accent-3' as const },
-    { id: 'meal',  label: 'Eat well', icon: Utensils, goal: 3,     current: meals,    unit: '',   tone: 'accent' as const },
-    { id: 'train', label: 'Move',     icon: Dumbbell, goal: 1,     current: workouts, unit: '',   tone: 'accent' as const },
-    { id: 'sleep', label: 'Recover',  icon: Moon,     goal: 7,     current: sleep,    unit: 'h',  tone: 'accent-2' as const },
+    { id: 'water', label: 'Hydrate',  icon: Droplet,  goal: 2000,  current: water,    show: (n: number) => `${units.volumeValue(n)} ${units.volumeUnit}`, tone: 'accent-3' as const },
+    { id: 'meal',  label: 'Eat well', icon: Utensils, goal: 3,     current: meals,    show: (n: number) => String(n), tone: 'accent' as const },
+    { id: 'train', label: 'Move',     icon: Dumbbell, goal: 1,     current: workouts, show: (n: number) => String(n), tone: 'accent' as const },
+    { id: 'sleep', label: 'Recover',  icon: Moon,     goal: 7,     current: sleep,    show: (n: number) => `${n}h`, tone: 'accent-2' as const },
   ];
 
   const completed = habits.filter(h => h.current >= h.goal).length;
@@ -49,7 +53,7 @@ export const DailyHabits: React.FC<Props> = ({ water, meals, workouts, sleep }) 
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
               className="flex flex-col items-center gap-1.5"
-              title={`${h.label} · ${h.current}${h.unit} / ${h.goal}${h.unit}`}
+              title={`${h.label} · ${h.show(h.current)} / ${h.show(h.goal)}`}
             >
               <div className={cn(
                 'relative w-12 h-12 rounded-2xl border flex items-center justify-center transition-all',

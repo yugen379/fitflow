@@ -18,11 +18,13 @@ import { ChevronLeft, Flame, Footprints, Info, MapPin, Timer, TrendingUp } from 
 import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
+import { formatDistance as formatDistanceIn } from '../lib/units';
 import { useTodayActivity } from '../hooks/useTodayActivity';
 import { useSteps } from '../hooks/useSteps';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { KM_PER_STEP, formatActiveTime, localDateKey, readStoredDay } from '../lib/pedometer';
-import { explainCalories, explainDistance, kmToMiles } from '../lib/stepFormulas';
+import { explainCalories, explainDistance } from '../lib/stepFormulas';
 import { fetchStepHistory } from '../services/stepSyncService';
 import { mergeHistory } from '../services/stepSyncPolicy';
 import { BackgroundStepsCard } from '../components/BackgroundStepsCard';
@@ -79,6 +81,7 @@ const Metric: React.FC<{ icon: React.ReactNode; value: string; label: string }> 
 export const Steps: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { metrics, status } = useTodayActivity(profile?.uid, profile?.height);
   const deviceSteps = status === 'connected' && metrics ? metrics.steps : null;
   const live = useSteps({
@@ -237,8 +240,8 @@ export const Steps: React.FC = () => {
         </p>
 
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <Metric icon={<MapPin size={14} />} value={`${live.distanceKm.toFixed(1)} km`} label="Distance" />
-          <Metric icon={<Flame size={14} />} value={`${Math.round(live.calories)}`} label="kcal" />
+          <Metric icon={<MapPin size={14} />} value={units.formatDistance(live.distanceKm)} label="Distance" />
+          <Metric icon={<Flame size={14} />} value={units.formatEnergyNumber(Math.round(live.calories))} label={units.energyUnit} />
           <Metric icon={<Timer size={14} />} value={formatActiveTime(live.activeMs)} label="Active" />
         </div>
 
@@ -407,7 +410,7 @@ export const Steps: React.FC = () => {
         <Metric icon={<TrendingUp size={14} />} value={horizonTotals.best.toLocaleString()} label="Best day" />
         <Metric
           icon={<MapPin size={14} />}
-          value={`${(horizonTotals.total * KM_PER_STEP).toFixed(1)} km`}
+          value={units.formatDistance(horizonTotals.total * KM_PER_STEP)}
           label="Distance"
         />
       </section>
@@ -453,7 +456,8 @@ export const Steps: React.FC = () => {
         <p className="text-[11px] text-text-mute leading-relaxed">
           Both are estimates derived from your step count. Your step count itself is measured
           {live.source === 'health-connect' ? ' by Health Connect' : live.source === 'hardware-counter' ? ' by this phone’s step-counter sensor' : ''}
-          . Today: {live.distanceKm.toFixed(2)} km is {kmToMiles(live.distanceKm).toFixed(2)} miles.
+          . Today: {units.formatDistance(live.distanceKm)} is{' '}
+          {formatDistanceIn(live.distanceKm, { system: units.prefs.system === 'imperial' ? 'metric' : 'imperial' })}.
         </p>
       </section>
 
@@ -484,7 +488,8 @@ export const Steps: React.FC = () => {
                   />
                 </span>
                 <p className="text-[11px] text-text-mute mt-1">
-                  {Math.round(remaining).toLocaleString()} {achievement.unit} to go
+                  {/* Distance goals are defined in km; shown in the person's units. */}
+                  {achievement.unit === 'km' ? units.formatDistance(remaining) : `${Math.round(remaining).toLocaleString()} ${achievement.unit}`} to go
                 </p>
               </li>
             ))}

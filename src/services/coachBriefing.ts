@@ -10,6 +10,10 @@
 // of what to surface is deterministic here, so correctness is provable and the
 // feature degrades to perfectly sensible copy with zero AI calls.
 
+import { formatVolume } from '../lib/units'; // pure, import-free
+
+const IMPERIAL = { system: 'imperial' } as const;
+
 export type CoachTone = 'push' | 'nudge' | 'care' | 'celebrate';
 
 export interface CoachContext {
@@ -29,6 +33,8 @@ export interface CoachContext {
   streak?: number;
   preferredWorkoutHour?: number | null;   // 0–23, inferred from history
   daysSinceLastWorkout?: number | null;
+  /** Display system for the water line (data stays ml). Plain string so the ctx stays JSON. */
+  unitSystem?: 'metric' | 'imperial';
 }
 
 export type NudgeActionKind = 'navigate' | 'water';
@@ -246,7 +252,9 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
       id: 'hydrate',
       icon: '💧',
       title: 'Hydration is behind',
-      message: `${round(water)}ml of your ${targets.waterMl}ml goal so far. A 500ml top-up now keeps energy and focus steady.`,
+      message: ctx.unitSystem === 'imperial'
+        ? `${formatVolume(water, IMPERIAL)} of your ${formatVolume(targets.waterMl, IMPERIAL)} goal so far. A 16 fl oz top-up now keeps energy and focus steady.`
+        : `${round(water)}ml of your ${targets.waterMl}ml goal so far. A 500ml top-up now keeps energy and focus steady.`,
       tone: 'nudge',
       action: { label: 'Add water', route: '/', kind: 'water' },
       priority: 60,
