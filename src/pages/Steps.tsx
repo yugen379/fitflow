@@ -432,8 +432,8 @@ export const Steps: React.FC = () => {
         </div>
 
         {[
-          explainDistance(live.steps, { heightCm: profile?.height, weightKg: profile?.weight }),
-          explainCalories(live.steps, { heightCm: profile?.height, weightKg: profile?.weight }),
+          explainDistance(live.steps, { heightCm: profile?.height, weightKg: profile?.weight }, units),
+          explainCalories(live.steps, { heightCm: profile?.height, weightKg: profile?.weight }, units),
         ].map((item) => (
           <div key={item.label} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-3.5">
             <div className="flex items-baseline justify-between gap-2">

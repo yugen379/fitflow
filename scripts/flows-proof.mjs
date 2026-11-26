@@ -543,10 +543,10 @@ section('Smart target: real burn from logs + weigh-ins');
   const card = page.locator('[data-testid="smart-target"]');
   await card.waitFor({ timeout: 20000 }).catch(() => {});
   const text = (await card.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  const burn = Number((text.match(/(\d{4}) real burn/i) || [])[1]);
+  const burn = Number(((text.match(/(\d{1,2},?\d{3}) real burn/i) || [])[1] || '').replace(/,/g, '')); // "2,159" since the units work groups thousands
   check('card shows a real burn near 2,160', burn >= 2080 && burn <= 2240, text.slice(0, 160));
   check('card shows the weekly loss (~ -0.4 kg)', /-0\.(3|4|5)\d kg \/ week/i.test(text), text.slice(0, 200));
-  const btn = card.locator('button', { hasText: 'Lower target to 2000 kcal' });
+  const btn = card.locator('button', { hasText: /Lower target to 2,?000 kcal/ });
   check('suggests lowering one step, to 2,000', await btn.count() === 1, text.slice(0, 200));
   await btn.click().catch(() => {});
   const saved = await until(async () => {

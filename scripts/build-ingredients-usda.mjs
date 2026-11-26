@@ -576,7 +576,7 @@ e('Ice cream sandwich', 'ice cream sandwich', /ice cream sandwich/i, [], F);
 e('Ice cream cone', 'ice cream cone', /ice cream cone/i, ['soft serve'], F);
 e('Trail mix', 'snacks trail mix regular', /^Snacks, trail mix, regular$/i, ['scroggin']);
 e('Beef stroganoff', 'beef stroganoff', /^Beef stroganoff$/i, ['stroganoff'], F);
-e('Chicken noodle stir fry', 'chicken chow mein', /^Chicken or turkey chow mein or chop suey with noodles/i, [], F);
+e('Chicken noodle stir fry', 'chicken chow mein', /^Chicken or turkey chow mein or chop suey with noodles/i, ['chicken chow mein', 'chicken lo mein'], F);
 e('Fried fish fillet', 'fish fillet battered or breaded fried', /^Fish, cod, fried/i, ['breaded fish'], F);
 e('Pizza margherita thin', 'pizza cheese thin crust restaurant', /^Pizza, cheese, from restaurant or fast food, thin crust/i, ['thin crust pizza'], F);
 e('Calzone', 'calzone', /calzone/i, [], F);

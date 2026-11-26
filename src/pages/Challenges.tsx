@@ -25,6 +25,29 @@ interface ChallengeDef {
   period: 'weekly' | 'monthly';
 }
 
+/**
+ * Title and description in the person's units. The pools are written in metric
+ * ("Drink 20L of water", "Burn 10,000 calories"); targets stay metric, only the
+ * words change: 20 L -> 5.3 gal, 10,000 kcal -> 41,840 kJ.
+ */
+const challengeText = (
+  c: { title: string; description: string; metric?: string; target?: number; period?: string; type?: string },
+  units: BoundUnits,
+): { title: string; description: string } => {
+  const n = Number(c.target) || 0;
+  if (c.metric === 'water' && n > 0) {
+    const v = units.formatLargeVolume(n);
+    return c.type === 'community' && c.period === 'monthly'
+      ? { title: `${v} of water`, description: `Community hydration challenge — collectively drink ${v}.` }
+      : { title: `Drink ${v} of water`, description: `Hydration champion challenge — hit ${v} in ${c.period === 'monthly' ? '30' : '7'} days.` };
+  }
+  if (c.metric === 'calories' && n > 0) {
+    const e = units.formatEnergy(n);
+    return { title: `Burn ${e}`, description: `Solo endurance test — burn ${e} of activity in ${c.period === 'weekly' ? '7' : '30'} days.` };
+  }
+  return { title: c.title, description: c.description };
+};
+
 // Two pools — weekly rotates by ISO week, monthly rotates by month. Each pick is
 // deterministic per period so everyone sees the same active set, and challenges
 // auto-refresh when the period ends.
@@ -238,7 +261,7 @@ export const Challenges: React.FC = () => {
       await updateDoc(userRef, { activeChallenges: arrayUnion(challenge.baseId || challenge.id) });
       // "Challenge Accepted" — first challenge joined.
       void checkChallengeBadge(profile.uid);
-      showToast(`Joined ${challenge.title}`, 'success');
+      showToast(`Joined ${challengeText(challenge, units).title}`, 'success');
       setSelectedChallenge(null);
       setActiveTab('my');
     } catch {
@@ -466,12 +489,12 @@ export const Challenges: React.FC = () => {
                            </span>
                            <span className="text-xs text-accent-2 font-medium">Ends in {selectedChallenge.endsIn}</span>
                          </div>
-                         <h2 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{selectedChallenge.title}</h2>
+                         <h2 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{challengeText(selectedChallenge, units).title}</h2>
                       </div>
                       <button onClick={() => setSelectedChallenge(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white shrink-0" aria-label="Close"><X size={16} /></button>
                    </div>
 
-                   <p className="text-sm text-text-dim leading-relaxed">{selectedChallenge.description}</p>
+                   <p className="text-sm text-text-dim leading-relaxed">{challengeText(selectedChallenge, units).description}</p>
 
                    <div className="space-y-3">
                       <div className="flex justify-between items-end">
@@ -549,9 +572,9 @@ const ChallengeCard: React.FC<{ challenge: any; onClick: () => void }> = ({ chal
           <span className="text-xs text-text-dim font-medium">Ends {challenge.endsIn}</span>
         </div>
         <h4 className="font-display text-xl font-bold text-white tracking-tight leading-tight group-hover:text-accent transition-colors">
-          {challenge.title}
+          {challengeText(challenge, units).title}
         </h4>
-        <p className="text-sm text-text-dim leading-relaxed line-clamp-2">{challenge.description}</p>
+        <p className="text-sm text-text-dim leading-relaxed line-clamp-2">{challengeText(challenge, units).description}</p>
 
         <div className="space-y-2">
           <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">

@@ -258,6 +258,15 @@ export const formatVolume = (ml: number | null | undefined, p: SystemPrefs): str
   return r < 1000 ? `${r} ml` : `${fixed(ml / 1000, 2, true)} L`;
 };
 
+/** US liquid gallon in ml (exact: 231 cubic inches). */
+export const ML_PER_US_GALLON = 3785.411784;
+/** Big totals (weekly/monthly water goals): "20 L" | "5.3 gal". fl oz would read "676.3 fl oz". */
+export const formatLargeVolume = (ml: number | null | undefined, p: SystemPrefs): string => {
+  if (!ok(ml) || ml < 0) return DASH;
+  if (p.system === 'imperial') return `${fixed(ml / ML_PER_US_GALLON, 1, true)} gal`;
+  return `${fixed(ml / 1000, 1, true)} L`;
+};
+
 // ── Parsers (output: canonical metric, or null for junk) ────────────────────
 /** Plausible human body weight. Anything outside is a typo, not a person. */
 export const WEIGHT_KG_RANGE = { min: 2, max: 700 } as const;
@@ -418,6 +427,24 @@ export const foodMassValue = (g: number | null | undefined, p: SystemPrefs): num
 export const formatFoodMass = (g: number | null | undefined, p: SystemPrefs): string => {
   if (!ok(g) || g < 0) return DASH;
   return p.system === 'imperial' ? `${fixed(gToOz(g), 1, false)} oz` : `${Math.round(g)} g`;
+};
+/**
+ * One tap of a portion's +/- button, in grams. Metric keeps the original 10 g
+ * steps (25 g from 200 g). Imperial steps on a clean oz grid, 0.5 oz below
+ * 7 oz and 1 oz from there, so 4.3 oz goes to 4.5, not 4.65. Never below one
+ * step. Whole grams out (portions are stored as grams).
+ */
+export const stepFoodMass = (g: number, dir: 1 | -1, p: SystemPrefs): number => {
+  const cur = ok(g) && g > 0 ? g : 0;
+  if (p.system !== 'imperial') {
+    const step = cur >= 200 ? 25 : 10;
+    return Math.max(step, cur + dir * step);
+  }
+  const oz = gToOz(cur);
+  const step = oz >= 7 - 1e-9 ? 1 : 0.5;
+  const k = oz / step;
+  const next = (dir > 0 ? Math.floor(k + 1e-6) + 1 : Math.ceil(k - 1e-6) - 1) * step;
+  return Math.round(ozToG(Math.max(step, next)));
 };
 /** Heaviest single food portion a screen accepts, in grams. */
 export const FOOD_G_MAX = 5000;

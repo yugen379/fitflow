@@ -183,34 +183,47 @@ export interface FormulaExplanation {
   personalised: boolean;
 }
 
-export const explainDistance = (steps: number, body: StepBody = {}): FormulaExplanation => {
+/**
+ * The person's display units (useUnits() formatters). The formulas are metric
+ * by nature, so the working stays metric; the RESULT and the body numbers are
+ * also shown converted when the person's units differ ("4.14 km (2.57 mi)").
+ */
+export interface ExplainUnits {
+  formatDistance: (km: number) => string;
+  formatEnergy: (kcal: number) => string;
+  formatHeight: (cm: number) => string;
+  formatWeight: (kg: number) => string;
+}
+const also = (metric: string, shown: string | undefined) => (shown && shown.replace(/\s+/g, ' ') !== metric ? `${metric} (${shown})` : metric);
+
+export const explainDistance = (steps: number, body: StepBody = {}, u?: ExplainUnits): FormulaExplanation => {
   const height = usable(body.heightCm, MIN_HEIGHT_CM, MAX_HEIGHT_CM);
   const stride = strideMetresFor(body.heightCm);
   const n = Math.round(usableSteps(steps));
   return {
     label: 'Distance',
     formula: 'distance = steps x stride,  stride = height x 0.414',
-    substituted: `${n.toLocaleString()} x ${stride.toFixed(2)} m = ${distanceKmFor(steps, body.heightCm).toFixed(2)} km`,
+    substituted: `${n.toLocaleString()} x ${stride.toFixed(2)} m = ${also(`${distanceKmFor(steps, body.heightCm).toFixed(2)} km`, u?.formatDistance(distanceKmFor(steps, body.heightCm)))}`,
     assumption:
       height === null
         ? `No height on your profile, so this uses the ${DEFAULT_STRIDE_M} m average adult stride. Add your height to personalise it.`
-        : `Your ${height} cm height gives a ${stride.toFixed(2)} m stride. Assumes level ground at a walking gait. This is an estimate, not GPS.`,
+        : `Your ${also(`${height} cm`, u?.formatHeight(height))} height gives a ${stride.toFixed(2)} m stride. Assumes level ground at a walking gait. This is an estimate, not GPS.`,
     personalised: height !== null,
   };
 };
 
-export const explainCalories = (steps: number, body: StepBody = {}): FormulaExplanation => {
+export const explainCalories = (steps: number, body: StepBody = {}, u?: ExplainUnits): FormulaExplanation => {
   const weight = usable(body.weightKg, MIN_WEIGHT_KG, MAX_WEIGHT_KG);
   const rate = kcalPerStepFor(body.weightKg);
   const n = Math.round(usableSteps(steps));
   return {
     label: 'Calories',
     formula: `kcal/min = MET x 3.5 x weight / 200,  at ${WALKING_MET} MET and ${WALKING_CADENCE_SPM} steps/min`,
-    substituted: `${n.toLocaleString()} x ${rate.toFixed(4)} kcal = ${Math.round(caloriesFor(steps, body.weightKg))} kcal`,
+    substituted: `${n.toLocaleString()} x ${rate.toFixed(4)} kcal = ${also(`${Math.round(caloriesFor(steps, body.weightKg))} kcal`, u?.formatEnergy(Math.round(caloriesFor(steps, body.weightKg))))}`,
     assumption:
       weight === null
         ? `No weight on your profile, so this uses the ${REFERENCE_WEIGHT_KG} kg reference rate of ${KCAL_PER_STEP} kcal/step. Add your weight to personalise it.`
-        : `Your ${weight} kg gives ${rate.toFixed(4)} kcal/step. Active calories from walking only, so it excludes your resting burn.`,
+        : `Your ${also(`${weight} kg`, u?.formatWeight(weight))} gives ${rate.toFixed(4)} kcal/step. Active calories from walking only, so it excludes your resting burn.`,
     personalised: weight !== null,
   };
 };

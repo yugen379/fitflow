@@ -26,7 +26,7 @@ import {
   summarize, simplifyForStorage, formatDistance, formatDuration, formatPace, formatSpeed, routeToSvgPoints,
 } from '../lib/gpsMath';
 import type { GpsActivity, GpsPoint, UnitSystem } from '../lib/gpsMath';
-import { GpsTracker, WebGpsRecorder, gpsErrorMessage, hasNativeGps } from '../lib/gpsTracker';
+import { GpsTracker, WebGpsRecorder, gpsErrorMessage, hasNativeGps, nativeDistanceUnit } from '../lib/gpsTracker';
 import type { GpsSnapshot, RecordingState } from '../lib/gpsTracker';
 
 const ACTIVITIES: { id: GpsActivity; label: string; icon: typeof Bike; type: string }[] = [
@@ -105,7 +105,7 @@ export const TrackActivity: React.FC = () => {
   const recording = state === 'recording' || state === 'paused';
   useEffect(() => {
     if (!native || !recording) return;
-    GpsTracker.setDistanceUnit({ unit: units === 'imperial' ? 'mi' : 'km' }).catch(() => {});
+    GpsTracker.setDistanceUnit({ unit: nativeDistanceUnit(units) }).catch(() => {});
   }, [native, recording, units]);
 
   const summary = useMemo(
@@ -146,7 +146,7 @@ export const TrackActivity: React.FC = () => {
           await GpsTracker.requestPermissions({ permissions: ['notifications'] }).catch(() => {});
         }
         pointsRef.current = [];
-        apply(await GpsTracker.start({ activity, distanceUnit: units === 'imperial' ? 'mi' : 'km' }), true);
+        apply(await GpsTracker.start({ activity, distanceUnit: nativeDistanceUnit(units) }), true);
       } catch (e) {
         if ((e as { code?: string })?.code === 'GPS_DISABLED') setGpsOff(true);
         setError(gpsErrorMessage(e));

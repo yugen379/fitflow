@@ -29,14 +29,21 @@ console.log(`\n${C.b}${C.c}Bug 1 — barbell model shown for non-barbell exercis
 
 // The exact three from the screenshots. The workout builder creates these from
 // WORKOUT_TYPES in Workout.tsx, so the ids are lower-cased type names.
-for (const id of ['swimming', 'cardio', 'cycling']) {
-  check(`"${id}" reports NO 3D clip`, hasClipFor(id) === false, `hasClipFor -> ${hasClipFor(id)}`);
-  check(`"${id}" resolves to no clip at all (never the back squat)`,
-    getClip(EXERCISE_TO_CLIP[id] ?? id) === undefined);
+// Since the 3D-demo-for-every-exercise work, swimming and cycling are library
+// exercises with their OWN cardio demo (flagged "simplified"). The bug this
+// guards is unchanged: they must never fall back to the back squat or a barbell.
+const { EXERCISE_MOTIONS } = await import('../src/biomechanics/exerciseMotions.ts');
+for (const id of ['swimming', 'cycling']) {
+  const clip = getClip(EXERCISE_TO_CLIP[id] ?? id);
+  check(`"${id}" shows its own cardio demo, never the back squat`,
+    hasClipFor(id) === true && clip?.id === `lib:${id}` && clip?.family === 'cardio', `${clip?.id} family=${clip?.family}`);
+  check(`"${id}" uses no barbell and is labelled a simplified demo`,
+    !(EXERCISE_MOTIONS[id].equipment || []).includes('barbell') && !!EXERCISE_MOTIONS[id].simplified);
 }
+check('"cardio" (a workout type, not an exercise) reports NO 3D clip', hasClipFor('cardio') === false && getClip(EXERCISE_TO_CLIP.cardio ?? 'cardio') === undefined);
 
 check('an unmapped id never silently becomes a barbell lift',
-  ['rowing_machine', 'yoga', 'stretching', 'walk', ''].every((id) => !hasClipFor(id)));
+  ['yoga', 'stretching', 'walk', 'underwater_hockey', ''].every((id) => !hasClipFor(id) && getClip(EXERCISE_TO_CLIP[id] ?? id) === undefined));
 check('null / undefined ids are handled without throwing',
   hasClipFor(null) === false && hasClipFor(undefined) === false);
 

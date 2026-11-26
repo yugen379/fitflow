@@ -23,7 +23,7 @@ TRAIN WITH PURPOSE
 A COACH THAT CHECKS IN
 • A daily briefing on the Home screen that looks at your day so far and suggests a sensible next step.
 • Today's Mission: three simple goals each day — a workout, your calories and your steps.
-• Coach chat (Pro): ask about training, food or recovery. The coach can see what you've logged today.
+• Coach chat (3 questions a day free, unlimited with Pro): ask about training, food or recovery. The coach can see what you've logged today.
 • Optional reminders, such as a nudge when your streak is at risk.
 
 KEEP IT GOING, TOGETHER
@@ -35,7 +35,7 @@ YOUR UNITS
 Weigh yourself in stones and pounds, kilograms or pounds, and choose metric, UK or US units.
 
 FITFLOW PRO
-Food logging, step counting and GPS tracking are free. FitFlow Pro is an optional subscription with a free trial, adding coach chat, the 3D Form Lab, the weekly recap and deeper analytics.
+Food logging, step counting and GPS tracking are free. FitFlow Pro is an optional subscription with a free trial, adding unlimited coach chat, the 3D Form Lab, the weekly recap and deeper analytics.
 
 YOUR DATA
 FitFlow shows no adverts and doesn't sell your data. Health Connect data is used only to run FitFlow's features for you. You can delete your account and data at any time from Settings.

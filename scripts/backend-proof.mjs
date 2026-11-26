@@ -333,6 +333,17 @@ const paged = [];
 for (let n = 1; n <= 6; n++) paged.push((await adb.doc(`weekly_recaps/${R(n)}_${WEEK}-c`).get()).exists);
 check('paging across small pages reaches every active user', paged.every(Boolean), paged.join(','));
 
+// The no-AI recap follows the user's display units (the numbers stay metric in stats).
+await seedRecapUser(12);
+await adb.doc(`users/${R(12)}`).update({ units: { system: 'imperial', weight: 'lb', energy: 'kJ' } });
+await runWeeklyRecaps({ weekId: `${WEEK}-d`, pauseMs: 0, aiBudgetMs: -1, writeRecap, sendPush });
+const dUs = (await adb.doc(`weekly_recaps/${R(12)}_${WEEK}-d`).get()).data();
+const dMetric = (await adb.doc(`weekly_recaps/${R(1)}_${WEEK}-d`).get()).data();
+check('fallback recap: a kJ user reads kJ (600 kcal = 2,510 kJ), a metric user still reads kcal',
+  /2,510 kJ/.test(dUs?.recap?.highlight || '') && !/kcal/.test(dUs?.recap?.highlight || '') && /600 kcal/.test(dMetric?.recap?.highlight || ''),
+  `${dUs?.recap?.highlight} | ${dMetric?.recap?.highlight}`);
+check('fallback recap stats stay metric for a kJ user', dUs?.stats?.consumed === 600, JSON.stringify(dUs?.stats));
+
 section('7 · Scheduled pushes: only people who could be due, a page at a time');
 const {
   pushFieldsFor, decideNudge, runEngagementNudges, runWorkoutReminders, runTrialReminders, refreshCommunityStats,

@@ -653,8 +653,8 @@ export const Track: React.FC = () => {
     const l = aiReview?.[i];
     if (!l) return;
     if (l.grams != null) {
-      const step = l.grams >= 200 ? 25 : 10;
-      updateLine(i, { grams: Math.max(step, clampGrams(l.grams + dir * step)) });
+      // 10/25 g steps in grams, a clean 0.5/1 oz grid for ounce users.
+      updateLine(i, { grams: clampGrams(units.stepFoodMass(l.grams, dir)) });
     } else {
       updateLine(i, { servings: Math.max(0.5, Math.min(10, l.servings + dir * 0.5)) });
     }

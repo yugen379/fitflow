@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Check, Sparkles, Zap, Camera, Heart, TrendingUp, Bell, Crown, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronLeft, Check, Sparkles, Zap, TrendingUp, Crown, Settings as SettingsIcon, MessageCircle, Box, Target, Snowflake } from 'lucide-react';
 import { LogoMark } from '../components/Logo';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -14,13 +14,18 @@ import {
 } from '../services/playBillingService';
 import { allFeaturesFree, getEntitlement, TRIAL_DAYS } from '../lib/billing';
 
+// Only what Pro actually unlocks (src/lib/features.ts, NutritionGoals, the
+// server AI limits in functions/src/aiGuard.ts). Meal scan, form check, label
+// scan, barcode, GPS and Health Connect are FREE for everyone and must never be
+// listed here: selling a free feature is a refund and a 1-star review.
 const FEATURES = [
-  { icon: Camera, title: 'Meal Scan AI + unlimited Form Check', sub: 'Snap a plate to log it; live Gemini Vision form scoring' },
-  { icon: Sparkles, title: 'AI weekly recap & meal plans', sub: 'Personalized coach summary every Sunday' },
-  { icon: Heart, title: 'Health Connect & HealthKit', sub: 'Native wearable sync with HR, sleep, exercise' },
-  { icon: TrendingUp, title: 'Macros by the gram + advanced analytics', sub: 'Exact protein/fat/carb targets, plateau detection' },
-  { icon: Bell, title: 'Goal-by-day scheduling + smart reminders', sub: 'Higher carbs on training days, learns when you train' },
-  { icon: Zap, title: 'Priority AI', sub: 'Faster Gemini responses, voice coaching during workouts' },
+  { icon: MessageCircle, title: 'Unlimited AI Coach chat', sub: 'It knows your food, training and sleep. Free accounts get 3 questions a day' },
+  { icon: Sparkles, title: 'AI weekly recap', sub: 'A written read on your week, every Sunday, from your own numbers' },
+  { icon: TrendingUp, title: 'Your full history', sub: 'Every week, month and year of progress. Free shows the last 7 days' },
+  { icon: Box, title: '3D form lab', sub: 'Watch any exercise in 3D and see which muscles it works' },
+  { icon: Target, title: 'Macros by the gram + training-day targets', sub: 'Exact protein, carb and fat grams; more on training days, less on rest days' },
+  { icon: Zap, title: 'More AI every day', sub: '300 AI requests a day instead of 50, and an hour of live form check instead of 10 minutes' },
+  { icon: Snowflake, title: 'Unlimited streak freezes', sub: 'Miss a day without losing your streak. Free accounts get 1 a month' },
 ];
 
 // USD fallbacks shown until live store prices load. Keep in sync with the

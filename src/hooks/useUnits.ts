@@ -3,9 +3,9 @@ import { useAuth } from './useAuth';
 import {
   resolveUnitPrefs, formatWeight, weightParts, formatWeightInput, weightUnitLabel,
   formatHeight, formatHeightInput, heightUnitLabel, formatDistance, formatPace,
-  formatEnergy, energyValue, formatVolume, parseWeight, parseHeight,
+  formatEnergy, energyValue, formatVolume, formatLargeVolume, parseWeight, parseHeight,
   loadUnit, loadStep, loadValue, formatLoad, formatLoadVolume, loadToKg,
-  foodMassUnit, foodMassValue, formatFoodMass, foodMassToG,
+  foodMassUnit, foodMassValue, formatFoodMass, foodMassToG, stepFoodMass,
   volumeUnit, volumeValue, waterPresetsMl,
   formatEnergyNumber, energyInputValue, energyToKcal,
   formatWeightChange, weightRateParts, perBodyWeightUnit, perBodyWeightValue,
@@ -53,6 +53,7 @@ export const bindUnits = (prefs: UnitPrefs) => ({
   formatEnergy: (kcal: number | null | undefined) => formatEnergy(kcal, prefs),
   energyValue: (kcal: number) => energyValue(kcal, prefs),
   formatVolume: (ml: number | null | undefined) => formatVolume(ml, prefs),
+  formatLargeVolume: (ml: number | null | undefined) => formatLargeVolume(ml, prefs),
   parseWeight: (input: string) => parseWeight(input, prefs),
   parseHeight: (input: string) => parseHeight(input, prefs),
   // Lifting loads (kg, or lb for pound users) at 0.5 plate steps.
@@ -67,6 +68,7 @@ export const bindUnits = (prefs: UnitPrefs) => ({
   foodMassValue: (g: number | null | undefined) => foodMassValue(g, prefs),
   formatFoodMass: (g: number | null | undefined) => formatFoodMass(g, prefs),
   foodMassToG: (input: unknown) => foodMassToG(input, prefs),
+  stepFoodMass: (g: number, dir: 1 | -1) => stepFoodMass(g, dir, prefs),
   // Drinks (ml, or US fl oz on imperial).
   volumeUnit: volumeUnit(prefs),
   volumeValue: (ml: number | null | undefined) => volumeValue(ml, prefs),

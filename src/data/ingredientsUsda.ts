@@ -1013,7 +1013,7 @@ export const INGREDIENTS_USDA: Per100Food[] = [
   // Beef stroganoff (fdcId 2706382)
   { name: 'Beef stroganoff', calories: 150, protein: 10.1, carbs: 6.2, fats: 9.3, aliases: ['stroganoff'] },
   // Chicken or turkey chow mein or chop suey with noodles (fdcId 2706687)
-  { name: 'Chicken noodle stir fry', calories: 131, protein: 9.9, carbs: 11.2, fats: 5.4, aliases: [] },
+  { name: 'Chicken noodle stir fry', calories: 131, protein: 9.9, carbs: 11.2, fats: 5.4, aliases: ['chicken chow mein', 'chicken lo mein'] },
   // Fish, cod, fried (fdcId 2706244)
   { name: 'Fried fish fillet', calories: 217, protein: 13.5, carbs: 11.7, fats: 12.5, aliases: ['breaded fish'] },
   // Pizza, cheese, from restaurant or fast food, thin crust (fdcId 2708615)

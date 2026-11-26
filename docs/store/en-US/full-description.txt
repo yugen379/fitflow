@@ -23,7 +23,7 @@ TRAIN SMARTER
 A COACH THAT CHECKS IN
 • A daily briefing on your Home screen that looks at your day so far and suggests the next useful step.
 • Today's Mission: three simple goals for the day — a workout, your calories and your steps.
-• Coach chat (Pro): ask about training, food or recovery. The coach can see what you've logged today.
+• Coach chat (3 questions a day free, unlimited with Pro): ask about training, food or recovery. The coach can see what you've logged today.
 • Optional reminders, like a heads-up when your streak is at risk.
 
 STAY CONSISTENT, TOGETHER
@@ -38,7 +38,7 @@ SIGN IN YOUR WAY
 Email and password or Google.
 
 FITFLOW PRO
-Food logging, step counting and GPS tracking are free. FitFlow Pro is an optional subscription with a free trial. It adds coach chat, the 3D Form Lab, the weekly recap and deeper analytics.
+Food logging, step counting and GPS tracking are free. FitFlow Pro is an optional subscription with a free trial. It adds unlimited coach chat, the 3D Form Lab, the weekly recap and deeper analytics.
 
 YOUR DATA
 FitFlow shows no ads and doesn't sell your data. Health Connect data is used only to run FitFlow's features for you. You can delete your account and your data any time from Settings.

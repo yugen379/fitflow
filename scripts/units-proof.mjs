@@ -294,6 +294,10 @@ const suite = (U) => {
   s('150 g shown in g', U.formatFoodMass(150, M), '150 g');
   s('foodMassValue oz / g', [U.foodMassValue(150, US), U.foodMassValue(149.6, M)], [5.3, 150]);
   s('typed "5.3" oz → 150.3 g', U.foodMassToG('5.3', US), 150.3);
+  s('large volume: 20 L / 5.3 gal / 100 L / 26.4 gal', [U.formatLargeVolume(20000, M), U.formatLargeVolume(20000, US), U.formatLargeVolume(100000, M), U.formatLargeVolume(100000, US)], ['20 L', '5.3 gal', '100 L', '26.4 gal']);
+  s('portion step, grams: 10 g, 25 g from 200 g, never below a step', [U.stepFoodMass(150, 1, M), U.stepFoodMass(200, 1, M), U.stepFoodMass(200, -1, M), U.stepFoodMass(10, -1, M)], [160, 225, 175, 10]);
+  s('portion step, oz: snaps to the 0.5 oz grid (4.3 -> 4.5, 4.3 -> 4.0)', [U.foodMassValue(U.stepFoodMass(U.ozToG(4.3), 1, US), US), U.foodMassValue(U.stepFoodMass(U.ozToG(4.3), -1, US), US)], [4.5, 4]);
+  s('portion step, oz: 1 oz from 7 oz, floor of 0.5 oz', [U.foodMassValue(U.stepFoodMass(U.ozToG(7), 1, US), US), U.foodMassValue(U.stepFoodMass(U.ozToG(0.5), -1, US), US)], [8, 0.5]);
   s('typed "150 g" by an oz user stays 150 g', U.foodMassToG('150 g', US), 150);
   s('typed "2 oz" by a g user → 56.7 g', U.foodMassToG('2 oz', M), 56.7);
   s('junk / zero portion → null', [U.foodMassToG('x', M), U.foodMassToG('0', M), U.foodMassToG('99999', M)], [null, null, null]);

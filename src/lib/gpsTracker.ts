@@ -56,6 +56,9 @@ interface GpsTrackerPlugin {
 
 export const GpsTracker = registerPlugin<GpsTrackerPlugin>('GpsTracker');
 
+/** The notification's distance unit for the profile's unit system (display only; data stays metres). */
+export const nativeDistanceUnit = (system: string): 'km' | 'mi' => (system === 'imperial' ? 'mi' : 'km');
+
 export const hasNativeGps = (): boolean =>
   Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android' && Capacitor.isPluginAvailable('GpsTracker');
 

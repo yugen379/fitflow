@@ -95,18 +95,28 @@ const statsFor = async (uid: string, since: Date): Promise<WeekStats> => {
 
 const isActive = (s: WeekStats) => s.workouts + s.consumed + s.water + s.sleepHours > 0;
 
-/** A recap written from the numbers alone — used when every model is busy. */
-export const fallbackRecap = (s: WeekStats, streak: number): Recap => ({
-  headline: s.workouts >= 3 ? "A strong week of training." : s.workouts > 0 ? "You kept moving this week." : "A week of steady logging.",
-  highlight:
-    `${s.workouts} workout${s.workouts === 1 ? "" : "s"}` +
-    (s.minutes ? `, ${s.minutes} active minutes` : "") +
-    (s.consumed ? `, ${s.consumed.toLocaleString("en-US")} kcal logged` : "") +
-    (s.water ? `, ${(s.water / 1000).toFixed(1)} L of water` : "") + ".",
-  win: streak >= 3 ? `A ${streak}-day streak — consistency is doing the work.` : "Every log this week is data your plan can use.",
-  focus: s.workouts < 2 ? "One more session than last week." : s.water < 10_000 ? "Hydration — aim for 2 L a day." : "Sleep — it is where training turns into progress.",
-  nextStep: s.workouts < 2 ? "Put a 30-minute session in your calendar for Monday." : "Log breakfast before 10am on Monday.",
-});
+/** A recap written from the numbers alone — used when every model is busy. `units` follows the user doc (numbers stay metric in `stats`). */
+export const fallbackRecap = (s: WeekStats, streak: number, units?: unknown): Recap => {
+  const o = (units && typeof units === "object" ? units : {}) as Record<string, unknown>;
+  const imperial = o.system === "imperial";
+  const energy = (kcal: number) => o.energy === "kJ"
+    ? `${Math.round(kcal * 4.184).toLocaleString("en-US")} kJ`
+    : `${kcal.toLocaleString("en-US")} kcal`;
+  // 1 US fl oz = 29.5735 ml (same factor as src/lib/units.ts).
+  const water = (ml: number) => imperial ? `${Math.round(ml / 29.5735).toLocaleString("en-US")} fl oz` : `${(ml / 1000).toFixed(1)} L`;
+  return {
+    headline: s.workouts >= 3 ? "A strong week of training." : s.workouts > 0 ? "You kept moving this week." : "A week of steady logging.",
+    highlight:
+      `${s.workouts} workout${s.workouts === 1 ? "" : "s"}` +
+      (s.minutes ? `, ${s.minutes} active minutes` : "") +
+      (s.consumed ? `, ${energy(s.consumed)} logged` : "") +
+      (s.water ? `, ${water(s.water)} of water` : "") + ".",
+    win: streak >= 3 ? `A ${streak}-day streak — consistency is doing the work.` : "Every log this week is data your plan can use.",
+    focus: s.workouts < 2 ? "One more session than last week." : s.water < 10_000
+      ? `Hydration — aim for ${imperial ? "about 68 fl oz" : "2 L"} a day.` : "Sleep — it is where training turns into progress.",
+    nextStep: s.workouts < 2 ? "Put a 30-minute session in your calendar for Monday." : "Log breakfast before 10am on Monday.",
+  };
+};
 
 /** `units` is the user doc's display-units map; the numbers stay metric, only the wording follows it. */
 const promptFor = (goal: string, s: WeekStats, streak: number, units?: unknown) => `You are an elite performance coach writing a friendly weekly recap.
@@ -194,7 +204,7 @@ export const runWeeklyRecaps = async (opts: RecapRunOptions): Promise<RecapRunRe
             }
           }
           const source = recap ? "ai" : "fallback";
-          recap ||= fallbackRecap(stats, streak);
+          recap ||= fallbackRecap(stats, streak, u.units);
 
           await ref.set({ recap, stats, source, generatedAt: FieldValue.serverTimestamp() });
           report.written++;

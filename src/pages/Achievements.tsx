@@ -53,7 +53,12 @@ const FILTERS: { id: Filter; label: string }[] = [
  * is a gradient whose position follows the same coordinates, which is what sells
  * it as a reflective surface rather than a rotating rectangle.
  */
+/** Distance badges are defined in km ("Cover 5 km in total."); say it in the person's units. */
+const describe = (a: AchievementProgress['achievement'], units: ReturnType<typeof useUnits>): string =>
+  a.metric === 'totalDistanceKm' ? `Cover ${units.formatDistance(a.threshold)} in total.` : a.description;
+
 const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ entry, onOpen }) => {
+  const units = useUnits();
   const ref = useRef<HTMLButtonElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0, mx: 50, my: 50 });
   const { achievement, unlocked, ratio } = entry;
@@ -124,7 +129,7 @@ const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ en
         <p className={cn('text-[13px] font-semibold leading-tight', unlocked ? 'text-white' : 'text-text-dim')}>
           {achievement.name}
         </p>
-        <p className="text-[10px] text-text-mute mt-1 leading-snug line-clamp-2">{achievement.description}</p>
+        <p className="text-[10px] text-text-mute mt-1 leading-snug line-clamp-2">{describe(achievement, units)}</p>
 
         {!unlocked && (
           <>
@@ -319,7 +324,7 @@ export const Achievements: React.FC = () => {
             <h2 className="font-display text-2xl font-bold text-white mt-1 tracking-tight">
               {open.achievement.name}
             </h2>
-            <p className="text-sm text-text-dim mt-2 leading-relaxed">{open.achievement.description}</p>
+            <p className="text-sm text-text-dim mt-2 leading-relaxed">{describe(open.achievement, units)}</p>
 
             <p className="num text-xs text-text-mute mt-4 tabular-nums">
               {/* Distance goals are defined in km; shown in the person's units. */}

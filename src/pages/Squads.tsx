@@ -194,6 +194,10 @@ const SquadDetail: React.FC<{ squadId: string }> = ({ squadId }) => {
   const [now, setNow] = useState(() => new Date());
   const [confirm, setConfirm] = useState<null | { kind: 'leave' } | { kind: 'remove'; uid: string; name: string }>(null);
   const [busy, setBusy] = useState(false);
+  // Leaving revokes read access to this squad. Its listeners are closed FIRST:
+  // a listener denied mid-flight tripped a Firestore SDK internal assertion
+  // (ca9) and the page never got back to the squad list.
+  const [leaving, setLeaving] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState('');
   const [editing, setEditing] = useState(false);
@@ -203,19 +207,20 @@ const SquadDetail: React.FC<{ squadId: string }> = ({ squadId }) => {
   useEffect(() => { const t = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(t); }, []);
 
   useEffect(() => {
+    if (leaving) return;
     const unsub = watchSquad(squadId, setSquad, () => setError("This squad isn't available. You may have left it."));
     return () => safeUnsubscribe(unsub);
-  }, [squadId]);
+  }, [squadId, leaving]);
 
   const tz = squad?.tz;
   const range = useMemo(() => (tz ? weekRange(now, tz) : null), [tz, now]);
   const weekKey = range?.key;
 
   useEffect(() => {
-    if (!weekKey || !squad?.id) return;
+    if (!weekKey || !squad?.id || leaving) return;
     const unsub = watchWeek(squad.id, weekKey, setWeeks, () => setError("Couldn't load this week's numbers."));
     return () => safeUnsubscribe(unsub);
-  }, [squad?.id, weekKey]);
+  }, [squad?.id, weekKey, leaving]);
 
   // Publish my own numbers as soon as the board opens.
   useEffect(() => {
@@ -383,7 +388,14 @@ const SquadDetail: React.FC<{ squadId: string }> = ({ squadId }) => {
           body={squad.memberIds.length === 1 ? 'You are the last member, so the squad will be deleted.'
             : isOwner ? 'Ownership passes to the longest-standing member. Your numbers leave with you.' : 'Your numbers leave with you. You can rejoin with the code.'}
           onCancel={() => setConfirm(null)}
-          onConfirm={() => void run(() => leaveSquad(squad.id), 'You left the squad', () => navigate('/squads'))} />
+          onConfirm={() => {
+            setLeaving(true); // closes the listeners (effect cleanup) before access is revoked
+            void run(
+              () => new Promise((r) => setTimeout(r, 0)).then(() => leaveSquad(squad.id)).catch((e) => { setLeaving(false); throw e; }),
+              'You left the squad',
+              () => navigate('/squads', { replace: true }),
+            );
+          }} />
       )}
       {confirm?.kind === 'remove' && (
         <Confirm title={`Remove ${confirm.name}?`} busy={busy} action="Remove"

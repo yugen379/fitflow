@@ -52,10 +52,19 @@ export const Privacy: React.FC = () => {
 
           <SubHead>1.3 Health data from connected services</SubHead>
           <p>
-            When you connect Health Connect (Android), Apple Health (iOS), or Google
-            Fit, we read step count, calories, heart rate, sleep, exercise sessions,
-            distance, and weight only with your explicit per-data-type permission.
-            Health data is used solely to personalize your plan and insights.
+            On Android, when you connect Health Connect, we read only the types you
+            allow, one permission each: steps, active calories burned, heart rate,
+            resting heart rate, sleep sessions and weight. We only read; we never
+            write to Health Connect. This data is used solely to show your own
+            numbers in FitFlow and to personalise your plan, coach and calorie
+            target. It is never used for advertising and never sold.
+          </p>
+          <p>
+            Summary values, such as last night&apos;s sleep hours or your weekly
+            average sleep, can be included in the text we send to Google Gemini to
+            write your daily briefing and weekly recap. Raw Health Connect records
+            are never sent. Apple Health will work the same way when the iPhone app
+            is released.
           </p>
         </Section>
 
@@ -65,6 +74,7 @@ export const Privacy: React.FC = () => {
             'Show progress over time and adapt plans to your actual behavior.',
             'Send notifications at times you actually train (you can disable in Settings or your OS).',
             'Display aggregated, anonymized statistics for community leaderboards and challenges.',
+            'Squads: members of a squad you join see your display name, photo and that week’s challenge numbers (steps, active days or workouts). Never your email, weight or meals.',
             'Detect, investigate, and prevent abuse and fraud.',
             'Comply with legal obligations.',
           ]} />

@@ -168,6 +168,8 @@ ok('"450g chicken rice": parts scaled to 450 g total', cr3.length === 2 && cr3[0
 ok('control: arroz con pollo, chicken fried rice and chicken curry with rice still match themselves',
   lookupOffline('arroz con pollo')?.matched === 'Arroz con pollo' && lookupOffline('chicken fried rice')?.matched === 'Chicken fried rice'
   && lookupOffline('chicken curry with rice')?.matched === 'Chicken curry with rice');
+ok('"chicken lo mein" / "chicken chow mein" find the USDA chicken chow mein row', lookupOffline('chicken lo mein')?.matched === 'Chicken noodle stir fry' && lookupOffline('chicken chow mein')?.matched === 'Chicken noodle stir fry');
+ok('control: "chicken chop" (a grilled Malaysian dish) is not a noodle', !/noodle|mein/i.test(lookupOffline('chicken chop')?.matched || ''));
 ok('control: chicken + rice typed apart still split normally', localDecompose('chicken and rice').length === 2);
 ok('local split: empty and junk -> nothing', localDecompose('').length === 0 && localDecompose(', , and').length === 0);
 ok('local split: at most 12 parts', localDecompose(Array(30).fill('rice').join(', ')).length === 12);
