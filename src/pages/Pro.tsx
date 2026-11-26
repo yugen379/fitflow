@@ -13,19 +13,30 @@ import {
   getPlayPlanPrices, StorePlanPrice,
 } from '../services/playBillingService';
 import { allFeaturesFree, getEntitlement, TRIAL_DAYS } from '../lib/billing';
+import { msg, t, tDyn } from '../i18n/i18n';
+
+/**
+ * Put elements into a translated sentence at its {placeholders}, so the whole
+ * sentence is one translation and each language can order it its own way.
+ */
+const splice = (text: string, parts: Record<string, React.ReactNode>) =>
+  text.split(/(\{\w+\})/).map((piece, i) => {
+    const key = /^\{(\w+)\}$/.exec(piece)?.[1];
+    return <React.Fragment key={i}>{key && key in parts ? parts[key] : piece}</React.Fragment>;
+  });
 
 // Only what Pro actually unlocks (src/lib/features.ts, NutritionGoals, the
 // server AI limits in functions/src/aiGuard.ts). Meal scan, form check, label
 // scan, barcode, GPS and Health Connect are FREE for everyone and must never be
 // listed here: selling a free feature is a refund and a 1-star review.
 const FEATURES = [
-  { icon: MessageCircle, title: 'Unlimited AI Coach chat', sub: 'It knows your food, training and sleep. Free accounts get 3 questions a day' },
-  { icon: Sparkles, title: 'AI weekly recap', sub: 'A written read on your week, every Sunday, from your own numbers' },
-  { icon: TrendingUp, title: 'Your full history', sub: 'Every week, month and year of progress. Free shows the last 7 days' },
-  { icon: Box, title: '3D form lab', sub: 'Watch any exercise in 3D and see which muscles it works' },
-  { icon: Target, title: 'Macros by the gram + training-day targets', sub: 'Exact protein, carb and fat grams; more on training days, less on rest days' },
-  { icon: Zap, title: 'More AI every day', sub: '300 AI requests a day instead of 50, and an hour of live form check instead of 10 minutes' },
-  { icon: Snowflake, title: 'Unlimited streak freezes', sub: 'Miss a day without losing your streak. Free accounts get 1 a month' },
+  { icon: MessageCircle, title: msg('Unlimited AI Coach chat'), sub: msg('It knows your food, training and sleep. Free accounts get 3 questions a day') },
+  { icon: Sparkles, title: msg('AI weekly recap'), sub: msg('A written read on your week, every Sunday, from your own numbers') },
+  { icon: TrendingUp, title: msg('Your full history'), sub: msg('Every week, month and year of progress. Free shows the last 7 days') },
+  { icon: Box, title: msg('3D form lab'), sub: msg('Watch any exercise in 3D and see which muscles it works') },
+  { icon: Target, title: msg('Macros by the gram + training-day targets'), sub: msg('Exact protein, carb and fat grams; more on training days, less on rest days') },
+  { icon: Zap, title: msg('More AI every day'), sub: msg('300 AI requests a day instead of 50, and an hour of live form check instead of 10 minutes') },
+  { icon: Snowflake, title: msg('Unlimited streak freezes'), sub: msg('Miss a day without losing your streak. Free accounts get 1 a month') },
 ];
 
 // USD fallbacks shown until live store prices load. Keep in sync with the
@@ -34,8 +45,8 @@ const USD_MONTHLY = 4.99;
 const USD_YEARLY = 60.10;
 
 const PLANS = [
-  { id: 'monthly' as const, label: 'Monthly' },
-  { id: 'yearly' as const, label: 'Yearly' },
+  { id: 'monthly' as const, label: msg('Monthly') },
+  { id: 'yearly' as const, label: msg('Yearly') },
 ];
 
 const fmtDate = (ms: number | null) =>
@@ -96,25 +107,27 @@ export const Pro: React.FC = () => {
   const priceFor = (id: 'monthly' | 'yearly') => {
     if (id === 'monthly') {
       const p = storePrices?.monthly?.priceString ?? `$${USD_MONTHLY.toFixed(2)}`;
-      return { big: p, suffix: '/month', sub: `${p} billed monthly` };
+      return { big: p, suffix: t('/month'), sub: t('{price} billed monthly', { price: p }) };
     }
     const sp = storePrices?.yearly;
     const perMo = sp?.perMonthString ?? `$${(USD_YEARLY / 12).toFixed(2)}`;
     return {
       big: sp?.priceString ?? `$${USD_YEARLY.toFixed(2)}`,
-      suffix: '/year',
-      sub: `≈ ${perMo}/mo${yearlySavePct > 0 ? ` · save ${yearlySavePct}%` : ' · one payment a year'}`,
+      suffix: t('/year'),
+      sub: yearlySavePct > 0
+        ? t('≈ {price}/mo · save {pct}%', { price: perMo, pct: yearlySavePct })
+        : t('≈ {price}/mo · one payment a year', { price: perMo }),
     };
   };
 
   const subscribe = async () => {
     if (allFree) {
-      showToast('All features are free right now — enjoy.', 'success');
+      showToast(t('All features are free right now — enjoy.'), 'success');
       navigate('/');
       return;
     }
     if (!billingReady) {
-      showToast('Billing is being configured — try again shortly.', 'info');
+      showToast(t('Billing is being configured — try again shortly.'), 'info');
       return;
     }
     setStarting(true);
@@ -122,19 +135,19 @@ export const Pro: React.FC = () => {
       const result = await startPlayPurchase(profile!.uid, plan);
       setStarting(false);
       if (result.ok) {
-        showToast('Subscribed to FitFlow Pro — unlocking…', 'success');
+        showToast(t('Subscribed to FitFlow Pro — unlocking…'), 'success');
         // Don't wait on the webhook: confirm with the server now, retry once.
         void syncSubscription().then((ok) => { if (!ok) setTimeout(() => void syncSubscription(), 4000); });
         // The RevenueCat webhook flips subscriptionType server-side; the profile
         // listener picks it up within a moment.
       } else if (result.reason !== 'cancelled') {
-        showToast(result.reason || 'Purchase failed', 'error');
+        showToast(result.reason || t('Purchase failed'), 'error');
       }
       return;
     }
     const result = await startCheckout(plan);
     setStarting(false);
-    if (!result.ok) showToast(result.reason || 'Could not start checkout', 'error');
+    if (!result.ok) showToast(result.reason || t('Could not start checkout'), 'error');
   };
 
   const restore = async () => {
@@ -142,8 +155,8 @@ export const Pro: React.FC = () => {
     const result = await restorePlayPurchases(profile!.uid);
     setRestoring(false);
     showToast(
-      result.ok ? (result.pro ? 'Purchases restored — Pro is active.' : 'No previous purchase found.')
-        : (result.reason || 'Could not restore'),
+      result.ok ? (result.pro ? t('Purchases restored — Pro is active.') : t('No previous purchase found.'))
+        : (result.reason || t('Could not restore')),
       result.ok && result.pro ? 'success' : 'info',
     );
   };
@@ -151,40 +164,44 @@ export const Pro: React.FC = () => {
   const manage = async () => {
     if (playReady) { await openPlaySubscriptions(); return; }
     if (!isPortalConfigured()) {
-      showToast('Subscription management is being set up — try again shortly.', 'info');
+      showToast(t('Subscription management is being set up — try again shortly.'), 'info');
       return;
     }
     setManaging(true);
     const result = await openBillingPortal();
     setManaging(false);
-    if (!result.ok) showToast(result.reason || 'Could not open billing portal', 'error');
+    if (!result.ok) showToast(result.reason || t('Could not open billing portal'), 'error');
   };
 
   // Headline + subcopy by state
   const headline = allFree
-    ? <>You have <span className="gradient-text-accent">FitFlow Pro</span></>
+    ? splice(t('You have {pro}'), { pro: <span className="gradient-text-accent">FitFlow Pro</span> })
     : isPaid
-      ? <>You're on <span className="gradient-text-accent">FitFlow Pro</span></>
+      ? splice(t("You're on {pro}"), { pro: <span className="gradient-text-accent">FitFlow Pro</span> })
       : isTrialing
-        ? <><span className="gradient-text-accent">{ent.trialDaysLeft}</span> {ent.trialDaysLeft === 1 ? 'day' : 'days'} left in your trial</>
-        : <>Unlock <span className="gradient-text-accent">FitFlow Pro</span></>;
+        ? splice(ent.trialDaysLeft === 1 ? t('{n} day left in your trial') : t('{n} days left in your trial'), {
+            n: <span className="gradient-text-accent">{ent.trialDaysLeft}</span>,
+          })
+        : splice(t('Unlock {pro}'), { pro: <span className="gradient-text-accent">FitFlow Pro</span> });
 
   const subcopy = allFree
-    ? 'Every Pro feature is unlocked while we’re in launch. No payment, no trial countdown. Train.'
+    ? t('Every Pro feature is unlocked while we’re in launch. No payment, no trial countdown. Train.')
     : isPaid
-      ? 'Thanks for going Pro. The full AI coach, native wearable sync, and unlimited everything are yours.'
+      ? t('Thanks for going Pro. The full AI coach, native wearable sync, and unlimited everything are yours.')
       : isTrialing
-        ? `You’re on a free ${TRIAL_DAYS}-day trial with everything unlocked — no card needed.${showPurchaseUi ? ' Subscribe any time to keep Pro after it ends.' : ''}`
+        ? t('You’re on a free {n}-day trial with everything unlocked — no card needed.', { n: TRIAL_DAYS })
+          + (showPurchaseUi ? ` ${t('Subscribe any time to keep Pro after it ends.')}` : '')
         : ent.status === 'expired'
-          ? `Your free trial has ended.${showPurchaseUi ? ' Subscribe to bring back the full AI coach, Meal Scan, and advanced analytics.' : ''}`
-          : 'The full AI coach. Native wearable sync. Unlimited everything. Built to make every other fitness app obsolete.';
+          ? t('Your free trial has ended.')
+            + (showPurchaseUi ? ` ${t('Subscribe to bring back the full AI coach, Meal Scan, and advanced analytics.')}` : '')
+          : t('The full AI coach. Native wearable sync. Unlimited everything. Built to make every other fitness app obsolete.');
 
   return (
     <div className="pb-28 pt-4 px-5 min-h-screen relative overflow-hidden">
       <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-accent/10 blur-[160px] rounded-full pointer-events-none" />
 
       <header className="relative flex items-center justify-between mb-6">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}>
           <ChevronLeft size={18} />
         </button>
         <LogoMark size={28} />
@@ -212,24 +229,24 @@ export const Pro: React.FC = () => {
               <Crown size={16} />
             </div>
             <div className="flex-1">
-              <p className="text-eyebrow text-accent">{ent.plan === 'yearly' ? 'Yearly plan' : 'Monthly plan'}</p>
+              <p className="text-eyebrow text-accent">{ent.plan === 'yearly' ? t('Yearly plan') : t('Monthly plan')}</p>
               <p className="text-white text-sm font-medium mt-0.5">
                 {ent.cancelAtPeriodEnd
-                  ? `Access until ${fmtDate(ent.renewsAt)}`
-                  : ent.renewsAt ? `Renews ${fmtDate(ent.renewsAt)}` : 'Active'}
+                  ? t('Access until {date}', { date: fmtDate(ent.renewsAt) })
+                  : ent.renewsAt ? t('Renews {date}', { date: fmtDate(ent.renewsAt) }) : t('Active')}
               </p>
             </div>
             <span className="flex items-center gap-1 bg-accent/15 border border-accent/30 text-accent text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full shrink-0">
-              <Check size={10} /> Subscribed
+              <Check size={10} /> {t('Subscribed')}
             </span>
           </div>
           {showPurchaseUi ? (
             <button onClick={manage} disabled={managing} className="btn-3d w-full h-12 disabled:opacity-60">
               <SettingsIcon size={14} />
-              {managing ? 'Opening…' : 'Manage subscription'}
+              {managing ? t('Opening…') : t('Manage subscription')}
             </button>
           ) : (
-            <p className="text-xs text-text-dim">Manage your subscription from the FitFlow web app.</p>
+            <p className="text-xs text-text-dim">{t('Manage your subscription from the FitFlow web app.')}</p>
           )}
         </div>
       )}
@@ -241,8 +258,8 @@ export const Pro: React.FC = () => {
             <Check size={16} />
           </div>
           <div className="flex-1">
-            <p className="text-eyebrow text-accent">Launch perk</p>
-            <p className="text-white text-sm font-medium mt-0.5">All Pro features are free during launch.</p>
+            <p className="text-eyebrow text-accent">{t('Launch perk')}</p>
+            <p className="text-white text-sm font-medium mt-0.5">{t('All Pro features are free during launch.')}</p>
           </div>
         </div>
       )}
@@ -253,7 +270,7 @@ export const Pro: React.FC = () => {
           {PLANS.map(p => {
             const active = plan === p.id;
             const d = priceFor(p.id);
-            const badge = p.id === 'yearly' && yearlySavePct > 0 ? 'Best value' : null;
+            const badge = p.id === 'yearly' && yearlySavePct > 0 ? t('Best value') : null;
             return (
               <button
                 key={p.id}
@@ -265,7 +282,7 @@ export const Pro: React.FC = () => {
                     {badge}
                   </span>
                 )}
-                <p className={`text-xs font-medium ${active ? 'text-accent' : 'text-text-dim'}`}>{p.label}</p>
+                <p className={`text-xs font-medium ${active ? 'text-accent' : 'text-text-dim'}`}>{tDyn(p.label)}</p>
                 <p className="num font-display text-2xl font-bold text-white mt-1 leading-none flex items-baseline flex-wrap gap-x-1">
                   <span>{d.big}</span>
                   <span className="text-sm text-text-dim font-medium">{d.suffix}</span>
@@ -291,10 +308,10 @@ export const Pro: React.FC = () => {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-white font-medium text-sm">{f.title}</p>
+                <p className="text-white font-medium text-sm">{tDyn(f.title)}</p>
                 <Check size={14} className="text-accent shrink-0" />
               </div>
-              <p className="text-xs text-text-dim mt-0.5 leading-relaxed">{f.sub}</p>
+              <p className="text-xs text-text-dim mt-0.5 leading-relaxed">{tDyn(f.sub)}</p>
             </div>
           </motion.div>
         ))}
@@ -302,29 +319,38 @@ export const Pro: React.FC = () => {
 
       {/* Primary CTA */}
       {allFree ? (
-        <button onClick={() => navigate('/')} className="btn-3d w-full h-14">Continue training</button>
+        <button onClick={() => navigate('/')} className="btn-3d w-full h-14">{t('Continue training')}</button>
       ) : isPaid ? (
         <div className="w-full h-14 rounded-2xl bg-accent/15 border border-accent/30 flex items-center justify-center gap-2 text-accent font-bold">
-          <Check size={18} /> Subscribed to FitFlow Pro
+          <Check size={18} /> {t('Subscribed to FitFlow Pro')}
         </div>
       ) : !showPurchaseUi ? (
         <p className="text-center text-xs text-text-mute leading-relaxed">
           {isTrialing
-            ? `Your trial keeps everything unlocked for ${ent.trialDaysLeft} more ${ent.trialDaysLeft === 1 ? 'day' : 'days'}.`
-            : 'Subscriptions are coming to Google Play soon — your progress and data are all set for when they arrive.'}
+            ? (ent.trialDaysLeft === 1
+              ? t('Your trial keeps everything unlocked for 1 more day.')
+              : t('Your trial keeps everything unlocked for {n} more days.', { n: ent.trialDaysLeft }))
+            : t('Subscriptions are coming to Google Play soon — your progress and data are all set for when they arrive.')}
         </p>
       ) : (
         <>
           <button onClick={subscribe} disabled={starting} className="btn-3d w-full h-14 disabled:opacity-60">
-            {starting ? 'Opening checkout…'
-              : isTrialing ? `Subscribe — ${priceFor(plan).big}${plan === 'yearly' ? '/yr' : '/mo'}`
-              : 'Subscribe to FitFlow Pro'}
+            {starting ? t('Opening checkout…')
+              : isTrialing ? (plan === 'yearly'
+                ? t('Subscribe — {price}/yr', { price: priceFor(plan).big })
+                : t('Subscribe — {price}/mo', { price: priceFor(plan).big }))
+              : t('Subscribe to FitFlow Pro')}
           </button>
           <p className="text-center text-xs text-text-mute mt-3 leading-relaxed">
             {isTrialing
-              ? `Your trial keeps everything unlocked for ${ent.trialDaysLeft} more ${ent.trialDaysLeft === 1 ? 'day' : 'days'}. `
-              : `${TRIAL_DAYS}-day free trial included with every new account — no card needed. `}
-            Billed {priceFor(plan).big}{plan === 'yearly' ? '/year' : '/month'}. Cancel anytime.
+              ? (ent.trialDaysLeft === 1
+                ? t('Your trial keeps everything unlocked for 1 more day.')
+                : t('Your trial keeps everything unlocked for {n} more days.', { n: ent.trialDaysLeft }))
+              : t('{n}-day free trial included with every new account — no card needed.', { n: TRIAL_DAYS })}
+            {' '}
+            {plan === 'yearly'
+              ? t('Billed {price}/year. Cancel anytime.', { price: priceFor(plan).big })
+              : t('Billed {price}/month. Cancel anytime.', { price: priceFor(plan).big })}
           </p>
           {playReady && (
             <button
@@ -332,7 +358,7 @@ export const Pro: React.FC = () => {
               disabled={restoring}
               className="block mx-auto mt-3 text-xs text-text-dim hover:text-white underline underline-offset-2 disabled:opacity-50"
             >
-              {restoring ? 'Restoring…' : 'Restore purchases'}
+              {restoring ? t('Restoring…') : t('Restore purchases')}
             </button>
           )}
         </>

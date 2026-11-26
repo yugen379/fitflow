@@ -8,6 +8,7 @@ import {
 } from '../lib/firebase';
 import { friendlyAuthError, isCancellation } from '../lib/authErrors';
 import { isProviderAvailable } from '../lib/authProviders';
+import { t } from '../i18n/i18n';
 
 interface Props {
   onError?: (message: string) => void;
@@ -87,7 +88,7 @@ const ProviderButton: React.FC<
       className={`w-full h-12 rounded-full flex items-center justify-center gap-2.5 text-sm font-semibold active:scale-[0.98] transition-transform disabled:opacity-60 ${className}`}
     >
       {glyph}
-      <span>{signing ? 'Connecting…' : label}</span>
+      <span>{signing ? t('Connecting…') : label}</span>
     </button>
   );
 };
@@ -96,7 +97,7 @@ export const FacebookSignInButton: React.FC<Props> = (props) => (
   <ProviderButton
     {...props}
     providerId="facebook.com"
-    label="Continue with Facebook"
+    label={t('Continue with Facebook')}
     glyph={<FacebookGlyph />}
     /*
      * Facebook's brand blue, which their platform terms require for a
@@ -121,7 +122,7 @@ export const AppleSignInButton: React.FC<Props> = (props) => (
   <ProviderButton
     {...props}
     providerId="apple.com"
-    label="Continue with Apple"
+    label={t('Continue with Apple')}
     glyph={<AppleGlyph />}
     // White-on-black or black-on-white are the only two Apple permits. The
     // white variant works in both themes, and — unlike `bg-white/…` — plain

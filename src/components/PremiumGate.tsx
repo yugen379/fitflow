@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { isProUnlocked, TRIAL_DAYS } from '../lib/billing';
 import { PRO_FEATURES, type Feature } from '../lib/features';
 import { purchaseUiAllowed } from '../services/playBillingService';
+import { msg, t, tDyn } from '../i18n/i18n';
 
 interface PremiumGateProps {
   /**
@@ -34,11 +35,11 @@ const metaFor = (feature: string) =>
 // not have. Selling a subscription on things the user already has, and one
 // thing that does not exist, is the kind of copy that produces refunds.
 const PERKS = [
-  'Unlimited AI Coach chat (free: 3 a day)',
-  'Your full history, not just the last 7 days',
-  'The AI weekly recap, every week',
-  'The 3D Biomechanics Lab',
-  'Unlimited streak freezes + Pro challenges',
+  msg('Unlimited AI Coach chat (free: 3 a day)'),
+  msg('Your full history, not just the last 7 days'),
+  msg('The AI weekly recap, every week'),
+  msg('The 3D Biomechanics Lab'),
+  msg('Unlimited streak freezes + Pro challenges'),
 ];
 
 export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, className, unlocked }) => {
@@ -73,8 +74,8 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
             </div>
             <div className="glass px-4 py-3 rounded-2xl space-y-1">
               <p className="text-eyebrow text-accent">FitFlow Pro</p>
-              <p className="text-white font-display text-base font-bold tracking-tight">{metaFor(feature).title}</p>
-              <p className="text-text-dim text-xs">Tap to unlock</p>
+              <p className="text-white font-display text-base font-bold tracking-tight">{tDyn(metaFor(feature).title)}</p>
+              <p className="text-text-dim text-xs">{t('Tap to unlock')}</p>
             </div>
           </motion.button>
         </div>
@@ -93,7 +94,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
               className="relative bg-surface w-full max-w-md sm:rounded-3xl rounded-t-3xl border border-white/[0.06] p-6 space-y-6 max-h-[92dvh] overflow-x-hidden overflow-y-auto overscroll-contain"
             >
               <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-accent/8 blur-[120px] rounded-full pointer-events-none" />
-              <button onClick={() => setShowModal(false)} className="absolute top-5 right-5 w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white z-10" aria-label="Close">
+              <button onClick={() => setShowModal(false)} className="absolute top-5 right-5 w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white z-10" aria-label={t('Close')}>
                 <X size={16} />
               </button>
 
@@ -103,9 +104,9 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
                 </div>
                 <div>
                   <p className="text-eyebrow text-accent">FitFlow Pro</p>
-                  <h2 className="font-display text-3xl font-bold text-white tracking-tight mt-1">Unlock {metaFor(feature).title}</h2>
+                  <h2 className="font-display text-3xl font-bold text-white tracking-tight mt-1">{t('Unlock {feature}', { feature: tDyn(metaFor(feature).title) })}</h2>
                   {metaFor(feature).pitch && (
-                    <p className="text-text-dim text-sm mt-2 max-w-xs mx-auto leading-relaxed">{metaFor(feature).pitch}</p>
+                    <p className="text-text-dim text-sm mt-2 max-w-xs mx-auto leading-relaxed">{tDyn(metaFor(feature).pitch)}</p>
                   )}
                 </div>
               </div>
@@ -114,7 +115,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
                 {PERKS.map((p, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <Check className="text-accent shrink-0 mt-0.5" size={14} />
-                    <span className="text-white/85 text-sm leading-relaxed">{p}</span>
+                    <span className="text-white/85 text-sm leading-relaxed">{tDyn(p)}</span>
                   </li>
                 ))}
               </ul>
@@ -123,15 +124,15 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({ feature, children, cla
                 {purchaseUiAllowed() && (
                   <div className="flex items-baseline justify-center gap-1">
                     <span className="num font-display text-4xl font-bold text-white">$4.99</span>
-                    <span className="text-text-dim text-sm">/ month · cancel anytime</span>
+                    <span className="text-text-dim text-sm">{t('/ month · cancel anytime')}</span>
                   </div>
                 )}
                 <button onClick={handleUpgrade} className="btn-3d w-full h-13">
                   <Sparkles size={14} />
-                  {purchaseUiAllowed() ? <>See plans &amp; subscribe</> : <>See what's included</>}
+                  {purchaseUiAllowed() ? t('See plans & subscribe') : t("See what's included")}
                 </button>
                 <p className="w-full text-center text-xs text-text-mute">
-                  New accounts get a {TRIAL_DAYS}-day free trial — no card needed.
+                  {t('New accounts get a {TRIAL_DAYS}-day free trial — no card needed.', { TRIAL_DAYS })}
                 </p>
               </div>
             </motion.div>

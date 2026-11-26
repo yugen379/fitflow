@@ -18,6 +18,7 @@ import { initTelemetry, identify } from './lib/telemetry';
 import { warmLikelyRoutes } from './lib/prefetch';
 import { LiquidSkeleton, ParticleField, SpatialPageTransition } from './components/layout/SpatialPageTransition';
 import { DockTabs, type DockTab } from './components/layout/DockTabs';
+import { t } from './i18n/i18n';
 // The bottom nav is the only other eager consumer of the animation library and
 // it never renders on the signed-out first paint, so it loads a beat later
 // rather than holding up the hero.
@@ -66,7 +67,7 @@ const DOCK_TABS: DockTab[] = [
   { path: '/coach', Page: Coach },
   { path: '/profile', Page: Profile },
 ];
-const DOCK_PATHS = new Set(DOCK_TABS.map((t) => t.path));
+const DOCK_PATHS = new Set(DOCK_TABS.map((tab) => tab.path));
 
 /** Sign out without dragging the auth module onto the boot path. */
 const signOutOfApp = async () => {
@@ -126,12 +127,12 @@ const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) 
     if (shouldAsk) {
       sessionStorage.setItem(askedKey!, '1');
       // Wait a moment so the prompt doesn't slam the user at login.
-      const t = setTimeout(() => {
+      const timer = setTimeout(() => {
         requestNotificationPermission(user!.uid).then(token => {
-          if (token) showToast('Notifications on', 'info');
+          if (token) showToast(t('Notifications on'), 'info');
         });
       }, 1500);
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     }
   }, [user, profile]);
 
@@ -160,7 +161,7 @@ const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) 
   
   if (loading) {
     return (
-      <LoadingBar fullScreen label="Loading your training data" />
+      <LoadingBar fullScreen label={t('Loading your training data')} />
     );
   }
   
@@ -180,22 +181,21 @@ const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) 
         <div className="w-12 h-12 rounded-2xl bg-accent-2/12 border border-accent-2/25 flex items-center justify-center text-accent-2">
           <WifiOff size={22} />
         </div>
-        <h1 className="font-display text-xl font-bold text-white">Can&rsquo;t reach your data</h1>
+        <h1 className="font-display text-xl font-bold text-white">{t('Can’t reach your data')}</h1>
         <p className="text-sm text-text-dim leading-relaxed max-w-xs">
-          You&rsquo;re signed in, but FitFlow couldn&rsquo;t load your profile. This is almost always a
-          connection problem rather than anything wrong with your account.
+          {t('You’re signed in, but FitFlow couldn’t load your profile. This is almost always a connection problem rather than anything wrong with your account.')}
         </p>
         <button
           onClick={retryProfile}
           className="btn-3d h-12 px-8 mt-2"
         >
-          Try again
+          {t('Try again')}
         </button>
         <button
           onClick={() => { void signOutOfApp(); }}
           className="text-xs text-text-mute underline underline-offset-4 mt-1"
         >
-          Sign out
+          {t('Sign out')}
         </button>
 
         {/* The actual reason, verbatim. Small and monospaced so it reads as
@@ -300,18 +300,18 @@ const LoginView: React.FC = () => {
           </div>
 
           <h1 className="ff-rise ff-d1 font-display text-4xl font-extrabold text-white mt-5 tracking-tight leading-[0.95]">
-            Train smarter.<br/>
-            <span className="gradient-text-accent">Move farther.</span>
+            {t('Train smarter.')}<br/>
+            <span className="gradient-text-accent">{t('Move farther.')}</span>
           </h1>
 
           <p className="ff-rise ff-d2 text-text-dim text-sm font-medium mt-3 max-w-[300px] leading-relaxed">
-            AI workouts, nutrition, recovery and community.
+            {t('AI workouts, nutrition, recovery and community.')}
           </p>
 
           {/* Chips rather than the old two-column list: same four proof points,
               roughly half the vertical space, which the form now needs. */}
           <ul className="ff-rise ff-d3 mt-4 flex flex-wrap justify-center gap-1.5">
-            {['AI coach', 'Food scan', 'Live workouts', 'Wearable sync'].map(f => (
+            {[t('AI coach'), t('Food scan'), t('Live workouts'), t('Wearable sync')].map(f => (
               <li
                 key={f}
                 className="flex items-center gap-1.5 text-[11px] font-medium text-white/75 bg-white/[0.04] border border-white/10 rounded-full px-2.5 py-1"
@@ -336,7 +336,7 @@ const LoginView: React.FC = () => {
         {showEmail && anySocial && (
           <div className="ff-rise-lg ff-d4 flex items-center gap-3 my-6" aria-hidden>
             <span className="h-px flex-1 bg-white/10" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-mute">or continue with</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-mute">{t('or continue with')}</span>
             <span className="h-px flex-1 bg-white/10" />
           </div>
         )}
@@ -348,10 +348,12 @@ const LoginView: React.FC = () => {
         </div>
 
         <p className="text-center text-xs text-text-mute mt-6 pb-6">
-          By continuing you agree to our{' '}
-          <a href="/terms" className="text-text-dim hover:text-accent underline-offset-2 hover:underline">Terms</a>{' '}
-          and{' '}
-          <a href="/privacy" className="text-text-dim hover:text-accent underline-offset-2 hover:underline">Privacy Policy</a>.
+          {/* One whole sentence for translators; the two links are spliced in at
+              their {placeholders} so word order can change per language. */}
+          {t('By continuing you agree to our {terms} and {privacy}.').split(/(\{terms\}|\{privacy\})/).map((part, i) =>
+            part === '{terms}' ? <a key={i} href="/terms" className="text-text-dim hover:text-accent underline-offset-2 hover:underline">{t('Terms')}</a>
+            : part === '{privacy}' ? <a key={i} href="/privacy" className="text-text-dim hover:text-accent underline-offset-2 hover:underline">{t('Privacy Policy')}</a>
+            : <React.Fragment key={i}>{part}</React.Fragment>)}
         </p>
       </div>
     </div>
@@ -382,7 +384,7 @@ export default function App() {
                 each route had its own ProtectedRoute, so nothing could persist.) */}
             <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
               {/* Dock tabs render inside ProtectedRoute via DockTabs. */}
-              {DOCK_TABS.map((t) => <Route key={t.path} path={t.path} element={null} />)}
+              {DOCK_TABS.map((tab) => <Route key={tab.path} path={tab.path} element={null} />)}
               <Route path="/community" element={lazyRoute(<Community />)} />
               <Route path="/onboarding" element={lazyRoute(<Onboarding />)} />
               <Route path="/wellness" element={lazyRoute(<Wellness />)} />

@@ -74,7 +74,8 @@ export const Logo: React.FC<LogoProps> = ({ className = '', showText = true, siz
           className={`font-display font-extrabold tracking-tight text-white ${s.text}`}
           style={{ letterSpacing: '-0.035em' }}
         >
-          Fit<span className="text-accent">Flow</span>
+          {/* The brand name: never translated. */}
+          {'Fit'}<span className="text-accent">{'Flow'}</span>
         </span>
       )}
     </div>

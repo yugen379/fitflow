@@ -10,20 +10,22 @@
  * `friendlyAuthError` so existing call sites are unchanged.
  */
 
+import { msg, t, tDyn } from '../i18n/i18n';
+
 /** Sign-in methods the app offers, in the order the login screen shows them. */
 export type ProviderKind = 'password' | 'google.com' | 'facebook.com' | 'apple.com';
 
 export const PROVIDER_LABELS: Record<string, string> = {
-  password: 'email and password',
+  password: msg('email and password'),
   'google.com': 'Google',
   'facebook.com': 'Facebook',
   'apple.com': 'Apple',
-  emailLink: 'an email link',
+  emailLink: msg('an email link'),
 };
 
 /** Human name for a Firebase provider id, for use inside a sentence. */
 export const providerLabel = (providerId?: string | null): string =>
-  (providerId && PROVIDER_LABELS[providerId]) || 'another sign-in method';
+  tDyn((providerId && PROVIDER_LABELS[providerId]) || '') || t('another sign-in method');
 
 /**
  * 8, not Firebase's 6.
@@ -56,29 +58,29 @@ export const normalizeEmail = (raw: string): string => (raw || '').trim().toLowe
  */
 export const validateEmail = (raw: string): FieldCheck => {
   const email = normalizeEmail(raw);
-  if (!email) return { ok: false, message: 'Enter your email address.' };
-  if (/\s/.test(email)) return { ok: false, message: 'Email addresses cannot contain spaces.' };
+  if (!email) return { ok: false, message: t('Enter your email address.') };
+  if (/\s/.test(email)) return { ok: false, message: t('Email addresses cannot contain spaces.') };
   if (!/^[^@]+@[^@]+$/.test(email)) {
-    return { ok: false, message: 'That does not look like an email address — it needs one @.' };
+    return { ok: false, message: t('That does not look like an email address — it needs one @.') };
   }
   const domain = email.slice(email.indexOf('@') + 1);
   if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
-    return { ok: false, message: 'Check the part after the @ — it needs a domain like gmail.com.' };
+    return { ok: false, message: t('Check the part after the @ — it needs a domain like gmail.com.') };
   }
-  if (email.length > 254) return { ok: false, message: 'That email address is too long.' };
+  if (email.length > 254) return { ok: false, message: t('That email address is too long.') };
   return { ok: true };
 };
 
 export const validatePassword = (password: string): FieldCheck => {
-  if (!password) return { ok: false, message: 'Enter a password.' };
+  if (!password) return { ok: false, message: t('Enter a password.') };
   if (password.length < PASSWORD_MIN_LENGTH) {
-    return { ok: false, message: `Use at least ${PASSWORD_MIN_LENGTH} characters.` };
+    return { ok: false, message: t('Use at least {n} characters.', { n: PASSWORD_MIN_LENGTH }) };
   }
   if (password.length > PASSWORD_MAX_LENGTH) {
-    return { ok: false, message: 'That password is too long.' };
+    return { ok: false, message: t('That password is too long.') };
   }
-  if (!/[a-zA-Z]/.test(password)) return { ok: false, message: 'Include at least one letter.' };
-  if (!/[0-9]/.test(password)) return { ok: false, message: 'Include at least one number.' };
+  if (!/[a-zA-Z]/.test(password)) return { ok: false, message: t('Include at least one letter.') };
+  if (!/[0-9]/.test(password)) return { ok: false, message: t('Include at least one number.') };
   return { ok: true };
 };
 
@@ -136,75 +138,75 @@ export const friendlyAuthError = (code?: string): string => {
   switch (code) {
     // ── Domain / configuration ────────────────────────────────────────────
     case 'auth/unauthorized-domain':
-      return 'This domain is not authorized. Add it in Firebase Console → Authentication → Settings → Authorized domains.';
+      return t('This domain is not authorized. Add it in Firebase Console → Authentication → Settings → Authorized domains.');
     case 'auth/operation-not-allowed':
-      return 'That sign-in method is turned off. Enable it in Firebase Console → Authentication → Sign-in method.';
+      return t('That sign-in method is turned off. Enable it in Firebase Console → Authentication → Sign-in method.');
     case 'auth/invalid-api-key':
     case 'auth/app-not-authorized':
-      return 'This app build is not authorized for sign-in. Please update to the latest version.';
+      return t('This app build is not authorized for sign-in. Please update to the latest version.');
 
     // ── Popup / redirect mechanics ────────────────────────────────────────
     case 'auth/popup-blocked':
-      return 'Popup blocked. Allow popups for this site, or use "Sign in another way".';
+      return t('Popup blocked. Allow popups for this site, or use "Sign in another way".');
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
     case 'auth/user-cancelled':
     case 'auth/native-cancelled':
-      return 'Sign-in cancelled.';
+      return t('Sign-in cancelled.');
     case 'auth/web-storage-unsupported':
-      return 'Browser storage is disabled. Enable cookies/localStorage and try again.';
+      return t('Browser storage is disabled. Enable cookies/localStorage and try again.');
 
     // ── Email + password ──────────────────────────────────────────────────
     case 'auth/invalid-email':
-      return 'That email address is not valid. Check it and try again.';
+      return t('That email address is not valid. Check it and try again.');
     case 'auth/missing-password':
-      return 'Enter your password.';
+      return t('Enter your password.');
     case 'auth/email-already-in-use':
-      return 'An account already exists with that email. Sign in instead, or use "Forgot password?".';
+      return t('An account already exists with that email. Sign in instead, or use "Forgot password?".');
     case 'auth/weak-password':
-      return `Password too weak. Use at least ${PASSWORD_MIN_LENGTH} characters with a letter and a number.`;
+      return t('Password too weak. Use at least {n} characters with a letter and a number.', { n: PASSWORD_MIN_LENGTH });
     case 'auth/user-not-found':
-      return 'No account found with that email. Create one below.';
+      return t('No account found with that email. Create one below.');
     case 'auth/wrong-password':
-      return 'Incorrect password. Try again, or tap "Forgot password?".';
+      return t('Incorrect password. Try again, or tap "Forgot password?".');
     // Modern Firebase collapses user-not-found and wrong-password into this one
     // on purpose — telling an attacker which emails are registered is an
     // account-enumeration leak. The copy must not un-collapse it.
     case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials':
-      return 'Email or password is incorrect. Check both, or tap "Forgot password?".';
+      return t('Email or password is incorrect. Check both, or tap "Forgot password?".');
     case 'auth/too-many-requests':
-      return 'Too many attempts. Wait a few minutes, or reset your password to get straight back in.';
+      return t('Too many attempts. Wait a few minutes, or reset your password to get straight back in.');
     case 'auth/user-disabled':
-      return 'This account has been disabled. Contact fitflow2000@gmail.com.';
+      return t('This account has been disabled. Contact fitflow2000@gmail.com.');
     case 'auth/requires-recent-login':
-      return 'For your security, sign in again before making this change.';
+      return t('For your security, sign in again before making this change.');
     case 'auth/missing-email':
-      return 'Enter the email address for your account.';
+      return t('Enter the email address for your account.');
 
     // ── Cross-provider collisions ─────────────────────────────────────────
     case 'auth/account-exists-with-different-credential':
-      return 'You already have an account with that email using a different sign-in method. Use that one, then link this provider from Settings.';
+      return t('You already have an account with that email using a different sign-in method. Use that one, then link this provider from Settings.');
     case 'auth/credential-already-in-use':
-      return 'That account is already linked to a different FitFlow user.';
+      return t('That account is already linked to a different FitFlow user.');
     case 'auth/provider-already-linked':
-      return 'That sign-in method is already linked to your account.';
+      return t('That sign-in method is already linked to your account.');
 
     // ── Transport ─────────────────────────────────────────────────────────
     case 'auth/network-request-failed':
-      return 'Network error. Check your connection and try again.';
+      return t('Network error. Check your connection and try again.');
     case 'auth/timeout':
-      return 'The sign-in service timed out. Try again.';
+      return t('The sign-in service timed out. Try again.');
 
     // ── Native provider plumbing ──────────────────────────────────────────
     case 'auth/native-no-id-token':
-      return 'Sign-in did not complete. Try again, or use another method.';
+      return t('Sign-in did not complete. Try again, or use another method.');
     case 'auth/native-no-access-token':
-      return 'Facebook did not return a login token. Try again, or use another method.';
+      return t('Facebook did not return a login token. Try again, or use another method.');
     case 'auth/provider-not-configured':
-      return 'That sign-in method is not available in this build yet. Please use another one.';
+      return t('That sign-in method is not available in this build yet. Please use another one.');
 
     default:
-      return code ? `Sign-in failed (${code}).` : 'Sign-in failed. Please try again.';
+      return code ? t('Sign-in failed ({code}).', { code }) : t('Sign-in failed. Please try again.');
   }
 };

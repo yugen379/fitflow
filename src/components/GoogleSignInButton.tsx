@@ -8,6 +8,7 @@ import {
   friendlyAuthError,
 } from '../lib/firebase';
 import { ensureGsiScript } from '../lib/gsi';
+import { t } from '../i18n/i18n';
 
 const GoogleGlyph = () => (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -103,7 +104,7 @@ const NativeGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange })
       className="btn-3d w-full h-14 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-60"
     >
       <GoogleGlyph />
-      <span>{signing ? 'Connecting…' : 'Continue with Google'}</span>
+      <span>{signing ? t('Connecting…') : t('Continue with Google')}</span>
     </button>
   );
 };
@@ -217,7 +218,7 @@ const WebGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) =>
         className="btn-3d w-full h-14 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-60"
       >
         <GoogleGlyph />
-        <span>{signing ? 'Connecting…' : 'Continue with Google'}</span>
+        <span>{signing ? t('Connecting…') : t('Continue with Google')}</span>
       </button>
     );
   }
@@ -225,7 +226,7 @@ const WebGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) =>
   return (
     <div className="w-full flex flex-col items-center gap-3">
       <div ref={containerRef} className={signing ? 'pointer-events-none opacity-60' : ''} />
-      {signing && <p className="text-xs text-text-dim">Connecting…</p>}
+      {signing && <p className="text-xs text-text-dim">{t('Connecting…')}</p>}
       {gsiReady === null && (
         <div className="h-14 w-full glass rounded-full animate-pulse" aria-hidden />
       )}
@@ -258,7 +259,7 @@ const WebGoogleSignInButton: React.FC<Props> = ({ onError, onSigningChange }) =>
             for the whole group, and the thing it actually does is retry
             GOOGLE by redirect.
           */}
-          {stalled ? 'Stuck on the Google screen? Try the other way' : 'Trouble with Google? Try the other way'}
+          {stalled ? t('Stuck on the Google screen? Try the other way') : t('Trouble with Google? Try the other way')}
         </button>
       ) : null}
     </div>

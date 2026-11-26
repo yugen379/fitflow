@@ -9,6 +9,7 @@ import {
   PASSWORD_MIN_LENGTH,
   type PasswordStrength,
 } from '../lib/authErrors';
+import { msg, t, tDyn } from '../i18n/i18n';
 
 export type EmailAuthMode = 'signin' | 'signup' | 'reset';
 
@@ -29,9 +30,9 @@ const FIELD_CLASS =
   'focus:border-accent/60 focus:bg-white/[0.06] disabled:opacity-60';
 
 const STRENGTH_META: Record<PasswordStrength, { label: string; bars: number; className: string }> = {
-  weak: { label: 'Weak', bars: 1, className: 'bg-accent-2' },
-  fair: { label: 'Fair', bars: 2, className: 'bg-accent-4' },
-  strong: { label: 'Strong', bars: 3, className: 'bg-accent' },
+  weak: { label: msg('Weak'), bars: 1, className: 'bg-accent-2' },
+  fair: { label: msg('Fair'), bars: 2, className: 'bg-accent-4' },
+  strong: { label: msg('Strong'), bars: 3, className: 'bg-accent' },
 };
 
 const Field: React.FC<{
@@ -116,11 +117,11 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
           // and refusing to even TRY it locks a real user out of their own data.
           password
           ? { ok: true as const }
-          : { ok: false as const, message: 'Enter your password.' };
+          : { ok: false as const, message: t('Enter your password.') };
       if (!passwordCheck.ok) nextErrors.password = passwordCheck.message;
     }
 
-    if (isSignup && !name.trim()) nextErrors.name = 'What should the coach call you?';
+    if (isSignup && !name.trim()) nextErrors.name = t('What should the coach call you?');
 
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
@@ -167,7 +168,7 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
     return (
       <div className="w-full text-center py-2">
         <CheckCircle2 className="w-8 h-8 text-accent mx-auto" aria-hidden />
-        <p className="mt-3 text-sm text-text font-semibold">Check your inbox</p>
+        <p className="mt-3 text-sm text-text font-semibold">{t('Check your inbox')}</p>
         {/*
           Deliberately says "if". Confirming that an address HAS an account is
           an enumeration oracle — anyone could test a list of emails against
@@ -175,7 +176,7 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
           the same reason.
         */}
         <p className="mt-1.5 text-xs text-text-dim leading-relaxed max-w-[280px] mx-auto">
-          If {email} has a FitFlow account, a reset link is on its way. It expires in an hour.
+          {t('If {email} has a FitFlow account, a reset link is on its way. It expires in an hour.', { email })}
         </p>
         <button
           type="button"
@@ -183,7 +184,7 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
           className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-accent active:opacity-70"
         >
           <ArrowLeft className="w-3.5 h-3.5" aria-hidden />
-          Back to sign in
+          {t('Back to sign in')}
         </button>
       </div>
     );
@@ -192,13 +193,13 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
   return (
     <form onSubmit={handleSubmit} className="w-full space-y-3.5" noValidate>
       {isSignup && (
-        <Field label="Name" htmlFor="ff-name" error={errors.name}>
+        <Field label={t('Name')} htmlFor="ff-name" error={errors.name}>
           <input
             id="ff-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Alex"
+            placeholder={t('Alex')}
             autoComplete="name"
             autoCapitalize="words"
             disabled={busy}
@@ -209,14 +210,14 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
         </Field>
       )}
 
-      <Field label="Email" htmlFor="ff-email" error={errors.email}>
+      <Field label={t('Email')} htmlFor="ff-email" error={errors.email}>
         <input
           id="ff-email"
           ref={emailRef}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@email.com"
+          placeholder={t('you@email.com')}
           autoComplete="email"
           inputMode="email"
           autoCapitalize="none"
@@ -230,14 +231,14 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
       </Field>
 
       {!isReset && (
-        <Field label="Password" htmlFor="ff-password" error={errors.password}>
+        <Field label={t('Password')} htmlFor="ff-password" error={errors.password}>
           <div className="relative">
             <input
               id="ff-password"
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={isSignup ? `At least ${PASSWORD_MIN_LENGTH} characters` : '••••••••'}
+              placeholder={isSignup ? t('At least {n} characters', { n: PASSWORD_MIN_LENGTH }) : '••••••••'}
               // The right token matters: with `current-password` on a sign-up
               // form a password manager offers the OLD password instead of
               // generating a new one.
@@ -256,7 +257,7 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
               // Typos are the main cause of failed sign-ins on a phone
               // keyboard, and this is the only way to catch one before
               // spending a round trip on it.
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? t('Hide password') : t('Show password')}
               aria-pressed={showPassword}
               className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-text-mute active:text-text"
             >
@@ -277,7 +278,7 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
                 ))}
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-mute">
-                {STRENGTH_META[strength].label}
+                {tDyn(STRENGTH_META[strength].label)}
               </span>
             </div>
           )}
@@ -293,15 +294,15 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
         <span>
           {busy
             ? isReset
-              ? 'Sending…'
+              ? t('Sending…')
               : isSignup
-                ? 'Creating account…'
-                : 'Signing in…'
+                ? t('Creating account…')
+                : t('Signing in…')
             : isReset
-              ? 'Send reset link'
+              ? t('Send reset link')
               : isSignup
-                ? 'Create account'
-                : 'Sign in'}
+                ? t('Create account')
+                : t('Sign in')}
         </span>
       </button>
 
@@ -314,11 +315,11 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
         >
           {isSignup ? (
             <>
-              Have an account? <span className="text-accent font-semibold">Sign in</span>
+              {t('Have an account?')} <span className="text-accent font-semibold">{t('Sign in')}</span>
             </>
           ) : (
             <>
-              New here? <span className="text-accent font-semibold">Create account</span>
+              {t('New here?')} <span className="text-accent font-semibold">{t('Create account')}</span>
             </>
           )}
         </button>
@@ -330,7 +331,7 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
             disabled={busy}
             className="text-xs text-text-mute underline underline-offset-4 active:opacity-70 disabled:opacity-40"
           >
-            {isReset ? 'Back to sign in' : 'Forgot password?'}
+            {isReset ? t('Back to sign in') : t('Forgot password?')}
           </button>
         )}
       </div>
@@ -338,7 +339,7 @@ export const EmailPasswordForm: React.FC<Props> = ({ onError, onBusyChange, init
       {isReset && (
         <p className="flex items-start gap-2 text-[11px] text-text-mute leading-relaxed">
           <Mail className="w-3.5 h-3.5 mt-px shrink-0" aria-hidden />
-          We will email you a link to set a new password.
+          {t('We will email you a link to set a new password.')}
         </p>
       )}
     </form>

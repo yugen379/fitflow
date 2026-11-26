@@ -20,11 +20,12 @@ import { Monitor, Moon, Sun } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../hooks/useTheme';
+import { msg, t, tDyn } from '../../i18n/i18n';
 
 const LABELS = {
-  light: 'Light mode',
-  dark: 'Dark mode',
-  system: 'Match system',
+  light: msg('Light mode'),
+  dark: msg('Dark mode'),
+  system: msg('Match system'),
 } as const;
 
 const NEXT = {
@@ -45,8 +46,8 @@ export const ThemeToggle: React.FC<{ className?: string }> = ({ className }) => 
         cycle();
       }}
       // The control announces what it IS, and the title says what tapping does.
-      aria-label={`Theme: ${LABELS[choice]}. Switch to ${LABELS[NEXT[choice]]}.`}
-      title={LABELS[choice]}
+      aria-label={t('Theme: {current}. Switch to {next}.', { current: tDyn(LABELS[choice]), next: tDyn(LABELS[NEXT[choice]]) })}
+      title={tDyn(LABELS[choice])}
       className={cn(
         'relative w-11 h-11 rounded-2xl flex items-center justify-center shrink-0',
         'bg-white/[0.04] border border-white/[0.07] text-text-dim',
