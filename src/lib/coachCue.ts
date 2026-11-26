@@ -14,6 +14,14 @@
 // a pace, a split or a distance. The cues say what to do with effort, which is
 // what the recorded data actually supports.
 
+import { getLanguage, msg, t, tDyn, type Lang } from '../i18n/i18n';
+
+/** BCP-47 voice for spoken coaching in the app's language. */
+const SPEECH_LANG: Record<Lang, string> = { en: 'en-US', ms: 'ms-MY', id: 'id-ID', es: 'es-ES', pt: 'pt-BR', hi: 'hi-IN' };
+
+/** The `lang` to put on a SpeechSynthesisUtterance so cues are read in the app's language. */
+export const speechLang = (): string => SPEECH_LANG[getLanguage()] ?? 'en-US';
+
 export type Modality = 'strength' | 'cardio' | 'cycling' | 'swimming';
 
 export type Trend = 'up' | 'down' | 'stable';
@@ -45,28 +53,28 @@ export interface CoachCue {
 
 const TREND_LABEL: Record<Modality, Record<Trend, string>> = {
   // Strength keeps the lifting vocabulary the user already knows.
-  strength: { up: '↑ Progressing', down: '↓ Deload', stable: '→ Maintain' },
+  strength: { up: msg('↑ Progressing'), down: msg('↓ Deload'), stable: msg('→ Maintain') },
   // "Deload" is a barbell word; endurance athletes recover, they do not deload.
-  cardio: { up: '↑ Build', down: '↓ Recover', stable: '→ Maintain' },
-  cycling: { up: '↑ Build', down: '↓ Recover', stable: '→ Maintain' },
-  swimming: { up: '↑ Build', down: '↓ Recover', stable: '→ Maintain' },
+  cardio: { up: msg('↑ Build'), down: msg('↓ Recover'), stable: msg('→ Maintain') },
+  cycling: { up: msg('↑ Build'), down: msg('↓ Recover'), stable: msg('→ Maintain') },
+  swimming: { up: msg('↑ Build'), down: msg('↓ Recover'), stable: msg('→ Maintain') },
 };
 
 const ENDURANCE_TEXT: Record<Exclude<Modality, 'strength'>, Record<Trend, string>> = {
   cardio: {
-    up: 'Last one felt easy — add five minutes or lift the pace a notch.',
-    down: 'Last one was hard. Keep it conversational today.',
-    stable: 'Hold a steady pace you could repeat tomorrow.',
+    up: msg('Last one felt easy — add five minutes or lift the pace a notch.'),
+    down: msg('Last one was hard. Keep it conversational today.'),
+    stable: msg('Hold a steady pace you could repeat tomorrow.'),
   },
   cycling: {
-    up: 'Last ride felt easy — add five minutes or push a harder gear.',
-    down: 'Last ride was hard. Spin light and keep the legs fresh.',
-    stable: 'Hold a steady cadence you could sustain for the whole ride.',
+    up: msg('Last ride felt easy — add five minutes or push a harder gear.'),
+    down: msg('Last ride was hard. Spin light and keep the legs fresh.'),
+    stable: msg('Hold a steady cadence you could sustain for the whole ride.'),
   },
   swimming: {
-    up: 'Last swim felt easy — add a few lengths or shorten your rest.',
-    down: 'Last swim was hard. Swim easy and focus on a long stroke.',
-    stable: 'Hold your pace and keep the stroke long and relaxed.',
+    up: msg('Last swim felt easy — add a few lengths or shorten your rest.'),
+    down: msg('Last swim was hard. Swim easy and focus on a long stroke.'),
+    stable: msg('Hold your pace and keep the stroke long and relaxed.'),
   },
 };
 
@@ -98,11 +106,11 @@ export const coachCueFor = (
   formatLoad: (kg: number) => string = (kg) => `${tidyWeight(kg)}kg`,
 ): CoachCue => {
   const safeTrend: Trend = trend === 'up' || trend === 'down' ? trend : 'stable';
-  const trendLabel = TREND_LABEL[modality][safeTrend];
+  const trendLabel = tDyn(TREND_LABEL[modality][safeTrend]);
 
   if (isEndurance(modality)) {
     return {
-      text: ENDURANCE_TEXT[modality][safeTrend],
+      text: tDyn(ENDURANCE_TEXT[modality][safeTrend]),
       highlight: '',
       trendLabel,
     };
@@ -110,6 +118,6 @@ export const coachCueFor = (
 
   const n = Number(suggestion.suggestedWeight);
   const load = formatLoad(Number.isFinite(n) && n >= 0 ? n : 0);
-  const highlight = `${load} × ${tidyReps(suggestion.suggestedReps)} reps`;
-  return { text: `Try ${highlight}`, highlight, trendLabel };
+  const highlight = t('{load} × {n} reps', { load, n: tidyReps(suggestion.suggestedReps) });
+  return { text: t('Try {load}', { load: highlight }), highlight, trendLabel };
 };

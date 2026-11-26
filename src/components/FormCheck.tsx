@@ -4,6 +4,8 @@ import { X, Volume2, VolumeX, Sparkles, AlertTriangle, CheckCircle2, Camera as C
 import { analyzeFormFrame, FormFeedback } from '../services/geminiService';
 import { PoseOverlay } from './PoseOverlay';
 import type { FormVerdict } from '../lib/formRules';
+import { speechLang } from '../lib/coachCue';
+import { t, tDyn } from '../i18n/i18n';
 
 export interface FormCheckSummary {
   exerciseName: string;
@@ -106,14 +108,16 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
   const [countdown, setCountdown] = useState(COUNTDOWN_S);
   useEffect(() => {
     if (countdown <= 0) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setCountdown((c) => c - 1);
       if (voiceOn && window.speechSynthesis) {
         window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(countdown - 1 > 0 ? String(countdown - 1) : 'Go'));
+        const u = new SpeechSynthesisUtterance(countdown - 1 > 0 ? String(countdown - 1) : t('Go'));
+        u.lang = speechLang();
+        window.speechSynthesis.speak(u);
       }
     }, 1000);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [countdown, voiceOn]);
   const counting = countdown > 0;
   // Measured, on-device verdict — updates ~20x/sec, independent of Gemini.
@@ -137,7 +141,8 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
 
     if (voiceOn && v.status === 'danger' && cue && cue !== lastMeasuredSpokenRef.current && window.speechSynthesis) {
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(cue);
+      const u = new SpeechSynthesisUtterance(tDyn(cue));
+      u.lang = speechLang();
       u.rate = 1.05;
       window.speechSynthesis.speak(u);
       lastMeasuredSpokenRef.current = cue;
@@ -150,7 +155,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
     setError(null);
     try {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: mode, width: { ideal: 720 }, height: { ideal: 1280 } },
@@ -162,14 +167,14 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
         await videoRef.current.play().catch(() => {});
       }
     } catch (e: any) {
-      setError(e?.message?.includes('Permission') ? 'Camera access denied.' : 'Could not start camera.');
+      setError(e?.message?.includes('Permission') ? t('Camera access denied.') : t('Could not start camera.'));
     }
   }, []);
 
   useEffect(() => {
     start(facingMode);
     return () => {
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current?.getTracks().forEach(track => track.stop());
       if (intervalRef.current) clearInterval(intervalRef.current);
       window.speechSynthesis?.cancel();
     };
@@ -203,6 +208,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
       if (voiceOn && fb.cue && fb.cue !== lastSpokenRef.current && window.speechSynthesis) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(fb.cue);
+        u.lang = speechLang();
         u.rate = 1.05;
         window.speechSynthesis.speak(u);
         lastSpokenRef.current = fb.cue;
@@ -229,7 +235,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
   const shownStatus = verdict?.status ?? feedback?.status;
   const shownCue =
     verdict
-      ? (verdict.issues[0]?.cue ?? 'Good form — hold that.')
+      ? (verdict.issues[0]?.cue ? tDyn(verdict.issues[0].cue) : t('Good form — hold that.'))
       : feedback?.cue;
   const shownDetail = verdict ? feedback?.cue : feedback?.details;
   const shownScore = verdict ? Math.round(verdict.score / 10) : feedback?.rating;
@@ -254,35 +260,35 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
     >
       <div className="px-5 pt-5 pb-3 flex justify-between items-center">
         <div>
-          <p className="text-eyebrow text-accent">AI form check</p>
+          <p className="text-eyebrow text-accent">{t('AI form check')}</p>
           <h2 className="font-display text-xl font-bold text-white tracking-tight">{exerciseName}</h2>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setCountdown(COUNTDOWN_S)}
             className="h-9 px-3 rounded-full bg-white/[0.06] flex items-center gap-1.5 text-xs font-bold text-accent tabular-nums"
-            aria-label="Restart 5 second timer"
+            aria-label={t('Restart 5 second timer')}
           >
             <Timer size={14} /> {counting ? `${countdown}s` : '5s'}
           </button>
           <button
             onClick={() => setVoiceOn(v => !v)}
             className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${voiceOn ? 'bg-accent/12 border-accent/30 text-accent' : 'glass text-text-dim'}`}
-            aria-label="Toggle voice"
+            aria-label={t('Toggle voice')}
           >
             {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
           <button
             onClick={() => setFacingMode(m => m === 'user' ? 'environment' : 'user')}
             className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white"
-            aria-label="Flip camera"
+            aria-label={t('Flip camera')}
           >
             <RefreshCcw size={16} />
           </button>
           <button
             onClick={handleClose}
             className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white"
-            aria-label="Close"
+            aria-label={t('Close')}
           >
             <X size={18} />
           </button>
@@ -303,7 +309,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
 
         {counting && !error && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 pointer-events-none">
-            <p className="text-eyebrow text-white/80 mb-2">Get into position</p>
+            <p className="text-eyebrow text-white/80 mb-2">{t('Get into position')}</p>
             <motion.span
               key={countdown}
               initial={{ scale: 1.6, opacity: 0 }}
@@ -312,7 +318,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
             >
               {countdown}
             </motion.span>
-            <p className="text-xs text-white/70 mt-3">AI starts checking your form at 0</p>
+            <p className="text-xs text-white/70 mt-3">{t('AI starts checking your form at 0')}</p>
           </div>
         )}
 
@@ -332,7 +338,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
         {poseReady === null && !error && (
           <div className="absolute inset-x-0 bottom-24 flex justify-center pointer-events-none">
             <div className="glass rounded-full px-4 py-2 text-xs text-text-dim">
-              Loading body tracking…
+              {t('Loading body tracking…')}
             </div>
           </div>
         )}
@@ -340,7 +346,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
         {poseReady === true && !verdict && !error && (
           <div className="absolute inset-x-0 bottom-24 flex justify-center pointer-events-none">
             <div className="glass rounded-full px-4 py-2 text-xs text-text-dim">
-              Step back so your whole body is in frame
+              {t('Step back so your whole body is in frame')}
             </div>
           </div>
         )}
@@ -349,7 +355,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
           <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center bg-bg/80">
             <CameraIcon size={36} className="text-text-dim mb-3" />
             <p className="text-white font-medium">{error}</p>
-            <button onClick={() => start(facingMode)} className="btn-3d mt-5 h-11 px-6">Try again</button>
+            <button onClick={() => start(facingMode)} className="btn-3d mt-5 h-11 px-6">{t('Try again')}</button>
           </div>
         )}
 
@@ -381,7 +387,7 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
         <div className="absolute bottom-4 left-4 flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${isAnalyzing ? 'bg-accent animate-pulse' : 'bg-accent/40'}`} />
           <span className="text-xs text-white/70 font-medium">
-            {paused ? 'Paused' : isAnalyzing ? 'Analyzing…' : `Live · every ${INTERVAL_MS / 1000}s`}
+            {paused ? t('Paused') : isAnalyzing ? t('Analyzing…') : t('Live · every {n}s', { n: INTERVAL_MS / 1000 })}
           </span>
         </div>
       </div>
@@ -392,13 +398,13 @@ export const FormCheck: React.FC<Props> = ({ exerciseName, onClose }) => {
             onClick={() => setPaused(p => !p)}
             className="flex-1 btn-ghost h-12"
           >
-            {paused ? 'Resume' : 'Pause'}
+            {paused ? t('Resume') : t('Pause')}
           </button>
           <button
             onClick={handleClose}
             className="flex-1 btn-3d h-12"
           >
-            Done
+            {t('Done')}
           </button>
         </div>
         {history.length > 1 && (

@@ -11,6 +11,7 @@ import React, { useCallback, useId } from 'react';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 
 import { haptic } from '../../lib/haptics';
+import { t, tDyn } from '../../i18n/i18n';
 import { cn } from '../../lib/utils';
 import { selectPhaseTrack } from '../selectors';
 import { useAppSelector } from '../store';
@@ -55,7 +56,7 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
   return (
     <div className={cn('glass p-4 space-y-3.5', className)}>
       {/* Phase chips — the fast way to jump to the part of the lift you care about. */}
-      <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-0.5" role="group" aria-label="Jump to movement phase">
+      <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-0.5" role="group" aria-label={t('Jump to movement phase')}>
         {uniquePhases.map((item) => {
           const active = phase === item;
           return (
@@ -73,7 +74,7 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
               )}
             >
               <span className={cn('w-1.5 h-1.5 rounded-full', active ? PHASE_STYLES[item].dot : 'bg-text-mute')} aria-hidden="true" />
-              {PHASE_LABELS[item]}
+              {tDyn(PHASE_LABELS[item])}
             </button>
           );
         })}
@@ -99,8 +100,8 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
           value={Math.round(scrubT * 1000)}
           onChange={handleInput}
           className="ff-scrubber relative w-full h-11 bg-transparent appearance-none cursor-pointer"
-          aria-label="Movement timeline position"
-          aria-valuetext={`${Math.round(scrubT * 100)} percent, ${PHASE_LABELS[phase]} phase`}
+          aria-label={t('Movement timeline position')}
+          aria-valuetext={t('{n} percent, {phase} phase', { n: Math.round(scrubT * 100), phase: tDyn(PHASE_LABELS[phase]) })}
         />
       </div>
 
@@ -112,7 +113,7 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
             haptic('light');
             stepFrame(-1);
           }}
-          aria-label="Previous frame"
+          aria-label={t('Previous frame')}
           className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-dim active:scale-95 transition-transform"
         >
           <ChevronLeft size={18} aria-hidden="true" />
@@ -124,7 +125,7 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
             haptic('medium');
             togglePlay();
           }}
-          aria-label={playing ? 'Pause the movement' : 'Play the movement'}
+          aria-label={playing ? t('Pause the movement') : t('Play the movement')}
           aria-pressed={playing}
           className="w-14 h-11 rounded-xl bg-accent text-bg font-semibold flex items-center justify-center active:scale-95 transition-transform"
         >
@@ -137,7 +138,7 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
             haptic('light');
             stepFrame(1);
           }}
-          aria-label="Next frame"
+          aria-label={t('Next frame')}
           className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-dim active:scale-95 transition-transform"
         >
           <ChevronRight size={18} aria-hidden="true" />
@@ -145,7 +146,7 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-1" role="group" aria-label="Playback speed">
+        <div className="flex items-center gap-1" role="group" aria-label={t('Playback speed')}>
           {SPEEDS.map((speed) => (
             <button
               key={speed.value}
@@ -167,8 +168,8 @@ export const PhaseScrubber: React.FC<Props> = ({ controls, className }) => {
 
       {/* Cue for the current phase. */}
       <p className="text-sm text-text-dim leading-relaxed" aria-live="polite">
-        <span className={cn('font-semibold', PHASE_STYLES[phase].chip.split(' ')[0])}>{PHASE_LABELS[phase]}.</span>{' '}
-        {cue}
+        <span className={cn('font-semibold', PHASE_STYLES[phase].chip.split(' ')[0])}>{tDyn(PHASE_LABELS[phase])}.</span>{' '}
+        {tDyn(cue)}
       </p>
     </div>
   );

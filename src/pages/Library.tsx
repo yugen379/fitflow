@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { logWorkout } from '../services/dataService';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
+import { t, tDyn } from '../i18n/i18n';
 // Data-only module (no three.js): decides whether to offer the 3D demo.
 import { exerciseMotionNote, hasExerciseMotion } from '../biomechanics/exerciseMotions';
 import { useUnits } from '../hooks/useUnits';
@@ -97,14 +98,14 @@ export const Library: React.FC = () => {
       caloriesBurned: ex.duration * (ex.calories_per_minute || 5),
       notes: `Library Activity: ${ex.category}`,
     });
-    showToast('Activity logged to your history');
+    showToast(t('Activity logged to your history'));
     setSelectedExercise(null);
   };
 
   const addToBuilder = (ex: Exercise) => {
     if (selectedForWorkout.some(e => e.id === ex.id)) return;
     if (selectedForWorkout.length >= 8) {
-      showToast("Max 8 exercises per session", "info");
+      showToast(t('Max 8 exercises per session'), "info");
       return;
     }
     setSelectedForWorkout([...selectedForWorkout, { 
@@ -138,7 +139,7 @@ export const Library: React.FC = () => {
    */
   const saveCustomWorkout = async () => {
     if (!profile?.uid || selectedForWorkout.length < 4) {
-      showToast("Select at least 4 exercises", "info");
+      showToast(t('Select at least 4 exercises'), "info");
       return;
     }
     setIsSavingWorkout(true);
@@ -158,7 +159,7 @@ export const Library: React.FC = () => {
       if (!id) {
         // Only reachable when the write genuinely failed. Say so - the previous
         // version claimed "will retry from offline queue" while queueing nothing.
-        showToast("Couldn't save the session — check your connection", "error");
+        showToast(t("Couldn't save the session — check your connection"), "error");
         return;
       }
       setPlans(prev => [{
@@ -169,7 +170,7 @@ export const Library: React.FC = () => {
         calories: Math.round(exercises.reduce((a, e) => a + (e.duration || 0) * e.caloriesPerMinute, 0)),
         createdAt: new Date(),
       }, ...prev]);
-      showToast("Session saved — start it any time");
+      showToast(t('Session saved — start it any time'));
       setIsBuilderMode(false);
       setSelectedForWorkout([]);
     } finally {
@@ -184,17 +185,17 @@ export const Library: React.FC = () => {
 
   const removePlan = async (plan: WorkoutPlan) => {
     const ok = await deleteWorkoutPlan(plan.id);
-    if (!ok) { showToast("Couldn't delete that session", "error"); return; }
+    if (!ok) { showToast(t("Couldn't delete that session"), "error"); return; }
     setPlans(prev => prev.filter(p => p.id !== plan.id));
-    showToast("Session deleted");
+    showToast(t('Session deleted'));
   };
 
   return (
     <div className="pb-24 pt-4 px-6 bg-bg min-h-screen">
       <div className="flex justify-between items-end mb-5 pt-2">
         <div>
-          <p className="text-eyebrow text-accent">Library</p>
-          <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">Exercises</h1>
+          <p className="text-eyebrow text-accent">{t('Library')}</p>
+          <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">{t('Exercises')}</h1>
         </div>
         <button
           onClick={() => setIsBuilderMode(!isBuilderMode)}
@@ -203,14 +204,14 @@ export const Library: React.FC = () => {
             isBuilderMode ? 'bg-accent text-bg border-accent' : 'glass text-white',
           )}
         >
-          {isBuilderMode ? 'Cancel' : 'Build session'}
+          {isBuilderMode ? t('Cancel') : t('Build session')}
         </button>
       </div>
 
       <div className="relative mb-5">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-dim" size={16} />
         <input
-          placeholder="Search exercises…"
+          placeholder={t('Search exercises…')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full glass rounded-2xl h-12 pl-11 pr-12 text-sm text-white placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30 transition-colors"
@@ -218,7 +219,7 @@ export const Library: React.FC = () => {
         <button
           onClick={() => setIsFilterOpen(!isFilterOpen)}
           className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center text-text-dim hover:text-accent transition-colors"
-          aria-label="Filters"
+          aria-label={t('Filters')}
         >
           <SlidersHorizontal size={16} />
         </button>
@@ -234,7 +235,7 @@ export const Library: React.FC = () => {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-surface p-6 rounded-3xl border border-[#222]">
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase text-accent tracking-widest">Muscle Group</p>
+                <p className="text-[10px] font-black uppercase text-accent tracking-widest">{t('Muscle Group')}</p>
                 <div className="flex flex-wrap gap-2">
                   {MUSCLE_GROUPS.map(m => (
                     <button 
@@ -244,14 +245,14 @@ export const Library: React.FC = () => {
                         selectedMuscles.includes(m) ? "bg-accent/20 border-accent text-accent" : "bg-bg/50 border-[#333] text-text-dim"
                       )}
                     >
-                      {m}
+                      {tDyn(m)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase text-accent tracking-widest">Equipment</p>
+                <p className="text-[10px] font-black uppercase text-accent tracking-widest">{t('Equipment')}</p>
                 <div className="flex flex-wrap gap-2">
                   {EQUIPMENT.map(e => (
                     <button 
@@ -261,7 +262,7 @@ export const Library: React.FC = () => {
                         selectedEquip.includes(e) ? "bg-accent/20 border-accent text-accent" : "bg-bg/50 border-[#333] text-text-dim"
                       )}
                     >
-                      {e}
+                      {tDyn(e)}
                     </button>
                   ))}
                 </div>
@@ -270,26 +271,26 @@ export const Library: React.FC = () => {
               <div className="flex justify-between items-end md:col-span-2 pt-4 border-t border-[#333]">
                 <div className="flex space-x-4">
                   <div className="space-y-2">
-                    <p className="text-[8px] font-black uppercase text-text-dim tracking-widest">Difficulty</p>
+                    <p className="text-[8px] font-black uppercase text-text-dim tracking-widest">{t('Difficulty')}</p>
                     <select 
                       value={difficultyFilter} 
                       onChange={(e) => setDifficultyFilter(e.target.value)}
                       className="bg-bg border border-[#333] rounded-lg px-2 py-1 text-[10px] text-white font-black"
                     >
-                      {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
+                      {DIFFICULTIES.map(d => <option key={d} value={d}>{d === 'All' ? t('All') : tDyn(d)}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[8px] font-black uppercase text-text-dim tracking-widest">Sort By</p>
+                    <p className="text-[8px] font-black uppercase text-text-dim tracking-widest">{t('Sort By')}</p>
                     <select 
                       value={sortBy} 
                       onChange={(e) => setSortBy(e.target.value as any)}
                       className="bg-bg border border-[#333] rounded-lg px-2 py-1 text-[10px] text-white font-black"
                     >
-                      <option value="name">Name</option>
-                      <option value="duration">Duration</option>
-                      <option value="calories">Calories/Min</option>
-                      <option value="difficulty">Difficulty</option>
+                      <option value="name">{t('Name')}</option>
+                      <option value="duration">{t('Duration')}</option>
+                      <option value="calories">{t('Calories/Min')}</option>
+                      <option value="difficulty">{t('Difficulty')}</option>
                     </select>
                   </div>
                 </div>
@@ -302,7 +303,7 @@ export const Library: React.FC = () => {
                   }}
                   className="text-[10px] font-black text-red-400 uppercase tracking-widest"
                 >
-                  Reset
+                  {t('Reset')}
                 </button>
               </div>
             </div>
@@ -320,7 +321,7 @@ export const Library: React.FC = () => {
               filter === f ? "bg-accent text-bg" : "bg-surface text-text-dim border border-[#222]"
             )}
           >
-            {f}
+            {f === 'All' ? t('All') : tDyn(f)}
           </button>
         ))}
       </div>
@@ -331,7 +332,7 @@ export const Library: React.FC = () => {
           <div className="mb-8 space-y-3">
             <div className="flex items-center gap-2">
               <Save className="text-accent" size={16} />
-              <h2 className="text-sm font-black uppercase text-white tracking-wide">Your sessions</h2>
+              <h2 className="text-sm font-black uppercase text-white tracking-wide">{t('Your sessions')}</h2>
               <span className="text-xs text-text-dim num">{plans.length}</span>
             </div>
             <div className="space-y-2">
@@ -343,20 +344,20 @@ export const Library: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-white truncate">{plan.name}</p>
                     <p className="text-xs text-text-dim num mt-0.5">
-                      {plan.exercises.length} exercises · {plan.duration} min · ~{units.formatEnergy(plan.calories)}
+                      {t('{n} exercises · {min} min · ~{energy}', { n: plan.exercises.length, min: plan.duration, energy: units.formatEnergy(plan.calories) })}
                     </p>
                   </div>
                   <button
                     onClick={() => startPlan(plan)}
                     className="h-10 px-4 rounded-xl bg-accent text-bg text-xs font-black uppercase flex items-center gap-1.5 shrink-0"
-                    aria-label={`Start ${plan.name}`}
+                    aria-label={t('Start {name}', { name: plan.name })}
                   >
-                    <Play size={14} /> Start
+                    <Play size={14} /> {t('Start')}
                   </button>
                   <button
                     onClick={() => removePlan(plan)}
                     className="w-10 h-10 rounded-xl glass flex items-center justify-center text-text-dim hover:text-red-400 transition-colors shrink-0"
-                    aria-label={`Delete ${plan.name}`}
+                    aria-label={t('Delete {name}', { name: plan.name })}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -376,14 +377,14 @@ export const Library: React.FC = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-2">
                 <Save className="text-accent" size={18} />
-                <h3 className="text-sm font-black uppercase text-white">Workout Builder ({selectedForWorkout.length}/8)</h3>
+                <h3 className="text-sm font-black uppercase text-white">{t('Workout Builder ({n}/8)', { n: selectedForWorkout.length })}</h3>
               </div>
               <button 
                 onClick={saveCustomWorkout}
                 disabled={isSavingWorkout || selectedForWorkout.length < 4}
                 className="bg-accent text-bg px-4 py-2 rounded-xl text-[10px] font-black uppercase disabled:opacity-50"
               >
-                {isSavingWorkout ? 'SAVING...' : 'Save Stack'}
+                {isSavingWorkout ? t('SAVING...') : t('Save Stack')}
               </button>
             </div>
             <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
@@ -397,7 +398,7 @@ export const Library: React.FC = () => {
                     
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <label className="text-[7px] font-black text-text-dim uppercase">Sets</label>
+                        <label className="text-[7px] font-black text-text-dim uppercase">{t('Sets')}</label>
                         <input 
                           type="number"
                           value={ex.sets}
@@ -406,7 +407,7 @@ export const Library: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[7px] font-black text-text-dim uppercase">Reps</label>
+                        <label className="text-[7px] font-black text-text-dim uppercase">{t('Reps')}</label>
                         <input 
                           type="number"
                           value={ex.reps}
@@ -415,7 +416,7 @@ export const Library: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[7px] font-black text-text-dim uppercase">Weight ({units.loadUnit})</label>
+                        <label className="text-[7px] font-black text-text-dim uppercase">{t('Weight ({unit})', { unit: units.loadUnit })}</label>
                         {/* Typed in kg or lb, saved in kg (converted once). */}
                         <UnitInput
                           value={ex.weight}
@@ -423,21 +424,21 @@ export const Library: React.FC = () => {
                           toDisplay={units.loadValue}
                           fromDisplay={units.loadToKg}
                           onValue={(kg) => updateBuilderExercise(ex.id, 'weight', kg)}
-                          aria-label={`Weight for ${ex.name} in ${units.loadUnit}`}
+                          aria-label={t('Weight for {name} in {unit}', { name: ex.name, unit: units.loadUnit })}
                           className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-1 text-[10px] text-white font-black"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[7px] font-black text-text-dim uppercase">Difficulty</label>
+                        <label className="text-[7px] font-black text-text-dim uppercase">{t('Difficulty')}</label>
                         <select
                           value={ex.userDifficulty}
                           onChange={(e) => updateBuilderExercise(ex.id, 'userDifficulty', e.target.value)}
                           className="w-full bg-black/40 border border-white/5 rounded-lg px-1 py-1 text-[9px] text-white font-black"
                         >
-                          <option value="Easy">Easy</option>
-                          <option value="Moderate">Moderate</option>
-                          <option value="Hard">Hard</option>
-                          <option value="Extreme">Extreme</option>
+                          <option value="Easy">{t('Easy')}</option>
+                          <option value="Moderate">{t('Moderate')}</option>
+                          <option value="Hard">{t('Hard')}</option>
+                          <option value="Extreme">{t('Extreme')}</option>
                         </select>
                       </div>
                     </div>
@@ -473,7 +474,7 @@ export const Library: React.FC = () => {
                   .text-white rescue cannot turn it dark on a dark pill — and an
                   explicit rgba, not bg-black/60, because the light theme
                   rewrites every `bg-black/` to a 35% modal veil. */}
-              <span className="text-xs font-semibold text-[#FFFFFF] bg-[rgba(0,0,0,0.62)] backdrop-blur-md border border-[rgba(255,255,255,0.22)] px-2.5 py-1 rounded-full">{ex.difficulty}</span>
+              <span className="text-xs font-semibold text-[#FFFFFF] bg-[rgba(0,0,0,0.62)] backdrop-blur-md border border-[rgba(255,255,255,0.22)] px-2.5 py-1 rounded-full">{tDyn(ex.difficulty)}</span>
               {isBuilderMode && (
                 <button
                   onClick={(e) => { e.stopPropagation(); addToBuilder(ex as Exercise); }}
@@ -481,7 +482,7 @@ export const Library: React.FC = () => {
                     'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
                     selectedForWorkout.some(s => s.id === ex.id) ? 'bg-accent text-bg' : 'bg-black/60 text-white hover:bg-accent hover:text-bg',
                   )}
-                  aria-label="Add to plan"
+                  aria-label={t('Add to plan')}
                 >
                   <Plus size={14} />
                 </button>
@@ -499,7 +500,7 @@ export const Library: React.FC = () => {
 
             <div className="absolute inset-x-4 bottom-4 flex justify-between items-end">
               <div className="min-w-0">
-                <span className="text-eyebrow text-accent leading-none">{ex.category}</span>
+                <span className="text-eyebrow text-accent leading-none">{tDyn(ex.category)}</span>
                 <h3 className="font-display text-lg font-bold text-white tracking-tight leading-tight mt-1 truncate">{ex.name}</h3>
               </div>
               <div className="flex items-center gap-1 text-text-dim shrink-0">
@@ -512,8 +513,8 @@ export const Library: React.FC = () => {
           <div className="col-span-full py-20 flex flex-col items-center justify-center gap-3 text-center">
             <Compass size={36} className="text-text-dim/30" />
             <div className="space-y-1">
-              <p className="text-white font-medium">No matches</p>
-              <p className="text-sm text-text-dim">Try broader filters</p>
+              <p className="text-white font-medium">{t('No matches')}</p>
+              <p className="text-sm text-text-dim">{t('Try broader filters')}</p>
             </div>
           </div>
         )}
@@ -542,8 +543,8 @@ export const Library: React.FC = () => {
                 <div className="flex justify-between items-start gap-3">
                   <div className="space-y-2 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-semibold text-accent bg-accent/12 border border-accent/25 px-2.5 py-1 rounded-full">{selectedExercise.category}</span>
-                      <span className="text-xs text-text-dim font-medium">{selectedExercise.difficulty}</span>
+                      <span className="text-xs font-semibold text-accent bg-accent/12 border border-accent/25 px-2.5 py-1 rounded-full">{tDyn(selectedExercise.category)}</span>
+                      <span className="text-xs text-text-dim font-medium">{tDyn(selectedExercise.difficulty)}</span>
                     </div>
                     <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">{selectedExercise.name}</h2>
                   </div>
@@ -551,7 +552,7 @@ export const Library: React.FC = () => {
                     onClick={() => handleSaveToPlan(selectedExercise)}
                     className="btn-3d h-11 px-4 shrink-0"
                   >
-                    <Plus size={14} /> Add
+                    <Plus size={14} /> {t('Add')}
                   </button>
                 </div>
 
@@ -559,17 +560,17 @@ export const Library: React.FC = () => {
                   <div className="glass p-3">
                     <Clock className="text-text-dim" size={14} />
                     <p className="num font-display text-base font-bold text-white mt-1.5">{selectedExercise.duration}m</p>
-                    <p className="text-[10px] text-text-dim font-medium">Duration</p>
+                    <p className="text-[10px] text-text-dim font-medium">{t('Duration')}</p>
                   </div>
                   <div className="glass p-3">
                     <Activity className="text-text-dim" size={14} />
-                    <p className="text-sm font-medium text-white mt-1.5 truncate">{selectedExercise.muscleGroups.join(', ')}</p>
-                    <p className="text-[10px] text-text-dim font-medium">Focus</p>
+                    <p className="text-sm font-medium text-white mt-1.5 truncate">{selectedExercise.muscleGroups.map((m) => tDyn(m)).join(', ')}</p>
+                    <p className="text-[10px] text-text-dim font-medium">{t('Focus')}</p>
                   </div>
                   <div className="glass p-3">
                     <Dumbbell className="text-text-dim" size={14} />
-                    <p className="text-sm font-medium text-white mt-1.5 truncate">{(selectedExercise.equipment && selectedExercise.equipment.join(', ')) || 'None'}</p>
-                    <p className="text-[10px] text-text-dim font-medium">Equipment</p>
+                    <p className="text-sm font-medium text-white mt-1.5 truncate">{(selectedExercise.equipment && selectedExercise.equipment.map((q) => tDyn(q)).join(', ')) || t('None')}</p>
+                    <p className="text-[10px] text-text-dim font-medium">{t('Equipment')}</p>
                   </div>
                 </div>
 
@@ -581,18 +582,18 @@ export const Library: React.FC = () => {
                       onClick={() => navigate(`/lab?exercise=${encodeURIComponent(selectedExercise.id)}`)}
                       className="w-full h-12 rounded-2xl bg-accent/10 border border-accent/30 text-accent font-semibold text-sm inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                     >
-                      <Box size={16} aria-hidden="true" /> See it in 3D
+                      <Box size={16} aria-hidden="true" /> {t('See it in 3D')}
                     </button>
                     {exerciseMotionNote(selectedExercise.id) && (
                       <p className="text-[11px] text-text-dim leading-relaxed px-1">
-                        Simplified demo — {exerciseMotionNote(selectedExercise.id)}
+                        {t('Simplified demo — {note}', { note: tDyn(exerciseMotionNote(selectedExercise.id)) })}
                       </p>
                     )}
                   </div>
                 )}
 
                 <div className="space-y-3">
-                  <h4 className="text-eyebrow text-accent">How to perform</h4>
+                  <h4 className="text-eyebrow text-accent">{t('How to perform')}</h4>
                   <ol className="space-y-2">
                     {selectedExercise.instructions.map((step, idx) => (
                       <li key={idx} className="flex gap-3">
@@ -605,7 +606,7 @@ export const Library: React.FC = () => {
 
                 {selectedExercise.tips && selectedExercise.tips.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-eyebrow text-accent">Tips</h4>
+                    <h4 className="text-eyebrow text-accent">{t('Tips')}</h4>
                     <ul className="space-y-2">
                       {selectedExercise.tips.map((tip, idx) => (
                         <li key={idx} className="text-sm text-white/85 bg-accent/8 px-3 py-2 rounded-xl border border-accent/15 leading-relaxed">{tip}</li>
@@ -616,7 +617,7 @@ export const Library: React.FC = () => {
 
                 {selectedExercise.commonMistakes && selectedExercise.commonMistakes.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-eyebrow text-accent-2">Avoid</h4>
+                    <h4 className="text-eyebrow text-accent-2">{t('Avoid')}</h4>
                     <ul className="space-y-2">
                       {selectedExercise.commonMistakes.map((mistake, idx) => (
                         <li key={idx} className="text-sm text-white/85 bg-accent-2/8 px-3 py-2 rounded-xl border border-accent-2/15 leading-relaxed">{mistake}</li>
@@ -627,7 +628,7 @@ export const Library: React.FC = () => {
 
                 {selectedExercise.description && (
                   <div className="space-y-2 pb-4">
-                    <h4 className="text-eyebrow text-text-dim">About</h4>
+                    <h4 className="text-eyebrow text-text-dim">{t('About')}</h4>
                     <p className="text-sm text-text-dim leading-relaxed">{selectedExercise.description}</p>
                   </div>
                 )}
@@ -671,30 +672,29 @@ const ExerciseVideo: React.FC<{ exercise: Exercise; onClose: () => void }> = ({ 
         <button
           onClick={() => openExternal(searchUrl)}
           className="w-16 h-16 rounded-full bg-accent text-bg flex items-center justify-center shadow-[0_16px_40px_-8px_rgba(198,255,61,0.55)] hover:scale-105 active:scale-95 transition-transform"
-          aria-label="Find tutorial on YouTube"
+          aria-label={t('Find tutorial on YouTube')}
         >
           <Play size={26} fill="currentColor" className="ml-1" />
         </button>
         <p className="text-white font-display text-lg font-bold tracking-tight leading-tight">
-          Find {exercise.name} tutorial
+          {t('Find {name} tutorial', { name: exercise.name })}
         </p>
         <button
           onClick={() => openExternal(searchUrl)}
           className="btn-3d h-10 px-5 text-xs"
         >
           <Youtube size={12} />
-          Search YouTube
+          {t('Search YouTube')}
         </button>
         <p className="text-text-mute text-[10px] mt-1 max-w-[260px] leading-relaxed">
-          Opens live YouTube results so the video is always current — independent
-          of any single creator's upload.
+          {t("Opens live YouTube results so the video is always current — independent of any single creator's upload.")}
         </p>
       </div>
 
       <button
         onClick={onClose}
         className="absolute top-3 right-3 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white z-10 hover:bg-black/80 transition-colors"
-        aria-label="Close"
+        aria-label={t('Close')}
       >
         <X size={18} />
       </button>

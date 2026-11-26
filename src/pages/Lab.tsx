@@ -14,6 +14,7 @@ import { ChevronLeft, Info, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { haptic } from '../lib/haptics';
+import { t, tDyn } from '../i18n/i18n';
 import { cn } from '../lib/utils';
 import { Provider as ReduxProvider } from 'react-redux';
 
@@ -39,6 +40,16 @@ import { selectCompletedSets, selectCurrentExercise, selectElapsedSec, selectSes
 import { store as biomechanicsStore, useAppDispatch, useAppSelector } from '../biomechanics/store';
 import { useBiomechanicsControls } from '../biomechanics/useBiomechanicsControls';
 import { buildQueueEntry, exerciseQueued, exerciseSelected, sessionFinished, sessionStarted } from '../biomechanics/workoutSlice';
+
+/**
+ * A translated sentence with some values emphasised: `{name}` placeholders in
+ * the (already translated) template are replaced by the given nodes, so the
+ * translator sees the whole sentence and the styling survives.
+ */
+const emphasise = (template: string, values: Record<string, React.ReactNode>): React.ReactNode[] =>
+  template.split(/\{(\w+)\}/).map((part, i) =>
+    i % 2 === 1 ? <React.Fragment key={i}>{part in values ? values[part] : `{${part}}`}</React.Fragment> : part,
+  );
 
 const LabInner: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -146,11 +157,11 @@ const LabInner: React.FC = () => {
 
   const handleFinish = useCallback(async () => {
     if (!profile?.uid) {
-      showToast('Sign in to save this session', 'info');
+      showToast(t('Sign in to save this session'), 'info');
       return;
     }
     if (completedSets.length === 0) {
-      showToast('Log at least one set first', 'info');
+      showToast(t('Log at least one set first'), 'info');
       return;
     }
     haptic('success');
@@ -166,12 +177,12 @@ const LabInner: React.FC = () => {
         notes: `Biomechanics Lab · ${Math.round(volumeKg)} kg total volume`,
       }).unwrap();
       dispatch(sessionFinished());
-      showToast('Session saved');
+      showToast(t('Session saved'));
       navigate('/');
     } catch {
       // logWorkout queues offline internally, so a rejection here means the
       // write genuinely could not be accepted — say so instead of pretending.
-      showToast('Could not save the session — it will retry when you are back online', 'error');
+      showToast(t('Could not save the session — it will retry when you are back online'), 'error');
     }
   }, [profile, completedSets, elapsedSec, logSession, dispatch, showToast, navigate]);
 
@@ -180,7 +191,7 @@ const LabInner: React.FC = () => {
       <div className="pb-28 pt-4 px-4">
         <div className="glass h-[46vh] flex items-center justify-center gap-2">
           <Loader2 size={18} className="animate-spin text-accent" aria-hidden="true" />
-          <span className="text-sm text-text-dim">Loading movement library…</span>
+          <span className="text-sm text-text-dim">{t('Loading movement library…')}</span>
         </div>
       </div>
     );
@@ -190,14 +201,14 @@ const LabInner: React.FC = () => {
     return (
       <div className="pb-28 pt-4 px-4">
         <div className="glass p-6 text-center space-y-3">
-          <h1 className="font-display text-xl font-semibold text-white">Movement library unavailable</h1>
-          <p className="text-sm text-text-dim">The 3D movement manifest failed to load.</p>
+          <h1 className="font-display text-xl font-semibold text-white">{t('Movement library unavailable')}</h1>
+          <p className="text-sm text-text-dim">{t('The 3D movement manifest failed to load.')}</p>
           <button
             type="button"
             onClick={() => refetch()}
             className="h-11 px-5 rounded-xl bg-white/[0.06] text-white text-sm font-medium"
           >
-            Try again
+            {t('Try again')}
           </button>
         </div>
       </div>
@@ -214,13 +225,13 @@ const LabInner: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          aria-label="Go back"
+          aria-label={t('Go back')}
           className="w-11 h-11 -ml-1 rounded-xl flex items-center justify-center text-text-dim active:scale-95 transition-transform"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-eyebrow text-accent">Biomechanics Lab</p>
+          <p className="text-eyebrow text-accent">{t('Biomechanics Lab')}</p>
           <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight mt-1 truncate">
             {activeClip.name}
           </h1>
@@ -231,13 +242,13 @@ const LabInner: React.FC = () => {
         <div className="glass px-4 py-3 flex items-start gap-2.5" role="note" data-testid="simplified-demo">
           <Info size={15} className="text-accent-3 shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-xs text-text-dim leading-relaxed">
-            <span className="text-white font-semibold">Simplified demo.</span> {activeClip.simplifiedNote}
+            <span className="text-white font-semibold">{t('Simplified demo.')}</span> {tDyn(activeClip.simplifiedNote)}
           </p>
         </div>
       ) : null}
 
       {/* Movement picker */}
-      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1" role="tablist" aria-label="Movement">
+      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1" role="tablist" aria-label={t('Movement')}>
         {sessionQueue.map((item, index) => {
           const selected = index === activeIndex;
           return (
@@ -274,10 +285,17 @@ const LabInner: React.FC = () => {
         <div className="glass p-4 flex items-start gap-3">
           <Info size={17} className="text-accent-3 shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-sm text-text-dim leading-relaxed">
-            Based on your history, FitFlow suggests{' '}
-            <span className="num text-white font-semibold tabular-nums">{units.formatLoad(progression.suggestedWeight)}</span> for{' '}
-            <span className="num text-white font-semibold tabular-nums">{progression.suggestedReps}</span> reps
-            {progression.trend === 'up' ? ' — you are trending up.' : progression.trend === 'down' ? ' — back off slightly this week.' : '.'}
+            {emphasise(
+              progression.trend === 'up'
+                ? t('Based on your history, FitFlow suggests {load} for {reps} reps — you are trending up.')
+                : progression.trend === 'down'
+                  ? t('Based on your history, FitFlow suggests {load} for {reps} reps — back off slightly this week.')
+                  : t('Based on your history, FitFlow suggests {load} for {reps} reps.'),
+              {
+                load: (<span className="num text-white font-semibold tabular-nums">{units.formatLoad(progression.suggestedWeight)}</span>),
+                reps: (<span className="num text-white font-semibold tabular-nums">{progression.suggestedReps}</span>),
+              },
+            )}
           </p>
         </div>
       ) : null}
@@ -295,7 +313,11 @@ const LabInner: React.FC = () => {
         className="w-full h-14 rounded-2xl bg-accent text-bg font-semibold text-base inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
       >
         {saving ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : null}
-        {saving ? 'Saving…' : `Finish session (${completedSets.length} ${completedSets.length === 1 ? 'set' : 'sets'})`}
+        {saving
+          ? t('Saving…')
+          : completedSets.length === 1
+            ? t('Finish session (1 set)')
+            : t('Finish session ({n} sets)', { n: completedSets.length })}
       </button>
     </div>
   );

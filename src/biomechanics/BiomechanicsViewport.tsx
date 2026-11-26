@@ -19,6 +19,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Maximize2, RefreshCw, RotateCcw } from 'lucide-react';
 
+import { t, tDyn } from '../i18n/i18n';
 import { cn } from '../lib/utils';
 import { AvatarScene, MEASURED_JOINTS } from './avatarScene';
 import type { LayerFlags, SceneFrame } from './avatarScene';
@@ -28,7 +29,7 @@ import { barPosition, readJointAngles, solvePose } from './rig';
 import { selectEquipment } from './selectors';
 import { useAppDispatch, useAppSelector } from './store';
 import { pushTelemetryFrame, telemetryStreamStarted, telemetryStreamStopped } from './telemetryMiddleware';
-import { MUSCLE_COUNT } from './types';
+import { MUSCLE_COUNT, PHASE_LABELS } from './types';
 import type { JointAngles, MotionClip, Skeleton, Vec3 } from './types';
 import { useBiomechanicsControls } from './useBiomechanicsControls';
 import {
@@ -108,7 +109,7 @@ class ViewportErrorBoundary extends React.Component<BoundaryProps, BoundaryState
    * `setState` inside the handler, which keeps the retry path a single source
    * of truth: one token change clears the error and remounts the canvas.
    */
-  static getDerivedStateFromProps(props: BoundaryProps, state: BoundaryState): Partial<BoundaryState> | null {
+  static getDerivedStateFromProps(props: BoundaryProps, state: BoundaryState): null | Partial<BoundaryState> {
     if (props.resetToken !== state.token) return { error: null, token: props.resetToken };
     return null;
   }
@@ -128,10 +129,10 @@ class ViewportErrorBoundary extends React.Component<BoundaryProps, BoundaryState
     if (!this.state.error) return this.props.children;
     return (
       <ViewportFallback
-        title="3D view unavailable"
-        body="The 3D engine hit an error on this device. Your session and all your data are unaffected."
+        title={t('3D view unavailable')}
+        body={t('The 3D engine hit an error on this device. Your session and all your data are unaffected.')}
         detail={this.state.error.message}
-        actionLabel="Try again"
+        actionLabel={t('Try again')}
         onAction={this.handleRetry}
       />
     );
@@ -274,7 +275,7 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
 
     if (!probeWebGL()) {
       setUnsupported(true);
-      dispatch(viewportFailed({ reason: 'WebGL is not available on this device', unsupported: true }));
+      dispatch(viewportFailed({ reason: t('WebGL is not available on this device'), unsupported: true }));
       return;
     }
 
@@ -288,7 +289,7 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
     try {
       scene = new AvatarScene(canvas, QUALITY_PROFILES[tier]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Renderer failed to start';
+      const message = error instanceof Error ? error.message : t('Renderer failed to start');
       dispatch(viewportFailed({ reason: message }));
       return;
     }
@@ -584,8 +585,8 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
   if (unsupported) {
     return (
       <ViewportFallback
-        title="3D not supported here"
-        body="This device or browser has WebGL turned off, so the 3D model can't render. Every other part of your workout works normally."
+        title={t('3D not supported here')}
+        body={t("This device or browser has WebGL turned off, so the 3D model can't render. Every other part of your workout works normally.")}
       />
     );
   }
@@ -608,7 +609,7 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
           ref={canvasRef}
           className="block w-full h-full"
           role="img"
-          aria-label={`3D model of a ${activeClip.name}, ${controls.phase} phase. Drag to rotate, pinch to zoom.`}
+          aria-label={t('3D model of a {name}, {phase} phase. Drag to rotate, pinch to zoom.', { name: activeClip.name, phase: tDyn(PHASE_LABELS[controls.phase]).toLowerCase() })}
         />
       </div>
 
@@ -626,7 +627,7 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
                 0°
               </div>
               <div className="text-[9px] uppercase tracking-[0.14em] text-text-mute mt-0.5 text-center">
-                {joint.label}
+                {tDyn(joint.label)}
               </div>
             </div>
           ))
@@ -637,7 +638,7 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
         <button
           type="button"
           onClick={controls.resetCamera}
-          aria-label="Reset camera"
+          aria-label={t('Reset camera')}
           className="w-11 h-11 rounded-xl bg-bg/70 border border-white/[0.08] backdrop-blur-md flex items-center justify-center text-text-dim active:scale-95 transition-transform"
         >
           <RotateCcw size={16} aria-hidden="true" />
@@ -645,7 +646,7 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
         <button
           type="button"
           onClick={() => controls.setPreset('side')}
-          aria-label="Side view"
+          aria-label={t('Side view')}
           className="w-11 h-11 rounded-xl bg-bg/70 border border-white/[0.08] backdrop-blur-md flex items-center justify-center text-text-dim active:scale-95 transition-transform"
         >
           <Maximize2 size={16} aria-hidden="true" />
@@ -655,9 +656,9 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
       {contextLost ? (
         <div className="absolute inset-0 bg-bg/85 backdrop-blur-sm flex flex-col items-center justify-center gap-2 px-6 text-center">
           <RefreshCw size={20} className="text-accent animate-spin" aria-hidden="true" />
-          <p className="text-sm text-white font-medium">Restoring the 3D view…</p>
+          <p className="text-sm text-white font-medium">{t('Restoring the 3D view…')}</p>
           <p className="text-xs text-text-dim max-w-[16rem]">
-            The graphics context was released by the system. Rebuilding — nothing was lost.
+            {t('The graphics context was released by the system. Rebuilding — nothing was lost.')}
           </p>
         </div>
       ) : null}

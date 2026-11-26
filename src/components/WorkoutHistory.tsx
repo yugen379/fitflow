@@ -5,6 +5,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { db, safeUnsubscribe } from '../lib/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { useUnits } from '../hooks/useUnits';
+import { getLanguage, t, tDyn } from '../i18n/i18n';
 import { cn } from '../lib/utils';
 
 interface WorkoutEntry {
@@ -19,12 +20,12 @@ interface WorkoutEntry {
 }
 
 const iconFor = (type: string) => {
-  const t = (type || '').toLowerCase();
-  if (t.includes('strength')) return Dumbbell;
-  if (t.includes('cardio')) return Zap;
-  if (t.includes('cycl') || t.includes('ride')) return Bike;
-  if (t.includes('swim')) return Waves;
-  if (t.includes('run')) return Activity;
+  const kind = (type || '').toLowerCase();
+  if (kind.includes('strength')) return Dumbbell;
+  if (kind.includes('cardio')) return Zap;
+  if (kind.includes('cycl') || kind.includes('ride')) return Bike;
+  if (kind.includes('swim')) return Waves;
+  if (kind.includes('run')) return Activity;
   return Activity;
 };
 
@@ -32,10 +33,10 @@ const formatRelative = (date: Date) => {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / 86400000);
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (diffDays === 0) return t('Today');
+  if (diffDays === 1) return t('Yesterday');
+  if (diffDays < 7) return t('{n}d ago', { n: diffDays });
+  return date.toLocaleDateString(getLanguage(), { month: 'short', day: 'numeric' });
 };
 
 export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount = 20 }) => {
@@ -77,7 +78,7 @@ export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount =
     return (
       <div className="glass p-8 text-center space-y-2">
         <Dumbbell size={32} className="mx-auto text-text-dim/40" />
-        <p className="text-sm text-text-dim">No workouts logged yet.</p>
+        <p className="text-sm text-text-dim">{t('No workouts logged yet.')}</p>
       </div>
     );
   }
@@ -105,13 +106,13 @@ export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount =
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-white font-medium text-sm truncate">{w.title || w.type}</p>
+                  <p className="text-white font-medium text-sm truncate">{w.title || tDyn(w.type)}</p>
                   <span className="text-xs text-text-dim shrink-0">{date ? formatRelative(date) : ''}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1 num text-xs text-text-dim">
                   <span className="flex items-center gap-1"><Clock size={11} />{w.duration || 0}m</span>
                   <span className="flex items-center gap-1"><Flame size={11} />{units.formatEnergy(w.caloriesBurned || 0)}</span>
-                  {hasDetails && <span>{w.exerciseLogs!.length} {w.exerciseLogs!.length === 1 ? 'set' : 'sets'}</span>}
+                  {hasDetails && <span>{w.exerciseLogs!.length === 1 ? t('1 set') : t('{n} sets', { n: w.exerciseLogs!.length })}</span>}
                 </div>
               </div>
               {hasDetails && (
@@ -132,7 +133,7 @@ export const WorkoutHistory: React.FC<{ limitCount?: number }> = ({ limitCount =
                   <div className="px-4 pb-4 pt-1 space-y-2 border-t border-white/[0.04]">
                     {w.exerciseLogs!.map((log: any, i: number) => (
                       <div key={i} className="flex justify-between items-center py-1.5">
-                        <span className="text-white/85 text-sm">{log.name || log.exerciseName || 'Exercise'}</span>
+                        <span className="text-white/85 text-sm">{log.name || log.exerciseName || t('Exercise')}</span>
                         <span className="num text-xs text-text-dim">
                           {log.sets || 0} × {log.reps || 0}
                           {log.weight ? ` @ ${units.formatLoad(Number(log.weight))}` : ''}

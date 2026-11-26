@@ -21,6 +21,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Provider as ReduxProvider } from 'react-redux';
 
+import { t } from '../../i18n/i18n';
 import { cn } from '../../lib/utils';
 import { store } from '../../biomechanics/store';
 import { EXERCISE_TO_CLIP, getClip } from '../../biomechanics/motions';
@@ -44,7 +45,7 @@ interface AnatomyViewerProps {
 /** Liquid placeholder while the 3D chunk arrives. */
 const AnatomySkeleton: React.FC = () => (
   <div className="w-full h-full liquid-skeleton rounded-[28px] flex items-center justify-center">
-    <span className="sr-only">Loading 3D anatomy</span>
+    <span className="sr-only">{t('Loading 3D anatomy')}</span>
   </div>
 );
 
