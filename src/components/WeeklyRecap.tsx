@@ -10,6 +10,10 @@ import {
 } from 'firebase/firestore';
 import { generateWeeklyRecap, WeeklyRecap as WeeklyRecapData } from '../services/geminiService';
 import { LogoMark } from './Logo';
+import { t, getLanguage, type Lang } from '../i18n/i18n';
+
+/** Voice for read-aloud text, in the app's language. */
+const SPEECH_LANG: Record<Lang, string> = { en: 'en-US', ms: 'ms-MY', id: 'id-ID', es: 'es-ES', pt: 'pt-BR', hi: 'hi-IN' };
 
 const STORAGE_KEY = (uid: string, weekId: string) => `ff_weekly_recap_${uid}_${weekId}`;
 
@@ -103,8 +107,8 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
 
       const exerciseCount: Record<string, number> = {};
       workoutsSnap.forEach(d => {
-        const t = d.data().type;
-        if (t) exerciseCount[t] = (exerciseCount[t] || 0) + 1;
+        const type = d.data().type;
+        if (type) exerciseCount[type] = (exerciseCount[type] || 0) + 1;
       });
       const topExercise = Object.entries(exerciseCount).sort((a, b) => b[1] - a[1])[0]?.[0];
 
@@ -149,8 +153,11 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
   const speak = () => {
     if (!data || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const text = `${data.headline}. ${data.highlight} Your win: ${data.win}. Focus next week: ${data.focus}. Try this Monday: ${data.nextStep}.`;
+    const text = t('{headline}. {highlight} Your win: {win}. Focus next week: {focus}. Try this Monday: {nextStep}.', {
+      headline: data.headline, highlight: data.highlight, win: data.win, focus: data.focus, nextStep: data.nextStep,
+    });
     const u = new SpeechSynthesisUtterance(text);
+    u.lang = SPEECH_LANG[getLanguage()] || 'en-US';
     u.rate = 1.0;
     window.speechSynthesis.speak(u);
   };
@@ -175,11 +182,11 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
               <div className="flex items-center gap-3">
                 <LogoMark size={28} />
                 <div>
-                  <p className="text-eyebrow text-accent">Week in review</p>
-                  <p className="text-xs text-text-dim mt-0.5">Powered by Gemini</p>
+                  <p className="text-eyebrow text-accent">{t('Week in review')}</p>
+                  <p className="text-xs text-text-dim mt-0.5">{t('Powered by Gemini')}</p>
                 </div>
               </div>
-              <button onClick={dismiss} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white" aria-label="Close">
+              <button onClick={dismiss} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Close')}>
                 <X size={16} />
               </button>
             </div>
@@ -207,9 +214,9 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
-                  <Stat label="Sessions" value={stats.workouts} />
-                  <Stat label="Minutes" value={stats.minutes} />
-                  <Stat label={units.energyUnit === 'kJ' ? 'kJ burned' : 'Calories'} value={units.formatEnergyNumber(stats.calories)} />
+                  <Stat label={t('Sessions')} value={stats.workouts} />
+                  <Stat label={t('Minutes')} value={stats.minutes} />
+                  <Stat label={units.energyUnit === 'kJ' ? t('kJ burned') : t('Calories')} value={units.formatEnergyNumber(stats.calories)} />
                 </div>
 
                 <div className="ai-gradient-box p-4 rounded-2xl space-y-3">
@@ -218,7 +225,7 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
                       <Trophy size={14} className="text-accent" />
                     </div>
                     <div>
-                      <p className="text-eyebrow text-accent">Your win</p>
+                      <p className="text-eyebrow text-accent">{t('Your win')}</p>
                       <p className="text-sm text-white mt-0.5">{data.win}</p>
                     </div>
                   </div>
@@ -230,7 +237,7 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
                       <TrendingUp size={14} className="text-accent-3" />
                     </div>
                     <div>
-                      <p className="text-eyebrow text-accent-3">Focus next</p>
+                      <p className="text-eyebrow text-accent-3">{t('Focus next')}</p>
                       <p className="text-sm text-white mt-0.5">{data.focus}</p>
                     </div>
                   </div>
@@ -239,7 +246,7 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
                       <Sparkles size={14} className="text-accent" />
                     </div>
                     <div>
-                      <p className="text-eyebrow text-accent">Monday action</p>
+                      <p className="text-eyebrow text-accent">{t('Monday action')}</p>
                       <p className="text-sm text-white mt-0.5">{data.nextStep}</p>
                     </div>
                   </div>
@@ -247,16 +254,16 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
 
                 <div className="flex gap-3 pt-1">
                   <button onClick={speak} className="btn-ghost h-12 px-4">
-                    <Volume2 size={14} /> Listen
+                    <Volume2 size={14} /> {t('Listen')}
                   </button>
                   <button onClick={dismiss} className="btn-3d h-12 flex-1">
-                    Let's go <ArrowRight size={14} />
+                    {t("Let's go")} <ArrowRight size={14} />
                   </button>
                 </div>
               </div>
               </PremiumGate>
             ) : (
-              <p className="text-text-dim text-sm">No data yet for this week. Log a workout to start your recap.</p>
+              <p className="text-text-dim text-sm">{t('No data yet for this week. Log a workout to start your recap.')}</p>
             )}
           </motion.div>
         </div>

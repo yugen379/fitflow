@@ -12,16 +12,21 @@ import { haptic } from '../lib/haptics';
 import { useToast } from '../hooks/useToast';
 import { AIEntityOrb } from '../components/3d/AIEntityOrb';
 import type { EntityState } from '../components/3d/AIEntityOrb';
+import { t, msg, tDyn, getLanguage, type Lang } from '../i18n/i18n';
+
+/** Voice for read-aloud and dictation, in the app's language. */
+const SPEECH_LANG: Record<Lang, string> = { en: 'en-US', ms: 'ms-MY', id: 'id-ID', es: 'es-ES', pt: 'pt-BR', hi: 'hi-IN' };
 
 const STORAGE_KEY = (uid: string) => `ff_coach_chat_${uid}`;
 export const FREE_COACH_PER_DAY = 3;
 
+// Shown and sent in the person's language: the coach answers in it too.
 const STARTERS = [
-  'What should I eat after my workout?',
-  'How do I do a proper squat?',
-  "I'm too tired — should I train today?",
-  'How can I break my plateau?',
-  'Build me a 20-minute home workout',
+  msg('What should I eat after my workout?'),
+  msg('How do I do a proper squat?'),
+  msg("I'm too tired — should I train today?"),
+  msg('How can I break my plateau?'),
+  msg('Build me a 20-minute home workout'),
 ];
 
 export const Coach: React.FC = () => {
@@ -135,15 +140,15 @@ export const Coach: React.FC = () => {
     } catch (e: any) {
       if (e?.message === 'coach_pro_only') {
         bumpFree(FREE_COACH_PER_DAY);
-        setMessages([...next, { role: 'coach', text: "Coach chat is part of FitFlow Pro. Upgrade to ask me anything, any time." }]);
+        setMessages([...next, { role: 'coach', text: t("Coach chat is part of FitFlow Pro. Upgrade to ask me anything, any time.") }]);
         return;
       }
       if (e?.message === 'coach_trial_used') {
         bumpFree(FREE_COACH_PER_DAY);
-        setMessages([...next, { role: 'coach', text: "That's your free coach messages for today. FitFlow Pro unlocks unlimited coaching — or come back tomorrow for 3 more." }]);
+        setMessages([...next, { role: 'coach', text: t("That's your free coach messages for today. FitFlow Pro unlocks unlimited coaching — or come back tomorrow for 3 more.") }]);
         return;
       }
-      setMessages([...next, { role: 'coach', text: "Sorry — I hit an error. Try again." }]);
+      setMessages([...next, { role: 'coach', text: t("Sorry — I hit an error. Try again.") }]);
     } finally {
       setThinking(false);
     }
@@ -153,6 +158,7 @@ export const Coach: React.FC = () => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
+    u.lang = SPEECH_LANG[getLanguage()] || 'en-US';
     u.rate = 1.0;
     window.speechSynthesis.speak(u);
   };
@@ -160,7 +166,7 @@ export const Coach: React.FC = () => {
   const handleVoice = () => {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      showToast('Voice input not supported here — try Chrome or Edge', 'info');
+      showToast(t('Voice input not supported here — try Chrome or Edge'), 'info');
       return;
     }
     // If already listening, stop instead of stacking another recognizer.
@@ -172,7 +178,7 @@ export const Coach: React.FC = () => {
     haptic('selection');
     const rec = new SR();
     recRef.current = rec;
-    rec.lang = 'en-US';
+    rec.lang = SPEECH_LANG[getLanguage()] || 'en-US';
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     rec.onstart = () => setListening(true);
@@ -180,7 +186,7 @@ export const Coach: React.FC = () => {
     rec.onerror = (e: any) => {
       setListening(false);
       if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
-        showToast('Microphone blocked — allow it in browser settings', 'error');
+        showToast(t('Microphone blocked — allow it in browser settings'), 'error');
       }
     };
     rec.onresult = (e: any) => {
@@ -212,13 +218,13 @@ export const Coach: React.FC = () => {
             navigate('/');
           }}
           className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white"
-          aria-label={messages.length > 0 && !standby ? 'Back to coach standby' : 'Back'}
+          aria-label={messages.length > 0 && !standby ? t('Back to coach standby') : t('Back')}
         >
           <ChevronLeft size={18} />
         </button>
         <div className="flex-1">
-          <p className="text-eyebrow text-accent">AI Coach</p>
-          <h1 className="font-display text-xl font-bold text-white tracking-tight leading-tight">Ask anything</h1>
+          <p className="text-eyebrow text-accent">{t('AI Coach')}</p>
+          <h1 className="font-display text-xl font-bold text-white tracking-tight leading-tight">{t('Ask anything')}</h1>
         </div>
         <div className="w-10 h-10 ai-gradient-box rounded-xl flex items-center justify-center">
           <Sparkles size={16} className="text-accent" />
@@ -236,10 +242,10 @@ export const Coach: React.FC = () => {
             </div>
             <div>
               <h2 className="font-display text-2xl font-bold text-white tracking-tight">
-                Your coach is on standby.
+                {t('Your coach is on standby.')}
               </h2>
               <p className="text-text-dim text-sm mt-2 max-w-xs mx-auto leading-relaxed">
-                Ask about training, nutrition, recovery, or motivation. I remember our conversation.
+                {t('Ask about training, nutrition, recovery, or motivation. I remember our conversation.')}
               </p>
             </div>
             {messages.length > 0 ? (
@@ -247,7 +253,7 @@ export const Coach: React.FC = () => {
                 onClick={() => setStandby(false)}
                 className="w-full h-12 rounded-2xl bg-accent text-bg font-semibold text-sm active:scale-[0.98] transition-transform"
               >
-                Resume conversation ({messages.length} messages)
+                {t('Resume conversation ({n} messages)', { n: messages.length })}
               </button>
             ) : null}
 
@@ -258,10 +264,10 @@ export const Coach: React.FC = () => {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 + i * 0.06 }}
-                  onClick={() => send(s)}
+                  onClick={() => send(tDyn(s))}
                   className="w-full text-left glass px-4 py-3 rounded-2xl text-sm text-white/85 hover:text-white hover:border-accent/30 transition-colors"
                 >
-                  <span className="text-accent mr-2">›</span>{s}
+                  <span className="text-accent mr-2">›</span>{tDyn(s)}
                 </motion.button>
               ))}
             </div>
@@ -291,9 +297,9 @@ export const Coach: React.FC = () => {
                     <button
                       onClick={() => speak(m.text)}
                       className="mt-2 inline-flex items-center gap-1 text-xs text-text-dim hover:text-accent transition-colors"
-                      aria-label="Read aloud"
+                      aria-label={t('Read aloud')}
                     >
-                      <Volume2 size={11} /> Listen
+                      <Volume2 size={11} /> {t('Listen')}
                     </button>
                   )}
                 </div>
@@ -347,7 +353,7 @@ export const Coach: React.FC = () => {
             thing Pro buys. */}
         {!isPro && !locked && (
           <p className="text-[11px] text-text-dim text-center pb-2">
-            {freeLeft} of {FREE_COACH_PER_DAY} free coach messages left today
+            {t('{left} of {total} free coach messages left today', { left: freeLeft, total: FREE_COACH_PER_DAY })}
           </p>
         )}
         <PremiumGate feature="coach-chat" className="min-h-[64px]" unlocked={!locked}>
@@ -361,9 +367,9 @@ export const Coach: React.FC = () => {
                   ? 'bg-white/[0.04] hover:bg-white/[0.08] text-text-dim hover:text-accent'
                   : 'bg-white/[0.02] text-text-mute'
             }`}
-            aria-label={listening ? 'Stop voice input' : voiceSupported ? 'Voice input' : 'Voice input not supported'}
+            aria-label={listening ? t('Stop voice input') : voiceSupported ? t('Voice input') : t('Voice input not supported')}
             aria-pressed={listening}
-            title={voiceSupported ? (listening ? 'Listening… tap to stop' : 'Tap to speak') : 'Voice input not supported in this browser'}
+            title={voiceSupported ? (listening ? t('Listening… tap to stop') : t('Tap to speak')) : t('Voice input not supported in this browser')}
           >
             {voiceSupported
               ? (listening
@@ -386,7 +392,7 @@ export const Coach: React.FC = () => {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
             }}
-            placeholder="Ask your coach…"
+            placeholder={t('Ask your coach…')}
             rows={1}
             className="flex-1 bg-transparent text-white text-sm placeholder:text-text-mute resize-none focus:outline-none py-2 max-h-[120px] leading-snug"
           />
@@ -394,7 +400,7 @@ export const Coach: React.FC = () => {
             onClick={() => send(input)}
             disabled={!input.trim() || thinking}
             className="w-9 h-9 rounded-xl bg-accent text-bg flex items-center justify-center disabled:opacity-30 shrink-0"
-            aria-label="Send"
+            aria-label={t('Send')}
           >
             {thinking ? <Loader2 className="animate-spin" size={16} /> : <Send size={14} />}
           </button>

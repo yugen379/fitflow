@@ -16,6 +16,7 @@ import { ReportModal } from '../components/ReportModal';
 import { Avatar } from '../components/Avatar';
 import { useToast } from '../hooks/useToast';
 import { haptic } from '../lib/haptics';
+import { t } from '../i18n/i18n';
 
 export const Community: React.FC = () => {
   const { user } = useAuth();
@@ -78,10 +79,10 @@ export const Community: React.FC = () => {
 
   const handleBlock = async (post: Post) => {
     if (!user) return;
-    if (!window.confirm(`Block ${post.username}? You won't see their posts or comments anymore.`)) return;
+    if (!window.confirm(t("Block {name}? You won't see their posts or comments anymore.", { name: post.username }))) return;
     haptic('medium');
     await blockUser(user.uid, post.userId);
-    showToast(`Blocked ${post.username}`, 'success');
+    showToast(t('Blocked {name}', { name: post.username }), 'success');
   };
 
   const handleSubmitReport = async (reason: string) => {
@@ -93,22 +94,22 @@ export const Community: React.FC = () => {
       reportedUserId: reportTarget.userId,
       reason,
     });
-    showToast('Report submitted. Thank you.', 'success');
+    showToast(t('Report submitted. Thank you.'), 'success');
   };
 
   const handleShare = async (post: Post) => {
     haptic('light');
-    const text = `${post.username} on FitFlow:\n${post.content || ''}`.trim();
+    const text = `${t('{name} on FitFlow:', { name: post.username })}\n${post.content || ''}`.trim();
     const url = typeof window !== 'undefined' ? window.location.origin : 'https://gen-lang-client-0893216108.web.app';
     if (typeof navigator !== 'undefined' && (navigator as any).share) {
-      try { await (navigator as any).share({ title: 'FitFlow post', text, url }); return; }
+      try { await (navigator as any).share({ title: t('FitFlow post'), text, url }); return; }
       catch { /* user cancelled — fall through */ }
     }
     try {
       await navigator.clipboard.writeText(`${text}\n${url}`);
-      showToast('Post copied to clipboard', 'success');
+      showToast(t('Post copied to clipboard'), 'success');
     } catch {
-      showToast('Could not share', 'error');
+      showToast(t('Could not share'), 'error');
     }
   };
 
@@ -117,14 +118,14 @@ export const Community: React.FC = () => {
       <header className="px-4 space-y-4 mb-5">
         <div className="flex justify-between items-center pt-2">
           <div>
-            <p className="text-eyebrow text-accent">Community</p>
-            <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">Feed</h1>
+            <p className="text-eyebrow text-accent">{t('Community')}</p>
+            <h1 className="font-display text-3xl font-bold text-white tracking-tight leading-tight mt-1">{t('Feed')}</h1>
           </div>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsPostModalOpen(true)}
             className="w-11 h-11 bg-accent text-bg rounded-2xl flex items-center justify-center shadow-[0_12px_32px_-8px_rgba(198,255,61,0.5)]"
-            aria-label="New post"
+            aria-label={t('New post')}
           >
             <Plus size={20} strokeWidth={2.5} />
           </motion.button>
@@ -137,7 +138,7 @@ export const Community: React.FC = () => {
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === tab ? 'bg-accent text-bg' : 'text-text-dim hover:text-white'}`}
             >
-              {tab === 'Feed' ? 'Feed' : 'Leaderboard'}
+              {tab === 'Feed' ? t('Feed') : t('Leaderboard')}
             </button>
           ))}
         </div>
@@ -154,7 +155,7 @@ export const Community: React.FC = () => {
           >
             {loading ? (
               <div className="p-10">
-                <LoadingBar label="Loading feed" />
+                <LoadingBar label={t('Loading feed')} />
               </div>
             ) : visiblePosts.length > 0 ? (
               visiblePosts.map((post) => (
@@ -173,9 +174,9 @@ export const Community: React.FC = () => {
             ) : (
               <div className="text-center p-12 space-y-3">
                 <div className="text-4xl opacity-70">🌵</div>
-                <p className="text-text-dim text-sm">Feed is empty. Be the first to post.</p>
+                <p className="text-text-dim text-sm">{t('Feed is empty. Be the first to post.')}</p>
                 <button onClick={() => setIsPostModalOpen(true)} className="btn-primary mt-2 px-4 py-2 text-xs">
-                  Create post
+                  {t('Create post')}
                 </button>
               </div>
             )}
@@ -204,7 +205,7 @@ export const Community: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-white font-medium text-sm">{u.displayName}</p>
-                    <p className="num text-xs text-text-dim mt-0.5">🔥 {u.streak || 0} day streak</p>
+                    <p className="num text-xs text-text-dim mt-0.5">🔥 {t('{n} day streak', { n: u.streak || 0 })}</p>
                   </div>
                 </div>
                 <div className="text-right z-10">
@@ -235,7 +236,7 @@ export const Community: React.FC = () => {
         isOpen={!!reportTarget}
         onClose={() => setReportTarget(null)}
         onSubmit={handleSubmitReport}
-        targetLabel={reportTarget ? `${reportTarget.username}'s post` : undefined}
+        targetLabel={reportTarget ? t("{name}'s post", { name: reportTarget.username }) : undefined}
       />
     </div>
   );
@@ -280,7 +281,7 @@ const PostCard: React.FC<{
         <div>
           <h4 className="text-white font-medium text-sm">{post.username}</h4>
           <span className="text-text-dim text-xs">
-             {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleDateString() : 'Just now'}
+             {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleDateString() : t('Just now')}
           </span>
         </div>
       </div>
@@ -288,7 +289,7 @@ const PostCard: React.FC<{
         <button
           onClick={() => isOwnPost ? onEdit() : setMenuOpen(o => !o)}
           className="w-9 h-9 rounded-xl text-text-dim hover:text-white transition-colors flex items-center justify-center"
-          aria-label="More options"
+          aria-label={t('More options')}
         >
           <MoreHorizontal size={18} />
         </button>
@@ -298,13 +299,13 @@ const PostCard: React.FC<{
               onClick={() => { setMenuOpen(false); onReport(); }}
               className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white hover:bg-white/[0.05] transition-colors"
             >
-              <Flag size={15} className="text-accent-2" /> Report post
+              <Flag size={15} className="text-accent-2" /> {t('Report post')}
             </button>
             <button
               onClick={() => { setMenuOpen(false); onBlock(); }}
               className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white hover:bg-white/[0.05] transition-colors"
             >
-              <Ban size={15} className="text-accent-2" /> Block {post.username}
+              <Ban size={15} className="text-accent-2" /> {t('Block {name}', { name: post.username })}
             </button>
           </div>
         )}
@@ -313,7 +314,7 @@ const PostCard: React.FC<{
 
     {post.mediaUrl && (
       <div className="aspect-video w-full bg-surface">
-        <img src={post.mediaUrl} className="w-full h-full object-cover" alt="Post content" />
+        <img src={post.mediaUrl} className="w-full h-full object-cover" alt={t('Post content')} />
       </div>
     )}
 
@@ -335,7 +336,7 @@ const PostCard: React.FC<{
           <MessageCircle size={18} />
           <span className="num text-xs font-medium">{post.commentsCount}</span>
         </button>
-        <button onClick={onShare} className="text-text-dim hover:text-white transition-colors ml-auto" aria-label="Share">
+        <button onClick={onShare} className="text-text-dim hover:text-white transition-colors ml-auto" aria-label={t('Share')}>
           <Share2 size={18} />
         </button>
       </div>

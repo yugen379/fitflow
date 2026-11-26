@@ -4,6 +4,7 @@ import { callAwardXp } from './xpService';
 import { daysBetweenKeys } from './retentionUtils';
 import { dayKeysOf, hasConsecutiveRun, sinceDaysAgo } from './badgeUtils';
 import { reportSwallowed } from '../lib/telemetry';
+import { t, msg, tDyn } from '../i18n/i18n';
 
 export interface Badge {
   id: string;
@@ -13,40 +14,41 @@ export interface Badge {
   requirement: string;
 }
 
+// name / description / requirement are msg()-marked English: show them with tDyn().
 export const ALL_BADGES: Badge[] = [
   // Onboarding & Social
-  { id: 'pioneer',            name: 'Pioneer',           icon: '🚀', description: 'Joined FitFlow AI.',                         requirement: 'Complete onboarding' },
-  { id: 'social_butterfly',   name: 'Social Butterfly',  icon: '🦋', description: 'Made your first community post.',            requirement: 'Post to community' },
-  { id: 'challenge_accepted', name: 'Challenge Accepted', icon: '⚔️', description: 'Joined your first challenge.',              requirement: 'Join a challenge' },
+  { id: 'pioneer',            name: msg('Pioneer'),           icon: '🚀', description: msg('Joined FitFlow AI.'),                         requirement: msg('Complete onboarding') },
+  { id: 'social_butterfly',   name: msg('Social Butterfly'),  icon: '🦋', description: msg('Made your first community post.'),            requirement: msg('Post to community') },
+  { id: 'challenge_accepted', name: msg('Challenge Accepted'), icon: '⚔️', description: msg('Joined your first challenge.'),              requirement: msg('Join a challenge') },
 
   // Nutrition
-  { id: 'nutrition_master',   name: 'Nutrition Master',  icon: '🥗', description: 'Logged your first meal.',                    requirement: 'Log a meal' },
-  { id: 'scanner_pro',        name: 'Scanner Pro',        icon: '📷', description: 'Used the barcode scanner to log a product.', requirement: 'Scan a product barcode' },
-  { id: 'ai_chef',            name: 'AI Chef',            icon: '🤖', description: 'Generated your first AI meal plan.',        requirement: 'Generate an AI meal plan' },
-  { id: 'macro_master',       name: 'Macro Master',       icon: '⚗️', description: 'Tracked macros for 7 consecutive days.',   requirement: '7-day macro logging streak' },
+  { id: 'nutrition_master',   name: msg('Nutrition Master'),  icon: '🥗', description: msg('Logged your first meal.'),                    requirement: msg('Log a meal') },
+  { id: 'scanner_pro',        name: msg('Scanner Pro'),        icon: '📷', description: msg('Used the barcode scanner to log a product.'), requirement: msg('Scan a product barcode') },
+  { id: 'ai_chef',            name: msg('AI Chef'),            icon: '🤖', description: msg('Generated your first AI meal plan.'),        requirement: msg('Generate an AI meal plan') },
+  { id: 'macro_master',       name: msg('Macro Master'),       icon: '⚗️', description: msg('Tracked macros for 7 consecutive days.'),   requirement: msg('7-day macro logging streak') },
 
   // Hydration & Wellness
-  { id: 'hydration_hero',     name: 'Hydration Hero',    icon: '💧', description: 'Logged your water intake.',                  requirement: 'Log water' },
-  { id: 'sleep_master',       name: 'Sleep Master',       icon: '😴', description: 'Logged 8+ hours of sleep three times.',     requirement: 'Log 8h sleep x3' },
-  { id: 'wellness_zen',       name: 'Wellness Zen',       icon: '🧘', description: 'Logged mood and stress 3 days in a row.',   requirement: 'Wellness log x3 days' },
+  { id: 'hydration_hero',     name: msg('Hydration Hero'),    icon: '💧', description: msg('Logged your water intake.'),                  requirement: msg('Log water') },
+  { id: 'sleep_master',       name: msg('Sleep Master'),       icon: '😴', description: msg('Logged 8+ hours of sleep three times.'),     requirement: msg('Log 8h sleep x3') },
+  { id: 'wellness_zen',       name: msg('Wellness Zen'),       icon: '🧘', description: msg('Logged mood and stress 3 days in a row.'),   requirement: msg('Wellness log x3 days') },
 
   // Workouts
-  { id: 'iron_will',          name: 'Iron Will',          icon: '💪', description: 'Logged your first workout session.',        requirement: 'Log a workout' },
-  { id: 'calorie_crusher',    name: 'Calorie Crusher',    icon: '🔥', description: 'Burned 500+ calories in one session.',      requirement: '500+ cal in one session' },
-  { id: 'week_warrior',       name: 'Week Warrior',       icon: '🗓️', description: 'Completed 5 workouts in a single week.',   requirement: '5 workouts in 7 days' },
-  { id: 'marathoner',         name: 'Marathoner',         icon: '🏃', description: 'Covered more than 5km in one activity.',    requirement: 'Activity distance > 5km' },
-  { id: 'early_bird',         name: 'Early Bird',         icon: '🌅', description: 'Started a workout before 8am.',             requirement: 'Workout before 8am' },
-  { id: 'night_owl',          name: 'Night Owl',           icon: '🌙', description: 'Started a workout after 9pm.',             requirement: 'Workout after 9pm' },
+  { id: 'iron_will',          name: msg('Iron Will'),          icon: '💪', description: msg('Logged your first workout session.'),        requirement: msg('Log a workout') },
+  { id: 'calorie_crusher',    name: msg('Calorie Crusher'),    icon: '🔥', description: msg('Burned 500+ calories in one session.'),      requirement: msg('500+ cal in one session') },
+  { id: 'week_warrior',       name: msg('Week Warrior'),       icon: '🗓️', description: msg('Completed 5 workouts in a single week.'),   requirement: msg('5 workouts in 7 days') },
+  { id: 'marathoner',         name: msg('Marathoner'),         icon: '🏃', description: msg('Covered more than 5km in one activity.'),    requirement: msg('Activity distance > 5km') },
+  { id: 'early_bird',         name: msg('Early Bird'),         icon: '🌅', description: msg('Started a workout before 8am.'),             requirement: msg('Workout before 8am') },
+  { id: 'night_owl',          name: msg('Night Owl'),           icon: '🌙', description: msg('Started a workout after 9pm.'),             requirement: msg('Workout after 9pm') },
 
   // Streaks
-  { id: 'streak_3',           name: 'On A Roll',          icon: '🌀', description: 'Kept a 3-day active streak.',               requirement: '3-day streak' },
-  { id: 'streak_7',           name: 'Consistency King',   icon: '👑', description: 'Kept a 7-day active streak.',               requirement: '7-day streak' },
-  { id: 'streak_30',          name: 'Unstoppable',        icon: '🏆', description: 'Maintained a 30-day streak.',               requirement: '30-day streak' },
+  { id: 'streak_3',           name: msg('On A Roll'),          icon: '🌀', description: msg('Kept a 3-day active streak.'),               requirement: msg('3-day streak') },
+  { id: 'streak_7',           name: msg('Consistency King'),   icon: '👑', description: msg('Kept a 7-day active streak.'),               requirement: msg('7-day streak') },
+  { id: 'streak_30',          name: msg('Unstoppable'),        icon: '🏆', description: msg('Maintained a 30-day streak.'),               requirement: msg('30-day streak') },
 
   // Milestones
-  { id: 'centurion',          name: 'Centurion',          icon: '💯', description: 'Earned 1,000 XP points.',                   requirement: '1000 XP total' },
-  { id: 'level_5',            name: 'Level 5',             icon: '⭐', description: 'Reached Level 5.',                        requirement: 'Reach level 5' },
-  { id: 'comeback_kid',       name: 'Comeback Kid',       icon: '🔄', description: 'Came back after a 7-day break.',            requirement: 'Log after 7-day inactivity' },
+  { id: 'centurion',          name: msg('Centurion'),          icon: '💯', description: msg('Earned 1,000 XP points.'),                   requirement: msg('1000 XP total') },
+  { id: 'level_5',            name: msg('Level 5'),             icon: '⭐', description: msg('Reached Level 5.'),                        requirement: msg('Reach level 5') },
+  { id: 'comeback_kid',       name: msg('Comeback Kid'),       icon: '🔄', description: msg('Came back after a 7-day break.'),            requirement: msg('Log after 7-day inactivity') },
 ];
 
 // ─── Core award function ───────────────────────────────────────────────────────
@@ -73,8 +75,8 @@ export async function checkAndAwardBadge(userId: string, badgeId: string): Promi
 
     await addDoc(collection(db, 'notifications'), {
       userId,
-      title: 'Achievement Unlocked!',
-      body: `You earned the ${badge.icon} ${badge.name} badge and 150 XP!`,
+      title: t('Achievement Unlocked!'),
+      body: t('You earned the {icon} {badge} badge and 150 XP!', { icon: badge.icon, badge: tDyn(badge.name) }),
       timestamp: serverTimestamp(),
       read: false,
       type: 'achievement',

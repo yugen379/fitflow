@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { X, Flag, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { t, msg, tDyn } from '../i18n/i18n';
 
+// The reason stored with a report stays English (moderators read it); it is shown translated.
 const REASONS = [
-  'Spam or misleading',
-  'Harassment or bullying',
-  'Hate speech',
-  'Nudity or sexual content',
-  'Violence or dangerous acts',
-  'Self-harm',
-  'Other',
+  msg('Spam or misleading'),
+  msg('Harassment or bullying'),
+  msg('Hate speech'),
+  msg('Nudity or sexual content'),
+  msg('Violence or dangerous acts'),
+  msg('Self-harm'),
+  msg('Other'),
 ];
 
 export const ReportModal: React.FC<{
@@ -50,13 +52,13 @@ export const ReportModal: React.FC<{
           <div className="flex items-center gap-2.5">
             <Flag size={16} className="text-accent-2" />
             <div>
-              <p className="text-eyebrow text-accent-2">Report</p>
+              <p className="text-eyebrow text-accent-2">{t('Report')}</p>
               <p className="text-sm text-white font-medium mt-0.5">
-                {targetLabel ? `Why are you reporting ${targetLabel}?` : 'Why are you reporting this?'}
+                {targetLabel ? t('Why are you reporting {target}?', { target: targetLabel }) : t('Why are you reporting this?')}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}>
             <X size={16} />
           </button>
         </div>
@@ -72,14 +74,14 @@ export const ReportModal: React.FC<{
                   : 'bg-white/[0.02] border-white/[0.06] text-text-dim hover:text-white'
               }`}
             >
-              {reason}
+              {tDyn(reason)}
             </button>
           ))}
         </div>
 
         <div className="p-4 border-t border-white/[0.06]">
           <p className="text-xs text-text-mute mb-3 leading-relaxed">
-            Reports are sent to our team for review. Thanks for helping keep FitFlow safe.
+            {t('Reports are sent to our team for review. Thanks for helping keep FitFlow safe.')}
           </p>
           <button
             onClick={handleSubmit}
@@ -87,7 +89,7 @@ export const ReportModal: React.FC<{
             className="w-full h-12 rounded-xl bg-accent-2 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-30"
           >
             {submitting ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
-            Submit report
+            {t('Submit report')}
           </button>
         </div>
       </motion.div>

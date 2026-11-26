@@ -25,6 +25,7 @@ import { haptic } from '../../lib/haptics';
 import { SPRING } from '../../lib/motion';
 import { spawnRipple } from './WaterRipple';
 import type { RippleTone } from './WaterRipple';
+import { t } from '../../i18n/i18n';
 
 // ---------------------------------------------------------------------------
 // Rules
@@ -93,8 +94,6 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
     formatEnergy = (kcal: number) => `${kcal.toLocaleString()} kcal`,
   } = context;
 
-  const who = name ? `, ${name}` : '';
-
   // ── Steps ────────────────────────────────────────────────────────────────
   const stepsLeft = Math.max(0, Math.round(stepGoal - steps));
   if (stepsLeft > 0 && steps > 0) {
@@ -106,11 +105,13 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
         id: 'steps-close',
         icon: Footprints,
         tone: 'lime',
-        title: nearlyThere ? `Almost there${who}` : `Still time${who}`,
-        body: `${stepsLeft.toLocaleString()} steps left to hit your ${stepGoal.toLocaleString()} goal${
-          closing ? ' before the day is out' : ''
-        }.`,
-        action: { label: 'Start evening walk', route: '/steps' },
+        title: nearlyThere
+          ? (name ? t('Almost there, {name}', { name }) : t('Almost there'))
+          : (name ? t('Still time, {name}', { name }) : t('Still time')),
+        body: closing
+          ? t('{left} steps left to hit your {goal} goal before the day is out.', { left: stepsLeft.toLocaleString(), goal: stepGoal.toLocaleString() })
+          : t('{left} steps left to hit your {goal} goal.', { left: stepsLeft.toLocaleString(), goal: stepGoal.toLocaleString() }),
+        action: { label: t('Start evening walk'), route: '/steps' },
         urgency: closing && nearlyThere ? 95 : closing ? 80 : 60,
       });
     }
@@ -124,9 +125,9 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
       id: 'fuel-gap',
       icon: Salad,
       tone: 'aqua',
-      title: 'Fuel alert',
-      body: `You are ${formatEnergy(calorieGap)} under target with ${proteinGap}g protein remaining.`,
-      action: { label: 'Quick log meal', route: '/track' },
+      title: t('Fuel alert'),
+      body: t('You are {energy} under target with {protein}g protein remaining.', { energy: formatEnergy(calorieGap), protein: proteinGap }),
+      action: { label: t('Quick log meal'), route: '/track' },
       urgency: hour >= 19 ? 88 : 70,
     });
   } else if (calorieGap < -150) {
@@ -134,9 +135,9 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
       id: 'fuel-over',
       icon: Salad,
       tone: 'coral',
-      title: 'Over target',
-      body: `${formatEnergy(Math.abs(calorieGap))} above your goal today. Worth a lighter dinner.`,
-      action: { label: 'Review intake', route: '/track' },
+      title: t('Over target'),
+      body: t('{energy} above your goal today. Worth a lighter dinner.', { energy: formatEnergy(Math.abs(calorieGap)) }),
+      action: { label: t('Review intake'), route: '/track' },
       urgency: 55,
     });
   }
@@ -148,9 +149,9 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
         id: 'ready',
         icon: Zap,
         tone: 'lime',
-        title: `Recovery is optimal (${Math.round(recovery)}%)`,
-        body: 'Your body is ready for a hard session today.',
-        action: { label: 'Open workout HUD', route: '/workout' },
+        title: t('Recovery is optimal ({pct}%)', { pct: Math.round(recovery) }),
+        body: t('Your body is ready for a hard session today.'),
+        action: { label: t('Open workout HUD'), route: '/workout' },
         urgency: 75,
       });
     } else if (recovery < 45) {
@@ -158,9 +159,9 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
         id: 'recover',
         icon: Zap,
         tone: 'coral',
-        title: `Recovery is low (${Math.round(recovery)}%)`,
-        body: 'Keep intensity capped today — mobility or an easy walk will serve you better.',
-        action: { label: 'See recovery', route: '/wellness' },
+        title: t('Recovery is low ({pct}%)', { pct: Math.round(recovery) }),
+        body: t('Keep intensity capped today — mobility or an easy walk will serve you better.'),
+        action: { label: t('See recovery'), route: '/wellness' },
         urgency: 72,
       });
     }
@@ -172,9 +173,9 @@ export const buildNudges = (context: NudgeContext): Nudge[] => {
       id: 'mobility',
       icon: Droplets,
       tone: 'amber',
-      title: 'Posture check',
-      body: `${Math.round(sedentaryMinutes)} minutes without moving. Take a five-minute stretch break.`,
-      action: { label: 'Start mobility', route: '/wellness' },
+      title: t('Posture check'),
+      body: t('{n} minutes without moving. Take a five-minute stretch break.', { n: Math.round(sedentaryMinutes) }),
+      action: { label: t('Start mobility'), route: '/wellness' },
       urgency: 50,
     });
   }
@@ -221,7 +222,7 @@ const NudgeCard: React.FC<{ nudge: Nudge; onAct: () => void; onDismiss: () => vo
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="Dismiss"
+          aria-label={t('Dismiss')}
           className="w-9 h-9 -mr-1 -mt-1 rounded-lg flex items-center justify-center text-text-mute active:scale-95 transition-transform shrink-0"
         >
           <X size={14} aria-hidden="true" />
@@ -289,7 +290,7 @@ export const NotificationCenter: React.FC<{
           setOpen(true);
         }}
         aria-label={
-          nudges.length > 0 ? `Notifications, ${nudges.length} need attention` : 'Notifications'
+          nudges.length === 0 ? t('Notifications') : t('Notifications, {n} need attention', { n: nudges.length })
         }
         className={cn(
           'relative w-11 h-11 flex items-center justify-center glass-spatial text-white',
@@ -331,17 +332,17 @@ export const NotificationCenter: React.FC<{
               onClick={(event) => event.stopPropagation()}
               role="dialog"
               aria-modal="true"
-              aria-label="Notifications"
+              aria-label={t('Notifications')}
             >
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <p className="text-eyebrow text-accent">Proactive</p>
-                  <h2 className="font-display text-3xl font-bold text-white tracking-tight">Nudges</h2>
+                  <p className="text-eyebrow text-accent">{t('Proactive')}</p>
+                  <h2 className="font-display text-3xl font-bold text-white tracking-tight">{t('Nudges')}</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  aria-label="Close notifications"
+                  aria-label={t('Close notifications')}
                   className="w-11 h-11 glass-spatial flex items-center justify-center text-white active:scale-95 transition-transform"
                   style={{ borderRadius: '1rem' }}
                 >
@@ -368,25 +369,25 @@ export const NotificationCenter: React.FC<{
               {nudges.length === 0 && (
                 <div className="text-center py-14 flex flex-col items-center gap-3">
                   <Bell size={34} className="text-text-mute" aria-hidden="true" />
-                  <p className="text-sm text-text-dim">Nothing needs your attention.</p>
+                  <p className="text-sm text-text-dim">{t('Nothing needs your attention.')}</p>
                   <p className="text-[11px] text-text-mute max-w-[15rem] leading-relaxed">
-                    Nudges appear when your steps, fuel or recovery actually call for one.
+                    {t('Nudges appear when your steps, fuel or recovery actually call for one.')}
                   </p>
                 </div>
               )}
 
               {history.length > 0 && (
                 <section className="mt-8">
-                  <p className="text-eyebrow text-text-mute mb-3">Earlier</p>
+                  <p className="text-eyebrow text-text-mute mb-3">{t('Earlier')}</p>
                   <ul className="space-y-2">
                     {history.map((item) => (
                       <li key={item.id} className="glass-spatial p-4 relative overflow-hidden">
                         <div className="flex justify-between items-start gap-2">
-                          <h4 className="font-semibold text-white text-sm">{item.title ?? 'Notification'}</h4>
+                          <h4 className="font-semibold text-white text-sm">{item.title ?? t('Notification')}</h4>
                           <span className="text-[10px] text-text-mute font-medium whitespace-nowrap">
                             {item.timestamp?.toDate
                               ? item.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              : 'Now'}
+                              : t('Now')}
                           </span>
                         </div>
                         {item.body ? (

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { createPost } from '../services/dataService';
 import { Avatar } from './Avatar';
+import { t } from '../i18n/i18n';
 
 export const CreatePostModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { user, profile } = useAuth();
@@ -39,10 +40,10 @@ export const CreatePostModal: React.FC<{ isOpen: boolean; onClose: () => void }>
       >
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-eyebrow text-accent">New post</p>
-            <h2 className="font-display text-xl font-bold text-white tracking-tight">Share your progress</h2>
+            <p className="text-eyebrow text-accent">{t('New post')}</p>
+            <h2 className="font-display text-xl font-bold text-white tracking-tight">{t('Share your progress')}</h2>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}>
             <X size={16} />
           </button>
         </div>
@@ -50,7 +51,7 @@ export const CreatePostModal: React.FC<{ isOpen: boolean; onClose: () => void }>
         <div className="flex gap-3">
           <Avatar src={profile?.photoURL} name={profile?.displayName} size={40} />
           <textarea
-            placeholder="What did you crush today?"
+            placeholder={t('What did you crush today?')}
             className="flex-1 glass rounded-2xl p-4 text-white text-sm placeholder:text-text-dim/50 focus:outline-none focus:border-accent/30 resize-none min-h-[120px]"
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -64,7 +65,7 @@ export const CreatePostModal: React.FC<{ isOpen: boolean; onClose: () => void }>
             disabled={isSubmitting || !content.trim()}
             className="btn-3d h-12 px-6 disabled:opacity-50"
           >
-            {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <><Send size={14} /> Post</>}
+            {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <><Send size={14} /> {t('Post')}</>}
           </button>
         </div>
       </motion.div>

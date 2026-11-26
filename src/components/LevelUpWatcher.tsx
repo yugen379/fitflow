@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { computeLevel } from '../services/missionUtils';
 import { celebrateLevelUp } from '../lib/celebrate';
 import { useBackHandler } from '../lib/backButton';
+import { t } from '../i18n/i18n';
 
 // ---------------------------------------------------------------------------
 // App-wide level-up moment.
@@ -43,7 +44,7 @@ export const LevelUpWatcher: React.FC = () => {
   return (
     <AnimatePresence>
       {shown !== null && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6" role="dialog" aria-label={`Level ${shown} reached`}>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6" role="dialog" aria-label={t('Level {n} reached', { n: shown })}>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShown(null)}
@@ -53,12 +54,12 @@ export const LevelUpWatcher: React.FC = () => {
             transition={{ type: 'spring', stiffness: 260, damping: 18 }}
             className="relative glass rounded-3xl p-7 w-full max-w-xs text-center space-y-3"
           >
-            <p className="text-eyebrow text-accent">Level up</p>
+            <p className="text-eyebrow text-accent">{t('Level up')}</p>
             <p className="num font-display text-6xl font-bold text-white leading-none">{shown}</p>
             <p className="text-sm text-text-dim">
-              Every log and every session got you here. Keep the streak going.
+              {t('Every log and every session got you here. Keep the streak going.')}
             </p>
-            <button onClick={() => setShown(null)} className="btn-3d h-12 w-full">Let&rsquo;s go</button>
+            <button onClick={() => setShown(null)} className="btn-3d h-12 w-full">{t('Let’s go')}</button>
           </motion.div>
         </div>
       )}

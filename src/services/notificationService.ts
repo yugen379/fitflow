@@ -3,6 +3,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { AppNotification } from '../types';
+import { t } from '../i18n/i18n';
 
 const SHOWN_KEY = (uid: string, kind: string) => `ff_notif_${kind}_${uid}`;
 const todayKey = () => new Date().toDateString();
@@ -148,8 +149,8 @@ export const scheduleReminders = async (userId: string, preferredTime?: string) 
     if (localStorage.getItem(key) !== today) {
       await sendLocalNotification(
         userId,
-        'Hydration check',
-        'Knock out a glass of water now to keep energy steady through the afternoon.',
+        t('Hydration check'),
+        t('Knock out a glass of water now to keep energy steady through the afternoon.'),
         'reminder',
       );
       localStorage.setItem(key, today);
@@ -167,8 +168,8 @@ export const scheduleReminders = async (userId: string, preferredTime?: string) 
     if (inWindow && localStorage.getItem(key) !== today) {
       await sendLocalNotification(
         userId,
-        'Training window opens soon',
-        `You usually train around ${targetHour}:00. Got 30 minutes ready?`,
+        t('Training window opens soon'),
+        t('You usually train around {hour}:00. Got 30 minutes ready?', { hour: targetHour }),
         'reminder',
       );
       localStorage.setItem(key, today);
@@ -181,8 +182,8 @@ export const scheduleReminders = async (userId: string, preferredTime?: string) 
     if (localStorage.getItem(key) !== today) {
       await sendLocalNotification(
         userId,
-        'Wrap up your day',
-        "Log your last meal and water so tomorrow's plan adapts to where you actually landed.",
+        t('Wrap up your day'),
+        t("Log your last meal and water so tomorrow's plan adapts to where you actually landed."),
         'reminder',
       );
       localStorage.setItem(key, today);
