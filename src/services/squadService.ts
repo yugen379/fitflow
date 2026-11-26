@@ -17,6 +17,7 @@ import { db } from '../lib/firestore';
 import {
   SQUADS_PER_USER, SquadMetric, clampWeekValue, safeTimeZone, weekDays, weekRange, localDay,
 } from '../lib/squadUtils';
+import { t } from '../i18n/i18n';
 
 export interface SquadMember { name: string; photoURL: string; joinedAt: number }
 export interface Squad {
@@ -55,9 +56,9 @@ const call = async <T>(name: string, data: unknown): Promise<T> => {
 export const squadErrorMessage = (e: unknown): string => {
   const err = e as { code?: string; message?: string };
   const code = String(err?.code || '').replace('functions/', '');
-  if (code === 'unavailable' || code === 'internal' || code === 'deadline-exceeded') return "Can't reach FitFlow right now. Try again.";
-  if (code === 'unauthenticated') return 'Sign in again to use squads.';
-  return err?.message && code ? err.message : 'Something went wrong. Try again.';
+  if (code === 'unavailable' || code === 'internal' || code === 'deadline-exceeded') return t("Can't reach FitFlow right now. Try again.");
+  if (code === 'unauthenticated') return t('Sign in again to use squads.');
+  return err?.message && code ? err.message : t('Something went wrong. Try again.');
 };
 
 export const createSquad = (input: { name: string; metric: SquadMetric; goal?: number }) =>

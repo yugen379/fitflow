@@ -11,6 +11,7 @@ import { db, safeUnsubscribe } from '../lib/firestore';
 import { Avatar } from '../components/Avatar';
 import { checkChallengeBadge } from '../services/badgeService';
 import { canUse } from '../lib/features';
+import { t, msg, tDyn } from '../i18n/i18n';
 
 interface ChallengeDef {
   baseId: string;
@@ -38,34 +39,34 @@ const challengeText = (
   if (c.metric === 'water' && n > 0) {
     const v = units.formatLargeVolume(n);
     return c.type === 'community' && c.period === 'monthly'
-      ? { title: `${v} of water`, description: `Community hydration challenge — collectively drink ${v}.` }
-      : { title: `Drink ${v} of water`, description: `Hydration champion challenge — hit ${v} in ${c.period === 'monthly' ? '30' : '7'} days.` };
+      ? { title: t('{volume} of water', { volume: v }), description: t('Community hydration challenge — collectively drink {volume}.', { volume: v }) }
+      : { title: t('Drink {volume} of water', { volume: v }), description: t('Hydration champion challenge — hit {volume} in {days} days.', { volume: v, days: c.period === 'monthly' ? '30' : '7' }) };
   }
   if (c.metric === 'calories' && n > 0) {
     const e = units.formatEnergy(n);
-    return { title: `Burn ${e}`, description: `Solo endurance test — burn ${e} of activity in ${c.period === 'weekly' ? '7' : '30'} days.` };
+    return { title: t('Burn {energy}', { energy: e }), description: t('Solo endurance test — burn {energy} of activity in {days} days.', { energy: e, days: c.period === 'weekly' ? '7' : '30' }) };
   }
-  return { title: c.title, description: c.description };
+  return { title: tDyn(c.title), description: tDyn(c.description) };
 };
 
 // Two pools — weekly rotates by ISO week, monthly rotates by month. Each pick is
 // deterministic per period so everyone sees the same active set, and challenges
 // auto-refresh when the period ends.
 const WEEKLY_POOL: ChallengeDef[] = [
-  { baseId: 'streak7',        title: '7-day streak together',  description: 'Log a workout every day for 7 days with the whole community.',   target: 7,     metric: 'streakDays', type: 'community',  prize: 'Iron Will badge',       period: 'weekly' },
-  { baseId: 'cardio3',        title: '3 cardio sessions',      description: 'Stack three cardio workouts this week — running, cycling, swim.', target: 3,     metric: 'workouts',   type: 'individual', prize: 'Endurance badge',       period: 'weekly' },
-  { baseId: 'lift4',          title: '4 strength sessions',    description: 'Hit the iron four times this week to build the habit.',           target: 4,     metric: 'workouts',   type: 'individual', prize: 'Builder badge',         period: 'weekly' },
-  { baseId: 'water20l',       title: 'Drink 20L of water',     description: 'Hydration champion challenge — hit 20 litres in 7 days.',         target: 20000, metric: 'water',      type: 'community',  prize: 'Hydration Hero badge',  period: 'weekly' },
-  { baseId: 'mins180',        title: '180 active minutes',     description: 'Move with intention — accumulate 180 active minutes this week.',  target: 180,   metric: 'minutes',    type: 'individual', prize: 'Mover badge',           period: 'weekly' },
-  { baseId: 'mixed5',         title: 'Mix it up — 5 sessions', description: 'Five workouts across at least three different disciplines.',      target: 5,     metric: 'workouts',   type: 'community',  prize: 'Versatility badge',     period: 'weekly' },
+  { baseId: 'streak7',        title: msg('7-day streak together'),  description: msg('Log a workout every day for 7 days with the whole community.'),   target: 7,     metric: 'streakDays', type: 'community',  prize: msg('Iron Will badge'),       period: 'weekly' },
+  { baseId: 'cardio3',        title: msg('3 cardio sessions'),      description: msg('Stack three cardio workouts this week — running, cycling, swim.'), target: 3,     metric: 'workouts',   type: 'individual', prize: msg('Endurance badge'),       period: 'weekly' },
+  { baseId: 'lift4',          title: msg('4 strength sessions'),    description: msg('Hit the iron four times this week to build the habit.'),           target: 4,     metric: 'workouts',   type: 'individual', prize: msg('Builder badge'),         period: 'weekly' },
+  { baseId: 'water20l',       title: msg('Drink 20L of water'),     description: msg('Hydration champion challenge — hit 20 litres in 7 days.'),         target: 20000, metric: 'water',      type: 'community',  prize: msg('Hydration Hero badge'),  period: 'weekly' },
+  { baseId: 'mins180',        title: msg('180 active minutes'),     description: msg('Move with intention — accumulate 180 active minutes this week.'),  target: 180,   metric: 'minutes',    type: 'individual', prize: msg('Mover badge'),           period: 'weekly' },
+  { baseId: 'mixed5',         title: msg('Mix it up — 5 sessions'), description: msg('Five workouts across at least three different disciplines.'),      target: 5,     metric: 'workouts',   type: 'community',  prize: msg('Versatility badge'),     period: 'weekly' },
 ];
 
 const MONTHLY_POOL: ChallengeDef[] = [
-  { baseId: 'burn10k',        title: 'Burn 10,000 calories',    description: 'Solo endurance test — torch 10K calories of activity in 30 days.', target: 10000, metric: 'calories',   type: 'individual', prize: 'Elite badge',           period: 'monthly', pro: true },
-  { baseId: 'workouts20',     title: '20 workouts in a month',  description: 'Show up 20 times this month, in any form. Movement compounds.',    target: 20,    metric: 'workouts',   type: 'individual', prize: 'Consistency badge',     period: 'monthly' },
-  { baseId: 'mins1500',       title: '1,500 active minutes',    description: 'A full month of intentional movement — 25 hours of training.',     target: 1500,  metric: 'minutes',    type: 'community',  prize: 'Marathon Mover badge',  period: 'monthly', pro: true },
-  { baseId: 'water100l',      title: '100 litres of water',     description: 'Community hydration challenge — collectively drink 100L.',         target: 100000,metric: 'water',      type: 'community',  prize: 'Aquaholic badge',       period: 'monthly' },
-  { baseId: 'streak30',       title: '30-day streak',           description: 'The legendary one — log activity every day this month.',           target: 30,    metric: 'streakDays', type: 'individual', prize: 'Unbreakable badge',     period: 'monthly' },
+  { baseId: 'burn10k',        title: msg('Burn 10,000 calories'),    description: msg('Solo endurance test — torch 10K calories of activity in 30 days.'), target: 10000, metric: 'calories',   type: 'individual', prize: msg('Elite badge'),           period: 'monthly', pro: true },
+  { baseId: 'workouts20',     title: msg('20 workouts in a month'),  description: msg('Show up 20 times this month, in any form. Movement compounds.'),    target: 20,    metric: 'workouts',   type: 'individual', prize: msg('Consistency badge'),     period: 'monthly' },
+  { baseId: 'mins1500',       title: msg('1,500 active minutes'),    description: msg('A full month of intentional movement — 25 hours of training.'),     target: 1500,  metric: 'minutes',    type: 'community',  prize: msg('Marathon Mover badge'),  period: 'monthly', pro: true },
+  { baseId: 'water100l',      title: msg('100 litres of water'),     description: msg('Community hydration challenge — collectively drink 100L.'),         target: 100000,metric: 'water',      type: 'community',  prize: msg('Aquaholic badge'),       period: 'monthly' },
+  { baseId: 'streak30',       title: msg('30-day streak'),           description: msg('The legendary one — log activity every day this month.'),           target: 30,    metric: 'streakDays', type: 'individual', prize: msg('Unbreakable badge'),     period: 'monthly' },
 ];
 
 const isoWeekNum = (d: Date) => {
@@ -81,13 +82,13 @@ const isoWeekNum = (d: Date) => {
 };
 
 const formatCountdown = (ms: number) => {
-  if (ms <= 0) return 'ended';
+  if (ms <= 0) return t('ended');
   const days = Math.floor(ms / (1000 * 60 * 60 * 24));
   const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  if (days >= 7) return `${days}d`;
-  if (days >= 1) return `${days}d ${hours}h`;
+  if (days >= 7) return t('{days}d', { days });
+  if (days >= 1) return t('{days}d {hours}h', { days, hours });
   const mins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  return `${hours}h ${mins}m`;
+  return t('{hours}h {mins}m', { hours, mins });
 };
 
 interface ActiveChallenge extends ChallengeDef {
@@ -227,7 +228,7 @@ export const Challenges: React.FC = () => {
             const data = d.data() as any;
             return {
               uid: d.id,
-              displayName: data.displayName || 'Athlete',
+              displayName: data.displayName || t('Athlete'),
               photoURL: data.photoURL,
               points: typeof data.points === 'number' ? data.points : 0,
               streak: typeof data.streak === 'number' ? data.streak : 0,
@@ -238,7 +239,7 @@ export const Challenges: React.FC = () => {
         setBoardLoading(false);
       },
       () => {
-        setBoardError("Couldn't load leaderboard");
+        setBoardError(t("Couldn't load leaderboard"));
         setBoardLoading(false);
       },
     );
@@ -250,7 +251,7 @@ export const Challenges: React.FC = () => {
     // Pro-only challenge on a free account: send them to the paywall rather
     // than writing a membership they cannot complete.
     if (challenge?.pro && !canUse('pro-challenges', profile)) {
-      showToast('That challenge is part of FitFlow Pro', 'info');
+      showToast(t('That challenge is part of FitFlow Pro'), 'info');
       navigate('/pro');
       return;
     }
@@ -261,11 +262,11 @@ export const Challenges: React.FC = () => {
       await updateDoc(userRef, { activeChallenges: arrayUnion(challenge.baseId || challenge.id) });
       // "Challenge Accepted" — first challenge joined.
       void checkChallengeBadge(profile.uid);
-      showToast(`Joined ${challengeText(challenge, units).title}`, 'success');
+      showToast(t('Joined {challenge}', { challenge: challengeText(challenge, units).title }), 'success');
       setSelectedChallenge(null);
       setActiveTab('my');
     } catch {
-      showToast("Couldn't join challenge", 'error');
+      showToast(t("Couldn't join challenge"), 'error');
     } finally {
       setLoading(false);
     }
@@ -275,10 +276,10 @@ export const Challenges: React.FC = () => {
     <div className="pb-24 pt-4 px-4 bg-bg min-h-screen">
       <header className="flex items-center justify-between mb-5 pt-2">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back"><ChevronLeft size={18} /></button>
+          <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}><ChevronLeft size={18} /></button>
           <div>
-            <p className="text-eyebrow text-accent">Compete</p>
-            <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">Challenges</h1>
+            <p className="text-eyebrow text-accent">{t('Compete')}</p>
+            <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{t('Challenges')}</h1>
           </div>
         </div>
         <div className="flex bg-surface rounded-xl p-1 border border-white/[0.06]">
@@ -286,26 +287,26 @@ export const Challenges: React.FC = () => {
              onClick={() => setActiveTab('global')}
              className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', activeTab === 'global' ? 'bg-accent text-bg' : 'text-text-dim')}
            >
-             All
+             {t('All')}
            </button>
            <button
              onClick={() => setActiveTab('my')}
              className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', activeTab === 'my' ? 'bg-accent text-bg' : 'text-text-dim')}
            >
-             Mine
+             {t('Mine')}
            </button>
         </div>
       </header>
 
       <button
         onClick={() => navigate('/squads')}
-        aria-label="Squads"
+        aria-label={t('Squads')}
         className="glass w-full p-4 mb-5 flex items-center gap-3 text-left"
       >
         <div className="w-10 h-10 shrink-0 rounded-xl bg-accent/15 text-accent flex items-center justify-center"><Users size={18} /></div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">Squads</p>
-          <p className="text-xs text-text-dim truncate">Private weekly challenges with up to 10 friends</p>
+          <p className="text-sm font-semibold text-white">{t('Squads')}</p>
+          <p className="text-xs text-text-dim truncate">{t('Private weekly challenges with up to 10 friends')}</p>
         </div>
         <ChevronLeft size={16} className="rotate-180 text-text-dim shrink-0" />
       </button>
@@ -314,8 +315,8 @@ export const Challenges: React.FC = () => {
         <div className="space-y-6">
           <div className="space-y-3">
             <div className="flex justify-between items-end px-1">
-              <h3 className="font-display text-lg font-bold text-white tracking-tight">Active challenges</h3>
-              <span className="text-xs text-text-dim num">{challengesWithProgress.length} live</span>
+              <h3 className="font-display text-lg font-bold text-white tracking-tight">{t('Active challenges')}</h3>
+              <span className="text-xs text-text-dim num">{t('{n} live', { n: challengesWithProgress.length })}</span>
             </div>
             <div className="space-y-3">
               {challengesWithProgress.map(ch => (
@@ -331,8 +332,8 @@ export const Challenges: React.FC = () => {
           <div className="space-y-3">
             <div className="flex justify-between items-end px-1">
               <div>
-                <h3 className="font-display text-lg font-bold text-white tracking-tight">Leaderboard</h3>
-                <p className="text-xs text-text-dim">Top athletes by XP · live</p>
+                <h3 className="font-display text-lg font-bold text-white tracking-tight">{t('Leaderboard')}</h3>
+                <p className="text-xs text-text-dim">{t('Top athletes by XP · live')}</p>
               </div>
               <TrendingUp className="text-accent" size={16} />
             </div>
@@ -354,7 +355,7 @@ export const Challenges: React.FC = () => {
                 <div className="p-6 text-center text-sm text-text-dim">{boardError}</div>
               ) : leaderboard.length === 0 ? (
                 <div className="p-6 text-center text-sm text-text-dim">
-                  No athletes on the board yet. Log a workout to earn XP.
+                  {t('No athletes on the board yet. Log a workout to earn XP.')}
                 </div>
               ) : (
                 <div className="p-4 space-y-3">
@@ -380,10 +381,10 @@ export const Challenges: React.FC = () => {
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-white truncate">
                               {item.displayName}
-                              {isMe && <span className="ml-2 text-[10px] uppercase tracking-wider text-accent font-bold">you</span>}
+                              {isMe && <span className="ml-2 text-[10px] uppercase tracking-wider text-accent font-bold">{t('you')}</span>}
                             </p>
                             {item.streak > 0 && (
-                              <p className="num text-[10px] text-text-dim mt-0.5">🔥 {item.streak} day streak</p>
+                              <p className="num text-[10px] text-text-dim mt-0.5">🔥 {t('{n} day streak', { n: item.streak })}</p>
                             )}
                           </div>
                         </div>
@@ -411,9 +412,9 @@ export const Challenges: React.FC = () => {
                               <div className="min-w-0">
                                 <p className="text-sm font-medium text-white truncate">
                                   {profile.displayName}
-                                  <span className="ml-2 text-[10px] uppercase tracking-wider text-accent font-bold">you</span>
+                                  <span className="ml-2 text-[10px] uppercase tracking-wider text-accent font-bold">{t('you')}</span>
                                 </p>
-                                <p className="num text-[10px] text-text-dim mt-0.5">🔥 {profile.streak || 0} day streak</p>
+                                <p className="num text-[10px] text-text-dim mt-0.5">🔥 {t('{n} day streak', { n: profile.streak || 0 })}</p>
                               </div>
                             </div>
                             <div className="text-right shrink-0">
@@ -438,16 +439,16 @@ export const Challenges: React.FC = () => {
             return (
               <div className="py-24 flex flex-col items-center justify-center gap-4 text-center">
                 <Shield size={42} className="text-text-dim/30" />
-                <p className="text-sm text-text-dim">No active challenges yet.</p>
-                <button onClick={() => setActiveTab('global')} className="text-accent text-sm font-semibold">Join one →</button>
+                <p className="text-sm text-text-dim">{t('No active challenges yet.')}</p>
+                <button onClick={() => setActiveTab('global')} className="text-accent text-sm font-semibold">{t('Join one →')}</button>
               </div>
             );
           }
           return (
             <div className="space-y-3">
               <div className="flex justify-between items-end px-1">
-                <h3 className="font-display text-lg font-bold text-white tracking-tight">Your active challenges</h3>
-                <span className="text-xs text-text-dim num">{myChallenges.length} joined</span>
+                <h3 className="font-display text-lg font-bold text-white tracking-tight">{t('Your active challenges')}</h3>
+                <span className="text-xs text-text-dim num">{t('{n} joined', { n: myChallenges.length })}</span>
               </div>
               <div className="space-y-3">
                 {myChallenges.map(ch => (
@@ -485,20 +486,20 @@ export const Challenges: React.FC = () => {
                       <div className="space-y-3 flex-1">
                          <div className="flex items-center gap-2 flex-wrap">
                            <span className="bg-accent/12 text-accent text-xs font-semibold px-2.5 py-1 rounded-full">
-                             {selectedChallenge.type}
+                             {selectedChallenge.type === 'community' ? t('community') : t('individual')}
                            </span>
-                           <span className="text-xs text-accent-2 font-medium">Ends in {selectedChallenge.endsIn}</span>
+                           <span className="text-xs text-accent-2 font-medium">{t('Ends in {time}', { time: selectedChallenge.endsIn })}</span>
                          </div>
                          <h2 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{challengeText(selectedChallenge, units).title}</h2>
                       </div>
-                      <button onClick={() => setSelectedChallenge(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white shrink-0" aria-label="Close"><X size={16} /></button>
+                      <button onClick={() => setSelectedChallenge(null)} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim hover:text-white shrink-0" aria-label={t('Close')}><X size={16} /></button>
                    </div>
 
                    <p className="text-sm text-text-dim leading-relaxed">{challengeText(selectedChallenge, units).description}</p>
 
                    <div className="space-y-3">
                       <div className="flex justify-between items-end">
-                         <p className="text-sm text-white font-medium">Progress</p>
+                         <p className="text-sm text-white font-medium">{t('Progress')}</p>
                          <p className="num text-sm text-accent font-semibold">{Math.round((selectedChallenge.current / selectedChallenge.target) * 100)}%</p>
                       </div>
                       <div className="h-2 bg-white/[0.05] rounded-full overflow-hidden">
@@ -519,8 +520,8 @@ export const Challenges: React.FC = () => {
                         <Trophy size={16} />
                       </div>
                       <div>
-                        <p className="text-xs text-text-dim font-medium">Reward</p>
-                        <p className="text-white font-semibold">{selectedChallenge.prize}</p>
+                        <p className="text-xs text-text-dim font-medium">{t('Reward')}</p>
+                        <p className="text-white font-semibold">{tDyn(selectedChallenge.prize)}</p>
                       </div>
                    </div>
 
@@ -531,7 +532,7 @@ export const Challenges: React.FC = () => {
                    >
                      {loading ? <Loader2 className="animate-spin" size={18} /> : (
                        <>
-                         <span>Join challenge</span>
+                         <span>{t('Join challenge')}</span>
                          <Zap size={16} fill="currentColor" />
                        </>
                      )}
@@ -567,9 +568,9 @@ const ChallengeCard: React.FC<{ challenge: any; onClick: () => void }> = ({ chal
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
             {challenge.type === 'community' ? <Users size={12} className="text-accent-3" /> : <Zap size={12} className="text-accent" />}
-            <span className="text-eyebrow text-text-dim">{challenge.type}</span>
+            <span className="text-eyebrow text-text-dim">{challenge.type === 'community' ? t('community') : t('individual')}</span>
           </div>
-          <span className="text-xs text-text-dim font-medium">Ends {challenge.endsIn}</span>
+          <span className="text-xs text-text-dim font-medium">{t('Ends {time}', { time: challenge.endsIn })}</span>
         </div>
         <h4 className="font-display text-xl font-bold text-white tracking-tight leading-tight group-hover:text-accent transition-colors">
           {challengeText(challenge, units).title}
@@ -584,7 +585,7 @@ const ChallengeCard: React.FC<{ challenge: any; onClick: () => void }> = ({ chal
             <span className="num text-xs text-text-dim">{progressAmount(units, challenge.metric, challenge.current)} / {progressAmount(units, challenge.metric, challenge.target)}</span>
             <div className="flex items-center gap-1">
               <Trophy size={10} className="text-accent" />
-              <span className="text-xs text-accent font-semibold">{challenge.prize}</span>
+              <span className="text-xs text-accent font-semibold">{tDyn(challenge.prize)}</span>
             </div>
           </div>
         </div>

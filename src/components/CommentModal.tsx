@@ -10,6 +10,7 @@ import { Post } from '../types';
 import { Avatar } from './Avatar';
 import { ReportModal } from './ReportModal';
 import { useToast } from '../hooks/useToast';
+import { t } from '../i18n/i18n';
 
 export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post: Post | null }> = ({ isOpen, onClose, post }) => {
   const { user, profile } = useAuth();
@@ -53,14 +54,14 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
       postId: post.id,
       reason,
     });
-    showToast('Report submitted. Thank you.', 'success');
+    showToast(t('Report submitted. Thank you.'), 'success');
   };
 
   const handleBlockFromComment = async (comment: any) => {
     if (!user) return;
-    if (!window.confirm(`Block ${comment.username}? You won't see their posts or comments anymore.`)) return;
+    if (!window.confirm(t("Block {name}? You won't see their posts or comments anymore.", { name: comment.username }))) return;
     await blockUser(user.uid, comment.userId);
-    showToast(`Blocked ${comment.username}`, 'success');
+    showToast(t('Blocked {name}', { name: comment.username }), 'success');
   };
 
   const handleSubmit = async () => {
@@ -88,10 +89,10 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
       >
         <div className="flex justify-between items-center p-5 border-b border-white/[0.06]">
           <div>
-            <p className="text-eyebrow text-accent">Comments</p>
-            <p className="text-sm text-white font-medium mt-0.5">On {post.username}'s post</p>
+            <p className="text-eyebrow text-accent">{t('Comments')}</p>
+            <p className="text-sm text-white font-medium mt-0.5">{t("On {name}'s post", { name: post.username })}</p>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label="Close">
+          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-text-dim" aria-label={t('Close')}>
             <X size={16} />
           </button>
         </div>
@@ -99,7 +100,7 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <LoadingBar label="Loading comments" />
+              <LoadingBar label={t('Loading comments')} />
             </div>
           ) : comments.filter(c => !blockedIds.has(c.userId)).length > 0 ? (
             comments.filter(c => !blockedIds.has(c.userId)).map((comment) => (
@@ -119,16 +120,16 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
                     <button
                       onClick={() => setReportComment(comment)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-text-mute hover:text-accent-2 transition-colors"
-                      aria-label="Report comment"
-                      title="Report"
+                      aria-label={t('Report comment')}
+                      title={t('Report')}
                     >
                       <Flag size={13} />
                     </button>
                     <button
                       onClick={() => handleBlockFromComment(comment)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-text-mute hover:text-accent-2 transition-colors"
-                      aria-label="Block user"
-                      title="Block"
+                      aria-label={t('Block user')}
+                      title={t('Block')}
                     >
                       <Ban size={13} />
                     </button>
@@ -139,7 +140,7 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center gap-3 opacity-60">
               <MessageCircle size={32} className="text-text-dim/40" />
-              <p className="text-sm text-text-dim">Be the first to comment.</p>
+              <p className="text-sm text-text-dim">{t('Be the first to comment.')}</p>
             </div>
           )}
         </div>
@@ -149,7 +150,7 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
             <Avatar src={profile?.photoURL} name={profile?.displayName} size={32} />
             <div className="flex-1 relative">
               <input
-                placeholder="Write a comment…"
+                placeholder={t('Write a comment…')}
                 className="w-full glass rounded-xl pl-4 pr-11 h-11 text-sm text-white placeholder:text-text-dim/50 focus:outline-none focus:border-accent/40"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -159,7 +160,7 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
                 onClick={handleSubmit}
                 disabled={isSubmitting || !content.trim()}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-accent text-bg flex items-center justify-center disabled:opacity-30"
-                aria-label="Send"
+                aria-label={t('Send')}
               >
                 {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               </button>
@@ -172,7 +173,7 @@ export const CommentModal: React.FC<{ isOpen: boolean; onClose: () => void; post
         isOpen={!!reportComment}
         onClose={() => setReportComment(null)}
         onSubmit={handleReportComment}
-        targetLabel={reportComment ? `${reportComment.username}'s comment` : undefined}
+        targetLabel={reportComment ? t("{name}'s comment", { name: reportComment.username }) : undefined}
       />
     </div>
   );

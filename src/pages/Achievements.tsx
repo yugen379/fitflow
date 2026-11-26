@@ -30,7 +30,8 @@ import {
   evaluateAll,
   pathfinderLevel,
 } from '../lib/achievements';
-import type { AchievementCategory, AchievementProgress, AchievementStats } from '../lib/achievements';
+import type { AchievementCategory, AchievementProgress, AchievementStats, AchievementTier } from '../lib/achievements';
+import { t, msg, tDyn } from '../i18n/i18n';
 
 type Filter = 'all' | AchievementCategory;
 
@@ -38,7 +39,7 @@ type Filter = 'all' | AchievementCategory;
 const CARDS_IN_FIRST_PAINT = 6;
 
 const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: 'All' },
+  { id: 'all', label: msg('All') },
   { id: 'daily-steps', label: CATEGORY_LABELS['daily-steps'] },
   { id: 'rpg-titles', label: CATEGORY_LABELS['rpg-titles'] },
   { id: 'streaks', label: CATEGORY_LABELS.streaks },
@@ -55,7 +56,17 @@ const FILTERS: { id: Filter; label: string }[] = [
  */
 /** Distance badges are defined in km ("Cover 5 km in total."); say it in the person's units. */
 const describe = (a: AchievementProgress['achievement'], units: ReturnType<typeof useUnits>): string =>
-  a.metric === 'totalDistanceKm' ? `Cover ${units.formatDistance(a.threshold)} in total.` : a.description;
+  a.metric === 'totalDistanceKm' ? t('Cover {distance} in total.', { distance: units.formatDistance(a.threshold) }) : tDyn(a.description);
+
+const tierLabel = (tier: AchievementTier): string =>
+  tier === 'bronze' ? t('bronze') : tier === 'silver' ? t('silver') : tier === 'gold' ? t('gold') : tier === 'legend' ? t('legend') : tier;
+
+/** "1,240 / 5,000 steps" for the non-distance units. */
+const countLine = (unit: string, current: string, target: string): string =>
+  unit === 'steps' ? t('{current} / {target} steps', { current, target })
+    : unit === 'days' ? t('{current} / {target} days', { current, target })
+      : unit === 'sessions' ? t('{current} / {target} sessions', { current, target })
+        : `${current} / ${target} ${unit}`;
 
 const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ entry, onOpen }) => {
   const units = useUnits();
@@ -88,7 +99,9 @@ const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ en
         void haptic(unlocked ? 'success' : 'light');
         onOpen();
       }}
-      aria-label={`${achievement.name}. ${unlocked ? 'Unlocked' : `${Math.round(ratio * 100)} percent complete`}`}
+      aria-label={unlocked
+        ? t('{name}. Unlocked', { name: tDyn(achievement.name) })
+        : t('{name}. {pct} percent complete', { name: tDyn(achievement.name), pct: Math.round(ratio * 100) })}
       className={cn(
         'relative rounded-[22px] p-3.5 text-left overflow-hidden isolate border transition-shadow',
         unlocked ? 'bg-white/[0.045]' : 'bg-white/[0.02]',
@@ -127,7 +140,7 @@ const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ en
         </div>
 
         <p className={cn('text-[13px] font-semibold leading-tight', unlocked ? 'text-white' : 'text-text-dim')}>
-          {achievement.name}
+          {tDyn(achievement.name)}
         </p>
         <p className="text-[10px] text-text-mute mt-1 leading-snug line-clamp-2">{describe(achievement, units)}</p>
 
@@ -199,15 +212,15 @@ export const Achievements: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          aria-label="Go back"
+          aria-label={t('Go back')}
           className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-text-dim active:scale-95 transition-transform shrink-0"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-eyebrow text-accent">Achievements</p>
+          <p className="text-eyebrow text-accent">{t('Achievements')}</p>
           <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight mt-0.5">
-            {level.unlocked} / {level.total} unlocked
+            {t('{unlocked} / {total} unlocked', { unlocked: level.unlocked, total: level.total })}
           </h1>
         </div>
       </div>
@@ -217,9 +230,9 @@ export const Achievements: React.FC = () => {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-eyebrow" style={{ color: TIER_COLORS.gold }}>
-              Level {level.level}
+              {t('Level {n}', { n: level.level })}
             </p>
-            <p className="font-display text-xl font-bold text-white mt-0.5 truncate">{level.title}</p>
+            <p className="font-display text-xl font-bold text-white mt-0.5 truncate">{tDyn(level.title)}</p>
           </div>
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
@@ -246,7 +259,7 @@ export const Achievements: React.FC = () => {
       </section>
 
       {/* Filters */}
-      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1" role="tablist" aria-label="Category">
+      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1" role="tablist" aria-label={t('Category')}>
         {FILTERS.map((item) => {
           const selected = filter === item.id;
           return (
@@ -266,7 +279,7 @@ export const Achievements: React.FC = () => {
                   : 'bg-white/[0.02] border-white/[0.06] text-text-dim',
               )}
             >
-              {item.label}
+              {tDyn(item.label)}
             </button>
           );
         })}
@@ -284,7 +297,7 @@ export const Achievements: React.FC = () => {
           className="fixed inset-0 z-[100] bg-[#04060A]/85 backdrop-blur-xl flex items-center justify-center px-6"
           role="dialog"
           aria-modal="true"
-          aria-label={open.achievement.name}
+          aria-label={tDyn(open.achievement.name)}
           onClick={() => setOpen(null)}
         >
           <div
@@ -294,7 +307,7 @@ export const Achievements: React.FC = () => {
             <button
               type="button"
               onClick={() => setOpen(null)}
-              aria-label="Close"
+              aria-label={t('Close')}
               className="absolute top-3 right-3 w-11 h-11 rounded-xl flex items-center justify-center text-text-dim active:scale-95 transition-transform"
             >
               <X size={18} aria-hidden="true" />
@@ -319,10 +332,10 @@ export const Achievements: React.FC = () => {
               className="text-eyebrow mt-4"
               style={{ color: TIER_COLORS[open.achievement.tier] }}
             >
-              {open.achievement.tier} · {CATEGORY_LABELS[open.achievement.category]}
+              {tierLabel(open.achievement.tier)} · {tDyn(CATEGORY_LABELS[open.achievement.category])}
             </p>
             <h2 className="font-display text-2xl font-bold text-white mt-1 tracking-tight">
-              {open.achievement.name}
+              {tDyn(open.achievement.name)}
             </h2>
             <p className="text-sm text-text-dim mt-2 leading-relaxed">{describe(open.achievement, units)}</p>
 
@@ -330,7 +343,7 @@ export const Achievements: React.FC = () => {
               {/* Distance goals are defined in km; shown in the person's units. */}
               {open.achievement.unit === 'km'
                 ? `${units.formatDistance(open.current)} / ${units.formatDistance(open.achievement.threshold)}`
-                : `${Math.round(open.current).toLocaleString()} / ${open.achievement.threshold.toLocaleString()} ${open.achievement.unit}`}
+                : countLine(open.achievement.unit, Math.round(open.current).toLocaleString(), open.achievement.threshold.toLocaleString())}
             </p>
 
             {!open.unlocked && (

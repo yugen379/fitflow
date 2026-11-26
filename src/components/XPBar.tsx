@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { computeLevel } from '../services/missionUtils';
+import { t } from '../i18n/i18n';
 
 // The XP/Level strip under the Home header. Level and progress are DERIVED from
 // lifetime points via the shared curve (missionUtils.computeLevel) — never from
@@ -31,8 +32,8 @@ export const XPBar: React.FC<{ points?: number; streak?: number }> = ({ points, 
   // Let the gain chip finish its float, then clear it.
   useEffect(() => {
     if (!gain) return;
-    const t = setTimeout(() => setGain(null), 1500);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setGain(null), 1500);
+    return () => clearTimeout(id);
   }, [gain]);
 
   return (
@@ -53,7 +54,7 @@ export const XPBar: React.FC<{ points?: number; streak?: number }> = ({ points, 
         aria-valuenow={info.intoLevel}
         aria-valuemin={0}
         aria-valuemax={info.toNext}
-        aria-label={`Level ${info.level} progress`}
+        aria-label={t('Level {n} progress', { n: info.level })}
       >
         <motion.div
           initial={{ width: 0 }}
