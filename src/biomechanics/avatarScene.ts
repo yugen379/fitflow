@@ -8,7 +8,8 @@
  *
  * The muscle heatmap is driven by a 17x1 lookup texture rather than per-vertex
  * colour updates. Each vertex carries the two muscle regions it sits between;
- * the fragment shader samples their current activation. Repainting the heatmap
+ * the vertex shader samples their current activation (per vertex, never per
+ * fragment from an interpolated index — see VERTEX_SHADER). Repainting the heatmap
  * is therefore a 68-byte texture upload per frame instead of a rewrite of every
  * vertex colour.
  */
@@ -45,7 +46,7 @@ import {
 
 import { RIG, trunkFrame } from './rig';
 import { MUSCLE_COUNT, MUSCLE_INDEX, NEUTRAL_MUSCLE_INDEX } from './types';
-import type { EquipmentId, JointId, MuscleId, QualityProfile, Skeleton, Vec3 } from './types';
+import type { ClipProp, EquipmentId, JointId, MuscleId, QualityProfile, Skeleton, Vec3 } from './types';
 
 // ---------------------------------------------------------------------------
 // Palette — pulled from FitFlow's design tokens so the avatar sits in-brand.
@@ -187,20 +188,33 @@ const assignRegions = (
 // ---------------------------------------------------------------------------
 
 const VERTEX_SHADER = /* glsl */ `
+  uniform sampler2D uActivation;
+  uniform float uLookupWidth;
+
   attribute float aMuscleA;
   attribute float aMuscleB;
   attribute float aBlend;
 
   varying vec3 vNormal;
   varying vec3 vViewPosition;
-  varying float vMuscleA;
-  varying float vMuscleB;
-  varying float vBlend;
+  varying float vActivation;
+
+  float sampleActivation(float index) {
+    // Sample the centre of the texel so NEAREST filtering can never land on a
+    // boundary and pick up the neighbouring muscle.
+    float u = (index + 0.5) / uLookupWidth;
+    return texture2D(uActivation, vec2(u, 0.5)).r;
+  }
 
   void main() {
-    vMuscleA = aMuscleA;
-    vMuscleB = aMuscleB;
-    vBlend = aBlend;
+    // The lookup happens HERE, per vertex, and only the resulting activation is
+    // interpolated. Muscle indices are categorical: passed as varyings, a
+    // triangle whose corners belong to different muscles (glutes on the top
+    // ring of a thigh, quads on the bottom ring) interpolates the index itself,
+    // and the fragment shader then samples every muscle numbered in between —
+    // painting unrelated muscles' heat as blocky stripes across limbs and torso.
+    // Interpolating the activation value is always well defined.
+    vActivation = clamp(mix(sampleActivation(aMuscleA), sampleActivation(aMuscleB), aBlend), 0.0, 1.0);
     vNormal = normalize(normalMatrix * normal);
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     vViewPosition = -mvPosition.xyz;
@@ -211,8 +225,6 @@ const VERTEX_SHADER = /* glsl */ `
 const FRAGMENT_SHADER = /* glsl */ `
   precision mediump float;
 
-  uniform sampler2D uActivation;
-  uniform float uLookupWidth;
   uniform float uHeatOpacity;
   uniform vec3 uSkin;
   uniform vec3 uSkinDeep;
@@ -223,21 +235,10 @@ const FRAGMENT_SHADER = /* glsl */ `
 
   varying vec3 vNormal;
   varying vec3 vViewPosition;
-  varying float vMuscleA;
-  varying float vMuscleB;
-  varying float vBlend;
-
-  float sampleActivation(float index) {
-    // Sample the centre of the texel so NEAREST filtering can never land on a
-    // boundary and pick up the neighbouring muscle.
-    float u = (index + 0.5) / uLookupWidth;
-    return texture2D(uActivation, vec2(u, 0.5)).r;
-  }
+  varying float vActivation;
 
   void main() {
-    float a = sampleActivation(vMuscleA);
-    float b = sampleActivation(vMuscleB);
-    float activation = clamp(mix(a, b, vBlend), 0.0, 1.0);
+    float activation = vActivation;
 
     vec3 normal = normalize(vNormal);
     vec3 viewDir = normalize(vViewPosition);
@@ -439,6 +440,14 @@ export interface SceneFrame {
   /** 0..1 — how much of the precomputed bar path to reveal. */
   pathProgress: number;
   equipment: EquipmentId;
+  /**
+   * Scenery for generated exercise clips (bench, plyo box, bar, wall). When
+   * present it replaces the legacy supine bench. Identity-compared: pass the
+   * clip's own array so the meshes are rebuilt only on a clip change.
+   */
+  props?: ClipProp[] | null;
+  /** Where a cable or band is anchored; defaults to the legacy high pulley. */
+  cableAnchor?: Vec3 | null;
 }
 
 export interface LayerFlags {
@@ -496,6 +505,12 @@ export class AvatarScene {
   private barGroupMeshes: Mesh[] = [];
   private benchMeshes: Mesh[] = [];
   private cableLine: Line | null = null;
+  /** Prop meshes for the current clip; unit geometry is shared and lives in geometryBin. */
+  private propMeshes: Mesh[] = [];
+  private propSource: ClipProp[] | null | undefined = undefined;
+  private propBox: BoxGeometry | null = null;
+  private propBar: CylinderGeometry | null = null;
+  private propMaterial: MeshBasicMaterial | null = null;
 
   private arcs = new Map<JointId, { line: Line; geometry: BufferGeometry }>();
 
@@ -642,10 +657,15 @@ export class AvatarScene {
   /** Builds (or rebuilds, after a quality change) all pose-driven geometry. */
   private buildAvatar(): void {
     const radial = this.quality.radialSegments;
+    // A few rings along each limb, not one. Heat is interpolated per vertex,
+    // and a single-ring cylinder stretches each triangle from hip to knee, so a
+    // thigh whose top ring is glutes and bottom ring is quads shades as a fan
+    // of diagonal streaks. ~2.4k extra triangles at the high tier.
+    const rings = Math.max(2, Math.round(radial / 4));
 
     for (const spec of SEGMENTS) {
       const geometry = this.geometryBin.track(
-        new CylinderGeometry(spec.radiusTop, spec.radiusBottom, 1, radial, 1, false),
+        new CylinderGeometry(spec.radiusTop, spec.radiusBottom, 1, radial, rings, false),
       );
       // Cylinders are built centred; shift so the segment runs 0..1 along +Y,
       // which lets the frame matrix place it directly from the proximal joint.
@@ -733,6 +753,39 @@ export class AvatarScene {
       leg.visible = false;
       this.scene.add(leg);
       this.benchMeshes.push(leg);
+    }
+  }
+
+  /** Detach the current prop meshes; their geometry/material belong to geometryBin. */
+  private clearProps(): void {
+    for (const mesh of this.propMeshes) this.scene.remove(mesh);
+    this.propMeshes = [];
+    this.propSource = undefined;
+    this.propBox = null;
+    this.propBar = null;
+    this.propMaterial = null;
+  }
+
+  /** Rebuild the scenery when the clip's prop list changes (never per frame). */
+  private syncProps(props: ClipProp[] | null | undefined): void {
+    if (props === this.propSource) return;
+    for (const mesh of this.propMeshes) this.scene.remove(mesh);
+    this.propMeshes = [];
+    this.propSource = props;
+    if (!props || props.length === 0) return;
+    if (!this.propBox) this.propBox = this.geometryBin.track(new BoxGeometry(1, 1, 1));
+    if (!this.propBar) {
+      this.propBar = this.geometryBin.track(new CylinderGeometry(0.5, 0.5, 1, 12));
+      this.propBar.rotateZ(Math.PI / 2);
+    }
+    if (!this.propMaterial) this.propMaterial = this.geometryBin.track(new MeshBasicMaterial({ color: PALETTE.bench }));
+    for (const prop of props) {
+      const mesh = new Mesh(prop.kind === 'bar' ? this.propBar : this.propBox, this.propMaterial);
+      mesh.position.set(prop.x, prop.y, prop.z);
+      mesh.scale.set(prop.sx, prop.sy, prop.sz);
+      if (prop.pitchDeg) mesh.rotation.x = (prop.pitchDeg * Math.PI) / 180;
+      this.scene.add(mesh);
+      this.propMeshes.push(mesh);
     }
   }
 
@@ -954,15 +1007,29 @@ export class AvatarScene {
 
   private updateEquipment(frame: SceneFrame, visible: boolean): void {
     const { equipment, bar, skeleton } = frame;
-    const showBar = visible && (equipment === 'barbell' || equipment === 'dumbbell');
+    const showBar = visible && (equipment === 'barbell' || equipment === 'dumbbell' || equipment === 'kettlebell');
     for (const mesh of this.barGroupMeshes) mesh.visible = showBar;
-    if (this.cableLine) this.cableLine.visible = visible && equipment === 'cable';
+    if (this.cableLine) this.cableLine.visible = visible && (equipment === 'cable' || equipment === 'band');
 
     if (showBar) {
       const isDumbbell = equipment === 'dumbbell';
       const shaft = this.barGroupMeshes[0];
 
-      if (isDumbbell) {
+      if (equipment === 'kettlebell') {
+        // One bell held at the implement point (both hands, or one hand for single-arm clips).
+        shaft.visible = false;
+        for (let i = 0; i < 4; i++) {
+          const plate = this.barGroupMeshes[i + 1];
+          if (i > 0) {
+            plate.visible = false;
+            continue;
+          }
+          this.tmpMatrix.makeScale(1.2, 0.75, 0.75);
+          this.tmpMatrix.setPosition(bar.x, bar.y - 0.09, bar.z);
+          plate.matrix.copy(this.tmpMatrix);
+          plate.matrixWorldNeedsUpdate = true;
+        }
+      } else if (isDumbbell) {
         // Two short handles, one per hand.
         shaft.visible = false;
         const positions: Vec3[] = [skeleton.wristL, skeleton.wristR];
@@ -997,10 +1064,11 @@ export class AvatarScene {
     if (this.cableLine && this.cableLine.visible) {
       const attribute = this.cableLine.geometry.getAttribute('position') as BufferAttribute;
       const array = attribute.array as Float32Array;
-      // Pulley anchored behind and above the athlete.
-      array[0] = 0;
-      array[1] = 1.95;
-      array[2] = -1.4;
+      // Pulley anchored behind and above the athlete unless the clip says otherwise.
+      const anchor = frame.cableAnchor;
+      array[0] = anchor ? anchor.x : 0;
+      array[1] = anchor ? anchor.y : 1.95;
+      array[2] = anchor ? anchor.z : -1.4;
       array[3] = bar.x;
       array[4] = bar.y;
       array[5] = bar.z;
@@ -1034,7 +1102,9 @@ export class AvatarScene {
       this.shadowMesh.position.set(midX, 0.002, midZ);
     }
 
-    for (const mesh of this.benchMeshes) mesh.visible = frame.supine;
+    // A clip with its own scenery replaces the legacy bench.
+    for (const mesh of this.benchMeshes) mesh.visible = frame.supine && !frame.props;
+    this.syncProps(frame.props);
 
     this.updateArcs(skeleton, layers.jointVectors);
     this.updateSkeletonOverlay(skeleton, layers.skeleton);
@@ -1160,6 +1230,7 @@ export class AvatarScene {
       for (const { line } of this.arcs.values()) this.scene.remove(line);
       for (const mesh of this.barGroupMeshes) this.scene.remove(mesh);
       for (const mesh of this.benchMeshes) this.scene.remove(mesh);
+      this.clearProps();
       if (this.skeletonLine) this.scene.remove(this.skeletonLine);
       if (this.cableLine) this.scene.remove(this.cableLine);
       // Not just detached: the geometry is bin-less, so dropping the reference
@@ -1211,6 +1282,10 @@ export class AvatarScene {
     this.arcs.clear();
     this.barGroupMeshes = [];
     this.benchMeshes = [];
+    this.propMeshes = [];
+    this.propBox = null;
+    this.propBar = null;
+    this.propMaterial = null;
     this.skeletonLine = null;
     this.skeletonGeometry = null;
     this.cableLine = null;

@@ -7,6 +7,10 @@
  * the analytic tibia IK. `scripts/biomechanics-proof.mjs` asserts all of it.
  */
 
+import exerciseLibrary from '../data/exerciseLibrary.json';
+import { EXERCISE_MOTIONS } from './exerciseMotions';
+import { buildFamilyClip, generatedSolveOptions } from './families';
+import type { SolveOptions } from './rig';
 import { MUSCLE_COUNT, MUSCLE_INDEX } from './types';
 import type {
   ActivationMap,
@@ -27,9 +31,16 @@ export const EQUIPMENT: Readonly<Record<EquipmentId, EquipmentOption>> = {
   dumbbell: { id: 'dumbbell', label: 'Dumbbells', gripHalfWidth: 0.26, showPlates: false },
   cable: { id: 'cable', label: 'Cable', gripHalfWidth: 0.22, showPlates: false },
   bodyweight: { id: 'bodyweight', label: 'Bodyweight', gripHalfWidth: 0.2, showPlates: false },
+  kettlebell: { id: 'kettlebell', label: 'Kettlebell', gripHalfWidth: 0.12, showPlates: false },
+  band: { id: 'band', label: 'Band', gripHalfWidth: 0.22, showPlates: false },
+  machine: { id: 'machine', label: 'Machine', gripHalfWidth: 0.25, showPlates: false },
 };
 
-export const EQUIPMENT_ORDER: EquipmentId[] = ['barbell', 'dumbbell', 'cable', 'bodyweight'];
+export const EQUIPMENT_ORDER: EquipmentId[] = ['barbell', 'dumbbell', 'cable', 'bodyweight', 'kettlebell', 'band', 'machine'];
+
+/** The implement actually rendered: the session's choice if the clip supports it, else the clip default. */
+export const resolveEquipment = (clip: MotionClip, sessionEquipment: EquipmentId): EquipmentId =>
+  clip.equipment.includes(sessionEquipment) ? sessionEquipment : clip.equipment[0] ?? 'bodyweight';
 
 // ---------------------------------------------------------------------------
 // Clips
@@ -225,7 +236,46 @@ export const MOTION_CLIPS: MotionClip[] = [BACK_SQUAT, BENCH_PRESS, DEADLIFT, OV
 
 const CLIP_BY_ID = new Map(MOTION_CLIPS.map((c) => [c.id, c]));
 
-export const getClip = (id: string): MotionClip | undefined => CLIP_BY_ID.get(id);
+// ---------------------------------------------------------------------------
+// Generated per-exercise clips (lazy, cached)
+// ---------------------------------------------------------------------------
+
+const LIB_PREFIX = 'lib:';
+const LIBRARY_NAMES = new Map(
+  (exerciseLibrary as { id: string; name: string }[]).map((e) => [e.id, e.name]),
+);
+const GENERATED = new Map<string, MotionClip>();
+
+/** Clip id for a library exercise's generated demo. */
+export const exerciseClipId = (exerciseId: string): string => `${LIB_PREFIX}${exerciseId}`;
+
+/** Build (once) the generated demo for one library exercise. Undefined when unmapped. */
+export const getExerciseClip = (exerciseId: string): MotionClip | undefined => {
+  const cached = GENERATED.get(exerciseId);
+  if (cached) return cached;
+  const spec = EXERCISE_MOTIONS[exerciseId];
+  if (!spec) return undefined;
+  const clip = buildFamilyClip(exerciseId, LIBRARY_NAMES.get(exerciseId) ?? exerciseId, spec);
+  GENERATED.set(exerciseId, clip);
+  return clip;
+};
+
+export const getClip = (id: string): MotionClip | undefined =>
+  CLIP_BY_ID.get(id) ?? (id.startsWith(LIB_PREFIX) ? getExerciseClip(id.slice(LIB_PREFIX.length)) : undefined);
+
+/** Solve options a clip renders with. Hand-authored clips keep their legacy grip-width behaviour. */
+export const solveOptionsFor = (clip: MotionClip, equipment: EquipmentId): SolveOptions =>
+  clip.family
+    ? generatedSolveOptions(clip)
+    : {
+        posture: clip.posture,
+        supinePelvisY: clip.supinePelvisY,
+        armsFollowGravity: clip.armsFollowGravity,
+        gripHalfWidth: EQUIPMENT[equipment].gripHalfWidth,
+      };
+
+/** World trunk lean of a sampled pose (whole-body pitch included) — for bar anchoring and limb shading. */
+export const effectiveTrunkDeg = (pose: PoseKeyframe): number => pose.trunkDeg + (pose.rootPitchDeg ?? 0);
 
 /**
  * Does this library exercise have a real 3D clip?
@@ -236,36 +286,22 @@ export const getClip = (id: string): MotionClip | undefined => CLIP_BY_ID.get(id
  */
 export const hasClipFor = (exerciseId: string | null | undefined): boolean => {
   if (!exerciseId) return false;
-  return CLIP_BY_ID.has(EXERCISE_TO_CLIP[exerciseId] ?? exerciseId);
+  const clipId = EXERCISE_TO_CLIP[exerciseId] ?? exerciseId;
+  return CLIP_BY_ID.has(clipId) || (clipId.startsWith(LIB_PREFIX) && !!EXERCISE_MOTIONS[clipId.slice(LIB_PREFIX.length)]);
 };
 
 /** Falls back to the squat so the viewport can never be handed `undefined`. */
 export const getClipOrDefault = (id: string | null | undefined): MotionClip =>
-  (id ? CLIP_BY_ID.get(id) : undefined) ?? BACK_SQUAT;
+  (id ? getClip(id) : undefined) ?? BACK_SQUAT;
 
 /**
- * Exercises in `src/data/exerciseLibrary.json` that map onto a 3D clip.
- * Anything not listed here simply has no 3D view, which the UI states plainly
- * instead of rendering an unrelated movement.
+ * Every exercise in `src/data/exerciseLibrary.json` -> its generated 3D demo.
+ * Built from the explicit table in exerciseMotions.ts; an id missing there has
+ * no 3D view (and fails proof:motions), it never falls back to another lift.
  */
-export const EXERCISE_TO_CLIP: Readonly<Record<string, string>> = {
-  squats: 'squats',
-  tabata_squats: 'squats',
-  leg_press: 'squats',
-  lunges: 'squats',
-  bench_press: 'bench_press',
-  incline_press: 'bench_press',
-  pushups: 'bench_press',
-  deadlift: 'deadlift',
-  romanian_deadlift: 'deadlift',
-  hip_thrust: 'deadlift',
-  kettlebell_swings: 'deadlift',
-  shoulder_press: 'shoulder_press',
-  cable_row: 'cable_row',
-  lat_pulldown: 'cable_row',
-  face_pulls: 'cable_row',
-  pullups: 'cable_row',
-};
+export const EXERCISE_TO_CLIP: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.keys(EXERCISE_MOTIONS).map((id) => [id, exerciseClipId(id)]),
+);
 
 // ---------------------------------------------------------------------------
 // Sampling
@@ -277,6 +313,31 @@ export const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 const ease = (u: number): number => u * u * (3 - 2 * u);
 
 const lerp = (a: number, b: number, u: number): number => a + (b - a) * u;
+
+const EXTENDED_FIELDS: [keyof PoseKeyframe, keyof PoseKeyframe | null][] = [
+  ['shoulderRotDeg', null],
+  ['femurDegL', 'femurDeg'],
+  ['femurDegR', 'femurDeg'],
+  ['tibiaDegL', 'tibiaDeg'],
+  ['tibiaDegR', 'tibiaDeg'],
+  ['legYawDegL', null],
+  ['legYawDegR', null],
+  ['footPitchDegL', null],
+  ['footPitchDegR', null],
+  ['shoulderFlexDegL', 'shoulderFlexDeg'],
+  ['shoulderFlexDegR', 'shoulderFlexDeg'],
+  ['shoulderAbdDegL', 'shoulderAbdDeg'],
+  ['shoulderAbdDegR', 'shoulderAbdDeg'],
+  ['elbowDegL', 'elbowDeg'],
+  ['elbowDegR', 'elbowDeg'],
+  ['trunkTwistDeg', null],
+  ['trunkSideDeg', null],
+  ['neckDeg', null],
+  ['rootPitchDeg', null],
+  ['rootRollDeg', null],
+  ['liftY', null],
+  ['shiftZ', null],
+];
 
 export interface SampledPose extends PoseKeyframe {
   phase: MovementPhase;
@@ -331,6 +392,18 @@ export const sampleClip = (
     activation: {},
     phase: phaseAt(clip, time),
   };
+  if (clip.family) {
+    // Generated clips use the extended degrees of freedom. Per-side fields fall
+    // back to the symmetric value so a keyframe that omits them still blends.
+    for (const [key, fallback] of EXTENDED_FIELDS) {
+      const av = a[key] as number | undefined;
+      const bv = b[key] as number | undefined;
+      if (av === undefined && bv === undefined) continue;
+      const fa = av ?? (fallback ? (a[fallback] as number) : 0);
+      const fb = bv ?? (fallback ? (b[fallback] as number) : 0);
+      (pose as unknown as Record<string, number>)[key] = lerp(fa, fb, u);
+    }
+  }
 
   return { pose, activation };
 };

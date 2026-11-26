@@ -20,6 +20,7 @@ import { ProgressionLog } from '../types';
 import { prefetchHandlers } from '../lib/prefetch';
 import { AnatomyViewer } from '../components/3d/AnatomyViewer';
 import { hasClipFor } from '../biomechanics/motions';
+import { exerciseMotionNote } from '../biomechanics/exerciseMotions';
 import { coachCueFor, modalityOf } from '../lib/coachCue';
 import { useBackHandler } from '../lib/backButton';
 import { parseExercise, prettyLabel } from '../lib/exerciseParse';
@@ -517,7 +518,18 @@ export const Workout: React.FC = () => {
                       <AnatomyViewer exerciseId={stack[curIdx]?.id} showAngles={false} />
                       <div className="absolute top-3 left-4 pointer-events-none">
                         <p className="text-eyebrow text-accent-3">Muscle activation</p>
+                        {exerciseMotionNote(stack[curIdx]?.id) && (
+                          <p className="text-[10px] text-white/60 mt-0.5">Simplified demo</p>
+                        )}
                       </div>
+                      <button
+                        type="button"
+                        data-testid="see-in-3d"
+                        onClick={() => { haptic('light'); navigate(`/lab?exercise=${encodeURIComponent(stack[curIdx]?.id ?? '')}`); }}
+                        className="absolute bottom-3 right-3 h-9 px-3 rounded-xl bg-black/40 border border-white/10 text-[11px] font-semibold text-white"
+                      >
+                        See it in 3D
+                      </button>
                       <div className="absolute top-3 right-4 inline-flex items-center gap-1.5 pointer-events-none">
                         <span className="w-1.5 h-1.5 rounded-full bg-accent-2 breathing-glow" />
                         <span className="text-[10px] uppercase tracking-[0.14em] text-white/70 font-semibold">Live</span>

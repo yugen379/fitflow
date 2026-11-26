@@ -22,8 +22,7 @@ import { AlertTriangle, Maximize2, RefreshCw, RotateCcw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AvatarScene, MEASURED_JOINTS } from './avatarScene';
 import type { LayerFlags, SceneFrame } from './avatarScene';
-import { getClipOrDefault, sampleClip } from './motions';
-import { EQUIPMENT } from './motions';
+import { effectiveTrunkDeg, getClipOrDefault, resolveEquipment, sampleClip, solveOptionsFor } from './motions';
 import { FpsGuard, initialTierForDevice } from './perfGuard';
 import { barPosition, readJointAngles, solvePose } from './rig';
 import { selectEquipment } from './selectors';
@@ -360,27 +359,25 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
       guard.frame(deltaMs);
 
       const clip = clipRef.current;
-      const equipment = equipmentRef.current;
+      const equipment = resolveEquipment(clip, equipmentRef.current);
       const t = live.advancePlayback(dt);
 
       const { pose } = sampleClip(clip, t, activationRef.current);
-      const skeleton: Skeleton = solvePose(pose, {
-        posture: clip.posture,
-        supinePelvisY: clip.supinePelvisY,
-        armsFollowGravity: clip.armsFollowGravity,
-        gripHalfWidth: EQUIPMENT[equipment].gripHalfWidth,
-      });
-      const bar: Vec3 = barPosition(skeleton, clip.barAnchor, pose.trunkDeg);
+      const skeleton: Skeleton = solvePose(pose, solveOptionsFor(clip, equipment));
+      const trunkDeg = effectiveTrunkDeg(pose);
+      const bar: Vec3 = barPosition(skeleton, clip.barAnchor, trunkDeg);
       const angles: JointAngles = readJointAngles(skeleton);
 
       const frame = frameRef.current ?? ({} as SceneFrame);
       frame.skeleton = skeleton;
       frame.activation = activationRef.current;
-      frame.trunkDeg = pose.trunkDeg;
+      frame.trunkDeg = trunkDeg;
       frame.bar = bar;
       frame.pathProgress = t;
       frame.equipment = equipment;
       frame.supine = clip.posture === 'supine';
+      frame.props = clip.props ?? null;
+      frame.cableAnchor = clip.cableAnchor ?? null;
       frameRef.current = frame;
 
       current.update(frame, layersRef.current);
@@ -462,22 +459,28 @@ const ViewportCanvas: React.FC<ViewportProps> = ({ className, clipId, showAngles
     for (let i = 0; i <= samples; i++) {
       const t = i / samples;
       const { pose } = sampleClip(activeClip, t, scratch);
-      const skeleton = solvePose(pose, {
-        posture: activeClip.posture,
-        supinePelvisY: activeClip.supinePelvisY,
-        armsFollowGravity: activeClip.armsFollowGravity,
-        gripHalfWidth: EQUIPMENT[sessionEquipment].gripHalfWidth,
-      });
-      const bar = barPosition(skeleton, activeClip.barAnchor, pose.trunkDeg);
+      const equipment = resolveEquipment(activeClip, sessionEquipment);
+      const skeleton = solvePose(pose, solveOptionsFor(activeClip, equipment));
+      const bar = barPosition(skeleton, activeClip.barAnchor, effectiveTrunkDeg(pose));
       barPath.push(bar);
       framingPoints.push(bar);
-      // Sample the extremes rather than all twenty joints: the bounding box is
-      // identical and this keeps the pass cheap on a clip change.
-      framingPoints.push(skeleton.head, skeleton.toeL, skeleton.toeR, skeleton.kneeR, skeleton.wristR, skeleton.pelvis);
+      // Hand-authored clips are symmetric lifts, so a few extremes give the
+      // same bounding box; generated clips lie down, hang and lunge, so every
+      // joint counts.
+      if (activeClip.family) {
+        for (const key of Object.keys(skeleton) as (keyof Skeleton)[]) framingPoints.push(skeleton[key]);
+      } else {
+        framingPoints.push(skeleton.head, skeleton.toeL, skeleton.toeR, skeleton.kneeR, skeleton.wristR, skeleton.pelvis);
+      }
       // Account for part of the bar's width so the plates are not perpetually
       // half off-screen — but not the whole 1.6 m, which would shrink the
       // athlete to nothing on a phone.
       framingPoints.push({ x: bar.x - 0.46, y: bar.y, z: bar.z }, { x: bar.x + 0.46, y: bar.y, z: bar.z });
+    }
+    // Keep small scenery (box, bench, bar) in frame; walls are allowed to crop.
+    for (const prop of activeClip.props ?? []) {
+      if (prop.sy > 1.5) continue;
+      framingPoints.push({ x: prop.x, y: prop.y + prop.sy / 2, z: prop.z }, { x: prop.x, y: 0, z: prop.z });
     }
 
     scene.setBarPath(barPath);
