@@ -16,6 +16,8 @@ export interface Per100Food {
   carbs: number;
   fats: number;
   aliases?: string[];
+  /** Grams in one item as sold (restaurant-chain entries only, from the USDA portion). */
+  servingG?: number;
 }
 
 const f = (name: string, calories: number, protein: number, carbs: number, fats: number, aliases: string[] = []): Per100Food =>

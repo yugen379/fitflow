@@ -10,7 +10,7 @@ const ok = (name, cond, extra = '') => { cond ? pass++ : fail++; console.log(`${
 const norm = (s) => s.toLowerCase().trim();
 
 // --- 1. Size and wiring ------------------------------------------------------------
-ok(`>= 350 USDA entries`, INGREDIENTS_USDA.length >= 350, `${INGREDIENTS_USDA.length}`);
+ok(`>= 800 USDA entries`, INGREDIENTS_USDA.length >= 800, `${INGREDIENTS_USDA.length}`);
 ok('lookup table = hand entries then USDA entries', INGREDIENTS_100G.length === INGREDIENTS_HAND.length + INGREDIENTS_USDA.length
   && INGREDIENTS_100G[0] === INGREDIENTS_HAND[0] && INGREDIENTS_100G[INGREDIENTS_HAND.length] === INGREDIENTS_USDA[0]);
 
@@ -66,15 +66,75 @@ const spot = [
   ['red wine', 'Red wine', 80, 90],
   ['oyster sauce', 'Oyster sauce', 45, 60],
   ['beef jerky', 'Beef jerky', 380, 430],
+  // Regional dishes (USDA FNDDS / SR Legacy restaurant foods), as eaten.
+  ['sambar', 'Sambar', 80, 95],                          // India
+  ['veg biryani', 'Vegetable biryani', 100, 120],
+  ['masala chai', 'Masala chai', 45, 60],
+  ['pulao', 'Rice pilaf', 125, 150],
+  ['dal rice', 'Lentil curry with rice', 110, 125],
+  ['arroz con pollo', 'Arroz con pollo', 160, 190],      // Latin America
+  ['pupusa de queso', 'Cheese pupusa', 240, 270],
+  ['pozole', 'Pozole', 35, 55],
+  ['feijoada', 'Black beans with meat', 165, 190],
+  ['dolma', 'Stuffed grape leaves', 155, 180],           // Middle East / Mediterranean
+  ['lamb kebab', 'Lamb kebab', 150, 175],
+  ['falafel wrap', 'Falafel sandwich', 250, 280],
+  ['pain au chocolat', 'Chocolate croissant', 400, 440], // Europe
+  ['spaghetti bolognese', 'Spaghetti bolognese', 110, 135],
+  ['latkes', 'Potato pancake', 185, 210],
+  ['risotto', 'Creamy cheese rice', 155, 180],
+  ['tonkotsu ramen', 'Tonkotsu ramen', 115, 140],        // East / Southeast Asia
+  ['vegetarian pho', 'Vegetarian pho', 30, 45],
+  ['tteokbokki', 'Tteokbokki', 120, 145],
+  ['chicken adobo', 'Adobo with rice', 170, 195],
+  // US restaurant chains (SR Legacy branded rows).
+  ['big mac', "McDonald's Big Mac", 245, 270],
+  ['whopper', 'Burger King Whopper', 220, 245],
+  ['mcnuggets', "McDonald's Chicken McNuggets", 290, 315],
+  ['kfc drumstick', 'KFC Original Recipe drumstick', 225, 255],
+  ['subway tuna sub', 'Subway Tuna sub', 210, 235],
 ];
+const spotOk = (q, name, lo, hi) => { const hit = lookupOffline(q); const kcal = hit?.per100?.kcal; return hit?.matched === name && kcal >= lo && kcal <= hi; };
 for (const [q, name, lo, hi] of spot) {
   const hit = lookupOffline(q);
-  const kcal = hit?.per100?.kcal;
-  ok(`"${q}" -> ${name} ${lo}-${hi} kcal`, hit?.matched === name && kcal >= lo && kcal <= hi, `${hit?.matched ?? 'null'} ${kcal ?? ''}`);
+  ok(`"${q}" -> ${name} ${lo}-${hi} kcal`, spotOk(q, name, lo, hi), `${hit?.matched ?? 'null'} ${hit?.per100?.kcal ?? ''}`);
 }
+// CONTROL: the spot check must fail on a wrong name and on a wrong kcal band.
+ok('CONTROL: spot check fails on the wrong dish', !spotOk('sambar', 'Upma', 80, 95));
+ok('CONTROL: spot check fails on a wrong kcal band (kJ-sized)', !spotOk('big mac', "McDonald's Big Mac", 1000, 1100));
 // CONTROL: "beef" must not silently become jerky; "milk" not milk powder.
 ok('CONTROL: "beef" is not beef jerky', lookupOffline('beef')?.matched !== 'Beef jerky', lookupOffline('beef')?.matched);
 ok('CONTROL: "milk" is not milk powder', lookupOffline('milk')?.per100?.kcal < 100, `${lookupOffline('milk')?.matched}`);
+// Generic words must not land on a chain item or an unrelated dish through a new alias.
+const notTo = [
+  ['chicken chop', /lo mein/i], ['chicken teriyaki', /subway/i], ['cold cuts', /subway/i],
+  ['meatballs', /sandwich|sub$/i], ['sundae', /mcdonald/i], ['fried chicken breast', /popeyes|kfc/i],
+];
+for (const [q, bad] of notTo) ok(`"${q}" does not land on ${bad}`, !bad.test(lookupOffline(q)?.matched ?? ''), lookupOffline(q)?.matched ?? 'null');
+ok('CONTROL: that check catches a real chain hit ("big mac" IS McDonald\'s)', /mcdonald/i.test(lookupOffline('big mac')?.matched ?? ''));
+
+// --- 5. Restaurant-chain serving weights (USDA portion, grams in one item) ---------
+const CHAIN = /^(McDonald's|Burger King|KFC|Taco Bell|Subway|Pizza Hut|Domino's|Little Caesars|Papa John's|Wendy's|Chick-fil-A|Popeyes|Arby's) /;
+const chains = INGREDIENTS_USDA.filter((r) => CHAIN.test(r.name));
+const withServing = INGREDIENTS_USDA.filter((r) => r.servingG != null);
+ok('>= 80 chain items, chain name in the food name', chains.length >= 80, `${chains.length}`);
+ok('servingG only on chain rows', withServing.every((r) => CHAIN.test(r.name)), withServing.filter((r) => !CHAIN.test(r.name)).map((r) => r.name).join(', '));
+ok('every chain row but popcorn chicken has a servingG', chains.filter((r) => r.servingG == null).map((r) => r.name).join() === 'KFC Popcorn Chicken', chains.filter((r) => r.servingG == null).map((r) => r.name).join(', '));
+ok('every servingG is 10-1500 g', withServing.every((r) => r.servingG >= 10 && r.servingG <= 1500));
+const serving = (n) => INGREDIENTS_USDA.find((r) => r.name === n)?.servingG;
+const servingSpot = [
+  ["McDonald's Big Mac", 219, 219], ['Burger King Whopper', 291, 291],
+  ["McDonald's Chicken McNuggets", 14, 18],       // one piece: "6 mcnuggets" counts pieces
+  ['Subway Tuna sub', 200, 260],                  // a 6-inch sub, not one inch of it
+  ['KFC Original Recipe drumstick', 70, 80],      // with skin and breading, as the row is
+  ["Pizza Hut pepperoni pizza, pan", 100, 125],   // one slice
+  ["McDonald's french fries", 117, 117],          // medium
+];
+for (const [n, lo, hi] of servingSpot) ok(`servingG ${n} = ${lo === hi ? lo : `${lo}-${hi}`} g`, serving(n) >= lo && serving(n) <= hi, `${serving(n)}`);
+// CONTROLS: the per-inch Subway weight (34 g) and the skinless KFC drumstick (57 g) would fail these bands.
+ok('CONTROL: a per-inch sub weight fails the 6-inch band', !(34 >= 200 && 34 <= 260));
+ok('CONTROL: a skinless drumstick weight fails the with-skin band', !(57 >= 70 && 57 <= 80));
+ok('CONTROL: a generic dish has no servingG', serving('Hamburger') == null && serving('Cheese pizza') == null);
 
 console.log(`\n${pass}/${pass + fail} passed`);
 if (fail) process.exit(1);
