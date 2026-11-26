@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Target, Check, Sparkles, RefreshCw } from 'lucide-react';
 import { generateDailyChallenge, DailyChallenge as DailyChallengeData } from '../services/geminiService';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { haptic } from '../lib/haptics';
 import { celebrateSession } from '../lib/celebrate';
 import { dayKey } from '../services/retentionUtils';
@@ -27,6 +28,7 @@ const CATEGORY_TONE: Record<DailyChallengeData['category'], string> = {
 
 export const DailyChallenge: React.FC = () => {
   const { profile } = useAuth();
+  const units = useUnits();
   const [data, setData] = useState<DailyChallengeData | null>(null);
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,7 @@ export const DailyChallenge: React.FC = () => {
       const challenge = await generateDailyChallenge({
         goal: profile.goal,
         streak: profile.streak || 0,
+        units: units.prefs,
       });
       setData(challenge);
       setCompleted(false);

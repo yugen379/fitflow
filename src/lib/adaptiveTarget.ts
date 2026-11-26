@@ -217,10 +217,32 @@ export const adaptiveTarget = (input: {
   const change = target - round10(current);
   const kgPerWeek = Math.round(slopePerDay * 7 * 100) / 100;
 
-  const dir = kgPerWeek < -0.05 ? `losing ${Math.abs(kgPerWeek).toFixed(1)} kg a week` : kgPerWeek > 0.05 ? `gaining ${kgPerWeek.toFixed(1)} kg a week` : 'holding steady';
-  const message = Math.abs(change) < 50
-    ? `You're ${dir} on about ${Math.round(avgIntake)} kcal. Your target is right; keep it.`
-    : `You're ${dir} on about ${Math.round(avgIntake)} kcal, so your real burn is about ${burn}. ${change < 0 ? 'Lower' : 'Raise'} your target to ${target}.`;
+  const message = adaptiveMessage({ kgPerWeek, avgIntake, burn, target, change });
 
   return { status: 'ready', burn, target, change, kgPerWeek, avgIntake: Math.round(avgIntake), loggedDays: days.length, weighIns: weighs.length, confidence: Math.round(confidence * 100) / 100, message };
+};
+
+/**
+ * The plain-language line for a ready result. The maths is metric (kg, kcal);
+ * a screen passes formatters so the person reads it in their own units
+ * (src/lib/units.ts). With no formatters it is the kg / kcal sentence.
+ */
+export const adaptiveMessage = (
+  r: { kgPerWeek: number; avgIntake: number; burn: number; target: number; change: number },
+  fmt: {
+    /** A body-weight change, unsigned, with unit: "0.5 kg" | "1.1 lb". */
+    weightChange?: (kg: number) => string;
+    /** Energy with unit: "1,800 kcal" | "7,531 kJ". */
+    energy?: (kcal: number) => string;
+    /** Energy as a bare number in the same unit: "2,350". */
+    energyNumber?: (kcal: number) => string;
+  } = {},
+): string => {
+  const change = fmt.weightChange ?? ((kg: number) => `${Math.abs(kg).toFixed(1)} kg`);
+  const energy = fmt.energy ?? ((kcal: number) => `${Math.round(kcal)} kcal`);
+  const bare = fmt.energyNumber ?? ((kcal: number) => String(kcal));
+  const dir = r.kgPerWeek < -0.05 ? `losing ${change(r.kgPerWeek)} a week` : r.kgPerWeek > 0.05 ? `gaining ${change(r.kgPerWeek)} a week` : 'holding steady';
+  return Math.abs(r.change) < 50
+    ? `You're ${dir} on about ${energy(r.avgIntake)}. Your target is right; keep it.`
+    : `You're ${dir} on about ${energy(r.avgIntake)}, so your real burn is about ${bare(r.burn)}. ${r.change < 0 ? 'Lower' : 'Raise'} your target to ${bare(r.target)}.`;
 };

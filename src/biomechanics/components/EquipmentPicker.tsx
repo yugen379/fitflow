@@ -11,6 +11,7 @@ import { Cable, Cog, Dumbbell, PersonStanding, Weight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { haptic } from '../../lib/haptics';
+import { useUnits } from '../../hooks/useUnits';
 import { cn } from '../../lib/utils';
 import { EQUIPMENT, resolveEquipment } from '../motions';
 import { selectActiveClip, selectEquipment } from '../selectors';
@@ -35,6 +36,7 @@ export const EquipmentPicker: React.FC<{ className?: string }> = ({ className })
   // A generated clip may not support the session's implement (a push-up has
   // no barbell); show what is actually rendered.
   const active = resolveEquipment(clip, sessionEquipment);
+  const units = useUnits();
 
   // Only offer what the movement can actually be performed with.
   const options = clip.equipment;
@@ -75,7 +77,7 @@ export const EquipmentPicker: React.FC<{ className?: string }> = ({ className })
       </div>
 
       <p className="text-[11px] text-text-mute leading-relaxed">
-        Grip width {Math.round(EQUIPMENT[active].gripHalfWidth * 200)} cm — this drives the shoulder abduction the model
+        Grip width {units.formatShortLength(EQUIPMENT[active].gripHalfWidth * 200)} — this drives the shoulder abduction the model
         solves for, so the arm path changes with the implement.
       </p>
     </div>

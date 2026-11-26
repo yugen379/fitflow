@@ -6,7 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { getMealCaloriesSince, getWeightHistory } from '../services/dataService';
 import { computeDailyTargets } from '../lib/nutritionTargets';
-import { adaptiveTarget, dailyIntake, localDate, WINDOW_DAYS, type AdaptiveResult } from '../lib/adaptiveTarget';
+import { adaptiveTarget, adaptiveMessage, dailyIntake, localDate, WINDOW_DAYS, type AdaptiveResult } from '../lib/adaptiveTarget';
+import { useUnits } from '../hooks/useUnits';
 
 /**
  * "Smart target": the user's real daily burn worked out from their weigh-ins
@@ -23,6 +24,7 @@ const CACHE_MS = 10 * 60_000;
 
 export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: number) => void }> = ({ compact, onApplied }) => {
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const [result, setResult] = useState<AdaptiveResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
         next.fatsG = Math.round(f * k);
       }
       await updateDoc(doc(db, 'users', profile.uid), { macroTargets: next });
-      showToast(`Daily target set to ${result.target} kcal`, 'success');
+      showToast(`Daily target set to ${units.formatEnergy(result.target)}`, 'success');
       onApplied?.(result.target);
       void import('../services/reviewService').then((m) => m.maybeAskForReview('smart_target')).catch(() => {});
     } catch {
@@ -122,18 +124,25 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
         </>
       ) : (
         <>
-          <p className="text-sm text-white leading-relaxed">{result.message}</p>
+          {/* Same sentence as result.message, in the person's units. */}
+          <p className="text-sm text-white leading-relaxed">
+            {adaptiveMessage(result, {
+              weightChange: units.formatWeightChange,
+              energy: units.formatEnergy,
+              energyNumber: units.formatEnergyNumber,
+            })}
+          </p>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
-              <p className="num text-white font-bold">{result.burn}</p>
+              <p className="num text-white font-bold">{units.formatEnergyNumber(result.burn)}</p>
               <p className="text-[10px] text-text-dim uppercase tracking-wider">real burn</p>
             </div>
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
-              <p className="num text-white font-bold">{result.kgPerWeek > 0 ? '+' : ''}{result.kgPerWeek.toFixed(2)}</p>
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">kg / week</p>
+              <p className="num text-white font-bold">{units.weightRateParts(result.kgPerWeek).value}</p>
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">{units.weightRateParts(result.kgPerWeek).unit}</p>
             </div>
             <div className="bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
-              <p className="num text-accent font-bold">{result.target}</p>
+              <p className="num text-accent font-bold">{units.formatEnergyNumber(result.target)}</p>
               <p className="text-[10px] text-text-dim uppercase tracking-wider">{result.change === 0 ? 'target' : 'new target'}</p>
             </div>
           </div>
@@ -144,7 +153,7 @@ export const SmartTargetCard: React.FC<{ compact?: boolean; onApplied?: (kcal: n
               className="w-full bg-accent text-bg font-semibold rounded-xl py-3 text-sm disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
-              {result.change < 0 ? 'Lower' : 'Raise'} target to {result.target} kcal
+              {result.change < 0 ? 'Lower' : 'Raise'} target to {units.formatEnergy(result.target)}
             </button>
           )}
           <p className="text-[11px] text-text-dim leading-relaxed">

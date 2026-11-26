@@ -9,6 +9,7 @@ import {
   AreaChart, Area,
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { LoadingBar } from '../components/LoadingBar';
 import { StreakMonument } from '../components/3d/StreakMonument';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
@@ -54,6 +55,7 @@ const chartTooltipStyle = {
 export const Analytics: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const [activityData,  setActivityData]  = useState<any[]>([]);
   const [calorieData,   setCalorieData]   = useState<any[]>([]);
   const [muscleFocus,   setMuscleFocus]   = useState<any[]>([]);
@@ -176,7 +178,7 @@ export const Analytics: React.FC = () => {
           <div className="grid grid-cols-3 gap-3">
             <Stat3D icon={<Zap size={14} className="text-accent"/>}  label="Sessions" value={String(totalWorkouts)} />
             <Stat3D icon={<Clock size={14} className="text-accent"/>} label="Minutes"  value={`${totalMins}`} />
-            <Stat3D icon={<Flame size={14} className="text-accent"/>} label="Calories" value={`${totalCals}`} />
+            <Stat3D icon={<Flame size={14} className="text-accent"/>} label={units.energyUnit === 'kJ' ? 'kJ' : 'Calories'} value={units.formatEnergyNumber(totalCals)} />
           </div>
 
           {/* Consistency / retention (#4) */}
@@ -225,7 +227,8 @@ export const Analytics: React.FC = () => {
                       <Pie data={calorieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
                         {calorieData.map((_e,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
                       </Pie>
-                      <Tooltip {...chartTooltipStyle}/>
+                      {/* Slices stay kcal (as stored); the tooltip shows the person's unit. */}
+                      <Tooltip {...chartTooltipStyle} formatter={(v) => (typeof v === 'number' ? units.formatEnergy(v) : String(v ?? ''))}/>
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -274,8 +277,9 @@ export const Analytics: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)"/>
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill:'#64748B',fontSize:9,fontWeight:900}}/>
-                    <Tooltip {...chartTooltipStyle}/>
-                    <Area type="monotone" dataKey="volume" stroke="#00D1FF" strokeWidth={2} fillOpacity={1} fill="url(#volGrad)" name="Volume (kg)"/>
+                    {/* Volume stays kg x reps (as stored); only the label converts. */}
+                    <Tooltip {...chartTooltipStyle} formatter={(v) => (typeof v === 'number' ? units.formatLoadVolume(v) : String(v ?? ''))}/>
+                    <Area type="monotone" dataKey="volume" stroke="#00D1FF" strokeWidth={2} fillOpacity={1} fill="url(#volGrad)" name={`Volume (${units.loadUnit})`}/>
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

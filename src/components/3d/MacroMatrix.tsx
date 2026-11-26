@@ -13,6 +13,7 @@ import { Flame } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 import { AnimatedNumber } from '../AnimatedNumber';
+import { useUnits } from '../../hooks/useUnits';
 import type { MacroDatum } from './MacroOrbitals';
 
 const MacroOrbitals = lazy(() => import('./MacroOrbitals').then((m) => ({ default: m.MacroOrbitals })));
@@ -107,6 +108,7 @@ export const MacroMatrix: React.FC<MacroMatrixProps> = ({
   fatsTargetG,
   className,
 }) => {
+  const units = useUnits();
   const macros = useMemo<MacroDatum[]>(
     () => [
       { id: 'protein', label: 'Protein', grams: proteinG, targetG: proteinTargetG, color: '#CCFF00' },
@@ -134,11 +136,12 @@ export const MacroMatrix: React.FC<MacroMatrixProps> = ({
           </div>
           <div className="text-right">
             <p className="num text-2xl font-bold text-white tabular-nums leading-none">
-              <AnimatedNumber value={Math.round(caloriesConsumed)} />
-              <span className="text-sm text-text-dim font-medium"> / {Math.round(calorieTarget)}</span>
+              {/* Calories stay kcal for the maths above; shown in kcal or kJ. */}
+              <AnimatedNumber value={Math.round(units.energyValue(caloriesConsumed))} />
+              <span className="text-sm text-text-dim font-medium"> / {units.formatEnergyNumber(calorieTarget)}</span>
             </p>
             <p className={cn('text-[11px] mt-1 font-medium', over ? 'text-accent-2' : 'text-text-dim')}>
-              {over ? `${Math.round(caloriesConsumed - calorieTarget)} kcal over` : `${Math.round(remaining)} kcal left`}
+              {over ? `${units.formatEnergy(Math.round(caloriesConsumed - calorieTarget))} over` : `${units.formatEnergy(Math.round(remaining))} left`}
             </p>
           </div>
         </div>

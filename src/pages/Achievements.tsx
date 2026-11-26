@@ -17,6 +17,7 @@ import { ChevronLeft, Lock, Sparkles, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { useTodayActivity } from '../hooks/useTodayActivity';
 import { useSteps } from '../hooks/useSteps';
 import { celebratePR } from '../lib/celebrate';
@@ -144,6 +145,7 @@ const Card: React.FC<{ entry: AchievementProgress; onOpen: () => void }> = ({ en
 export const Achievements: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { metrics, status } = useTodayActivity(profile?.uid, profile?.height);
   const deviceSteps = status === 'connected' && metrics ? metrics.steps : null;
   const live = useSteps({ deviceSteps, enabled: false });
@@ -320,8 +322,10 @@ export const Achievements: React.FC = () => {
             <p className="text-sm text-text-dim mt-2 leading-relaxed">{open.achievement.description}</p>
 
             <p className="num text-xs text-text-mute mt-4 tabular-nums">
-              {Math.round(open.current).toLocaleString()} / {open.achievement.threshold.toLocaleString()}{' '}
-              {open.achievement.unit}
+              {/* Distance goals are defined in km; shown in the person's units. */}
+              {open.achievement.unit === 'km'
+                ? `${units.formatDistance(open.current)} / ${units.formatDistance(open.achievement.threshold)}`
+                : `${Math.round(open.current).toLocaleString()} / ${open.achievement.threshold.toLocaleString()} ${open.achievement.unit}`}
             </p>
 
             {!open.unlocked && (

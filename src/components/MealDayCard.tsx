@@ -18,6 +18,7 @@ import { ChevronDown, Clock, Flame, Replace } from 'lucide-react';
 
 import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
+import { useUnits } from '../hooks/useUnits';
 
 export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
@@ -87,7 +88,9 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
   onSwap,
   swapping,
   isToday,
-}) => (
+}) => {
+  const units = useUnits();
+  return (
   <motion.section
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
@@ -106,7 +109,7 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <Flame size={12} className="text-accent-2/70" aria-hidden="true" />
-        <span className="num text-xs text-text-dim font-medium">{day.calories} kcal</span>
+        <span className="num text-xs text-text-dim font-medium">{units.formatEnergy(day.calories)}</span>
       </div>
     </header>
 
@@ -137,7 +140,7 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
                   <span className="text-eyebrow text-text-dim">{meal}</span>
-                  <span className="num text-[10px] text-text-mute tabular-nums">~{kcal} kcal</span>
+                  <span className="num text-[10px] text-text-mute tabular-nums">~{units.formatEnergy(kcal)}</span>
                 </span>
                 <span className="block text-sm font-medium text-white leading-snug mt-1">
                   {name || '—'}
@@ -246,6 +249,7 @@ export const MealDayCard: React.FC<MealDayCardProps> = ({
       })}
     </ul>
   </motion.section>
-);
+  );
+};
 
 export default MealDayCard;

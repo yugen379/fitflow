@@ -6,6 +6,7 @@ import { Mission, MissionTask } from '../services/missionUtils';
 import { celebrateSession } from '../lib/celebrate';
 import { dayKey } from '../services/retentionUtils';
 import { haptic } from '../lib/haptics';
+import { useUnits } from '../hooks/useUnits';
 
 // Home's hero widget — the answer to "what should I do RIGHT NOW?".
 //
@@ -27,6 +28,7 @@ interface Props {
 export const TodayMission: React.FC<Props> = ({
   mission, loading, uid, caloriesBurned, activeMinutes, onAction,
 }) => {
+  const units = useUnits();
   const risk = mission.urgency === 'streak-risk';
 
   useEffect(() => {
@@ -117,9 +119,9 @@ export const TodayMission: React.FC<Props> = ({
             <p className="text-xs text-text-dim">
               Burned{' '}
               <span className="num text-white font-semibold">
-                <AnimatedNumber value={caloriesBurned} />
+                <AnimatedNumber value={Math.round(units.energyValue(caloriesBurned))} />
               </span>{' '}
-              kcal
+              {units.energyUnit}
             </p>
             <div className="w-px h-3 bg-white/[0.06]" />
             <p className="text-xs text-text-dim">
@@ -141,6 +143,9 @@ const MissionRow: React.FC<{
   index: number;
   onAction: (task: MissionTask) => void;
 }> = ({ task, index, onAction }) => {
+  // The calories task is built in kcal (missionUtils); kJ users read kJ.
+  const units = useUnits();
+  const shown = (n: number) => (task.unit === 'kcal' ? Math.round(units.energyValue(n)) : n);
   const isNext = task.state === 'next';
   const isDone = task.state === 'done';
   const isOver = task.state === 'over';
@@ -165,8 +170,8 @@ const MissionRow: React.FC<{
         <span className={`num text-[11px] font-semibold ${isOver ? 'text-accent-2' : 'text-text-dim'}`}>
           {task.id === 'calories' || task.id === 'steps' ? (
             <>
-              <AnimatedNumber value={task.current} />
-              <span className="text-text-dim font-medium">/{task.target.toLocaleString()}</span>
+              <AnimatedNumber value={shown(task.current)} />
+              <span className="text-text-dim font-medium">/{shown(task.target).toLocaleString()}</span>
             </>
           ) : (
             `${task.current}/${task.target}`

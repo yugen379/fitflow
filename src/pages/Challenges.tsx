@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Trophy, Users, Zap, Shield, TrendingUp, Loader2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits, type BoundUnits } from '../hooks/useUnits';
 import { useToast } from '../hooks/useToast';
 import { cn } from '../lib/utils';
 import { collection, query, orderBy, limit, doc, updateDoc, arrayUnion, onSnapshot, where, getDocs } from 'firebase/firestore';
@@ -118,6 +119,7 @@ const buildActiveChallenges = (now: Date): ActiveChallenge[] => {
 export const Challenges: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'global' | 'my'>('global');
@@ -484,8 +486,8 @@ export const Challenges: React.FC = () => {
                          />
                       </div>
                       <div className="flex justify-between text-xs text-text-dim num">
-                         <span>{selectedChallenge.current.toLocaleString()}</span>
-                         <span>{selectedChallenge.target.toLocaleString()}</span>
+                         <span>{progressAmount(units, selectedChallenge.metric, selectedChallenge.current)}</span>
+                         <span>{progressAmount(units, selectedChallenge.metric, selectedChallenge.target)}</span>
                       </div>
                    </div>
 
@@ -520,7 +522,17 @@ export const Challenges: React.FC = () => {
   );
 };
 
+/**
+ * Progress numbers in the person's units. Water is counted in ml and burn in
+ * kcal (as stored and as the goals are defined); only the shown number changes.
+ */
+const progressAmount = (units: BoundUnits, metric: string, n: number): string =>
+  metric === 'water' ? `${units.volumeValue(n).toLocaleString()} ${units.volumeUnit}`
+    : metric === 'calories' ? units.formatEnergy(n)
+      : n.toLocaleString();
+
 const ChallengeCard: React.FC<{ challenge: any; onClick: () => void }> = ({ challenge, onClick }) => {
+  const units = useUnits();
   const pct = Math.min(100, Math.round((challenge.current / challenge.target) * 100));
   return (
     <motion.button
@@ -546,7 +558,7 @@ const ChallengeCard: React.FC<{ challenge: any; onClick: () => void }> = ({ chal
             <div className="h-full bg-gradient-to-r from-accent-soft to-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
           </div>
           <div className="flex justify-between items-center">
-            <span className="num text-xs text-text-dim">{challenge.current.toLocaleString()} / {challenge.target.toLocaleString()}</span>
+            <span className="num text-xs text-text-dim">{progressAmount(units, challenge.metric, challenge.current)} / {progressAmount(units, challenge.metric, challenge.target)}</span>
             <div className="flex items-center gap-1">
               <Trophy size={10} className="text-accent" />
               <span className="text-xs text-accent font-semibold">{challenge.prize}</span>

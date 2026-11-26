@@ -38,6 +38,7 @@ import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
 import { AnimatedNumber } from './AnimatedNumber';
 import { prefersReducedMotion } from '../lib/motion';
+import { useUnits } from '../hooks/useUnits';
 
 export interface HydrationDropProps {
   /** Millilitres logged so far today. */
@@ -81,12 +82,15 @@ interface Splash {
 export const HydrationDrop: React.FC<HydrationDropProps> = ({
   currentMl,
   goalMl,
-  presets = [100, 250, 500, 750],
+  presets,
   showPresets = true,
   onAdd,
   className,
 }) => {
   const reduced = prefersReducedMotion();
+  // Amounts are ml (as stored); the labels show fl oz on imperial.
+  const units = useUnits();
+  const presetList = presets ?? units.waterPresetsMl;
   const ratio = goalMl > 0 ? clamp01(currentMl / goalMl) : 0;
   const atGoal = ratio >= 1;
 
@@ -185,7 +189,7 @@ export const HydrationDrop: React.FC<HydrationDropProps> = ({
           viewBox="0 0 100 140"
           className="relative w-40 h-56 sm:w-44 sm:h-60"
           role="img"
-          aria-label={`Hydration: ${Math.round(currentMl)} of ${goalMl} millilitres`}
+          aria-label={`Hydration: ${units.volumeValue(currentMl)} of ${units.volumeValue(goalMl)} ${units.volumeUnit === 'ml' ? 'millilitres' : 'fluid ounces'}`}
         >
           <defs>
             {/* The clip that makes the liquid take the drop's shape. */}
@@ -281,10 +285,10 @@ export const HydrationDrop: React.FC<HydrationDropProps> = ({
             readable by a screen reader without describing geometry. */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <p className="num text-3xl font-bold text-white tabular-nums leading-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-            <AnimatedNumber value={Math.round(currentMl)} fromZero={false} />
+            <AnimatedNumber value={Math.round(units.volumeValue(currentMl))} fromZero={false} />
           </p>
           <p className="text-[11px] text-white/75 mt-1 drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)]">
-            of {goalMl.toLocaleString()} ml
+            of {units.volumeValue(goalMl).toLocaleString()} {units.volumeUnit}
           </p>
           {atGoal ? (
             <span className="text-eyebrow text-accent mt-1.5 drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)]">
@@ -296,15 +300,15 @@ export const HydrationDrop: React.FC<HydrationDropProps> = ({
 
       {showPresets ? (
       <div className="grid grid-cols-4 gap-2 w-full mt-5">
-        {presets.map((ml) => (
+        {presetList.map((ml) => (
           <button
             key={ml}
             type="button"
             onClick={() => handleAdd(ml)}
             className="glass p-3 flex flex-col items-center gap-1 hover:border-accent-3/30 active:scale-95 transition-all"
           >
-            <span className="num font-display text-lg font-bold text-white">{ml}</span>
-            <span className="text-[10px] text-text-dim font-medium">ml</span>
+            <span className="num font-display text-lg font-bold text-white">{units.volumeValue(ml)}</span>
+            <span className="text-[10px] text-text-dim font-medium">{units.volumeUnit}</span>
           </button>
         ))}
       </div>

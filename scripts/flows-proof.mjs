@@ -107,7 +107,10 @@ const mealNamed = (prefix) => async () => {
 
 const browser = await chromium.launch();
 // A small phone (360x640): the size at which a list that opens low on the page is actually hidden.
-const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+// Pinned to a metric locale: a test user has no saved units, so the app falls
+// back to the device locale (src/lib/units.ts), and these checks assert grams,
+// kcal and kg. Playwright's default en-US would show oz / lb.
+const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, locale: 'en-GB' });
 const page = await ctx.newPage();
 // The level-up card (v1.6.10) can appear whenever XP crosses a level; tap it
 // away like a user would, wherever it interrupts.
@@ -762,7 +765,7 @@ for (let i = 1; i <= 3; i++) {
     age: 30, weight: 70, height: 175, goal: 'fat_loss', healthConditions: ['None'], dietaryPreferences: ['None'],
     streak: 1, badges: ['pioneer'], points: 100, level: 2, createdAt: now, notificationsEnabled: false, activeChallenges: [],
   });
-  const c2 = await browser.newContext({ viewport: { width: 360, height: 640 } });
+  const c2 = await browser.newContext({ viewport: { width: 360, height: 640 }, locale: 'en-GB' });
   const p2 = await c2.newPage();
   await p2.goto(BASE, { waitUntil: 'load', timeout: 45000 });
   await p2.waitForFunction(() => typeof window.__e2eSignIn === 'function', { timeout: 30000 });

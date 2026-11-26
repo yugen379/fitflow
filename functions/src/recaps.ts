@@ -26,6 +26,7 @@
  */
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./db";
+import { unitsPromptLine } from "./unitsPrompt";
 
 export interface WeekStats {
   workouts: number;
@@ -107,12 +108,14 @@ export const fallbackRecap = (s: WeekStats, streak: number): Recap => ({
   nextStep: s.workouts < 2 ? "Put a 30-minute session in your calendar for Monday." : "Log breakfast before 10am on Monday.",
 });
 
-const promptFor = (goal: string, s: WeekStats, streak: number) => `You are an elite performance coach writing a friendly weekly recap.
+/** `units` is the user doc's display-units map; the numbers stay metric, only the wording follows it. */
+const promptFor = (goal: string, s: WeekStats, streak: number, units?: unknown) => `You are an elite performance coach writing a friendly weekly recap.
 Goal: ${goal || "general fitness"}. This week:
 - ${s.workouts} workouts, ${s.minutes} active minutes
 - ${s.calories} kcal burned, ${s.consumed} consumed
 - ${s.water}ml water, ${s.sleepHours} hours sleep
 - ${streak}-day streak
+${unitsPromptLine(units)}
 
 Return ONLY valid JSON:
 {"headline":"<≤8 word title>","highlight":"<1-2 sentence summary>","win":"<1 short positive observation>","focus":"<one thing to focus on next week>","nextStep":"<one specific action they can take Monday>"}
@@ -185,7 +188,7 @@ export const runWeeklyRecaps = async (opts: RecapRunOptions): Promise<RecapRunRe
             report.maxConcurrent = Math.max(report.maxConcurrent, inFlight);
             calledAi = true;
             try {
-              recap = parseRecap(await opts.writeRecap(promptFor(String(u.goal || ""), stats, streak)));
+              recap = parseRecap(await opts.writeRecap(promptFor(String(u.goal || ""), stats, streak, u.units)));
             } finally {
               inFlight--;
             }

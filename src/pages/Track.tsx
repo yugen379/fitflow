@@ -28,6 +28,8 @@ import { computeDailyTargets } from '../lib/nutritionTargets';
 import { useBackHandler } from '../lib/backButton';
 import { MacroMatrix } from '../components/3d/MacroMatrix';
 import { useTabVisible } from '../components/layout/DockTabs';
+import { useUnits } from '../hooks/useUnits';
+import { UnitInput } from '../components/UnitInput';
 
 const downscaleToJpegBase64 = async (file: File, maxSide: number): Promise<string> => {
   const bitmap = await createImageBitmap(file);
@@ -46,6 +48,9 @@ const SOURCE_LABEL: Record<ReviewLine['source'], string> = {
 
 export const Track: React.FC = () => {
   const { profile } = useAuth();
+  // Display only: every meal, total and target below stays kcal and grams;
+  // kJ / oz are shown and typed, and converted once on the way in.
+  const units = useUnits();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -924,7 +929,7 @@ export const Track: React.FC = () => {
                   <p className="text-sm font-medium text-white truncate">{s.name}</p>
                   <p className="num text-[10px] text-text-dim mt-0.5 truncate">{s.brand ? `${s.brand} · ` : ''}P{Math.round(s.protein)} · C{Math.round(s.carbs)} · F{Math.round(s.fats)}</p>
                 </div>
-                <span className="num text-sm text-accent font-semibold shrink-0 ml-2">{Math.round(s.calories)}</span>
+                <span className="num text-sm text-accent font-semibold shrink-0 ml-2">{units.formatEnergyNumber(Math.round(s.calories))}</span>
               </button>
             ))}
             {/* Required by the Open Database Licence whenever their data is shown. */}
@@ -942,7 +947,7 @@ export const Track: React.FC = () => {
         <div className="flex justify-between items-baseline">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-text-dim">Calories</p>
+              <p className="text-xs text-text-dim">{units.energyUnit === 'kJ' ? 'Energy (kJ)' : 'Calories'}</p>
               {targets.dayType !== 'base' && (
                 <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-accent/15 text-accent">
                   {targets.dayType === 'workout' ? 'Gym day' : 'Rest day'}
@@ -950,11 +955,11 @@ export const Track: React.FC = () => {
               )}
             </div>
             <p className="font-display text-3xl font-bold text-white num mt-1">
-              {totalCals}<span className="text-base text-text-dim font-medium"> / {targetCals}</span>
+              {units.formatEnergyNumber(totalCals)}<span className="text-base text-text-dim font-medium"> / {units.formatEnergyNumber(targetCals)}</span>
             </p>
           </div>
           <button onClick={() => navigate('/nutrition-goals')} className="num text-sm text-accent font-semibold flex items-center gap-1">
-            {Math.max(targetCals - totalCals, 0)} left
+            {units.formatEnergyNumber(Math.max(targetCals - totalCals, 0))} left
           </button>
         </div>
         <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
@@ -1041,7 +1046,7 @@ export const Track: React.FC = () => {
               >
                 <Plus size={14} className="text-accent shrink-0" />
                 <span className="text-sm font-medium text-white whitespace-nowrap max-w-[150px] truncate">{m.name}</span>
-                <span className="num text-[11px] text-text-dim shrink-0">{Math.round(m.calories)}</span>
+                <span className="num text-[11px] text-text-dim shrink-0">{units.formatEnergyNumber(Math.round(m.calories))}</span>
               </motion.button>
             ))}
           </div>
@@ -1079,7 +1084,7 @@ export const Track: React.FC = () => {
               </div>
             </div>
             <span className="flex items-center gap-2 shrink-0">
-              <span className="num text-xl font-semibold text-accent">{m.calories}</span>
+              <span className="num text-xl font-semibold text-accent">{units.formatEnergyNumber(m.calories)}</span>
               <Pencil size={13} className="text-text-mute" aria-hidden />
             </span>
           </motion.div>
@@ -1290,24 +1295,28 @@ export const Track: React.FC = () => {
                     </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
-                    <NutritionCell label="kcal" v={scannedProduct.calories100g} />
+                    <NutritionCell label={units.energyUnit} v={units.formatEnergyNumber(scannedProduct.calories100g)} />
                     <NutritionCell label="P" v={`${scannedProduct.protein100g}g`} />
                     <NutritionCell label="C" v={`${scannedProduct.carbs100g}g`} />
                     <NutritionCell label="F" v={`${scannedProduct.fats100g}g`} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs text-text-dim font-medium">Portion (g)</label>
+                    <label className="text-xs text-text-dim font-medium" htmlFor="ff-portion">Portion ({units.foodMassUnit})</label>
                     <div className="flex gap-2">
-                      <input
-                        type="number"
+                      {/* Typed in g or oz; kept in whole grams (converted once). */}
+                      <UnitInput
+                        id="ff-portion"
                         value={portionSize}
-                        onChange={e => setPortionSize(Number(e.target.value))}
+                        unit={units.foodMassUnit}
+                        toDisplay={units.foodMassValue}
+                        fromDisplay={units.foodMassToG}
+                        onValue={g => setPortionSize(Math.round(g))}
                         className="flex-1 glass rounded-xl h-12 px-3 text-white num focus:outline-none focus:border-accent/40"
                       />
                       <button onClick={logScanned} className="btn-3d px-5 h-12">Log</button>
                     </div>
                     <p className="num text-xs text-text-dim">
-                      = {Math.round(scannedProduct.calories100g * portionSize / 100)} kcal for {portionSize}g
+                      = {units.formatEnergy(Math.round(scannedProduct.calories100g * portionSize / 100))} for {units.formatFoodMass(portionSize)}
                     </p>
                   </div>
                   <button onClick={() => setScannedProduct(null)} className="w-full text-center text-sm text-text-dim hover:text-white transition-colors">
@@ -1348,15 +1357,29 @@ export const Track: React.FC = () => {
                 className="w-full glass rounded-2xl px-4 py-3 text-white text-sm focus:outline-none"
               />
               <div className="grid grid-cols-4 gap-2">
-                {([['kcal', 'calories'], ['P g', 'protein'], ['C g', 'carbs'], ['F g', 'fats']] as const).map(([label, key]) => (
+                {([[units.energyUnit, 'calories'], ['P g', 'protein'], ['C g', 'carbs'], ['F g', 'fats']] as const).map(([label, key]) => (
                   <label key={key} className="flex flex-col gap-1">
                     <span className="text-[10px] uppercase tracking-wider text-text-dim text-center">{label}</span>
+                    {key === 'calories' ? (
+                      // Typed in kcal or kJ, saved as whole kcal. Left alone, the
+                      // stored kcal is saved back untouched.
+                      <UnitInput
+                        inputMode="numeric"
+                        value={editForm.calories}
+                        unit={units.energyUnit}
+                        toDisplay={units.energyInputValue}
+                        fromDisplay={units.energyToKcal}
+                        onValue={k => setEditForm(f => ({ ...f, calories: Math.max(0, Math.round(k)) }))}
+                        className="w-full glass rounded-xl px-2 py-2 text-white num text-center"
+                      />
+                    ) : (
                     <input
                       type="number" inputMode="numeric" min={0}
                       value={editForm[key]}
                       onChange={e => setEditForm(f => ({ ...f, [key]: Math.max(0, Number(e.target.value) || 0) }))}
                       className="w-full glass rounded-xl px-2 py-2 text-white num text-center"
                     />
+                    )}
                   </label>
                 ))}
               </div>
@@ -1451,10 +1474,10 @@ export const Track: React.FC = () => {
                               {tag && <span className={cn('ml-2 text-[10px] font-normal', it.source === 'none' ? 'text-red-400' : 'text-text-mute')}>{tag}</span>}
                             </p>
                             <p className="num text-[11px] text-text-dim">
-                              {it.per100 ? `${Math.round(it.per100.kcal)} kcal/100 g · ` : ''}P {Math.round(m.protein)}g · C {Math.round(m.carbs)}g · F {Math.round(m.fats)}g
+                              {it.per100 ? `${units.formatEnergy(Math.round(it.per100.kcal))}/100 g · ` : ''}P {Math.round(m.protein)}g · C {Math.round(m.carbs)}g · F {Math.round(m.fats)}g
                             </p>
                           </div>
-                          <span className="num text-accent font-semibold text-sm" data-testid="line-kcal">{m.calories}</span>
+                          <span className="num text-accent font-semibold text-sm" data-testid="line-kcal">{units.formatEnergyNumber(m.calories)}</span>
                           <button
                             onClick={() => setAiReview(r => (r && r.length > 1 ? r.filter((_, j) => j !== i) : null))}
                             className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-text-dim"
@@ -1465,13 +1488,14 @@ export const Track: React.FC = () => {
                         </div>
                         {it.source === 'none' ? (
                           <label className="flex items-center gap-2 text-[11px] text-text-dim">
-                            Not in the database — kcal for this portion:
+                            Not in the database — {units.energyUnit} for this portion:
                             <input
                               type="number" inputMode="numeric" min={0}
                               aria-label={`Calories for ${it.name}`}
                               className="w-20 h-8 rounded-lg bg-white/[0.04] px-2 text-white num"
                               onBlur={e => {
-                                const kcal = Math.round(Number(e.target.value));
+                                // Typed in kcal or kJ; stored as whole kcal.
+                                const kcal = Math.round(units.energyToKcal(e.target.value) ?? 0);
                                 if (kcal > 0) updateLine(i, { ...servingLine({ name: it.name, calories: kcal, protein: 0, carbs: 0, fats: 0 }, it.confidence), grams: null, name: it.grams ? `${it.name} (${it.grams} g)` : it.name });
                               }}
                             />
@@ -1481,14 +1505,17 @@ export const Track: React.FC = () => {
                             <button onClick={() => stepLine(i, -1)} className="w-8 h-8 rounded-lg bg-white/[0.04] text-white" aria-label={`Less ${it.name}`}>−</button>
                             {it.grams != null ? (
                               <label className="flex items-center gap-1 text-[11px] text-text-dim">
-                                <input
-                                  type="number" inputMode="numeric" min={1} max={2000}
+                                {/* g, or oz on imperial; the line keeps whole grams (converted once). */}
+                                <UnitInput
                                   value={it.grams}
-                                  aria-label={`Grams of ${it.name}`}
-                                  onChange={e => updateLine(i, { grams: clampGrams(e.target.value) || 1 })}
+                                  unit={units.foodMassUnit}
+                                  toDisplay={units.foodMassValue}
+                                  fromDisplay={units.foodMassToG}
+                                  onValue={g => updateLine(i, { grams: clampGrams(g) || 1 })}
+                                  aria-label={`${units.foodMassUnit === 'oz' ? 'Ounces' : 'Grams'} of ${it.name}`}
                                   className="w-16 h-8 rounded-lg bg-white/[0.04] px-2 text-white num text-center"
                                 />
-                                g
+                                {units.foodMassUnit}
                               </label>
                             ) : (
                               <span className="num text-[11px] text-text-dim min-w-16 px-1 text-center whitespace-nowrap">×{it.servings} {it.servings === 1 ? 'serving' : 'servings'}</span>
@@ -1517,7 +1544,7 @@ export const Track: React.FC = () => {
 
                   {needsOilChoice(aiReview) && (
                     <div className="space-y-1.5">
-                      <p className="text-[11px] text-text-dim">Cooking oil {oilG > 0 ? <span className="num">· +{oilG} g, {oilMacros(oilLevel, oilBase).calories} kcal</span> : null}</p>
+                      <p className="text-[11px] text-text-dim">Cooking oil {oilG > 0 ? <span className="num">· +{units.formatFoodMass(oilG)}, {units.formatEnergy(oilMacros(oilLevel, oilBase).calories)}</span> : null}</p>
                       <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Cooking oil">
                         {(['none', 'light', 'heavy'] as OilLevel[]).map(o => (
                           <button
@@ -1543,7 +1570,7 @@ export const Track: React.FC = () => {
                       Edit text
                     </button>
                     <button onClick={confirmAiReview} disabled={isAnalyzing || totals.calories <= 0} className="btn-3d h-12 disabled:opacity-50">
-                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : `Log ${totals.calories} kcal`}
+                      {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : `Log ${units.formatEnergy(totals.calories)}`}
                     </button>
                   </div>
                 </div>
@@ -1624,14 +1651,18 @@ export const Track: React.FC = () => {
               />
               {manualBase && (
                 <div className="space-y-2">
-                  <label className="text-xs text-text-dim font-medium ml-1">Amount (g or ml)</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    aria-label="Amount in grams"
-                    value={manualGrams || ''}
-                    onChange={e => setAmount(Math.min(5000, Math.max(0, parseInt(e.target.value) || 0)))}
-                    placeholder="100"
+                  <label className="text-xs text-text-dim font-medium ml-1">{units.foodMassUnit === 'oz' ? 'Amount (oz)' : 'Amount (g or ml)'}</label>
+                  {/* g, or oz on imperial; the amount is kept in whole grams (converted once). */}
+                  <UnitInput
+                    inputMode={units.foodMassUnit === 'oz' ? 'decimal' : 'numeric'}
+                    aria-label={units.foodMassUnit === 'oz' ? 'Amount in ounces' : 'Amount in grams'}
+                    value={manualGrams}
+                    unit={units.foodMassUnit}
+                    showZero={false}
+                    toDisplay={units.foodMassValue}
+                    fromDisplay={units.foodMassToG}
+                    onValue={g => setAmount(Math.min(5000, Math.max(0, Math.round(g))))}
+                    placeholder={units.foodMassUnit === 'oz' ? '3.5' : '100'}
                     className="w-full glass rounded-2xl h-12 px-4 num text-lg font-semibold text-white text-center focus:outline-none focus:border-accent/40"
                   />
                   {manualServing && (
@@ -1650,22 +1681,26 @@ export const Track: React.FC = () => {
                         className={cn('h-10 px-4 rounded-xl text-xs font-medium border transition-colors',
                           manualGrams === 100 ? 'border-accent/50 text-accent bg-accent/10' : 'border-white/[0.08] text-text-dim')}
                       >
-                        100 g
+                        {units.formatFoodMass(100)}
                       </button>
                     </div>
                   )}
                   <p className="text-[10px] text-text-dim ml-1">
-                    {Math.round(manualBase.calories)} kcal per 100 g, from Open Food Facts. Check it against the label.
+                    {units.formatEnergy(Math.round(manualBase.calories))} per 100 g, from Open Food Facts. Check it against the label.
                   </p>
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-xs text-text-dim font-medium ml-1">Calories (kcal)</label>
-                <input
-                  type="number"
+                <label className="text-xs text-text-dim font-medium ml-1">Calories ({units.energyUnit})</label>
+                {/* Typed in kcal or kJ; logged as whole kcal (converted once). */}
+                <UnitInput
                   inputMode="numeric"
-                  value={manualCals || ''}
-                  onChange={e => setManualCals(parseInt(e.target.value) || 0)}
+                  value={manualCals}
+                  unit={units.energyUnit}
+                  showZero={false}
+                  toDisplay={units.energyInputValue}
+                  fromDisplay={units.energyToKcal}
+                  onValue={k => setManualCals(Math.round(k))}
                   placeholder="0"
                   className="w-full glass rounded-2xl h-14 px-4 num text-2xl font-semibold text-white text-center focus:outline-none focus:border-accent/40"
                 />

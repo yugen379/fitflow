@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, ArrowRight, Volume2, TrendingUp, Trophy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { PremiumGate } from '../components/PremiumGate';
 import { db } from '../lib/firestore';
 import {
@@ -35,6 +36,7 @@ interface WeeklyRecapProps {
 
 export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualClose }) => {
   const { profile } = useAuth();
+  const units = useUnits();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<WeeklyRecapData | null>(null);
@@ -119,6 +121,7 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
         streak: profile.streak || 0,
         goal: profile.goal,
         topExercise,
+        units: units.prefs,
       });
       setData(recap);
 
@@ -206,7 +209,7 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
                 <div className="grid grid-cols-3 gap-2">
                   <Stat label="Sessions" value={stats.workouts} />
                   <Stat label="Minutes" value={stats.minutes} />
-                  <Stat label="Calories" value={stats.calories} />
+                  <Stat label={units.energyUnit === 'kJ' ? 'kJ burned' : 'Calories'} value={units.formatEnergyNumber(stats.calories)} />
                 </div>
 
                 <div className="ai-gradient-box p-4 rounded-2xl space-y-3">
@@ -262,7 +265,7 @@ export const WeeklyRecap: React.FC<WeeklyRecapProps> = ({ manualOpen, onManualCl
   );
 };
 
-const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
+const Stat: React.FC<{ label: string; value: number | string }> = ({ label, value }) => (
   <div className="glass p-3 text-center">
     <p className="num font-display text-xl font-bold text-white">{value}</p>
     <p className="text-xs text-text-dim mt-0.5">{label}</p>

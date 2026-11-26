@@ -18,6 +18,7 @@ import { cn } from '../lib/utils';
 import { Provider as ReduxProvider } from 'react-redux';
 
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { useToast } from '../hooks/useToast';
 
 import { BiomechanicsViewport } from '../biomechanics/BiomechanicsViewport';
@@ -43,6 +44,7 @@ const LabInner: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -273,7 +275,7 @@ const LabInner: React.FC = () => {
           <Info size={17} className="text-accent-3 shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-sm text-text-dim leading-relaxed">
             Based on your history, FitFlow suggests{' '}
-            <span className="num text-white font-semibold tabular-nums">{progression.suggestedWeight} kg</span> for{' '}
+            <span className="num text-white font-semibold tabular-nums">{units.formatLoad(progression.suggestedWeight)}</span> for{' '}
             <span className="num text-white font-semibold tabular-nums">{progression.suggestedReps}</span> reps
             {progression.trend === 'up' ? ' — you are trending up.' : progression.trend === 'down' ? ' — back off slightly this week.' : '.'}
           </p>

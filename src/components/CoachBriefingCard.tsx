@@ -29,7 +29,7 @@ export const CoachBriefingCard: React.FC<Props> = ({ uid, ctx, online = true, on
   const ctxKey = JSON.stringify([
     ctx.hour, ctx.goal, ctx.weightKg, ctx.caloriesConsumed, ctx.proteinConsumed,
     ctx.waterMl, ctx.trainedToday, ctx.mealsLogged, ctx.sleepHours, ctx.streak,
-    ctx.preferredWorkoutHour, ctx.daysSinceLastWorkout, online,
+    ctx.preferredWorkoutHour, ctx.daysSinceLastWorkout, ctx.unitSystem, online,
   ]);
 
   useEffect(() => {

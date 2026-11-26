@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useUnits } from '../hooks/useUnits';
 import { db } from '../lib/firestore';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { motion } from 'motion/react';
@@ -56,6 +57,7 @@ const formatTime = (seconds: number) => {
 
 export const Explore: React.FC = () => {
   const { profile } = useAuth();
+  const units = useUnits();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [type, setType] = useState<ActivityType>('run');
@@ -173,7 +175,7 @@ export const Explore: React.FC = () => {
       // and none for a speed no human reaches on that activity).
       await awardXp(profile.uid, 'run', routeRef.id);
       if (km >= 5) await checkAndAwardBadge(profile.uid, 'marathoner');
-      showToast(`Saved · ${km.toFixed(2)} km`);
+      showToast(`Saved · ${units.formatDistance(km)}`);
     } catch {
       showToast('Save failed', 'error');
     }
@@ -255,9 +257,10 @@ export const Explore: React.FC = () => {
         </div>
 
         <div className="glass p-5 grid grid-cols-3 gap-3">
-          <Metric label="Distance" value={distance.toFixed(2)} unit="km" />
+          {/* distance is km and pace min/km (as stored); shown in the person's units. */}
+          <Metric label="Distance" {...units.distanceParts(distance)} />
           <Metric label="Time" value={formatTime(duration)} />
-          <Metric label="Pace" value={pace > 0 ? pace.toFixed(2) : '—'} unit="min/km" />
+          <Metric label="Pace" {...units.paceParts(pace * 60)} />
         </div>
 
         <button
