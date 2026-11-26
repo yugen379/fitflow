@@ -16,6 +16,7 @@
  */
 
 import type { ExerciseMotionSpec } from './families';
+import { msg } from '../i18n/i18n';
 
 const BW: ExerciseMotionSpec['equipment'] = ['bodyweight'];
 
@@ -25,8 +26,8 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   tabata_squats: { family: 'squat', params: { variant: 'bodyweight', depth: 0.85 }, equipment: BW },
   front_squat: { family: 'squat', params: { variant: 'front' }, equipment: ['barbell'] },
   goblet_squat: { family: 'squat', params: { variant: 'goblet' }, equipment: ['kettlebell', 'dumbbell'] },
-  hack_squat: { family: 'squat', params: { variant: 'hack', depth: 0.9 }, equipment: ['machine'], simplified: 'Hack-squat sled is not drawn; shown as a supported upright squat.' },
-  leg_press: { family: 'squat', params: { variant: 'legpress' }, equipment: ['machine'], simplified: 'Foot plate and sled are not drawn.' },
+  hack_squat: { family: 'squat', params: { variant: 'hack', depth: 0.9 }, equipment: ['machine'], simplified: msg('Hack-squat sled is not drawn; shown as a supported upright squat.') },
+  leg_press: { family: 'squat', params: { variant: 'legpress' }, equipment: ['machine'], simplified: msg('Foot plate and sled are not drawn.') },
   wall_sit: { family: 'squat', params: { variant: 'wallsit' }, equipment: BW },
   jump_squat: { family: 'squat', params: { variant: 'jump' }, equipment: BW },
   tuck_jump: { family: 'squat', params: { variant: 'tuck' }, equipment: BW },
@@ -38,16 +39,16 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   deadlift_stiff: { family: 'hinge', params: { variant: 'sldl' }, equipment: ['barbell', 'dumbbell'] },
   sumo_deadlift: { family: 'hinge', params: { variant: 'sumo' }, equipment: ['barbell'] },
   kb_swings: { family: 'hinge', params: { variant: 'swing' }, equipment: ['kettlebell'] },
-  back_extension: { family: 'hinge', params: { variant: 'goodmorning' }, equipment: ['bodyweight', 'machine'], simplified: 'Shown as a standing hip hinge; the back-extension bench is not drawn.' },
+  back_extension: { family: 'hinge', params: { variant: 'goodmorning' }, equipment: ['bodyweight', 'machine'], simplified: msg('Shown as a standing hip hinge; the back-extension bench is not drawn.') },
 
   // --- Lunge / split stance ---------------------------------------------
   lunges_db: { family: 'lunge', params: { variant: 'lunge' }, equipment: ['bodyweight', 'dumbbell'] },
-  walking_lunge: { family: 'lunge', params: { variant: 'walking' }, equipment: ['bodyweight', 'dumbbell'], simplified: 'Shown as a stationary lunge; the forward walk between reps is omitted.' },
+  walking_lunge: { family: 'lunge', params: { variant: 'walking' }, equipment: ['bodyweight', 'dumbbell'], simplified: msg('Shown as a stationary lunge; the forward walk between reps is omitted.') },
   bulgarian_split_squat: { family: 'lunge', params: { variant: 'bulgarian' }, equipment: ['dumbbell', 'bodyweight'] },
   step_up: { family: 'lunge', params: { variant: 'stepup' }, equipment: ['bodyweight', 'dumbbell'] },
   hip_flexor_stretch: { family: 'lunge', params: { variant: 'hipflexor' }, equipment: BW },
   couch_stretch: { family: 'lunge', params: { variant: 'couch' }, equipment: BW },
-  warrior_1: { family: 'lunge', params: { variant: 'warrior1' }, equipment: BW, simplified: 'Back foot is shown pointing forward rather than turned out.' },
+  warrior_1: { family: 'lunge', params: { variant: 'warrior1' }, equipment: BW, simplified: msg('Back foot is shown pointing forward rather than turned out.') },
 
   // --- Push-up -----------------------------------------------------------
   pushups: { family: 'pushup', params: { variant: 'standard' }, equipment: BW },
@@ -66,7 +67,7 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   // --- Overhead press -----------------------------------------------------
   bb_overhead_press: { family: 'overheadPress', params: { variant: 'barbell' }, equipment: ['barbell'] },
   shoulder_press_db: { family: 'overheadPress', params: { variant: 'db' }, equipment: ['dumbbell'] },
-  arnold_press: { family: 'overheadPress', params: { variant: 'arnold' }, equipment: ['dumbbell'], simplified: 'Forearm rotation (palms turning out) is approximated by opening the elbows.' },
+  arnold_press: { family: 'overheadPress', params: { variant: 'arnold' }, equipment: ['dumbbell'], simplified: msg('Forearm rotation (palms turning out) is approximated by opening the elbows.') },
   kb_clean_press: { family: 'overheadPress', params: { variant: 'kbcleanpress' }, equipment: ['kettlebell'] },
 
   // --- Rows ----------------------------------------------------------------
@@ -79,8 +80,8 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   face_pull_band: { family: 'row', params: { variant: 'facepull' }, equipment: ['band'] },
   upright_row: { family: 'row', params: { variant: 'upright' }, equipment: ['barbell', 'dumbbell'] },
   inverted_row: { family: 'row', params: { variant: 'inverted' }, equipment: BW },
-  shrugs: { family: 'row', params: { variant: 'shrug' }, equipment: ['dumbbell'], simplified: 'The rig has no shoulder-blade elevation, so the shrug itself is barely visible.' },
-  rowing_machine: { family: 'row', params: { variant: 'rowmachine' }, equipment: ['machine'], simplified: 'Rowing machine (rail, seat, handle) is not drawn.' },
+  shrugs: { family: 'row', params: { variant: 'shrug' }, equipment: ['dumbbell'], simplified: msg('The rig has no shoulder-blade elevation, so the shrug itself is barely visible.') },
+  rowing_machine: { family: 'row', params: { variant: 'rowmachine' }, equipment: ['machine'], simplified: msg('Rowing machine (rail, seat, handle) is not drawn.') },
 
   // --- Vertical pull --------------------------------------------------------
   pullups: { family: 'verticalPull', params: { variant: 'pullup' }, equipment: BW },
@@ -102,7 +103,7 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   band_tricep_ext: { family: 'triceps', params: { variant: 'pushdown' }, equipment: ['band'] },
   tricep_kickback: { family: 'triceps', params: { variant: 'kickback' }, equipment: ['dumbbell'] },
   skullcrusher: { family: 'triceps', params: { variant: 'skull' }, equipment: ['dumbbell'] },
-  tricep_extension: { family: 'triceps', params: { variant: 'dip' }, equipment: BW, simplified: 'Shown on parallel bars; a bench dip uses a bench behind you with the feet on the floor.' },
+  tricep_extension: { family: 'triceps', params: { variant: 'dip' }, equipment: BW, simplified: msg('Shown on parallel bars; a bench dip uses a bench behind you with the feet on the floor.') },
   chest_dips: { family: 'triceps', params: { variant: 'chestdip' }, equipment: BW },
 
   // --- Raises & flyes ------------------------------------------------------
@@ -110,11 +111,11 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   front_raise: { family: 'raise', params: { variant: 'front' }, equipment: ['dumbbell'] },
   rear_delt_fly: { family: 'raise', params: { variant: 'rear' }, equipment: ['dumbbell'] },
   chest_fly_db: { family: 'raise', params: { variant: 'fly' }, equipment: ['dumbbell'] },
-  cable_crossover: { family: 'raise', params: { variant: 'crossover' }, equipment: ['cable'], simplified: 'Only the right-hand cable is drawn; a crossover uses a pulley on each side.' },
+  cable_crossover: { family: 'raise', params: { variant: 'crossover' }, equipment: ['cable'], simplified: msg('Only the right-hand cable is drawn; a crossover uses a pulley on each side.') },
 
   // --- Core ----------------------------------------------------------------
-  toe_touch_crunch: { family: 'core', params: { variant: 'toetouch' }, equipment: BW, simplified: 'The spine is one rigid segment, so the curl is shown as a trunk lift.' },
-  cable_crunch: { family: 'core', params: { variant: 'cablecrunch' }, equipment: ['cable'], simplified: 'The spine is one rigid segment, so the crunch is shown as a trunk lift.' },
+  toe_touch_crunch: { family: 'core', params: { variant: 'toetouch' }, equipment: BW, simplified: msg('The spine is one rigid segment, so the curl is shown as a trunk lift.') },
+  cable_crunch: { family: 'core', params: { variant: 'cablecrunch' }, equipment: ['cable'], simplified: msg('The spine is one rigid segment, so the crunch is shown as a trunk lift.') },
   russian_twist_v2: { family: 'core', params: { variant: 'russian' }, equipment: BW },
   dead_bug_v2: { family: 'core', params: { variant: 'deadbug' }, equipment: BW },
   flutter_kicks: { family: 'core', params: { variant: 'flutter' }, equipment: BW },
@@ -128,10 +129,10 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   plank: { family: 'plank', params: { variant: 'plank' }, equipment: BW },
   side_plank: { family: 'plank', params: { variant: 'side' }, equipment: BW },
   bird_dog: { family: 'plank', params: { variant: 'birddog' }, equipment: BW },
-  bear_crawl: { family: 'plank', params: { variant: 'bear' }, equipment: BW, simplified: 'Crawl is shown in place; the forward travel is omitted.' },
-  plank_rotation: { family: 'plank', params: { variant: 'rotation' }, equipment: BW, simplified: 'Rotation is partial (about 40 degrees) rather than a full side plank.' },
-  ab_wheel: { family: 'plank', params: { variant: 'abwheel' }, equipment: BW, simplified: 'The wheel itself is not drawn.' },
-  cat_cow_v2: { family: 'plank', params: { variant: 'catcow' }, equipment: BW, simplified: 'The spine is one rigid segment; arching is shown as pelvis tilt and head movement.' },
+  bear_crawl: { family: 'plank', params: { variant: 'bear' }, equipment: BW, simplified: msg('Crawl is shown in place; the forward travel is omitted.') },
+  plank_rotation: { family: 'plank', params: { variant: 'rotation' }, equipment: BW, simplified: msg('Rotation is partial (about 40 degrees) rather than a full side plank.') },
+  ab_wheel: { family: 'plank', params: { variant: 'abwheel' }, equipment: BW, simplified: msg('The wheel itself is not drawn.') },
+  cat_cow_v2: { family: 'plank', params: { variant: 'catcow' }, equipment: BW, simplified: msg('The spine is one rigid segment; arching is shown as pelvis tilt and head movement.') },
   thoracic_rotation: { family: 'plank', params: { variant: 'thoracic' }, equipment: BW },
 
   // --- Bridge -----------------------------------------------------------------
@@ -141,27 +142,27 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
 
   // --- Jumps & plyometrics -----------------------------------------------------
   jump_jacks_v2: { family: 'jump', params: { variant: 'jack' }, equipment: BW },
-  jump_rope: { family: 'jump', params: { variant: 'rope' }, equipment: BW, simplified: 'The rope is not drawn.' },
+  jump_rope: { family: 'jump', params: { variant: 'rope' }, equipment: BW, simplified: msg('The rope is not drawn.') },
   box_jumps_v2: { family: 'jump', params: { variant: 'box' }, equipment: BW },
   burpees: { family: 'jump', params: { variant: 'burpee' }, equipment: BW },
   burpees_pushup: { family: 'jump', params: { variant: 'burpeePushup' }, equipment: BW },
-  devil_press: { family: 'jump', params: { variant: 'devil' }, equipment: ['dumbbell'], simplified: 'Shown as a burpee with push-up; the dumbbell swing to overhead is omitted.' },
+  devil_press: { family: 'jump', params: { variant: 'devil' }, equipment: ['dumbbell'], simplified: msg('Shown as a burpee with push-up; the dumbbell swing to overhead is omitted.') },
 
   // --- Cardio -------------------------------------------------------------------
-  outdoor_run: { family: 'cardio', params: { variant: 'run' }, equipment: BW, simplified: 'Running is shown in place (treadmill view).' },
-  treadmill_run: { family: 'cardio', params: { variant: 'run' }, equipment: ['machine'], simplified: 'Treadmill belt is not drawn.' },
-  sprint_intervals: { family: 'cardio', params: { variant: 'sprint' }, equipment: BW, simplified: 'Sprinting is shown in place (treadmill view).' },
-  shuttle_run: { family: 'cardio', params: { variant: 'sprint' }, equipment: BW, simplified: 'Shown as running in place; the turns between cones are omitted.' },
-  incline_walk: { family: 'cardio', params: { variant: 'walk' }, equipment: ['machine'], simplified: 'Shown on flat ground; the treadmill incline is not drawn.' },
-  stair_climber: { family: 'cardio', params: { variant: 'stair' }, equipment: ['machine'], simplified: 'Steps are not drawn; shown as high stepping in place.' },
+  outdoor_run: { family: 'cardio', params: { variant: 'run' }, equipment: BW, simplified: msg('Running is shown in place (treadmill view).') },
+  treadmill_run: { family: 'cardio', params: { variant: 'run' }, equipment: ['machine'], simplified: msg('Treadmill belt is not drawn.') },
+  sprint_intervals: { family: 'cardio', params: { variant: 'sprint' }, equipment: BW, simplified: msg('Sprinting is shown in place (treadmill view).') },
+  shuttle_run: { family: 'cardio', params: { variant: 'sprint' }, equipment: BW, simplified: msg('Shown as running in place; the turns between cones are omitted.') },
+  incline_walk: { family: 'cardio', params: { variant: 'walk' }, equipment: ['machine'], simplified: msg('Shown on flat ground; the treadmill incline is not drawn.') },
+  stair_climber: { family: 'cardio', params: { variant: 'stair' }, equipment: ['machine'], simplified: msg('Steps are not drawn; shown as high stepping in place.') },
   high_knees_v2: { family: 'cardio', params: { variant: 'highknees' }, equipment: BW },
   mountain_climbers: { family: 'cardio', params: { variant: 'mountain' }, equipment: BW },
-  cycling: { family: 'cardio', params: { variant: 'cycle' }, equipment: BW, simplified: 'Only the saddle is drawn; pedals and frame are omitted.' },
-  assault_bike: { family: 'cardio', params: { variant: 'assault' }, equipment: ['machine'], simplified: 'Only the saddle is drawn; the fan bike and handles are omitted.' },
-  elliptical: { family: 'cardio', params: { variant: 'elliptical' }, equipment: ['machine'], simplified: 'Elliptical machine is not drawn; feet trace the pedal path.' },
-  swimming: { family: 'cardio', params: { variant: 'swim' }, equipment: BW, simplified: 'Freestyle stroke without water; body roll and kick are approximate.' },
-  battle_ropes: { family: 'cardio', params: { variant: 'battle' }, equipment: BW, simplified: 'Ropes are not drawn.' },
-  sled_push: { family: 'cardio', params: { variant: 'sled' }, equipment: BW, simplified: 'The sled is not drawn; driving steps are shown in place.' },
+  cycling: { family: 'cardio', params: { variant: 'cycle' }, equipment: BW, simplified: msg('Only the saddle is drawn; pedals and frame are omitted.') },
+  assault_bike: { family: 'cardio', params: { variant: 'assault' }, equipment: ['machine'], simplified: msg('Only the saddle is drawn; the fan bike and handles are omitted.') },
+  elliptical: { family: 'cardio', params: { variant: 'elliptical' }, equipment: ['machine'], simplified: msg('Elliptical machine is not drawn; feet trace the pedal path.') },
+  swimming: { family: 'cardio', params: { variant: 'swim' }, equipment: BW, simplified: msg('Freestyle stroke without water; body roll and kick are approximate.') },
+  battle_ropes: { family: 'cardio', params: { variant: 'battle' }, equipment: BW, simplified: msg('Ropes are not drawn.') },
+  sled_push: { family: 'cardio', params: { variant: 'sled' }, equipment: BW, simplified: msg('The sled is not drawn; driving steps are shown in place.') },
 
   // --- Calf & ankle --------------------------------------------------------------
   calf_raises: { family: 'calf', params: { variant: 'standing' }, equipment: BW },
@@ -170,8 +171,8 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   calf_stretch: { family: 'calf', params: { variant: 'stretch' }, equipment: BW },
 
   // --- Leg machines / knee isolation -----------------------------------------------
-  leg_extension: { family: 'legMachine', params: { variant: 'extension' }, equipment: ['machine'], simplified: 'Shin pad and lever arm are not drawn.' },
-  leg_curl: { family: 'legMachine', params: { variant: 'curl' }, equipment: ['machine'], simplified: 'Shown as a lying curl on a pad; the lever arm is not drawn.' },
+  leg_extension: { family: 'legMachine', params: { variant: 'extension' }, equipment: ['machine'], simplified: msg('Shin pad and lever arm are not drawn.') },
+  leg_curl: { family: 'legMachine', params: { variant: 'curl' }, equipment: ['machine'], simplified: msg('Shown as a lying curl on a pad; the lever arm is not drawn.') },
   nordic_curl: { family: 'legMachine', params: { variant: 'nordic' }, equipment: BW },
 
   // --- Stretches, yoga, mobility, recovery -------------------------------------------
@@ -180,20 +181,20 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   shoulder_stretch: { family: 'stretch', params: { variant: 'shoulder' }, equipment: BW },
   chest_opener: { family: 'stretch', params: { variant: 'chest' }, equipment: BW },
   doorway_chest_stretch: { family: 'stretch', params: { variant: 'doorway' }, equipment: BW },
-  neck_release: { family: 'stretch', params: { variant: 'neck' }, equipment: BW, simplified: 'The neck only nods forward/back; side tilts are not modelled.' },
+  neck_release: { family: 'stretch', params: { variant: 'neck' }, equipment: BW, simplified: msg('The neck only nods forward/back; side tilts are not modelled.') },
   seated_forward_fold: { family: 'stretch', params: { variant: 'forwardfold' }, equipment: BW },
-  '90_90_hip_stretch': { family: 'stretch', params: { variant: 'seated9090' }, equipment: BW, simplified: 'Leg rotation is approximate; shins are not exactly at 90/90.' },
-  pigeon_pose: { family: 'stretch', params: { variant: 'pigeon' }, equipment: BW, simplified: 'Front-shin rotation is approximate.' },
+  '90_90_hip_stretch': { family: 'stretch', params: { variant: 'seated9090' }, equipment: BW, simplified: msg('Leg rotation is approximate; shins are not exactly at 90/90.') },
+  pigeon_pose: { family: 'stretch', params: { variant: 'pigeon' }, equipment: BW, simplified: msg('Front-shin rotation is approximate.') },
   child_pose_v2: { family: 'stretch', params: { variant: 'child' }, equipment: BW },
   downward_dog: { family: 'stretch', params: { variant: 'downdog' }, equipment: BW },
   cobra_pose: { family: 'stretch', params: { variant: 'cobra' }, equipment: BW },
-  sun_salutation: { family: 'stretch', params: { variant: 'sun' }, equipment: BW, simplified: 'Abbreviated flow (6 of the usual 12 positions).' },
+  sun_salutation: { family: 'stretch', params: { variant: 'sun' }, equipment: BW, simplified: msg('Abbreviated flow (6 of the usual 12 positions).') },
   tree_pose: { family: 'stretch', params: { variant: 'tree' }, equipment: BW },
-  triangle_pose: { family: 'stretch', params: { variant: 'triangle' }, equipment: BW, simplified: 'Feet point forward rather than the front foot turning out.' },
-  warrior_2: { family: 'stretch', params: { variant: 'warrior2' }, equipment: BW, simplified: 'Feet point forward rather than the front foot turning out.' },
+  triangle_pose: { family: 'stretch', params: { variant: 'triangle' }, equipment: BW, simplified: msg('Feet point forward rather than the front foot turning out.') },
+  warrior_2: { family: 'stretch', params: { variant: 'warrior2' }, equipment: BW, simplified: msg('Feet point forward rather than the front foot turning out.') },
   corpse_pose: { family: 'stretch', params: { variant: 'corpse' }, equipment: BW },
-  foam_roll_quads: { family: 'stretch', params: { variant: 'foamquads' }, equipment: BW, simplified: 'Roller is drawn as a simple cylinder; contact is approximate.' },
-  foam_roll_back: { family: 'stretch', params: { variant: 'foamback' }, equipment: BW, simplified: 'Roller is drawn as a simple cylinder; contact is approximate.' },
+  foam_roll_quads: { family: 'stretch', params: { variant: 'foamquads' }, equipment: BW, simplified: msg('Roller is drawn as a simple cylinder; contact is approximate.') },
+  foam_roll_back: { family: 'stretch', params: { variant: 'foamback' }, equipment: BW, simplified: msg('Roller is drawn as a simple cylinder; contact is approximate.') },
 };
 
 export const hasExerciseMotion = (exerciseId: string | null | undefined): boolean =>

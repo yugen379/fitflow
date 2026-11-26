@@ -16,7 +16,7 @@ import { useUnits } from '../hooks/useUnits';
 import { UnitInput } from '../components/UnitInput';
 import { MealDayCard, MEAL_TYPES as DAY_MEAL_TYPES } from '../components/MealDayCard';
 import type { MealType as DayMealType, Recipe } from '../components/MealDayCard';
-import { t } from '../i18n/i18n';
+import { t, getLanguage } from '../i18n/i18n';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 type MealType = typeof MEAL_TYPES[number];
@@ -104,7 +104,8 @@ export const MealPlan: React.FC = () => {
   const [expanded, setExpanded] = useState<{ dayIndex: number; meal: DayMealType } | null>(null);
   const [loadingDay, setLoadingDay] = useState<number | null>(null);
 
-  const RECIPE_CACHE_KEY = profile?.uid ? `ff_recipes_${profile.uid}` : null;
+  // Recipes are written in the app language: a Malay user must not get the cached English ones (English keeps the old key).
+  const RECIPE_CACHE_KEY = profile?.uid ? `ff_recipes_${profile.uid}${getLanguage() === 'en' ? '' : `_${getLanguage()}`}` : null;
 
   useEffect(() => {
     if (!RECIPE_CACHE_KEY) return;

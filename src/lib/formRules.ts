@@ -12,6 +12,7 @@
 // measured, and everything else is left to the Gemini cue.
 
 import { LM, type Landmarks } from './poseDetector';
+import { msg } from '../i18n/i18n';
 
 export type FormStatus = 'good' | 'fix' | 'danger';
 
@@ -141,8 +142,8 @@ export const evaluateForm = (lm: Landmarks, exerciseName: string): FormVerdict =
       metrics.kneeTracking = Math.round(vr * 100) / 100;
       // Only judge tracking once the knees are actually bent and loaded.
       if (ok(kneeAngle) && kneeAngle < 150) {
-        if (vr < 0.6) push('Push your knees out.', 'danger', [LM.kneeL, LM.kneeR, LM.ankleL, LM.ankleR]);
-        else if (vr < 0.78) push('Knees out, track over your toes.', 'fix', [LM.kneeL, LM.kneeR]);
+        if (vr < 0.6) push(msg('Push your knees out.'), 'danger', [LM.kneeL, LM.kneeR, LM.ankleL, LM.ankleR]);
+        else if (vr < 0.78) push(msg('Knees out, track over your toes.'), 'fix', [LM.kneeL, LM.kneeR]);
       }
     }
   }
@@ -153,23 +154,23 @@ export const evaluateForm = (lm: Landmarks, exerciseName: string): FormVerdict =
         // Depth is only judged at the bottom of a rep, which we take as "knees
         // meaningfully bent" — otherwise every rep is flagged shallow on the
         // way down.
-        if (kneeAngle < 145 && kneeAngle > 115) push('Sit deeper — hips to parallel.', 'fix', [LM.hipL, LM.hipR, LM.kneeL, LM.kneeR]);
+        if (kneeAngle < 145 && kneeAngle > 115) push(msg('Sit deeper — hips to parallel.'), 'fix', [LM.hipL, LM.hipR, LM.kneeL, LM.kneeR]);
       }
-      if (ok(trunkLean) && trunkLean > 55) push('Chest up — you are folding forward.', 'danger', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
-      else if (ok(trunkLean) && trunkLean > 42) push('Keep your chest tall.', 'fix', [LM.shoulderL, LM.shoulderR]);
+      if (ok(trunkLean) && trunkLean > 55) push(msg('Chest up — you are folding forward.'), 'danger', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
+      else if (ok(trunkLean) && trunkLean > 42) push(msg('Keep your chest tall.'), 'fix', [LM.shoulderL, LM.shoulderR]);
       break;
     }
     case 'deadlift': {
       // A hinge is hips-back with a fairly quiet knee. A deep knee bend means
       // it has turned into a squat and the bar will drift forward.
       if (ok(kneeAngle) && ok(hipAngle) && kneeAngle < 110 && hipAngle < 100) {
-        push('Hips back, not down — this is a hinge.', 'fix', [LM.hipL, LM.hipR, LM.kneeL, LM.kneeR]);
+        push(msg('Hips back, not down — this is a hinge.'), 'fix', [LM.hipL, LM.hipR, LM.kneeL, LM.kneeR]);
       }
       // Shoulders must stay ahead of (or over) the bar; wrists far in front of
       // the shoulder line means the load is swinging away from the body.
       const wristAhead = Math.abs(wrist.x - shoulder.x);
       put('barDrift', wristAhead, 100);
-      if (ok(wristAhead) && wristAhead > 0.12) push('Keep the bar against your legs.', 'danger', [LM.wristL, LM.wristR, LM.shoulderL, LM.shoulderR]);
+      if (ok(wristAhead) && wristAhead > 0.12) push(msg('Keep the bar against your legs.'), 'danger', [LM.wristL, LM.wristR, LM.shoulderL, LM.shoulderR]);
       break;
     }
     case 'press_horizontal': {
@@ -183,39 +184,39 @@ export const evaluateForm = (lm: Landmarks, exerciseName: string): FormVerdict =
       );
       if (ok(flare)) {
         metrics.elbowFlare = Math.round(flare);
-        if (flare > 105) push('Tuck your elbows — about 45 degrees.', 'danger', [LM.elbowL, LM.elbowR, LM.shoulderL, LM.shoulderR]);
-        else if (flare > 85) push('Elbows in a little.', 'fix', [LM.elbowL, LM.elbowR]);
+        if (flare > 105) push(msg('Tuck your elbows — about 45 degrees.'), 'danger', [LM.elbowL, LM.elbowR, LM.shoulderL, LM.shoulderR]);
+        else if (flare > 85) push(msg('Elbows in a little.'), 'fix', [LM.elbowL, LM.elbowR]);
       }
       break;
     }
     case 'press_vertical': {
-      if (ok(trunkLean) && trunkLean > 20) push('Stop leaning back — brace your ribs down.', 'danger', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
+      if (ok(trunkLean) && trunkLean > 20) push(msg('Stop leaning back — brace your ribs down.'), 'danger', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
       // At lockout the wrist should stack over the shoulder, not out in front.
       if (ok(elbowAngle) && elbowAngle > 155) {
         const stack = Math.abs(wrist.x - shoulder.x);
         put('lockoutStack', stack, 100);
-        if (ok(stack) && stack > 0.09) push('Finish with the bar over your shoulders.', 'fix', [LM.wristL, LM.wristR]);
+        if (ok(stack) && stack > 0.09) push(msg('Finish with the bar over your shoulders.'), 'fix', [LM.wristL, LM.wristR]);
       }
       break;
     }
     case 'row': {
-      if (ok(trunkLean) && trunkLean > 60) push('Stop rocking — keep your torso still.', 'fix', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
+      if (ok(trunkLean) && trunkLean > 60) push(msg('Stop rocking — keep your torso still.'), 'fix', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
       break;
     }
     case 'curl': {
       // Elbow drifting forward off the ribs turns a curl into a front raise.
       const drift = Math.abs(elbow.x - hip.x);
       put('elbowDrift', drift, 100);
-      if (ok(drift) && drift > 0.14) push('Pin your elbow to your side.', 'fix', [LM.elbowL, LM.elbowR]);
-      if (ok(trunkLean) && trunkLean > 18) push('Stop swinging — no body english.', 'fix', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
+      if (ok(drift) && drift > 0.14) push(msg('Pin your elbow to your side.'), 'fix', [LM.elbowL, LM.elbowR]);
+      if (ok(trunkLean) && trunkLean > 18) push(msg('Stop swinging — no body english.'), 'fix', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
       break;
     }
     case 'plank': {
       const line = angleAt(shoulder, hip, ankle);
       if (ok(line)) {
         metrics.bodyLine = Math.round(line);
-        if (line < 160) push('Hips are sagging — squeeze your glutes.', 'danger', [LM.hipL, LM.hipR]);
-        else if (line > 195) push('Drop your hips — you are piking up.', 'fix', [LM.hipL, LM.hipR]);
+        if (line < 160) push(msg('Hips are sagging — squeeze your glutes.'), 'danger', [LM.hipL, LM.hipR]);
+        else if (line > 195) push(msg('Drop your hips — you are piking up.'), 'fix', [LM.hipL, LM.hipR]);
       }
       break;
     }
@@ -224,13 +225,13 @@ export const evaluateForm = (lm: Landmarks, exerciseName: string): FormVerdict =
       const shin = leanFromVertical(knee, ankle);
       if (ok(shin)) {
         metrics.shinAngle = Math.round(shin);
-        if (shin > 40) push('Knee is past your toes — shorten the step.', 'fix', [LM.kneeL, LM.kneeR, LM.ankleL, LM.ankleR]);
+        if (shin > 40) push(msg('Knee is past your toes — shorten the step.'), 'fix', [LM.kneeL, LM.kneeR, LM.ankleL, LM.ankleR]);
       }
       break;
     }
     default: {
       // Generic: only flag things true of essentially every standing lift.
-      if (ok(trunkLean) && trunkLean > 45) push('Keep your torso steadier.', 'fix', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
+      if (ok(trunkLean) && trunkLean > 45) push(msg('Keep your torso steadier.'), 'fix', [LM.shoulderL, LM.shoulderR, LM.hipL, LM.hipR]);
     }
   }
 

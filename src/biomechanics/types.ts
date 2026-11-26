@@ -1,3 +1,4 @@
+import { msg } from '../i18n/i18n';
 /**
  * Biomechanics engine — shared type surface.
  *
@@ -49,22 +50,22 @@ export const MUSCLE_INDEX: Readonly<Record<MuscleId, number>> = MUSCLE_IDS.reduc
 );
 
 export const MUSCLE_LABELS: Readonly<Record<MuscleId, string>> = {
-  quads: 'Quadriceps',
-  hamstrings: 'Hamstrings',
-  glutes: 'Glutes',
-  calves: 'Calves',
-  erectors: 'Spinal erectors',
-  lats: 'Lats',
-  traps: 'Traps',
-  pecs: 'Pectorals',
-  delt_front: 'Front delts',
-  delt_side: 'Side delts',
-  delt_rear: 'Rear delts',
-  triceps: 'Triceps',
-  biceps: 'Biceps',
-  forearms: 'Forearms',
-  abs: 'Abdominals',
-  obliques: 'Obliques',
+  quads: msg('Quadriceps'),
+  hamstrings: msg('Hamstrings'),
+  glutes: msg('Glutes'),
+  calves: msg('Calves'),
+  erectors: msg('Spinal erectors'),
+  lats: msg('Lats'),
+  traps: msg('Traps'),
+  pecs: msg('Pectorals'),
+  delt_front: msg('Front delts'),
+  delt_side: msg('Side delts'),
+  delt_rear: msg('Rear delts'),
+  triceps: msg('Triceps'),
+  biceps: msg('Biceps'),
+  forearms: msg('Forearms'),
+  abs: msg('Abdominals'),
+  obliques: msg('Obliques'),
 };
 
 /** Sparse activation map, 0..1 per muscle. An absent key means zero. */
@@ -101,10 +102,10 @@ export interface PhaseSpan {
 }
 
 export const PHASE_LABELS: Readonly<Record<MovementPhase, string>> = {
-  eccentric: 'Eccentric',
-  isometric: 'Isometric',
-  concentric: 'Concentric',
-  lockout: 'Lockout',
+  eccentric: msg('Eccentric'),
+  isometric: msg('Isometric'),
+  concentric: msg('Concentric'),
+  lockout: msg('Lockout'),
 };
 
 // ---------------------------------------------------------------------------

@@ -39,6 +39,7 @@ import type {
   Skeleton,
   Vec3,
 } from './types';
+import { msg } from '../i18n/i18n';
 
 // ---------------------------------------------------------------------------
 // Public spec types
@@ -372,7 +373,7 @@ const CUE_REP = (ecc: string, iso: string, con: string, lock: string): Record<Mo
   concentric: con,
   lockout: lock,
 });
-const CUE_HOLD = (hold: string, breathe = 'Breathe slowly; keep the position, do not sag.'): Record<MovementPhase, string> => ({
+const CUE_HOLD = (hold: string, breathe = msg('Breathe slowly; keep the position, do not sag.')): Record<MovementPhase, string> => ({
   eccentric: breathe,
   isometric: hold,
   concentric: breathe,
@@ -430,17 +431,17 @@ const squat = (p: FamilyParams): FamilyOut => {
     secondary: ['hamstrings', 'erectors', 'abs', 'calves'],
     barAnchor: v === 'back' ? 'traps' : 'wrists',
     cues: CUE_REP(
-      'Sit down and back, knees tracking over the toes. Control the descent.',
-      'Hip crease to knee height or below; chest proud, heels down.',
-      'Drive the floor away; hips and chest rise together.',
-      'Stand tall, glutes squeezed, ribs down.',
+      msg('Sit down and back, knees tracking over the toes. Control the descent.'),
+      msg('Hip crease to knee height or below; chest proud, heels down.'),
+      msg('Drive the floor away; hips and chest rise together.'),
+      msg('Stand tall, glutes squeezed, ribs down.'),
     ),
   };
   if (v === 'wallsit') {
     const base = at(0, { femurDeg: 88, tibiaDeg: 0, trunkDeg: 0, shoulderFlexDeg: 0, shoulderAbdDeg: 12, elbowDeg: 10 });
     out.frames = [F(0, 0.8, base), F(0.5, 0.85, { ...base, femurDeg: 86, tibiaDeg: -1 })];
     out.phases = 'hold';
-    out.cues = CUE_HOLD('Back flat on the wall, thighs parallel, knees over ankles.');
+    out.cues = CUE_HOLD(msg('Back flat on the wall, thighs parallel, knees over ankles.'));
     const s = S(base, optsOf(out));
     out.props = [{ kind: 'box', x: 0, y: 1.0, z: Math.min(s.chest.z, s.pelvis.z) - 0.17, sx: 1.4, sy: 2, sz: 0.08 }];
     return out;
@@ -481,10 +482,10 @@ const squat = (p: FamilyParams): FamilyOut => {
     out.primary = ['quads', 'glutes', 'calves'];
     out.secondary = ['hamstrings', 'abs', 'delt_front'];
     out.cues = CUE_REP(
-      'Quick dip into a quarter-to-half squat, arms swing back.',
-      'Load the hips and ankles — no pause long enough to lose the stretch.',
-      v === 'tuck' ? 'Explode up and pull the knees to the chest at the top.' : 'Explode through the balls of the feet, arms drive up.',
-      'Land softly on the mid-foot, knees bending to absorb.',
+      msg('Quick dip into a quarter-to-half squat, arms swing back.'),
+      msg('Load the hips and ankles — no pause long enough to lose the stretch.'),
+      v === 'tuck' ? msg('Explode up and pull the knees to the chest at the top.') : msg('Explode through the balls of the feet, arms drive up.'),
+      msg('Land softly on the mid-foot, knees bending to absorb.'),
     );
     return out;
   }
@@ -496,10 +497,10 @@ const squat = (p: FamilyParams): FamilyOut => {
     out.primary = ['quads', 'glutes', 'delt_front'];
     out.secondary = ['triceps', 'delt_side', 'abs', 'erectors'];
     out.cues = CUE_REP(
-      'Front-rack squat: elbows high, sit straight down.',
-      'Bottom of the squat, torso upright.',
-      'Drive out of the hole and use the momentum to press overhead in one motion.',
-      'Lock out overhead, biceps by the ears, then return to the rack.',
+      msg('Front-rack squat: elbows high, sit straight down.'),
+      msg('Bottom of the squat, torso upright.'),
+      msg('Drive out of the hole and use the momentum to press overhead in one motion.'),
+      msg('Lock out overhead, biceps by the ears, then return to the rack.'),
     );
     return out;
   }
@@ -525,10 +526,10 @@ const hinge = (p: FamilyParams): FamilyOut => {
     barAnchor: 'wrists',
     armsFollowGravity: true,
     cues: CUE_REP(
-      'Push the hips back, bar or hands sliding down the thighs. Neutral spine.',
-      'Feel the hamstring stretch; back flat, shoulders over the bar.',
-      'Drive the hips forward to stand; the bar stays close.',
-      'Stand tall with the glutes. Do not lean back.',
+      msg('Push the hips back, bar or hands sliding down the thighs. Neutral spine.'),
+      msg('Feel the hamstring stretch; back flat, shoulders over the bar.'),
+      msg('Drive the hips forward to stand; the bar stays close.'),
+      msg('Stand tall with the glutes. Do not lean back.'),
     ),
   };
   const stand: PoseIn = { trunkDeg: 3, femurDeg: 1, tibiaDeg: 1, shoulderFlexDeg: 0, shoulderAbdDeg: 4, elbowDeg: 3 };
@@ -572,10 +573,10 @@ const hinge = (p: FamilyParams): FamilyOut => {
     const bottom: PoseIn = { trunkDeg: 58, femurDeg: 32, tibiaDeg: -8, shoulderFlexDeg: 28, shoulderAbdDeg: 4, elbowDeg: 4, ...legs };
     out.frames = [F(0, 0.5, top), F(0.25, 0.5, { ...bottom, trunkDeg: 35, femurDeg: 18, shoulderFlexDeg: 40 }), F(0.45, 0.9, bottom), F(0.7, 1, { ...top, shoulderFlexDeg: 50 })];
     out.cues = CUE_REP(
-      'Hike the bell back between the thighs — hinge, do not squat.',
-      'Forearms touch the inner thighs, back flat.',
-      'Snap the hips forward; the bell floats up to chest height.',
-      'Plank at the top: glutes and abs tight, arms just guiding.',
+      msg('Hike the bell back between the thighs — hinge, do not squat.'),
+      msg('Forearms touch the inner thighs, back flat.'),
+      msg('Snap the hips forward; the bell floats up to chest height.'),
+      msg('Plank at the top: glutes and abs tight, arms just guiding.'),
     );
     return out;
   }
@@ -639,10 +640,10 @@ const lunge = (p: FamilyParams): FamilyOut => {
     secondary: ['hamstrings', 'calves', 'abs'],
     barAnchor: 'wrists',
     cues: CUE_REP(
-      'Drop the back knee straight down; front shin stays near vertical.',
-      'Back knee hovers just above the floor, torso upright.',
-      'Drive through the front heel to stand.',
-      'Tall, hips square, weight across both feet.',
+      msg('Drop the back knee straight down; front shin stays near vertical.'),
+      msg('Back knee hovers just above the floor, torso upright.'),
+      msg('Drive through the front heel to stand.'),
+      msg('Tall, hips square, weight across both feet.'),
     ),
   };
   const armsHang: PoseIn = { shoulderFlexDeg: 0, shoulderAbdDeg: 10, elbowDeg: 8 };
@@ -692,7 +693,7 @@ const lunge = (p: FamilyParams): FamilyOut => {
     const s0 = S(out.frames[0].pose, o);
     out.props = [{ kind: 'box', x: 0.05, y: box / 2, z: s0.ankleR.z + 0.05, sx: 0.6, sy: box, sz: 0.45 }];
     out.primary = ['quads', 'glutes'];
-    out.cues = CUE_REP('Step down under control, rear foot first.', 'Whole front foot on the box, knee over the toes.', 'Drive through the front heel; do not push off the back foot.', 'Stand tall on the box, rear knee up.');
+    out.cues = CUE_REP(msg('Step down under control, rear foot first.'), msg('Whole front foot on the box, knee over the toes.'), msg('Drive through the front heel; do not push off the back foot.'), msg('Stand tall on the box, rear knee up.'));
     return out;
   }
   // Static split-stance holds.
@@ -709,7 +710,7 @@ const lunge = (p: FamilyParams): FamilyOut => {
     out.solve = { contacts: ['feet', 'knees'], anchor: 'footR' };
     out.primary = ['quads'];
     out.secondary = ['glutes', 'abs'];
-    out.cues = CUE_HOLD(couch ? 'Rear shin up the wall, squeeze the glute of that leg, ribs down.' : 'Tuck the pelvis and squeeze the rear glute; feel the front of that hip open.');
+    out.cues = CUE_HOLD(couch ? msg('Rear shin up the wall, squeeze the glute of that leg, ribs down.') : msg('Tuck the pelvis and squeeze the rear glute; feel the front of that hip open.'));
     if (couch) {
       const s = S(hold, optsOf(out));
       out.props = [{ kind: 'box', x: 0, y: 1.0, z: Math.min(s.ankleL.z, s.kneeL.z) - 0.1, sx: 1.4, sy: 2, sz: 0.08 }];
@@ -720,7 +721,7 @@ const lunge = (p: FamilyParams): FamilyOut => {
     hold = { trunkDeg: 0, femurDegR: fr.femur, tibiaDegR: fr.tibia, footPitchDegR: 0, femurDegL: -30, tibiaDegL: -30, footPitchDegL: 0, shoulderFlexDeg: 172, shoulderAbdDeg: 8, elbowDeg: 4 };
     out.solve = { contacts: ['feet'], anchor: 'footR' };
     out.secondary = ['delt_front', 'abs', 'calves'];
-    out.cues = CUE_HOLD('Front knee over the ankle, back leg long, arms reaching up.');
+    out.cues = CUE_HOLD(msg('Front knee over the ankle, back leg long, arms reaching up.'));
   }
   out.frames = [F(0, 0.5, hold), F(0.5, 0.55, { ...hold, trunkDeg: (hold.trunkDeg ?? 0) - 1.5 })];
   return out;
@@ -741,10 +742,10 @@ const pushup = (p: FamilyParams): FamilyOut => {
     secondary: ['abs', 'glutes', 'quads'],
     barAnchor: 'wrists',
     cues: CUE_REP(
-      'Lower as one piece; elbows about 45 degrees from the body.',
-      'Chest a fist from the floor; body line straight from head to heels.',
-      'Push the floor away, keeping hips in line.',
-      'Arms long, shoulder blades spread, glutes tight.',
+      msg('Lower as one piece; elbows about 45 degrees from the body.'),
+      msg('Chest a fist from the floor; body line straight from head to heels.'),
+      msg('Push the floor away, keeping hips in line.'),
+      msg('Arms long, shoulder blades spread, glutes tight.'),
     ),
   };
   const pike = v === 'pike';
@@ -804,7 +805,7 @@ const pushup = (p: FamilyParams): FamilyOut => {
   if (pike) {
     out.primary = ['delt_front', 'triceps', 'delt_side'];
     out.secondary = ['pecs', 'traps', 'abs'];
-    out.cues = CUE_REP('Hips high; lower the crown of the head toward the floor between the hands.', 'Head just above the floor, elbows tracking back.', 'Press back up to the inverted V.', 'Arms locked, ears between the biceps.');
+    out.cues = CUE_REP(msg('Hips high; lower the crown of the head toward the floor between the hands.'), msg('Head just above the floor, elbows tracking back.'), msg('Press back up to the inverted V.'), msg('Arms locked, ears between the biceps.'));
   }
   return out;
 };
@@ -825,10 +826,10 @@ const benchPress = (p: FamilyParams): FamilyOut => {
     secondary: ['delt_front', 'lats', 'abs'],
     barAnchor: 'wrists',
     cues: CUE_REP(
-      'Lower under control to the lower chest; elbows about 45 degrees.',
-      'Touch, do not bounce. Upper back tight on the bench.',
-      'Press up and slightly back over the shoulders.',
-      'Elbows locked, shoulder blades still pinned.',
+      msg('Lower under control to the lower chest; elbows about 45 degrees.'),
+      msg('Touch, do not bounce. Upper back tight on the bench.'),
+      msg('Press up and slightly back over the shoulders.'),
+      msg('Elbows locked, shoulder blades still pinned.'),
     ),
   };
   if (v === 'svend' || v === 'pallof') {
@@ -1238,7 +1239,7 @@ const triceps = (p: FamilyParams): FamilyOut => {
         out.props.push({ kind: 'box', x: hx, y: railY, z: s.handL.z, sx: 0.04, sy: 0.04, sz: 0.7 });
         for (const dz of [-0.33, 0.33]) out.props.push({ kind: 'box', x: hx, y: railY / 2, z: s.handL.z + dz, sx: 0.04, sy: railY, sz: 0.04 });
       }
-      out.cues = CUE_REP('Lower until the upper arm is about parallel to the floor.', 'Shoulders stay down, away from the ears.', 'Press back up to straight arms.', 'Locked out, chest proud.');
+      out.cues = CUE_REP(msg('Lower until the upper arm is about parallel to the floor.'), msg('Shoulders stay down, away from the ears.'), msg('Press back up to straight arms.'), msg('Locked out, chest proud.'));
       return out;
     }
   }
@@ -1409,7 +1410,7 @@ const core = (p: FamilyParams): FamilyOut => {
       out.phases = 'hold';
       const h: PoseIn = { rootPitchDeg: lying, trunkDeg: 20, femurDeg: 22, tibiaDeg: 22, footPitchDegL: 30, footPitchDegR: 30, shoulderFlexDeg: 165, shoulderAbdDeg: 8, elbowDeg: 4 };
       out.frames = [F(0, 0.9, h), F(0.5, 0.95, { ...h, trunkDeg: 21, femurDeg: 21, tibiaDeg: 21 })];
-      out.cues = CUE_HOLD('Lower back pressed into the floor, shoulders and legs hovering.');
+      out.cues = CUE_HOLD(msg('Lower back pressed into the floor, shoulders and legs hovering.'));
       return out;
     }
     default: {
@@ -1485,7 +1486,7 @@ const plank = (p: FamilyParams): FamilyOut => {
     primary: ['abs', 'obliques'],
     secondary: ['delt_front', 'glutes', 'quads'],
     barAnchor: 'wrists',
-    cues: CUE_HOLD('Straight line from head to heels; squeeze the glutes, brace the abs.'),
+    cues: CUE_HOLD(msg('Straight line from head to heels; squeeze the glutes, brace the abs.')),
   };
   const o = optsOf(out);
   if (v === 'plank' || v === 'side') {
@@ -1509,7 +1510,7 @@ const plank = (p: FamilyParams): FamilyOut => {
     out.frames = [F(0, 0.8, h), F(0.5, 0.85, { ...h, rootRollDeg: R - 0.5 })];
     out.primary = ['obliques', 'abs'];
     out.secondary = ['glutes', 'delt_side'];
-    out.cues = CUE_HOLD('Hips high in one line from head to feet; elbow under the shoulder.');
+    out.cues = CUE_HOLD(msg('Hips high in one line from head to feet; elbow under the shoulder.'));
     return out;
   }
   if (v === 'birddog' || v === 'catcow' || v === 'thoracic') {
@@ -1597,7 +1598,7 @@ const plank = (p: FamilyParams): FamilyOut => {
   out.phases = 'rep';
   out.primary = ['abs'];
   out.secondary = ['lats', 'delt_front', 'obliques', 'triceps'];
-  out.cues = CUE_REP('Roll out slowly, hips and shoulders moving together.', 'Furthest point you can hold without the lower back sagging.', 'Pull the wheel back with the abs and lats.', 'Kneeling, hips slightly flexed, ribs down.');
+  out.cues = CUE_REP(msg('Roll out slowly, hips and shoulders moving together.'), msg('Furthest point you can hold without the lower back sagging.'), msg('Pull the wheel back with the abs and lats.'), msg('Kneeling, hips slightly flexed, ribs down.'));
   return out;
 };
 
@@ -1672,7 +1673,7 @@ const bridge = (p: FamilyParams): FamilyOut => {
   if (v === 'pose') {
     out.phases = 'hold';
     out.frames = [F(0, 0.7, sols[3]), F(0.5, 0.75, sols[2])].map((f, i) => (i === 1 ? F(0.5, 0.75, sols[3]) : f));
-    out.cues = CUE_HOLD('Press into the feet and arms, lift the chest toward the chin.');
+    out.cues = CUE_HOLD(msg('Press into the feet and arms, lift the chest toward the chin.'));
   }
   if (thrust) {
     const z = st.chest.z;
@@ -1735,7 +1736,7 @@ const jump = (p: FamilyParams): FamilyOut => {
     out.phases = 'rep';
     const s = S(stand, optsOf(out));
     out.props = [{ kind: 'box', x: 0, y: box / 2, z: s.toeR.z + 0.6 - 0.07, sx: 0.6, sy: box, sz: 0.5 }];
-    out.cues = CUE_REP('Swing the arms back and dip into a quarter squat.', 'Load the hips; eyes on the box.', 'Explode up and forward, tuck the knees, land soft on the whole foot.', 'Stand tall on the box, then step down — do not jump down.');
+    out.cues = CUE_REP(msg('Swing the arms back and dip into a quarter squat.'), msg('Load the hips; eyes on the box.'), msg('Explode up and forward, tuck the knees, land soft on the whole foot.'), msg('Stand tall on the box, then step down — do not jump down.'));
     return out;
   }
   // burpee family
@@ -1774,7 +1775,7 @@ const jump = (p: FamilyParams): FamilyOut => {
   out.phases = 'rep';
   out.primary = ['quads', 'pecs', 'glutes'];
   out.secondary = ['triceps', 'delt_front', 'abs', 'calves'];
-  out.cues = CUE_REP('Squat down and plant the hands just in front of the feet.', withPush ? 'Jump the feet back to a plank and do a full push-up.' : 'Jump the feet back to a straight plank.', 'Jump the feet in, then explode up.', 'Arms overhead in the air, land softly.');
+  out.cues = CUE_REP(msg('Squat down and plant the hands just in front of the feet.'), withPush ? msg('Jump the feet back to a plank and do a full push-up.') : msg('Jump the feet back to a straight plank.'), msg('Jump the feet in, then explode up.'), msg('Arms overhead in the air, land softly.'));
   return out;
 };
 
@@ -2011,7 +2012,7 @@ const calf = (p: FamilyParams): FamilyOut => {
   out.frames = [F(0, 0.5, hold), F(0.5, 0.55, { ...hold, trunkDeg: 15 })];
   const s = S(hold, optsOf(out));
   out.props = [{ kind: 'box', x: 0, y: 1.0, z: Math.max(s.handL.z, s.handR.z) + 0.05, sx: 1.4, sy: 2, sz: 0.08 }];
-  out.cues = CUE_HOLD('Rear leg straight, heel pressed down; lean into the wall.');
+  out.cues = CUE_HOLD(msg('Rear leg straight, heel pressed down; lean into the wall.'));
   return out;
 };
 
@@ -2082,7 +2083,7 @@ const stretch = (p: FamilyParams): FamilyOut => {
     primary: ['hamstrings'],
     secondary: [],
     barAnchor: 'wrists',
-    cues: CUE_HOLD('Ease into the stretch and breathe; no bouncing.'),
+    cues: CUE_HOLD(msg('Ease into the stretch and breathe; no bouncing.')),
   };
   const hold = (h: PoseIn, wobble: PoseIn = {}) => {
     out.frames = [F(0, 0.3, h), F(0.5, 0.35, { ...h, ...wobble })];
@@ -2092,7 +2093,7 @@ const stretch = (p: FamilyParams): FamilyOut => {
   switch (v) {
     case 'hamstring':
       hold({ ...standing, trunkDeg: 95 - 40, femurDeg: 6, tibiaDeg: 4, shoulderFlexDeg: 60, elbowDeg: 4 }, { trunkDeg: 58 });
-      out.cues = CUE_HOLD('Hinge from the hips with long legs; reach toward the shins.');
+      out.cues = CUE_HOLD(msg('Hinge from the hips with long legs; reach toward the shins.'));
       return out;
     case 'quad': {
       out.solve = { contacts: ['feet'], anchor: 'footL' };
@@ -2102,20 +2103,20 @@ const stretch = (p: FamilyParams): FamilyOut => {
       hold(h);
       out.primary = ['quads'];
       out.secondary = ['glutes'];
-      out.cues = CUE_HOLD('Heel to the glute, knees together, hips tucked under.');
+      out.cues = CUE_HOLD(msg('Heel to the glute, knees together, hips tucked under.'));
       return out;
     }
     case 'shoulder':
       hold({ ...standing, shoulderFlexDegR: 92, shoulderAbdDegR: -22, elbowDegR: 4, shoulderFlexDegL: 50, shoulderAbdDegL: 0, elbowDegL: 110 });
       out.primary = ['delt_rear'];
       out.secondary = ['traps'];
-      out.cues = CUE_HOLD('Pull the straight arm across the chest; shoulder stays down.');
+      out.cues = CUE_HOLD(msg('Pull the straight arm across the chest; shoulder stays down.'));
       return out;
     case 'chest':
       hold({ ...standing, shoulderFlexDeg: -50, shoulderAbdDeg: 25, elbowDeg: 6, neckDeg: -10 });
       out.primary = ['pecs'];
       out.secondary = ['delt_front'];
-      out.cues = CUE_HOLD('Clasp the hands behind, lift the chest, squeeze the shoulder blades.');
+      out.cues = CUE_HOLD(msg('Clasp the hands behind, lift the chest, squeeze the shoulder blades.'));
       return out;
     case 'doorway': {
       const h: PoseIn = { ...standing, trunkDeg: 6, shoulderFlexDeg: 0, shoulderAbdDeg: 90, elbowDeg: 90, shoulderRotDeg: 90 };
@@ -2127,7 +2128,7 @@ const stretch = (p: FamilyParams): FamilyOut => {
       ];
       out.primary = ['pecs'];
       out.secondary = ['delt_front'];
-      out.cues = CUE_HOLD('Forearms on the door frame, step through until the chest opens.');
+      out.cues = CUE_HOLD(msg('Forearms on the door frame, step through until the chest opens.'));
       return out;
     }
     case 'neck':
@@ -2145,16 +2146,16 @@ const stretch = (p: FamilyParams): FamilyOut => {
         const s0 = S({ ...base, shoulderFlexDeg: 40, elbowDeg: 4 }, o());
         const h = fitBothArms(base, o(), s0.kneeR.y + 0.1, (s0.kneeR.z + s0.ankleR.z) / 2, [40, 10]);
         hold(h, { trunkDeg: 56.5 });
-        out.cues = CUE_HOLD('Legs long, fold from the hips, reach for the feet.');
+        out.cues = CUE_HOLD(msg('Legs long, fold from the hips, reach for the feet.'));
       } else if (v === 'seated9090') {
         hold({ trunkDeg: 10, femurDegR: 70, tibiaDegR: -8, legYawDegR: 50, footPitchDegR: 0, femurDegL: 50, tibiaDegL: -40, legYawDegL: -60, footPitchDegL: 0, shoulderFlexDeg: 30, shoulderAbdDeg: 20, elbowDeg: 20 });
         out.primary = ['glutes'];
-        out.cues = CUE_HOLD('Both knees bent to 90 degrees, sit tall over the front shin.');
+        out.cues = CUE_HOLD(msg('Both knees bent to 90 degrees, sit tall over the front shin.'));
       } else {
         hold({ rootPitchDeg: 20, trunkDeg: 25, femurDegR: 95, tibiaDegR: 5, legYawDegR: 30, footPitchDegR: 0, femurDegL: -30, tibiaDegL: -30, footPitchDegL: 60, shoulderFlexDeg: 60, shoulderAbdDeg: 15, elbowDeg: 10 });
         out.primary = ['glutes'];
         out.secondary = ['quads'];
-        out.cues = CUE_HOLD('Front shin across the mat, back leg long; fold over the front leg.');
+        out.cues = CUE_HOLD(msg('Front shin across the mat, back leg long; fold over the front leg.'));
       }
       return out;
     }
@@ -2164,7 +2165,7 @@ const stretch = (p: FamilyParams): FamilyOut => {
       hold({ trunkDeg: 0, rootPitchDeg: 100, femurDeg: 145, tibiaDeg: 10, shoulderFlexDeg: 180, shoulderAbdDeg: 15, elbowDeg: 4 });
       out.primary = ['erectors', 'lats'];
       out.secondary = ['glutes'];
-      out.cues = CUE_HOLD('Sit the hips back toward the heels, arms long, forehead down.');
+      out.cues = CUE_HOLD(msg('Sit the hips back toward the heels, arms long, forehead down.'));
       return out;
     }
     case 'downdog': {
@@ -2174,7 +2175,7 @@ const stretch = (p: FamilyParams): FamilyOut => {
       hold(h);
       out.primary = ['hamstrings', 'calves'];
       out.secondary = ['delt_front', 'lats'];
-      out.cues = CUE_HOLD('Hips up and back, long spine, heels reaching toward the floor.');
+      out.cues = CUE_HOLD(msg('Hips up and back, long spine, heels reaching toward the floor.'));
       return out;
     }
     case 'cobra': {
@@ -2185,7 +2186,7 @@ const stretch = (p: FamilyParams): FamilyOut => {
       hold(h);
       out.primary = ['erectors'];
       out.secondary = ['abs', 'glutes'];
-      out.cues = CUE_HOLD('Hips down, press the chest forward and up, shoulders away from the ears.');
+      out.cues = CUE_HOLD(msg('Hips down, press the chest forward and up, shoulders away from the ears.'));
       return out;
     }
     case 'sun': {
@@ -2207,27 +2208,27 @@ const stretch = (p: FamilyParams): FamilyOut => {
       hold({ ...standing, femurDegL: 1, tibiaDegL: 1, footPitchDegL: 0, femurDegR: 62, tibiaDegR: -78, legYawDegR: 52, footPitchDegR: 30, shoulderFlexDeg: 172, shoulderAbdDeg: 0, elbowDeg: 6 });
       out.primary = ['glutes', 'calves'];
       out.secondary = ['abs', 'quads'];
-      out.cues = CUE_HOLD('Foot on the inner thigh (not the knee), knee opens out, hands overhead.');
+      out.cues = CUE_HOLD(msg('Foot on the inner thigh (not the knee), knee opens out, hands overhead.'));
       return out;
     case 'triangle':
       hold({ trunkDeg: 8, trunkSideDeg: 40, femurDeg: 30, tibiaDeg: 30, legYawDegL: -88, legYawDegR: 88, footPitchDegL: 0, footPitchDegR: 0, shoulderFlexDeg: 0, shoulderAbdDeg: 90, elbowDeg: 4 });
       out.solve = { contacts: ['feet'], anchor: 'feet' };
       out.primary = ['hamstrings', 'obliques'];
       out.secondary = ['glutes', 'delt_side'];
-      out.cues = CUE_HOLD('Wide straight legs, hinge sideways over the front leg, arms in one line.');
+      out.cues = CUE_HOLD(msg('Wide straight legs, hinge sideways over the front leg, arms in one line.'));
       return out;
     case 'warrior2':
       hold({ trunkDeg: 0, femurDegR: 52, tibiaDegR: -6, legYawDegR: 88, femurDegL: 32, tibiaDegL: 32, legYawDegL: -88, footPitchDegL: 0, footPitchDegR: 0, shoulderFlexDeg: 0, shoulderAbdDeg: 90, elbowDeg: 4 });
       out.solve = { contacts: ['feet'], anchor: 'feet' };
       out.primary = ['quads', 'glutes'];
       out.secondary = ['delt_side', 'abs'];
-      out.cues = CUE_HOLD('Front knee over the ankle, back leg straight, arms long at shoulder height.');
+      out.cues = CUE_HOLD(msg('Front knee over the ankle, back leg straight, arms long at shoulder height.'));
       return out;
     case 'corpse':
       out.solve = SUPINE;
       hold({ rootPitchDeg: -90, trunkDeg: 0, femurDeg: 2, tibiaDeg: 2, footPitchDegL: 40, footPitchDegR: 40, shoulderFlexDeg: 0, shoulderAbdDeg: 20, elbowDeg: 6 });
       out.primary = ['abs'];
-      out.cues = CUE_HOLD('Lie still, palms up, let the body go heavy and breathe.');
+      out.cues = CUE_HOLD(msg('Lie still, palms up, let the body go heavy and breathe.'));
       return out;
     case 'foamquads':
     case 'foamback': {

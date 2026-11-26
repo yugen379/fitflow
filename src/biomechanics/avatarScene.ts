@@ -47,6 +47,7 @@ import {
 import { RIG, trunkFrame } from './rig';
 import { MUSCLE_COUNT, MUSCLE_INDEX, NEUTRAL_MUSCLE_INDEX } from './types';
 import type { ClipProp, EquipmentId, JointId, MuscleId, QualityProfile, Skeleton, Vec3 } from './types';
+import { msg } from '../i18n/i18n';
 
 // ---------------------------------------------------------------------------
 // Palette — pulled from FitFlow's design tokens so the avatar sits in-brand.
@@ -419,9 +420,9 @@ const BLOBS: BlobSpec[] = [
 
 /** Joints that get an angle arc + a projected DOM label. */
 export const MEASURED_JOINTS: { id: JointId; from: JointId; to: JointId; label: string }[] = [
-  { id: 'kneeR', from: 'hipR', to: 'ankleR', label: 'Knee' },
-  { id: 'hipR', from: 'chest', to: 'kneeR', label: 'Hip' },
-  { id: 'elbowR', from: 'shoulderR', to: 'wristR', label: 'Elbow' },
+  { id: 'kneeR', from: 'hipR', to: 'ankleR', label: msg('Knee') },
+  { id: 'hipR', from: 'chest', to: 'kneeR', label: msg('Hip') },
+  { id: 'elbowR', from: 'shoulderR', to: 'wristR', label: msg('Elbow') },
 ];
 
 // ---------------------------------------------------------------------------

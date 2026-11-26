@@ -21,19 +21,20 @@ import type {
   MuscleId,
   PoseKeyframe,
 } from './types';
+import { msg } from '../i18n/i18n';
 
 // ---------------------------------------------------------------------------
 // Equipment
 // ---------------------------------------------------------------------------
 
 export const EQUIPMENT: Readonly<Record<EquipmentId, EquipmentOption>> = {
-  barbell: { id: 'barbell', label: 'Barbell', gripHalfWidth: 0.42, showPlates: true },
-  dumbbell: { id: 'dumbbell', label: 'Dumbbells', gripHalfWidth: 0.26, showPlates: false },
-  cable: { id: 'cable', label: 'Cable', gripHalfWidth: 0.22, showPlates: false },
-  bodyweight: { id: 'bodyweight', label: 'Bodyweight', gripHalfWidth: 0.2, showPlates: false },
-  kettlebell: { id: 'kettlebell', label: 'Kettlebell', gripHalfWidth: 0.12, showPlates: false },
-  band: { id: 'band', label: 'Band', gripHalfWidth: 0.22, showPlates: false },
-  machine: { id: 'machine', label: 'Machine', gripHalfWidth: 0.25, showPlates: false },
+  barbell: { id: 'barbell', label: msg('Barbell'), gripHalfWidth: 0.42, showPlates: true },
+  dumbbell: { id: 'dumbbell', label: msg('Dumbbells'), gripHalfWidth: 0.26, showPlates: false },
+  cable: { id: 'cable', label: msg('Cable'), gripHalfWidth: 0.22, showPlates: false },
+  bodyweight: { id: 'bodyweight', label: msg('Bodyweight'), gripHalfWidth: 0.2, showPlates: false },
+  kettlebell: { id: 'kettlebell', label: msg('Kettlebell'), gripHalfWidth: 0.12, showPlates: false },
+  band: { id: 'band', label: msg('Band'), gripHalfWidth: 0.22, showPlates: false },
+  machine: { id: 'machine', label: msg('Machine'), gripHalfWidth: 0.25, showPlates: false },
 };
 
 export const EQUIPMENT_ORDER: EquipmentId[] = ['barbell', 'dumbbell', 'cable', 'bodyweight', 'kettlebell', 'band', 'machine'];
