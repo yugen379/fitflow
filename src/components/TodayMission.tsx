@@ -7,6 +7,7 @@ import { celebrateSession } from '../lib/celebrate';
 import { dayKey } from '../services/retentionUtils';
 import { haptic } from '../lib/haptics';
 import { useUnits } from '../hooks/useUnits';
+import { t } from '../i18n/i18n';
 
 // Home's hero widget — the answer to "what should I do RIGHT NOW?".
 //
@@ -65,7 +66,7 @@ export const TodayMission: React.FC<Props> = ({
 
       {loading ? (
         <div className="h-40 flex items-center justify-center">
-          <span className="text-sm text-text-dim pulse-soft">Loading your day…</span>
+          <span className="text-sm text-text-dim pulse-soft">{t('Loading your day…')}</span>
         </div>
       ) : (
         <div className="relative space-y-4">
@@ -75,7 +76,7 @@ export const TodayMission: React.FC<Props> = ({
             </h2>
             {risk ? (
               <span className="shrink-0 text-[10px] font-bold text-accent-2 bg-accent-2/12 border border-accent-2/30 rounded-full px-2.5 py-1 whitespace-nowrap">
-                🔥 Streak at risk
+                🔥 {t('Streak at risk')}
               </span>
             ) : mission.complete ? (
               <motion.span
@@ -84,7 +85,7 @@ export const TodayMission: React.FC<Props> = ({
                 transition={{ type: 'spring', stiffness: 300, damping: 16 }}
                 className="shrink-0 text-[10px] font-bold text-accent bg-accent/12 border border-accent/30 rounded-full px-2.5 py-1 whitespace-nowrap"
               >
-                ✓ Complete
+                ✓ {t('Complete')}
               </motion.span>
             ) : null}
           </div>
@@ -103,7 +104,7 @@ export const TodayMission: React.FC<Props> = ({
                   <span className="text-base text-text-dim">/{mission.total}</span>
                 </span>
                 <span className="text-[9px] text-accent font-semibold uppercase tracking-wider mt-1">
-                  mission
+                  {t('mission')}
                 </span>
               </div>
             </div>
@@ -117,7 +118,7 @@ export const TodayMission: React.FC<Props> = ({
 
           <div className="flex items-center gap-4 pt-1 border-t border-white/[0.06]">
             <p className="text-xs text-text-dim">
-              Burned{' '}
+              {t('Burned')}{' '}
               <span className="num text-white font-semibold">
                 <AnimatedNumber value={Math.round(units.energyValue(caloriesBurned))} />
               </span>{' '}
@@ -125,7 +126,7 @@ export const TodayMission: React.FC<Props> = ({
             </p>
             <div className="w-px h-3 bg-white/[0.06]" />
             <p className="text-xs text-text-dim">
-              Active{' '}
+              {t('Active')}{' '}
               <span className="num text-white font-semibold">
                 <AnimatedNumber value={activeMinutes} />
               </span>{' '}
@@ -225,7 +226,7 @@ const MissionRow: React.FC<{
 
       {(isNext || isOver) && (
         <p className={`mt-1 text-[10px] font-semibold ${isOver ? 'text-accent-2' : 'text-accent'}`}>
-          {isOver ? `Over target — ${task.action.label.toLowerCase()}` : `${task.action.label} →`}
+          {isOver ? t('Over target — {action}', { action: task.action.label.toLowerCase() }) : `${task.action.label} →`}
         </p>
       )}
     </motion.button>

@@ -28,11 +28,13 @@ import {
 import type { GpsActivity, GpsPoint, UnitSystem } from '../lib/gpsMath';
 import { GpsTracker, WebGpsRecorder, gpsErrorMessage, hasNativeGps, nativeDistanceUnit } from '../lib/gpsTracker';
 import type { GpsSnapshot, RecordingState } from '../lib/gpsTracker';
+import { t, msg, tDyn } from '../i18n/i18n';
 
 const ACTIVITIES: { id: GpsActivity; label: string; icon: typeof Bike; type: string }[] = [
-  { id: 'walk', label: 'Walk', icon: Footprints, type: 'Walking' },
-  { id: 'run', label: 'Run', icon: Zap, type: 'Running' },
-  { id: 'cycle', label: 'Ride', icon: Bike, type: 'Cycling' },
+  // `label` is shown with tDyn(); the saved workout title keeps the English.
+  { id: 'walk', label: msg('Walk'), icon: Footprints, type: 'Walking' },
+  { id: 'run', label: msg('Run'), icon: Zap, type: 'Running' },
+  { id: 'cycle', label: msg('Ride'), icon: Bike, type: 'Cycling' },
 ];
 
 // km / mi used to be a per-device toggle kept in localStorage under this key.
@@ -118,9 +120,9 @@ export const TrackActivity: React.FC = () => {
   // rest of the app follow it. The profile snapshot re-renders this screen.
   const setUnitsPersist = (u: UnitSystem) => {
     if (u === units) return;
-    if (!profile?.uid) { showToast('Sign in to change units', 'info'); return; }
+    if (!profile?.uid) { showToast(t('Sign in to change units'), 'info'); return; }
     void saveUnitPrefs(profile.uid, { ...unitPrefs.prefs, system: u })
-      .catch(() => showToast('Could not change units. Try again.', 'error'));
+      .catch(() => showToast(t('Could not change units. Try again.'), 'error'));
   };
 
   const start = async () => {
@@ -221,7 +223,7 @@ export const TrackActivity: React.FC = () => {
         route,
         notes: '',
       });
-      showToast('Saved to your workouts', 'success');
+      showToast(t('Saved to your workouts'), 'success');
       // Finishing a walk / run / ride is a win. A queued (offline or failed)
       // save is not: the review card cannot load offline anyway.
       if (saved !== 'queued' && saved !== 'offline-queued') {
@@ -230,7 +232,7 @@ export const TrackActivity: React.FC = () => {
       await reset();
       navigate('/workout');
     } catch {
-      showToast('Could not save — your route is kept on this phone, try again', 'error');
+      showToast(t('Could not save — your route is kept on this phone, try again'), 'error');
     } finally {
       setBusy(false);
     }
@@ -251,18 +253,18 @@ export const TrackActivity: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          aria-label="Go back"
+          aria-label={t('Go back')}
           className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-text-dim active:scale-95 transition-transform shrink-0"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-eyebrow text-accent">GPS recording</p>
+          <p className="text-eyebrow text-accent">{t('GPS recording')}</p>
           <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight mt-0.5">
-            Record a walk, run or ride
+            {t('Record a walk, run or ride')}
           </h1>
         </div>
-        <div className="flex rounded-xl border border-white/10 overflow-hidden shrink-0 mt-1" role="group" aria-label="Units">
+        <div className="flex rounded-xl border border-white/10 overflow-hidden shrink-0 mt-1" role="group" aria-label={t('Units')}>
           {(['metric', 'imperial'] as const).map((u) => (
             <button
               key={u}
@@ -280,13 +282,13 @@ export const TrackActivity: React.FC = () => {
       {!native ? (
         <p className="glass p-4 text-xs text-text-dim leading-relaxed">
           {webAvailable
-            ? 'Browser mode: recording only works while this page is open and the screen stays on. For background recording with the screen off, use the FitFlow Android app.'
-            : 'GPS recording needs the FitFlow Android app — this browser has no location access.'}
+            ? t('Browser mode: recording only works while this page is open and the screen stays on. For background recording with the screen off, use the FitFlow Android app.')
+            : t('GPS recording needs the FitFlow Android app — this browser has no location access.')}
         </p>
       ) : null}
 
       {idle ? (
-        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Activity">
+        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('Activity')}>
           {ACTIVITIES.map((a) => (
             <button
               key={a.id}
@@ -300,7 +302,7 @@ export const TrackActivity: React.FC = () => {
               )}
             >
               <a.icon size={20} aria-hidden="true" />
-              <span className="text-sm font-semibold">{a.label}</span>
+              <span className="text-sm font-semibold">{tDyn(a.label)}</span>
             </button>
           ))}
         </div>
@@ -309,30 +311,30 @@ export const TrackActivity: React.FC = () => {
       <section className="glass-spatial p-5">
         <p className="text-eyebrow text-accent inline-flex items-center gap-1.5">
           <Timer size={12} aria-hidden="true" />
-          {state === 'recording' ? 'Recording' : state === 'paused' ? 'Paused' : state === 'stopped' ? 'Finished' : 'Ready'}
-          {state !== 'idle' ? ` · ${ACTIVITIES.find((a) => a.id === activity)?.label}` : ''}
+          {state === 'recording' ? t('Recording') : state === 'paused' ? t('Paused') : state === 'stopped' ? t('Finished') : t('Ready')}
+          {state !== 'idle' ? ` · ${tDyn(ACTIVITIES.find((a) => a.id === activity)?.label)}` : ''}
         </p>
         <p className="num text-6xl font-bold text-white tabular-nums leading-none mt-2" aria-live="off">
           {formatDuration(elapsedMs / 1000)}
         </p>
-        <p className="text-xs text-text-dim mt-1.5">Moving {formatDuration(summary.movingS)}</p>
+        <p className="text-xs text-text-dim mt-1.5">{t('Moving {time}', { time: formatDuration(summary.movingS) })}</p>
         <div className="grid grid-cols-2 gap-2 mt-4">
-          <Stat value={dist.value} unit={dist.unit} label="Distance" />
-          <Stat value={paceOrSpeed.value} unit={paceOrSpeed.unit} label={activity === 'cycle' ? 'Avg speed' : 'Avg pace'} />
-          <Stat value={unitPrefs.formatEnergyNumber(Math.round(summary.calories))} unit={unitPrefs.energyUnit} label="Calories" />
-          <Stat {...unitPrefs.elevationParts(summary.elevationGainM)} label="Climb" />
+          <Stat value={dist.value} unit={dist.unit} label={t('Distance')} />
+          <Stat value={paceOrSpeed.value} unit={paceOrSpeed.unit} label={activity === 'cycle' ? t('Avg speed') : t('Avg pace')} />
+          <Stat value={unitPrefs.formatEnergyNumber(Math.round(summary.calories))} unit={unitPrefs.energyUnit} label={t('Calories')} />
+          <Stat {...unitPrefs.elevationParts(summary.elevationGainM)} label={t('Climb')} />
         </div>
 
         {gpsOff ? (
           <div className="mt-4 rounded-2xl border border-accent-4/30 bg-accent-4/10 p-3">
-            <p className="text-xs text-accent-4 font-semibold">Location is off — no route is being recorded.</p>
+            <p className="text-xs text-accent-4 font-semibold">{t('Location is off — no route is being recorded.')}</p>
             {native ? (
               <button
                 type="button"
                 onClick={() => void GpsTracker.openLocationSettings().catch(() => {})}
                 className="mt-2 h-10 w-full rounded-xl bg-accent-4/20 text-accent-4 text-xs font-semibold"
               >
-                Turn on location
+                {t('Turn on location')}
               </button>
             ) : null}
           </div>
@@ -347,22 +349,22 @@ export const TrackActivity: React.FC = () => {
               onClick={() => void start()}
               className="flex-1 h-14 rounded-2xl bg-accent text-[#04060A] font-bold text-base inline-flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
             >
-              <Play size={18} aria-hidden="true" /> Start
+              <Play size={18} aria-hidden="true" /> {t('Start')}
             </button>
           ) : null}
           {state === 'recording' ? (
             <button type="button" onClick={() => void pause()} className="flex-1 h-14 rounded-2xl bg-white/10 text-white font-semibold inline-flex items-center justify-center gap-2">
-              <Pause size={18} aria-hidden="true" /> Pause
+              <Pause size={18} aria-hidden="true" /> {t('Pause')}
             </button>
           ) : null}
           {state === 'paused' ? (
             <button type="button" onClick={() => void resume()} className="flex-1 h-14 rounded-2xl bg-accent text-[#04060A] font-bold inline-flex items-center justify-center gap-2">
-              <Play size={18} aria-hidden="true" /> Resume
+              <Play size={18} aria-hidden="true" /> {t('Resume')}
             </button>
           ) : null}
           {state === 'recording' || state === 'paused' ? (
             <button type="button" onClick={() => void finish()} className="flex-1 h-14 rounded-2xl bg-white/10 text-white font-semibold inline-flex items-center justify-center gap-2">
-              <Square size={16} aria-hidden="true" /> Finish
+              <Square size={16} aria-hidden="true" /> {t('Finish')}
             </button>
           ) : null}
           {state === 'stopped' ? (
@@ -373,50 +375,52 @@ export const TrackActivity: React.FC = () => {
                 onClick={() => void save()}
                 className="flex-1 h-14 rounded-2xl bg-accent text-[#04060A] font-bold disabled:opacity-50"
               >
-                {busy ? 'Saving…' : 'Save'}
+                {busy ? t('Saving…') : t('Save')}
               </button>
               <button
                 type="button"
-                onClick={() => { if (window.confirm('Discard this recording?')) void reset(); }}
+                onClick={() => { if (window.confirm(t('Discard this recording?'))) void reset(); }}
                 className="h-14 px-5 rounded-2xl bg-white/10 text-text-dim font-semibold"
               >
-                Discard
+                {t('Discard')}
               </button>
             </>
           ) : null}
         </div>
         {state === 'stopped' && !canSave ? (
-          <p className="text-[11px] text-text-mute mt-2">Too short to save — record at least a minute of movement.</p>
+          <p className="text-[11px] text-text-mute mt-2">{t('Too short to save — record at least a minute of movement.')}</p>
         ) : null}
       </section>
 
       <section className="glass p-4">
         <p className="text-eyebrow text-text-dim inline-flex items-center gap-1.5 mb-2">
-          <MapPin size={12} aria-hidden="true" /> Route
+          <MapPin size={12} aria-hidden="true" /> {t('Route')}
         </p>
         {svgPts ? (
-          <svg viewBox="0 0 320 200" className="w-full h-auto" role="img" aria-label="Your route">
+          <svg viewBox="0 0 320 200" className="w-full h-auto" role="img" aria-label={t('Your route')}>
             <polyline points={svgPts} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="text-accent" />
             {first ? <circle cx={first[0]} cy={first[1]} r={5} className="fill-white" /> : null}
             {last ? <circle cx={last[0]} cy={last[1]} r={6} className="fill-accent" /> : null}
           </svg>
         ) : (
           <p className="text-xs text-text-mute py-8 text-center">
-            {state === 'recording' ? 'Waiting for GPS — stand outside with a clear view of the sky.' : 'Your route appears here.'}
+            {state === 'recording' ? t('Waiting for GPS — stand outside with a clear view of the sky.') : t('Your route appears here.')}
           </p>
         )}
       </section>
 
       {summary.splits.length ? (
         <section className="glass p-4">
-          <p className="text-eyebrow text-text-dim mb-2">Splits</p>
+          <p className="text-eyebrow text-text-dim mb-2">{t('Splits')}</p>
           <ul className="divide-y divide-white/5">
             {summary.splits.map((s) => {
               const perUnit = s.distanceM > 0 ? s.seconds / (s.distanceM / (units === 'imperial' ? 1609.344 : 1000)) : 0;
               return (
                 <li key={s.index} className="flex items-center justify-between py-2 text-sm">
                   <span className="text-text-dim">
-                    {s.partial ? joinVU(formatDistance(s.distanceM, units)) : `${units === 'imperial' ? 'Mile' : 'Km'} ${s.index}`}
+                    {s.partial
+                      ? joinVU(formatDistance(s.distanceM, units))
+                      : units === 'imperial' ? t('Mile {n}', { n: s.index }) : t('Km {n}', { n: s.index })}
                   </span>
                   <span className="num text-white tabular-nums">
                     {activity === 'cycle'

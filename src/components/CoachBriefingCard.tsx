@@ -6,6 +6,10 @@ import { getCoachBriefing, type CoachContext, type CoachBriefing } from '../serv
 import { buildBriefing } from '../services/coachBriefing';
 import { pushTopNudge } from '../services/notificationService';
 import { haptic } from '../lib/haptics';
+import { t, getLanguage } from '../i18n/i18n';
+
+/** Voice for the read-aloud briefing, in the app's language. */
+const SPEECH_LANG: Record<string, string> = { en: 'en-US', ms: 'ms-MY', id: 'id-ID', es: 'es-ES', pt: 'pt-BR', hi: 'hi-IN' };
 
 interface Props {
   uid?: string;
@@ -69,6 +73,7 @@ export const CoachBriefingCard: React.FC<Props> = ({ uid, ctx, online = true, on
     const text = `${briefing.headline}. ${briefing.nudges.map(n => n.message).join(' ')}`;
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.0;
+    u.lang = SPEECH_LANG[getLanguage()] || 'en-US';
     window.speechSynthesis.speak(u);
   };
 
@@ -86,13 +91,13 @@ export const CoachBriefingCard: React.FC<Props> = ({ uid, ctx, online = true, on
         <div className="w-7 h-7 bg-accent/15 rounded-lg flex items-center justify-center">
           <Sparkles size={14} className="text-accent" />
         </div>
-        <span className="text-eyebrow text-accent flex-1">Your coach</span>
+        <span className="text-eyebrow text-accent flex-1">{t('Your coach')}</span>
         {briefing && (
           <button
             onClick={speak}
             className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-accent transition-colors"
-            aria-label="Read briefing aloud"
-            title="Listen"
+            aria-label={t('Read briefing aloud')}
+            title={t('Listen')}
           >
             <Volume2 size={13} />
           </button>

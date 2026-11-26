@@ -36,19 +36,29 @@ import { EMPTY_STATS, nextAchievements } from '../lib/achievements';
 import type { AchievementStats } from '../lib/achievements';
 import type { DayBar } from '../components/3d/StepBars3D';
 import { STEPS_GOAL } from '../services/missionUtils';
+import { t, msg, tDyn, getLanguage } from '../i18n/i18n';
 
 const StepBars3D = lazy(() => import('../components/3d/StepBars3D').then((m) => ({ default: m.StepBars3D })));
 
 type Horizon = 'day' | 'week' | 'month' | 'year';
 
 const HORIZONS: { id: Horizon; label: string; sub: string }[] = [
-  { id: 'day', label: 'Day', sub: 'Today' },
-  { id: 'week', label: 'Week', sub: 'Sun–Sat' },
-  { id: 'month', label: 'Month', sub: '30 days' },
-  { id: 'year', label: 'Year', sub: '12 months' },
+  { id: 'day', label: msg('Day'), sub: msg('Today') },
+  { id: 'week', label: msg('Week'), sub: msg('Sun–Sat') },
+  { id: 'month', label: msg('Month'), sub: msg('30 days') },
+  { id: 'year', label: msg('Year'), sub: msg('12 months') },
 ];
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Short weekday name in the app's language ("Sun" in English). */
+const weekdayLabel = (date: Date): string => {
+  try {
+    return new Intl.DateTimeFormat(getLanguage(), { weekday: 'short' }).format(date);
+  } catch {
+    return DAY_LABELS[date.getDay()];
+  }
+};
 const STEP_GOAL = STEPS_GOAL;
 
 /** The dates of the current Sunday–Saturday week, oldest first. */
@@ -163,7 +173,7 @@ export const Steps: React.FC = () => {
       const stored = history[key] ?? 0;
       // Today always shows the live count, which is ahead of the last flush.
       const steps = key === todayKey ? Math.max(stored, live.steps) : stored;
-      return { label: DAY_LABELS[date.getDay()], steps, isToday: key === todayKey };
+      return { label: weekdayLabel(date), steps, isToday: key === todayKey };
     });
   }, [history, live.steps, todayKey]);
 
@@ -206,15 +216,15 @@ export const Steps: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          aria-label="Go back"
+          aria-label={t('Go back')}
           className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-text-dim active:scale-95 transition-transform shrink-0"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-eyebrow text-accent">Step analytics</p>
+          <p className="text-eyebrow text-accent">{t('Step analytics')}</p>
           <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight mt-0.5">
-            Every step today
+            {t('Every step today')}
           </h1>
         </div>
       </div>
@@ -223,26 +233,26 @@ export const Steps: React.FC = () => {
         <p className="text-eyebrow text-accent inline-flex items-center gap-1.5">
           <Footprints size={12} aria-hidden="true" />
           {live.source === 'background-service'
-            ? 'Counting in the background'
+            ? t('Counting in the background')
             : live.source === 'health-connect'
-              ? 'From Health Connect'
+              ? t('From Health Connect')
               : live.source === 'hardware-counter'
-                ? 'From this phone’s step counter, while open'
+                ? t('From this phone’s step counter, while open')
                 : live.source === 'device-sensor'
-                  ? 'Estimated from motion on this device'
-                  : 'Not counting yet'}
+                  ? t('Estimated from motion on this device')
+                  : t('Not counting yet')}
         </p>
         <p className="num text-5xl font-bold text-white tabular-nums leading-none mt-2">
           <AnimatedNumber value={Math.round(live.steps)} />
         </p>
         <p className="text-xs text-text-dim mt-1.5">
-          of {STEP_GOAL.toLocaleString()} · {live.cadence > 0 ? `${live.cadence} steps/min` : 'stopped'}
+          {t('of {n}', { n: STEP_GOAL.toLocaleString() })} · {live.cadence > 0 ? t('{n} steps/min', { n: live.cadence }) : t('stopped')}
         </p>
 
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <Metric icon={<MapPin size={14} />} value={units.formatDistance(live.distanceKm)} label="Distance" />
+          <Metric icon={<MapPin size={14} />} value={units.formatDistance(live.distanceKm)} label={t('Distance')} />
           <Metric icon={<Flame size={14} />} value={units.formatEnergyNumber(Math.round(live.calories))} label={units.energyUnit} />
-          <Metric icon={<Timer size={14} />} value={formatActiveTime(live.activeMs)} label="Active" />
+          <Metric icon={<Timer size={14} />} value={formatActiveTime(live.activeMs)} label={t('Active')} />
         </div>
 
         {live.needsPermission && !live.permissionDenied ? (
@@ -254,7 +264,7 @@ export const Steps: React.FC = () => {
             }}
             className="mt-4 w-full h-12 rounded-2xl bg-accent text-[#04060A] font-semibold text-sm active:scale-[0.98] transition-transform"
           >
-            Allow physical activity access
+            {t('Allow physical activity access')}
           </button>
         ) : null}
 
@@ -262,15 +272,13 @@ export const Steps: React.FC = () => {
           // Android will not re-prompt after a hard denial, so offering a
           // button here would be offering something that cannot work.
           <p className="text-[11px] text-text-mute mt-3 leading-relaxed">
-            Physical activity access is turned off, so this phone is not counting. Turn it on for FitFlow in
-            Settings &rsaquo; Apps &rsaquo; FitFlow &rsaquo; Permissions, or connect Health Connect instead.
+            {t('Physical activity access is turned off, so this phone is not counting. Turn it on for FitFlow in Settings › Apps › FitFlow › Permissions, or connect Health Connect instead.')}
           </p>
         ) : null}
 
         {!live.supported && live.source === 'none' ? (
           <p className="text-[11px] text-text-mute mt-3 leading-relaxed">
-            This browser has no motion sensor. Install FitFlow to your home screen on a phone, or connect Health
-            Connect, to count steps.
+            {t('This browser has no motion sensor. Install FitFlow to your home screen on a phone, or connect Health Connect, to count steps.')}
           </p>
         ) : null}
 
@@ -288,7 +296,7 @@ export const Steps: React.FC = () => {
             }}
             className="mt-3 w-full h-11 rounded-2xl bg-accent-4/10 border border-accent-4/30 text-accent-4 text-xs font-semibold active:scale-[0.98] transition-transform"
           >
-            Some phones stop background apps overnight — set FitFlow to Unrestricted
+            {t('Some phones stop background apps overnight — set FitFlow to Unrestricted')}
           </button>
         ) : null}
       </motion.section>
@@ -303,8 +311,8 @@ export const Steps: React.FC = () => {
           <MapPin size={20} className="text-accent" aria-hidden="true" />
         </div>
         <div className="flex-1">
-          <p className="text-white font-semibold text-base">Record a walk / run</p>
-          <p className="text-xs text-text-dim mt-0.5">GPS route, pace, splits — walk, run or ride.</p>
+          <p className="text-white font-semibold text-base">{t('Record a walk / run')}</p>
+          <p className="text-xs text-text-dim mt-0.5">{t('GPS route, pace, splits — walk, run or ride.')}</p>
         </div>
       </button>
 
@@ -317,18 +325,18 @@ export const Steps: React.FC = () => {
           release without anything surfacing. These are the numbers that tell
           the difference. */}
       <section className="glass-spatial p-5" aria-labelledby="diag-heading">
-        <p className="text-eyebrow text-accent">Sensor</p>
+        <p className="text-eyebrow text-accent">{t('Sensor')}</p>
         <h2 id="diag-heading" className="font-display text-base font-semibold text-white mt-0.5">
-          What the sensor is doing
+          {t('What the sensor is doing')}
         </h2>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3">
           {[
-            ['Listening', diag.listening ? 'yes' : 'NO'],
-            ['Motion events', `${diag.samples}`],
-            ['Rate', diag.hz > 0 ? `${diag.hz} Hz` : 'none'],
-            ['Last event', diag.lastSampleAgoMs === null ? 'never' : `${Math.round(diag.lastSampleAgoMs / 1000)}s ago`],
-            ['Steps counted', `${diag.steps}`],
-            ['Saving to cloud', diag.syncing ? 'on' : 'OFF'],
+            [t('Listening'), diag.listening ? t('yes') : t('NO')],
+            [t('Motion events'), `${diag.samples}`],
+            [t('Rate'), diag.hz > 0 ? `${diag.hz} Hz` : t('none')],
+            [t('Last event'), diag.lastSampleAgoMs === null ? t('never') : t('{n}s ago', { n: Math.round(diag.lastSampleAgoMs / 1000) })],
+            [t('Steps counted'), `${diag.steps}`],
+            [t('Saving to cloud'), diag.syncing ? t('on') : t('OFF')],
           ].map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="text-[10px] uppercase tracking-[0.12em] text-text-mute">{k}</dt>
@@ -338,13 +346,12 @@ export const Steps: React.FC = () => {
         </dl>
         {syncError ? (
           <p className="num text-[10px] text-accent-2 mt-3 leading-relaxed break-words">
-            Save failed: {syncError}
+            {t('Save failed: {error}', { error: syncError })}
           </p>
         ) : null}
         {diag.samples === 0 ? (
           <p className="text-[11px] text-text-mute mt-3 leading-relaxed">
-            No motion events at all. This browser is not delivering them — a phone with the screen
-            on and this tab open is required, and a desktop browser has no motion sensor.
+            {t('No motion events at all. This browser is not delivering them — a phone with the screen on and this tab open is required, and a desktop browser has no motion sensor.')}
           </p>
         ) : null}
       </section>
@@ -359,7 +366,7 @@ export const Steps: React.FC = () => {
       />
 
       {/* Horizon tabs */}
-      <div className="flex gap-2" role="tablist" aria-label="Time range">
+      <div className="flex gap-2" role="tablist" aria-label={t('Time range')}>
         {HORIZONS.map((item) => {
           const selected = horizon === item.id;
           return (
@@ -379,8 +386,8 @@ export const Steps: React.FC = () => {
                   : 'bg-white/[0.02] border-white/[0.06] text-text-dim',
               )}
             >
-              <span className="block leading-none">{item.label}</span>
-              <span className="block text-[9px] text-text-mute mt-1 font-medium">{item.sub}</span>
+              <span className="block leading-none">{tDyn(item.label)}</span>
+              <span className="block text-[9px] text-text-mute mt-1 font-medium">{tDyn(item.sub)}</span>
             </button>
           );
         })}
@@ -390,28 +397,28 @@ export const Steps: React.FC = () => {
       <section className="glass-spatial p-4" aria-labelledby="week-heading">
         <div className="flex items-baseline justify-between gap-3 mb-1">
           <h2 id="week-heading" className="font-display text-base font-semibold text-white">
-            This week
+            {t('This week')}
           </h2>
           <span className="num text-[11px] text-text-dim tabular-nums">
-            avg {horizonTotals.average.toLocaleString()}
+            {t('avg {n}', { n: horizonTotals.average.toLocaleString() })}
           </span>
         </div>
         <Suspense fallback={<div className="h-44 liquid-skeleton rounded-[24px]" />}>
           <StepBars3D bars={bars} goal={STEP_GOAL} />
         </Suspense>
         <p className="text-[11px] text-text-mute mt-2 leading-relaxed">
-          Gold line marks {STEP_GOAL.toLocaleString()} steps. Lime bars cleared it.
+          {t('Gold line marks {n} steps. Lime bars cleared it.', { n: STEP_GOAL.toLocaleString() })}
         </p>
       </section>
 
       {/* Horizon summary */}
       <section className="grid grid-cols-3 gap-3">
-        <Metric icon={<Footprints size={14} />} value={horizonTotals.total.toLocaleString()} label="Total" />
-        <Metric icon={<TrendingUp size={14} />} value={horizonTotals.best.toLocaleString()} label="Best day" />
+        <Metric icon={<Footprints size={14} />} value={horizonTotals.total.toLocaleString()} label={t('Total')} />
+        <Metric icon={<TrendingUp size={14} />} value={horizonTotals.best.toLocaleString()} label={t('Best day')} />
         <Metric
           icon={<MapPin size={14} />}
           value={units.formatDistance(horizonTotals.total * KM_PER_STEP)}
-          label="Distance"
+          label={t('Distance')}
         />
       </section>
 
@@ -424,9 +431,9 @@ export const Steps: React.FC = () => {
         <div className="flex items-start gap-2">
           <Info size={14} className="text-accent shrink-0 mt-0.5" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-eyebrow text-accent">Method</p>
+            <p className="text-eyebrow text-accent">{t('Method')}</p>
             <h2 id="formula-heading" className="font-display text-base font-semibold text-white mt-0.5">
-              How these numbers are worked out
+              {t('How these numbers are worked out')}
             </h2>
           </div>
         </div>
@@ -444,7 +451,7 @@ export const Steps: React.FC = () => {
                   item.personalised ? 'text-accent' : 'text-text-mute',
                 )}
               >
-                {item.personalised ? 'Personalised' : 'Default'}
+                {item.personalised ? t('Personalised') : t('Default')}
               </span>
             </div>
             <p className="num text-[11px] text-text-dim mt-2 leading-relaxed break-words">{item.formula}</p>
@@ -454,29 +461,35 @@ export const Steps: React.FC = () => {
         ))}
 
         <p className="text-[11px] text-text-mute leading-relaxed">
-          Both are estimates derived from your step count. Your step count itself is measured
-          {live.source === 'health-connect' ? ' by Health Connect' : live.source === 'hardware-counter' ? ' by this phone’s step-counter sensor' : ''}
-          . Today: {units.formatDistance(live.distanceKm)} is{' '}
-          {formatDistanceIn(live.distanceKm, { system: units.prefs.system === 'imperial' ? 'metric' : 'imperial' })}.
+          {t('Both are estimates derived from your step count.')}{' '}
+          {live.source === 'health-connect'
+            ? t('Your step count itself is measured by Health Connect.')
+            : live.source === 'hardware-counter'
+              ? t('Your step count itself is measured by this phone’s step-counter sensor.')
+              : t('Your step count itself is measured.')}{' '}
+          {t('Today: {distance} is {other}.', {
+            distance: units.formatDistance(live.distanceKm),
+            other: formatDistanceIn(live.distanceKm, { system: units.prefs.system === 'imperial' ? 'metric' : 'imperial' }),
+          })}
         </p>
       </section>
 
       {/* Next achievements */}
       <section className="glass-spatial p-5 space-y-3" aria-labelledby="next-heading">
         <div>
-          <p className="text-eyebrow text-accent">Next up</p>
+          <p className="text-eyebrow text-accent">{t('Next up')}</p>
           <h2 id="next-heading" className="font-display text-base font-semibold text-white mt-0.5">
-            Closest unlocks
+            {t('Closest unlocks')}
           </h2>
         </div>
         {upcoming.length === 0 ? (
-          <p className="text-sm text-text-dim">Start moving to line up your first badge.</p>
+          <p className="text-sm text-text-dim">{t('Start moving to line up your first badge.')}</p>
         ) : (
           <ul className="space-y-3">
             {upcoming.map(({ achievement, ratio, remaining }) => (
               <li key={achievement.id}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm font-medium text-white truncate">{achievement.name}</span>
+                  <span className="text-sm font-medium text-white truncate">{tDyn(achievement.name)}</span>
                   <span className="num text-[11px] text-text-dim tabular-nums shrink-0">
                     {Math.round(ratio * 100)}%
                   </span>
@@ -489,7 +502,9 @@ export const Steps: React.FC = () => {
                 </span>
                 <p className="text-[11px] text-text-mute mt-1">
                   {/* Distance goals are defined in km; shown in the person's units. */}
-                  {achievement.unit === 'km' ? units.formatDistance(remaining) : `${Math.round(remaining).toLocaleString()} ${achievement.unit}`} to go
+                  {achievement.unit === 'km'
+                    ? t('{n} to go', { n: units.formatDistance(remaining) })
+                    : t('{n} {unit} to go', { n: Math.round(remaining).toLocaleString(), unit: tDyn(achievement.unit) })}
                 </p>
               </li>
             ))}
@@ -503,7 +518,7 @@ export const Steps: React.FC = () => {
           }}
           className="w-full h-11 rounded-2xl bg-white/[0.04] border border-white/[0.07] text-text-dim text-xs font-medium active:scale-[0.98] transition-transform"
         >
-          See all 52 achievements
+          {t('See all 52 achievements')}
         </button>
       </section>
     </div>

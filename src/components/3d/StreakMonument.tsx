@@ -19,6 +19,7 @@ import { Flame } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { prefersReducedMotion } from '../../lib/motion';
 import { useCanvasKey } from '../layout/DockTabs';
+import { t } from '../../i18n/i18n';
 
 const GOLD = '#FFB800';
 const LIME = '#CCFF00';
@@ -208,22 +209,24 @@ export const StreakMonument: React.FC<StreakMonumentProps> = ({ streak, bestStre
           {/* Tokens, not the raw 3D-scene colours: GOLD/LIME are tuned to glow
               against a black canvas and drop to ~1.7:1 on a light card. */}
           <p className="text-eyebrow" style={{ color: isBest ? 'var(--accent-4)' : 'var(--accent)' }}>
-            {isBest && streak > 0 ? 'Personal best' : 'Current streak'}
+            {isBest && streak > 0 ? t('Personal best') : t('Current streak')}
           </p>
           <h2 id="streak-heading" className="font-display text-3xl font-bold text-white tracking-tight mt-0.5 inline-flex items-center gap-2">
             <Flame size={22} style={{ color: isBest ? GOLD : LIME }} aria-hidden="true" />
             <span className="num tabular-nums">{streak}</span>
-            <span className="text-lg text-text-dim font-semibold">{streak === 1 ? 'day' : 'days'}</span>
+            <span className="text-lg text-text-dim font-semibold">{streak === 1 ? t('day') : t('days')}</span>
           </h2>
           <p className="text-xs text-text-dim mt-1.5 leading-relaxed">
             {streak === 0
-              ? 'Log a session to start a new streak.'
+              ? t('Log a session to start a new streak.')
               : isBest
-                ? 'This is the longest run you have ever put together.'
+                ? t('This is the longest run you have ever put together.')
                 : streak >= best
                   // Ahead of every past run, but too short to call a record yet.
-                  ? `Keep going — ${PERSONAL_BEST_MIN - streak} more ${PERSONAL_BEST_MIN - streak === 1 ? 'day' : 'days'} sets your first personal best.`
-                  : `Your best is ${best} days — ${best - streak} to go.`}
+                  ? (PERSONAL_BEST_MIN - streak === 1
+                    ? t('Keep going — 1 more day sets your first personal best.')
+                    : t('Keep going — {n} more days sets your first personal best.', { n: PERSONAL_BEST_MIN - streak }))
+                  : t('Your best is {best} days — {n} to go.', { best, n: best - streak })}
           </p>
         </div>
       </div>

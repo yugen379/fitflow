@@ -17,6 +17,7 @@ import { haptic } from '../../lib/haptics';
 import { AnimatedNumber } from '../AnimatedNumber';
 import type { RingDatum } from './VolumetricRings';
 import { useUnits } from '../../hooks/useUnits';
+import { t, msg, tDyn } from '../../i18n/i18n';
 
 const VolumetricRings = lazy(() =>
   import('./VolumetricRings').then((m) => ({ default: m.VolumetricRings })),
@@ -38,9 +39,9 @@ const RingsPlaceholder: React.FC = () => (
 );
 
 const LEGEND = [
-  { id: 'move', label: 'Move', icon: Footprints, color: '#CCFF00' },
-  { id: 'eat', label: 'Eat', icon: Flame, color: '#00F5FF' },
-  { id: 'recover', label: 'Recover', icon: HeartPulse, color: '#FF3366' },
+  { id: 'move', label: msg('Move'), icon: Footprints, color: '#CCFF00' },
+  { id: 'eat', label: msg('Eat'), icon: Flame, color: '#00F5FF' },
+  { id: 'recover', label: msg('Recover'), icon: HeartPulse, color: '#FF3366' },
 ] as const;
 
 export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
@@ -56,10 +57,10 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
 
   const rings = useMemo<RingDatum[]>(
     () => [
-      { id: 'move', label: 'Move', value: steps ?? 0, goal: stepGoal, unit: 'steps', color: '#CCFF00' },
+      { id: 'move', label: t('Move'), value: steps ?? 0, goal: stepGoal, unit: 'steps', color: '#CCFF00' },
       // Both scaled by the same factor, so the ring's progress is unchanged.
-      { id: 'eat', label: 'Eat', value: units.energyValue(caloriesConsumed), goal: units.energyValue(calorieGoal), unit: units.energyUnit, color: '#00F5FF' },
-      { id: 'recover', label: 'Recover', value: recovery ?? 0, goal: 100, unit: 'percent', color: '#FF3366' },
+      { id: 'eat', label: t('Eat'), value: units.energyValue(caloriesConsumed), goal: units.energyValue(calorieGoal), unit: units.energyUnit, color: '#00F5FF' },
+      { id: 'recover', label: t('Recover'), value: recovery ?? 0, goal: 100, unit: 'percent', color: '#FF3366' },
     ],
     [steps, stepGoal, caloriesConsumed, calorieGoal, recovery, units],
   );
@@ -68,17 +69,17 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
     {
       id: 'move',
       primary: steps === null ? '—' : <AnimatedNumber value={steps} />,
-      secondary: steps === null ? 'Connect a tracker' : `of ${stepGoal.toLocaleString()} steps`,
+      secondary: steps === null ? t('Connect a tracker') : t('of {n} steps', { n: stepGoal.toLocaleString() }),
     },
     {
       id: 'eat',
       primary: <AnimatedNumber value={Math.round(units.energyValue(caloriesConsumed))} />,
-      secondary: `of ${units.formatEnergy(Math.round(calorieGoal))}`,
+      secondary: t(`of {n}`, { n: units.formatEnergy(Math.round(calorieGoal)) }),
     },
     {
       id: 'recover',
       primary: recovery === null ? '—' : `${Math.round(recovery)}%`,
-      secondary: recovery === null ? 'No signal today' : 'readiness',
+      secondary: recovery === null ? t('No signal today') : t('readiness'),
     },
   ];
 
@@ -86,9 +87,9 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
     <section className={cn('glass-spatial p-5 relative overflow-hidden', className)} aria-labelledby="orbital-heading">
       <div className="flex items-start justify-between gap-3 relative z-10">
         <div>
-          <p className="text-eyebrow text-accent">Today</p>
+          <p className="text-eyebrow text-accent">{t('Today')}</p>
           <h2 id="orbital-heading" className="font-display text-xl font-bold text-white mt-0.5 tracking-tight">
-            Move · Eat · Recover
+            {t('Move · Eat · Recover')}
           </h2>
         </div>
       </div>
@@ -114,7 +115,7 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
           <li key={item.id} className="text-center">
             <div className="inline-flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: item.color, boxShadow: `0 0 8px ${item.color}` }} />
-              <span className="text-[10px] uppercase tracking-[0.14em] text-text-mute">{item.label}</span>
+              <span className="text-[10px] uppercase tracking-[0.14em] text-text-mute">{tDyn(item.label)}</span>
             </div>
             <p className="num text-sm font-semibold text-white tabular-nums mt-0.5">{values[index].primary}</p>
           </li>
@@ -130,7 +131,7 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
         aria-expanded={expanded}
         className="mt-4 w-full h-11 rounded-2xl bg-white/[0.04] border border-white/[0.07] text-text-dim text-xs font-medium inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform relative z-10"
       >
-        {expanded ? 'Hide breakdown' : 'Show breakdown'}
+        {expanded ? t('Hide breakdown') : t('Show breakdown')}
         <ChevronDown size={14} className={cn('transition-transform duration-300', expanded && 'rotate-180')} aria-hidden="true" />
       </button>
 
@@ -139,7 +140,7 @@ export const OrbitalHUD: React.FC<OrbitalHUDProps> = ({
           {LEGEND.map((item, index) => (
             <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] px-3 py-2.5">
               <item.icon size={16} style={{ color: item.color }} aria-hidden="true" />
-              <span className="flex-1 text-sm text-white font-medium">{item.label}</span>
+              <span className="flex-1 text-sm text-white font-medium">{tDyn(item.label)}</span>
               <span className="num text-sm text-text-dim tabular-nums">{values[index].secondary}</span>
             </div>
           ))}

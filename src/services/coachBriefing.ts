@@ -11,6 +11,7 @@
 // feature degrades to perfectly sensible copy with zero AI calls.
 
 import { formatVolume } from '../lib/units'; // pure, import-free
+import { t, msg, tDyn } from '../i18n/i18n'; // pure, import-free
 
 const IMPERIAL = { system: 'imperial' } as const;
 
@@ -108,28 +109,37 @@ const validDays = (v: unknown): number | null =>
   typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null;
 
 const HEADLINES: Record<string, string> = {
-  'train-window': 'Training time.',
-  'train-gap': 'Time to move.',
-  'train-plan': 'Plan your session.',
-  'train-evening': 'One more chance to move.',
-  'protein-gap': 'Close your protein gap.',
-  hydrate: 'Hydration check.',
-  'fuel-start': 'Fuel the day.',
-  'log-meals': 'Log your day.',
+  'train-window': msg('Training time.'),
+  'train-gap': msg('Time to move.'),
+  'train-plan': msg('Plan your session.'),
+  'train-evening': msg('One more chance to move.'),
+  'protein-gap': msg('Close your protein gap.'),
+  hydrate: msg('Hydration check.'),
+  'fuel-start': msg('Fuel the day.'),
+  'log-meals': msg('Log your day.'),
   // The Mission card above already says "Protect your N-day streak" — the
   // coach adds the next step instead of repeating it (it said it 3 times).
-  'streak-risk': 'One small log keeps it alive.',
-  'recover-lowsleep': 'Recover smart today.',
-  winddown: 'Wind down.',
-  'all-good': "You're locked in.",
-  default: 'Your move.',
+  'streak-risk': msg('One small log keeps it alive.'),
+  'recover-lowsleep': msg('Recover smart today.'),
+  winddown: msg('Wind down.'),
+  'all-good': msg("You're locked in."),
+  default: msg('Your move.'),
 };
 
+/** A goal id as words for the middle of a sentence ("muscle gain"), in the app's language. */
+export const goalWords = (goal: string): string =>
+  goal === 'muscle_gain' ? t('muscle gain')
+    : goal === 'fat_loss' ? t('fat loss')
+    : goal === 'general' ? t('general')
+    : goal === 'maintenance' ? t('maintenance')
+    : goal === 'athletic_performance' ? t('athletic performance')
+    : goal.replace(/_/g, ' ');
+
 const greet = (pod: string): string =>
-  pod === 'morning' ? 'Good morning — set up your day.'
-    : pod === 'midday' ? "Midday check — here's your focus."
-    : pod === 'evening' ? "Evening — let's finish strong."
-    : 'Late hours — keep it calm.';
+  pod === 'morning' ? t('Good morning — set up your day.')
+    : pod === 'midday' ? t("Midday check — here's your focus.")
+    : pod === 'evening' ? t("Evening — let's finish strong.")
+    : t('Late hours — keep it calm.');
 
 /**
  * The deterministic heart of the proactive coach. Pure function: same context in,
@@ -141,7 +151,7 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
   const hour = clampHour(ctx.hour);
   const pod = partOfDay(hour);
   const goal = ctx.goal || 'general';
-  const goalLabel = goal.replace(/_/g, ' ');
+  const goalLabel = goalWords(goal);
   const targets = computeTargets(goal, ctx.weightKg, ctx.calorieTarget, ctx.proteinTarget);
 
   const cal = pos(ctx.caloriesConsumed);
@@ -165,10 +175,10 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     candidates.push({
       id: 'recover-lowsleep',
       icon: '😴',
-      title: 'Go easier today',
-      message: `Only ${round(sleep)}h of sleep last night. Train at ~70% or swap to a Zone-2 walk — you'll still adapt without digging a hole.`,
+      title: t('Go easier today'),
+      message: t("Only {hours}h of sleep last night. Train at ~70% or swap to a Zone-2 walk — you'll still adapt without digging a hole.", { hours: round(sleep) }),
       tone: 'care',
-      action: { label: 'Plan recovery', route: '/wellness' },
+      action: { label: t('Plan recovery'), route: '/wellness' },
       priority: 84,
     });
   }
@@ -179,40 +189,40 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
       candidates.push({
         id: 'train-window',
         icon: '💪',
-        title: `Your ${fmtHour(pwh)} window is open`,
-        message: `You usually train around ${fmtHour(pwh)}. Thirty focused minutes is enough to keep the plan moving.`,
+        title: t('Your {time} window is open', { time: fmtHour(pwh) }),
+        message: t('You usually train around {time}. Thirty focused minutes is enough to keep the plan moving.', { time: fmtHour(pwh) }),
         tone: 'push',
-        action: { label: 'Start workout', route: '/workout' },
+        action: { label: t('Start workout'), route: '/workout' },
         priority: 86,
       });
     } else if (daysSince != null && daysSince >= 2) {
       candidates.push({
         id: 'train-gap',
         icon: '🔥',
-        title: `${daysSince} days since your last session`,
-        message: `Momentum beats motivation. Knock out a short session today and the streak rebuilds itself.`,
+        title: t('{n} days since your last session', { n: daysSince }),
+        message: t(`Momentum beats motivation. Knock out a short session today and the streak rebuilds itself.`),
         tone: 'push',
-        action: { label: "Let's move", route: '/workout' },
+        action: { label: t("Let's move"), route: '/workout' },
         priority: 80,
       });
     } else if (pwh != null) {
       candidates.push({
         id: 'train-plan',
         icon: '📋',
-        title: `Training around ${fmtHour(pwh)}`,
-        message: `Keep your usual ${fmtHour(pwh)} window clear and fuel up beforehand — protein plus some carbs.`,
+        title: t('Training around {time}', { time: fmtHour(pwh) }),
+        message: t('Keep your usual {time} window clear and fuel up beforehand — protein plus some carbs.', { time: fmtHour(pwh) }),
         tone: 'nudge',
-        action: { label: 'Preview workout', route: '/workout' },
+        action: { label: t('Preview workout'), route: '/workout' },
         priority: 52,
       });
     } else if (pod === 'evening') {
       candidates.push({
         id: 'train-evening',
         icon: '⚡',
-        title: 'Still time to move',
-        message: `Even 20 minutes counts. One lift, two exercises — show up small and let momentum do the rest.`,
+        title: t('Still time to move'),
+        message: t(`Even 20 minutes counts. One lift, two exercises — show up small and let momentum do the rest.`),
         tone: 'push',
-        action: { label: 'Quick workout', route: '/workout' },
+        action: { label: t('Quick workout'), route: '/workout' },
         priority: 58,
       });
     }
@@ -226,10 +236,10 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
         candidates.push({
           id: 'protein-gap',
           icon: '🥩',
-          title: `${gap}g protein to go`,
-          message: `You're at ${round(protein)}g of your ${targets.proteinG}g target. A shake or a tub of Greek yogurt closes the gap before bed.`,
+          title: t('{n}g protein to go', { n: gap }),
+          message: t("You're at {protein}g of your {target}g target. A shake or a tub of Greek yogurt closes the gap before bed.", { protein: round(protein), target: targets.proteinG }),
           tone: 'nudge',
-          action: { label: 'Log protein', route: '/track' },
+          action: { label: t('Log protein'), route: '/track' },
           priority: 72,
         });
       }
@@ -237,10 +247,10 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
       candidates.push({
         id: 'protein-gap',
         icon: '🥩',
-        title: 'Front-load your protein',
-        message: `You're at ${round(protein)}g of ${targets.proteinG}g. Aim for ~30g this meal so you're not chasing it tonight.`,
+        title: t('Front-load your protein'),
+        message: t("You're at {protein}g of {target}g. Aim for ~30g this meal so you're not chasing it tonight.", { protein: round(protein), target: targets.proteinG }),
         tone: 'nudge',
-        action: { label: 'Log a meal', route: '/track' },
+        action: { label: t('Log a meal'), route: '/track' },
         priority: 50,
       });
     }
@@ -251,12 +261,12 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     candidates.push({
       id: 'hydrate',
       icon: '💧',
-      title: 'Hydration is behind',
+      title: t('Hydration is behind'),
       message: ctx.unitSystem === 'imperial'
-        ? `${formatVolume(water, IMPERIAL)} of your ${formatVolume(targets.waterMl, IMPERIAL)} goal so far. A 16 fl oz top-up now keeps energy and focus steady.`
-        : `${round(water)}ml of your ${targets.waterMl}ml goal so far. A 500ml top-up now keeps energy and focus steady.`,
+        ? t('{water} of your {goal} goal so far. A 16 fl oz top-up now keeps energy and focus steady.', { water: formatVolume(water, IMPERIAL), goal: formatVolume(targets.waterMl, IMPERIAL) })
+        : t('{water}ml of your {goal}ml goal so far. A 500ml top-up now keeps energy and focus steady.', { water: round(water), goal: targets.waterMl }),
       tone: 'nudge',
-      action: { label: 'Add water', route: '/', kind: 'water' },
+      action: { label: t('Add water'), route: '/', kind: 'water' },
       priority: 60,
     });
   }
@@ -267,30 +277,30 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
       candidates.push({
         id: 'fuel-start',
         icon: '🍳',
-        title: 'Log breakfast',
-        message: `Fuel the day and unlock today's macro targets for ${goalLabel}. Even a rough estimate gets you guided.`,
+        title: t('Log breakfast'),
+        message: t("Fuel the day and unlock today's macro targets for {goal}. Even a rough estimate gets you guided.", { goal: goalLabel }),
         tone: 'nudge',
-        action: { label: 'Log breakfast', route: '/track' },
+        action: { label: t('Log breakfast'), route: '/track' },
         priority: 66,
       });
     } else if (pod === 'midday') {
       candidates.push({
         id: 'fuel-start',
         icon: '🍽️',
-        title: 'Nothing logged yet',
-        message: `Add a meal so I can steer your protein and calories for the rest of the day.`,
+        title: t('Nothing logged yet'),
+        message: t(`Add a meal so I can steer your protein and calories for the rest of the day.`),
         tone: 'nudge',
-        action: { label: 'Log a meal', route: '/track' },
+        action: { label: t('Log a meal'), route: '/track' },
         priority: 64,
       });
     } else {
       candidates.push({
         id: 'log-meals',
         icon: '📔',
-        title: 'Log today before bed',
-        message: `A few taps now means tomorrow's plan adapts to where you actually landed.`,
+        title: t('Log today before bed'),
+        message: t(`A few taps now means tomorrow's plan adapts to where you actually landed.`),
         tone: 'nudge',
-        action: { label: 'Log meals', route: '/track' },
+        action: { label: t('Log meals'), route: '/track' },
         priority: 56,
       });
     }
@@ -301,10 +311,10 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     candidates.push({
       id: 'streak-risk',
       icon: '🔥',
-      title: `Log one thing before midnight`,
-      message: `Nothing logged today yet. A meal, a glass of water or a short walk keeps your ${round(streak)} days going.`,
+      title: t(`Log one thing before midnight`),
+      message: t('Nothing logged today yet. A meal, a glass of water or a short walk keeps your {n} days going.', { n: round(streak) }),
       tone: 'push',
-      action: { label: 'Keep the streak', route: '/track' },
+      action: { label: t('Keep the streak'), route: '/track' },
       priority: 90,
     });
   }
@@ -314,10 +324,10 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     candidates.push({
       id: 'winddown',
       icon: '🌙',
-      title: 'Start winding down',
-      message: `Screens off in ~45 minutes and aim for 7+ hours. Recovery is the rep you can't skip — it's where the work compounds.`,
+      title: t('Start winding down'),
+      message: t(`Screens off in ~45 minutes and aim for 7+ hours. Recovery is the rep you can't skip — it's where the work compounds.`),
       tone: 'care',
-      action: { label: 'Log sleep', route: '/wellness' },
+      action: { label: t('Log sleep'), route: '/wellness' },
       priority: 46,
     });
   }
@@ -328,10 +338,10 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     candidates.push({
       id: 'all-good',
       icon: '✅',
-      title: 'Everything in range',
-      message: `Training, protein, and hydration all on point today. Bank the recovery — you've earned it.`,
+      title: t('Everything in range'),
+      message: t(`Training, protein, and hydration all on point today. Bank the recovery — you've earned it.`),
       tone: 'celebrate',
-      action: { label: 'Recover well', route: '/wellness' },
+      action: { label: t('Recover well'), route: '/wellness' },
       priority: 44,
     });
   }
@@ -341,10 +351,10 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     candidates.push({
       id: 'default',
       icon: '🎯',
-      title: `Keep ${goalLabel} on track`,
-      message: `Pick your next move — log a meal, start a session, or ask me anything. Small consistent actions compound.`,
+      title: t('Keep {goal} on track', { goal: goalLabel }),
+      message: t(`Pick your next move — log a meal, start a session, or ask me anything. Small consistent actions compound.`),
       tone: 'nudge',
-      action: { label: 'Ask your coach', route: '/coach' },
+      action: { label: t('Ask your coach'), route: '/coach' },
       priority: 10,
     });
   }
@@ -357,13 +367,13 @@ export const buildBriefing = (ctxIn: CoachContext): CoachBriefing => {
     .slice(0, 3);
 
   const top = nudges[0];
-  const headline = HEADLINES[top.id] || greet(pod);
+  const headline = tDyn(HEADLINES[top.id]) || greet(pod);
   const subtitle =
     top.tone === 'celebrate'
-      ? "Nothing urgent — enjoy it."
+      ? t("Nothing urgent — enjoy it.")
       : nudges.length > 1
-        ? `${nudges.length} things your coach lined up for right now.`
-        : 'One focus for right now.';
+        ? t('{n} things your coach lined up for right now.', { n: nudges.length })
+        : t('One focus for right now.');
 
   return { headline, subtitle, nudges, source: 'engine' };
 };

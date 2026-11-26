@@ -13,6 +13,7 @@
 
 import { registerPlugin, Capacitor } from '@capacitor/core';
 import type { GpsActivity, GpsPoint } from './gpsMath';
+import { t } from '../i18n/i18n';
 
 export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped';
 type PermissionValue = 'prompt' | 'prompt-with-rationale' | 'granted' | 'denied';
@@ -67,17 +68,17 @@ export function gpsErrorMessage(err: unknown): string {
   const code = (err as { code?: string })?.code;
   switch (code) {
     case 'PERMISSION_DENIED':
-      return 'FitFlow needs location access to record your route. Allow it, or turn it on in Settings › Apps › FitFlow › Permissions.';
+      return t('FitFlow needs location access to record your route. Allow it, or turn it on in Settings › Apps › FitFlow › Permissions.');
     case 'PRECISE_REQUIRED':
-      return 'Approximate location can’t trace a route. Switch FitFlow to “Precise” location in Settings › Apps › FitFlow › Permissions › Location.';
+      return t('Approximate location can’t trace a route. Switch FitFlow to “Precise” location in Settings › Apps › FitFlow › Permissions › Location.');
     case 'GPS_DISABLED':
-      return 'Location is turned off on this phone. Turn it on to record.';
+      return t('Location is turned off on this phone. Turn it on to record.');
     case 'NO_GPS':
-      return 'This device has no GPS, so it can’t record a route.';
+      return t('This device has no GPS, so it can’t record a route.');
     case 'ALREADY_ACTIVE':
-      return 'A recording is already running.';
+      return t('A recording is already running.');
     default:
-      return (err as Error)?.message || 'Could not start GPS recording.';
+      return (err as Error)?.message || t('Could not start GPS recording.');
   }
 }
 
@@ -129,8 +130,8 @@ export class WebGpsRecorder {
       },
       (err) => {
         this.lastError = err.code === err.PERMISSION_DENIED
-          ? 'Location permission was denied in this browser.'
-          : 'Waiting for a GPS fix…';
+          ? t('Location permission was denied in this browser.')
+          : t('Waiting for a GPS fix…');
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     );

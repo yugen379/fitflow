@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { checkAndAwardBadge } from '../services/badgeService';
 import { awardXp } from '../services/xpService';
+import { t } from '../i18n/i18n';
 
 // The browser's own GeolocationPositionError.message ("User denied
 // Geolocation") used to be shown verbatim. Map the CODE to words a person can
@@ -16,20 +17,20 @@ import { awardXp } from '../services/xpService';
 type GpsProblem = { title: string; hint: string };
 const gpsProblem = (err: GeolocationPositionError | null): GpsProblem => {
   if (!err) return {
-    title: "GPS isn't available here",
-    hint: "This device or browser can't share its location. Try the FitFlow app on your phone.",
+    title: t("GPS isn't available here"),
+    hint: t("This device or browser can't share its location. Try the FitFlow app on your phone."),
   };
   if (err.code === 1) return {
-    title: 'Location is turned off for FitFlow',
-    hint: "Allow location in your phone's settings (or tap the lock icon in your browser's address bar), then try again.",
+    title: t('Location is turned off for FitFlow'),
+    hint: t("Allow location in your phone's settings (or tap the lock icon in your browser's address bar), then try again."),
   };
   if (err.code === 3) return {
-    title: 'Still looking for GPS',
-    hint: 'That took too long. Step outside or near a window for a clearer signal, then try again.',
+    title: t('Still looking for GPS'),
+    hint: t('That took too long. Step outside or near a window for a clearer signal, then try again.'),
   };
   return {
-    title: "Can't find your location",
-    hint: 'Check that location services are on and you have a GPS signal, then try again.',
+    title: t("Can't find your location"),
+    hint: t('Check that location services are on and you have a GPS signal, then try again.'),
   };
 };
 
@@ -143,7 +144,7 @@ export const Explore: React.FC = () => {
     startedAtRef.current = Date.now();
     setIsRecording(true);
     setGpsError(null);
-    showToast(`${type === 'run' ? 'Run' : type === 'walk' ? 'Walk' : 'Ride'} started`);
+    showToast(type === 'run' ? t('Run started') : type === 'walk' ? t('Walk started') : t('Ride started'));
   };
 
   const stop = async () => {
@@ -151,7 +152,7 @@ export const Explore: React.FC = () => {
     if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
 
     if (path.length < 2) {
-      showToast('Too short to save', 'info');
+      showToast(t('Too short to save'), 'info');
       return;
     }
     if (!profile?.uid) return;
@@ -175,9 +176,9 @@ export const Explore: React.FC = () => {
       // and none for a speed no human reaches on that activity).
       await awardXp(profile.uid, 'run', routeRef.id);
       if (km >= 5) await checkAndAwardBadge(profile.uid, 'marathoner');
-      showToast(`Saved · ${units.formatDistance(km)}`);
+      showToast(t('Saved · {distance}', { distance: units.formatDistance(km) }));
     } catch {
-      showToast('Save failed', 'error');
+      showToast(t('Save failed'), 'error');
     }
   };
 
@@ -186,23 +187,23 @@ export const Explore: React.FC = () => {
   return (
     <div className="pb-24 pt-4 px-4 bg-bg min-h-screen flex flex-col">
       <header className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back"><ChevronLeft size={18} /></button>
+        <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}><ChevronLeft size={18} /></button>
         <div className="flex-1">
-          <p className="text-eyebrow text-accent">Outdoor</p>
-          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">GPS tracker</h1>
+          <p className="text-eyebrow text-accent">{t('Outdoor')}</p>
+          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{t('GPS tracker')}</h1>
         </div>
       </header>
 
       {!isRecording && (
         <div className="flex bg-surface rounded-2xl p-1 border border-white/[0.06] mb-4">
-          {(['run', 'walk', 'cycle'] as ActivityType[]).map(t => {
-            const Icon = t === 'run' ? Activity : t === 'walk' ? Footprints : Bike;
-            const label = t === 'run' ? 'Run' : t === 'walk' ? 'Walk' : 'Ride';
-            const active = type === t;
+          {(['run', 'walk', 'cycle'] as ActivityType[]).map(kind => {
+            const Icon = kind === 'run' ? Activity : kind === 'walk' ? Footprints : Bike;
+            const label = kind === 'run' ? t('Run') : kind === 'walk' ? t('Walk') : t('Ride');
+            const active = type === kind;
             return (
               <button
-                key={t}
-                onClick={() => setType(t)}
+                key={kind}
+                onClick={() => setType(kind)}
                 className={`flex-1 h-10 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${active ? 'bg-accent text-bg' : 'text-text-dim hover:text-white'}`}
               >
                 <Icon size={14} /> {label}
@@ -226,7 +227,7 @@ export const Explore: React.FC = () => {
                 onClick={locate}
                 className="mt-4 h-10 px-5 rounded-full border border-accent/40 text-accent text-sm font-semibold active:scale-95 transition-transform"
               >
-                Try again
+                {t('Try again')}
               </button>
             </div>
           )}
@@ -239,10 +240,10 @@ export const Explore: React.FC = () => {
                   <div className="w-4 h-4 rounded-full bg-accent relative" />
                 </div>
                 <p className="num text-xs text-text-dim">
-                  {currentPos ? `${currentPos.coords.latitude.toFixed(4)}, ${currentPos.coords.longitude.toFixed(4)}` : 'Locating satellites…'}
+                  {currentPos ? `${currentPos.coords.latitude.toFixed(4)}, ${currentPos.coords.longitude.toFixed(4)}` : t('Locating satellites…')}
                 </p>
                 {currentPos?.coords.accuracy && (
-                  <p className="num text-[10px] text-text-mute">accuracy ±{Math.round(currentPos.coords.accuracy)}m</p>
+                  <p className="num text-[10px] text-text-mute">{t('accuracy ±{n}m', { n: Math.round(currentPos.coords.accuracy) })}</p>
                 )}
               </div>
             </div>
@@ -251,16 +252,16 @@ export const Explore: React.FC = () => {
           {isRecording && (
             <div className="absolute top-4 right-4 flex items-center gap-2 bg-bg/70 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/[0.06]">
               <div className="w-2 h-2 rounded-full bg-accent-2 animate-pulse" />
-              <span className="text-xs text-white font-medium">Recording</span>
+              <span className="text-xs text-white font-medium">{t('Recording')}</span>
             </div>
           )}
         </div>
 
         <div className="glass p-5 grid grid-cols-3 gap-3">
           {/* distance is km and pace min/km (as stored); shown in the person's units. */}
-          <Metric label="Distance" {...units.distanceParts(distance)} />
-          <Metric label="Time" value={formatTime(duration)} />
-          <Metric label="Pace" {...units.paceParts(pace * 60)} />
+          <Metric label={t('Distance')} {...units.distanceParts(distance)} />
+          <Metric label={t('Time')} value={formatTime(duration)} />
+          <Metric label={t('Pace')} {...units.paceParts(pace * 60)} />
         </div>
 
         <button
@@ -272,7 +273,9 @@ export const Explore: React.FC = () => {
               : 'btn-3d'
           }`}
         >
-          {isRecording ? (<><Square size={16} fill="currentColor" /> Stop & save</>) : (<><Play size={16} fill="currentColor" /> Start {type}</>)}
+          {isRecording
+            ? (<><Square size={16} fill="currentColor" /> {t('Stop & save')}</>)
+            : (<><Play size={16} fill="currentColor" /> {type === 'run' ? t('Start run') : type === 'walk' ? t('Start walk') : t('Start cycle')}</>)}
         </button>
       </div>
     </div>

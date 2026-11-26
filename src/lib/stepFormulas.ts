@@ -52,6 +52,8 @@
  */
 
 /** Walking stride as a fraction of standing height: standard gait-research ratio. */
+import { t } from '../i18n/i18n'; // import-free, safe for the proof harnesses
+
 export const STRIDE_TO_HEIGHT_RATIO = 0.414;
 
 /** Fallback stride in metres when the profile carries no height. */
@@ -201,13 +203,13 @@ export const explainDistance = (steps: number, body: StepBody = {}, u?: ExplainU
   const stride = strideMetresFor(body.heightCm);
   const n = Math.round(usableSteps(steps));
   return {
-    label: 'Distance',
+    label: t('Distance'),
     formula: 'distance = steps x stride,  stride = height x 0.414',
     substituted: `${n.toLocaleString()} x ${stride.toFixed(2)} m = ${also(`${distanceKmFor(steps, body.heightCm).toFixed(2)} km`, u?.formatDistance(distanceKmFor(steps, body.heightCm)))}`,
     assumption:
       height === null
-        ? `No height on your profile, so this uses the ${DEFAULT_STRIDE_M} m average adult stride. Add your height to personalise it.`
-        : `Your ${also(`${height} cm`, u?.formatHeight(height))} height gives a ${stride.toFixed(2)} m stride. Assumes level ground at a walking gait. This is an estimate, not GPS.`,
+        ? t('No height on your profile, so this uses the {stride} m average adult stride. Add your height to personalise it.', { stride: DEFAULT_STRIDE_M })
+        : t('Your {height} height gives a {stride} m stride. Assumes level ground at a walking gait. This is an estimate, not GPS.', { height: also(`${height} cm`, u?.formatHeight(height)), stride: stride.toFixed(2) }),
     personalised: height !== null,
   };
 };
@@ -217,13 +219,13 @@ export const explainCalories = (steps: number, body: StepBody = {}, u?: ExplainU
   const rate = kcalPerStepFor(body.weightKg);
   const n = Math.round(usableSteps(steps));
   return {
-    label: 'Calories',
+    label: t('Calories'),
     formula: `kcal/min = MET x 3.5 x weight / 200,  at ${WALKING_MET} MET and ${WALKING_CADENCE_SPM} steps/min`,
     substituted: `${n.toLocaleString()} x ${rate.toFixed(4)} kcal = ${also(`${Math.round(caloriesFor(steps, body.weightKg))} kcal`, u?.formatEnergy(Math.round(caloriesFor(steps, body.weightKg))))}`,
     assumption:
       weight === null
-        ? `No weight on your profile, so this uses the ${REFERENCE_WEIGHT_KG} kg reference rate of ${KCAL_PER_STEP} kcal/step. Add your weight to personalise it.`
-        : `Your ${also(`${weight} kg`, u?.formatWeight(weight))} gives ${rate.toFixed(4)} kcal/step. Active calories from walking only, so it excludes your resting burn.`,
+        ? t('No weight on your profile, so this uses the {weight} kg reference rate of {rate} kcal/step. Add your weight to personalise it.', { weight: REFERENCE_WEIGHT_KG, rate: KCAL_PER_STEP })
+        : t('Your {weight} gives {rate} kcal/step. Active calories from walking only, so it excludes your resting burn.', { weight: also(`${weight} kg`, u?.formatWeight(weight)), rate: rate.toFixed(4) }),
     personalised: weight !== null,
   };
 };

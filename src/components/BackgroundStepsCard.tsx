@@ -26,6 +26,7 @@ import { cn } from '../lib/utils';
 import { haptic } from '../lib/haptics';
 import { SPRING } from '../lib/motion';
 import type { BackgroundStepsStatus } from '../lib/backgroundSteps';
+import { t } from '../i18n/i18n';
 
 export interface BackgroundStepsCardProps {
   status: BackgroundStepsStatus | null;
@@ -89,15 +90,15 @@ export const BackgroundStepsCard: React.FC<BackgroundStepsCardProps> = ({
       <section className={cn('glass-spatial p-5', className)} aria-labelledby="bg-steps-heading">
         <p className="text-eyebrow text-accent inline-flex items-center gap-1.5">
           <Footprints size={12} aria-hidden="true" />
-          Background counting
+          {t('Background counting')}
         </p>
         <h2 id="bg-steps-heading" className="font-display text-base font-semibold text-white mt-1">
-          Not available on this device
+          {t('Not available on this device')}
         </h2>
         <p className="text-[11px] text-text-mute mt-2 leading-relaxed">
           {status
-            ? 'This phone has no hardware step-counter sensor, so FitFlow can only count while it is open and on screen.'
-            : 'Counting with the app closed needs the FitFlow Android app. In a browser, steps are only counted while this tab is open.'}
+            ? t('This phone has no hardware step-counter sensor, so FitFlow can only count while it is open and on screen.')
+            : t('Counting with the app closed needs the FitFlow Android app. In a browser, steps are only counted while this tab is open.')}
         </p>
       </section>
     );
@@ -112,10 +113,10 @@ export const BackgroundStepsCard: React.FC<BackgroundStepsCardProps> = ({
         <div className="min-w-0">
           <p className="text-eyebrow text-accent inline-flex items-center gap-1.5">
             <Footprints size={12} aria-hidden="true" />
-            Background counting
+            {t('Background counting')}
           </p>
           <h2 id="bg-steps-heading" className="font-display text-base font-semibold text-white mt-1 leading-tight">
-            {countsInBackground ? 'Counting, even when FitFlow is closed' : 'Count steps with the app closed'}
+            {countsInBackground ? t('Counting, even when FitFlow is closed') : t('Count steps with the app closed')}
           </h2>
         </div>
 
@@ -130,44 +131,44 @@ export const BackgroundStepsCard: React.FC<BackgroundStepsCardProps> = ({
               : 'bg-white/[0.04] border-white/[0.08] text-text-mute',
           )}
         >
-          {countsInBackground ? 'On' : 'Off'}
+          {countsInBackground ? t('On') : t('Off')}
         </motion.span>
       </div>
 
       <div className="mt-2 divide-y divide-white/[0.06]">
         <Row
           icon={<Activity size={15} />}
-          title="Physical activity"
+          title={t('Physical activity')}
           detail={
             activityDenied
-              ? 'Denied. Android will not ask again — turn on Physical activity for FitFlow in Settings › Apps › FitFlow › Permissions.'
-              : 'Required. Lets FitFlow read the phone’s step sensor. Without it nothing is counted at all.'
+              ? t('Denied. Android will not ask again — turn on Physical activity for FitFlow in Settings › Apps › FitFlow › Permissions.')
+              : t('Required. Lets FitFlow read the phone’s step sensor. Without it nothing is counted at all.')
           }
           done={activityGranted}
-          actionLabel={activityDenied ? undefined : 'Allow'}
+          actionLabel={activityDenied ? undefined : t('Allow')}
           onAction={activityDenied ? undefined : onEnable}
         />
 
         <Row
           icon={<Bell size={15} />}
-          title="Ongoing notification"
-          detail="Android requires a visible notification while an app counts in the background. Counting still works without it — you just won’t see that it’s running."
+          title={t('Ongoing notification')}
+          detail={t('Android requires a visible notification while an app counts in the background. Counting still works without it — you just won’t see that it’s running.')}
           done={status.notifications === 'granted'}
-          actionLabel="Allow"
+          actionLabel={t('Allow')}
           onAction={onRequestNotifications}
         />
 
         {countsInBackground ? (
           <Row
             icon={<BatteryCharging size={15} />}
-            title="Unrestricted battery"
+            title={t('Unrestricted battery')}
             detail={
               status.batteryOptimizationExempt
-                ? 'FitFlow is exempt from battery optimisation, so counting keeps running overnight.'
-                : 'Strongly recommended. Some phones stop background apps after a few hours, which silently stops your step count. Set FitFlow to Unrestricted.'
+                ? t('FitFlow is exempt from battery optimisation, so counting keeps running overnight.')
+                : t('Strongly recommended. Some phones stop background apps after a few hours, which silently stops your step count. Set FitFlow to Unrestricted.')
             }
             done={status.batteryOptimizationExempt}
-            actionLabel="Open settings"
+            actionLabel={t('Open settings')}
             onAction={onOpenBatterySettings}
           />
         ) : null}
@@ -190,12 +191,11 @@ export const BackgroundStepsCard: React.FC<BackgroundStepsCardProps> = ({
         )}
       >
         <Power size={15} aria-hidden="true" />
-        {countsInBackground ? 'Turn off background counting' : 'Turn on background counting'}
+        {countsInBackground ? t('Turn off background counting') : t('Turn on background counting')}
       </button>
 
       <p className="text-[11px] text-text-mute mt-3 leading-relaxed">
-        FitFlow uses your phone’s own low-power step sensor. It does not need Health Connect, a Google account or a
-        wearable. Steps taken between a phone restart and FitFlow starting up again are the only ones it cannot see.
+        {t('FitFlow uses your phone’s own low-power step sensor. It does not need Health Connect, a Google account or a wearable. Steps taken between a phone restart and FitFlow starting up again are the only ones it cannot see.')}
       </p>
     </section>
   );

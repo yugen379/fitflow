@@ -24,6 +24,7 @@ import { AdditiveBlending, BufferAttribute, Color, Mesh } from 'three';
 import { cn } from '../../lib/utils';
 import { useCanvasKey, useTabVisible } from '../layout/DockTabs';
 import { prefersReducedMotion } from '../../lib/motion';
+import { t } from '../../i18n/i18n';
 
 // ---------------------------------------------------------------------------
 // Data
@@ -211,7 +212,7 @@ const Scene: React.FC<{ specs: RingSpec[]; animate: boolean }> = ({ specs, anima
 
 /** Same three values, drawn as SVG arcs. No WebGL, no animation. */
 const FlatRings: React.FC<{ specs: RingSpec[] }> = ({ specs }) => (
-  <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label="Daily activity rings">
+  <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label={t('Daily activity rings')}>
     {specs.map((spec) => {
       const r = spec.radius * 62;
       const circumference = 2 * Math.PI * r;
@@ -312,7 +313,13 @@ export const VolumetricRings: React.FC<{ rings: RingDatum[]; className?: string 
       {/* Screen readers get the numbers, not the geometry. */}
       <p className="sr-only">
         {specs
-          .map((s) => `${s.label}: ${Math.round(s.value)} of ${Math.round(s.goal)} ${s.unit}, ${Math.round(s.progress * 100)} percent`)
+          .map((s) => t('{label}: {value} of {goal} {unit}, {pct} percent', {
+            label: s.label,
+            value: Math.round(s.value),
+            goal: Math.round(s.goal),
+            unit: s.unit === 'steps' ? t('steps') : s.unit === 'percent' ? t('percent') : s.unit,
+            pct: Math.round(s.progress * 100),
+          }))
           .join('. ')}
       </p>
     </div>

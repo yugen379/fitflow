@@ -20,6 +20,7 @@ import { Color, Mesh } from 'three';
 import { cn } from '../../lib/utils';
 import { prefersReducedMotion } from '../../lib/motion';
 import { useCanvasKey } from '../layout/DockTabs';
+import { t } from '../../i18n/i18n';
 
 export interface DayBar {
   /** "Sun", "Mon", … */
@@ -206,7 +207,7 @@ export const StepBars3D: React.FC<{ bars: DayBar[]; goal: number; className?: st
       </div>
 
       <p className="sr-only">
-        {bars.map((b) => `${b.label}: ${b.steps} steps`).join('. ')}. Goal {goal} steps.
+        {bars.map((b) => t('{day}: {n} steps', { day: b.label, n: b.steps })).join('. ')}. {t('Goal {n} steps.', { n: goal })}
       </p>
     </div>
   );

@@ -9,6 +9,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Moon, Smile, Zap, Plus, ChevronLeft, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
+import { t, msg, tDyn, getLanguage } from '../i18n/i18n';
+
+/** Stored as the English word (it is the saved value); shown with tDyn(). */
+const MOODS = [msg('Energetic'), msg('Calm'), msg('Neutral'), msg('Tired')];
 
 export const Wellness: React.FC = () => {
   const { profile } = useAuth();
@@ -63,9 +67,9 @@ export const Wellness: React.FC = () => {
         d.setDate(d.getDate() - i);
         const key = dayKey(d);
         trend.push({
-          day: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
+          day: d.toLocaleDateString(getLanguage(), { weekday: 'narrow' }),
           hours: byDay[key] || 0,
-          date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          date: d.toLocaleDateString(getLanguage(), { month: 'short', day: 'numeric' }),
         });
       }
       setSleepTrend(trend);
@@ -100,12 +104,12 @@ export const Wellness: React.FC = () => {
       // is the only place either can be detected.
       void checkWellnessBadges(profile.uid);
 
-      showToast('Recovery logged');
+      showToast(t('Recovery logged'));
       navigate('/');
     } catch (error) {
       // Best-effort: tell the user it's saved locally rather than showing red error.
       console.warn('Wellness log hiccup (data is queued):', error);
-      showToast('Saved locally — will sync when back online', 'info');
+      showToast(t('Saved locally — will sync when back online'), 'info');
       navigate('/');
     } finally {
       setIsLogging(false);
@@ -115,10 +119,10 @@ export const Wellness: React.FC = () => {
   return (
     <div className="pb-24 pt-4 px-6 space-y-8 bg-bg min-h-screen">
       <header className="flex items-center gap-3">
-        <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label="Back"><ChevronLeft size={18} /></button>
+        <button onClick={() => navigate('/')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-text-dim hover:text-white" aria-label={t('Back')}><ChevronLeft size={18} /></button>
         <div>
-          <p className="text-eyebrow text-accent">Recovery</p>
-          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">Sleep, mood, stress</h1>
+          <p className="text-eyebrow text-accent">{t('Recovery')}</p>
+          <h1 className="font-display text-2xl font-bold text-white tracking-tight leading-tight">{t('Sleep, mood, stress')}</h1>
         </div>
       </header>
 
@@ -127,13 +131,13 @@ export const Wellness: React.FC = () => {
         <div className="glass p-5">
           <div className="flex justify-between items-end mb-3">
             <div>
-              <p className="text-eyebrow text-accent-3">Sleep</p>
-              <p className="font-display text-lg font-bold text-white tracking-tight">Last 7 nights</p>
+              <p className="text-eyebrow text-accent-3">{t('Sleep')}</p>
+              <p className="font-display text-lg font-bold text-white tracking-tight">{t('Last 7 nights')}</p>
             </div>
             <div className="text-right">
               <p className="num font-display text-xl font-bold text-white leading-none">
                 {(sleepTrend.reduce((a, d) => a + d.hours, 0) / Math.max(sleepTrend.filter(d => d.hours > 0).length, 1)).toFixed(1)}
-                <span className="text-xs text-text-dim font-medium ml-1">h avg</span>
+                <span className="text-xs text-text-dim font-medium ml-1">{t('h avg')}</span>
               </p>
             </div>
           </div>
@@ -168,17 +172,17 @@ export const Wellness: React.FC = () => {
       >
         <div className="flex items-center gap-2">
           <Zap size={14} className="text-accent" />
-          <span className="text-eyebrow text-accent">AI insight</span>
+          <span className="text-eyebrow text-accent">{t('AI insight')}</span>
         </div>
         <h4 className="font-display text-lg font-bold text-white tracking-tight">
-          {sleepHours < 6 ? 'Sleep debt detected.' : stress > 7 ? 'High stress today.' : 'Recovery on track.'}
+          {sleepHours < 6 ? t('Sleep debt detected.') : stress > 7 ? t('High stress today.') : t('Recovery on track.')}
         </h4>
         <p className="text-white/75 text-sm leading-relaxed">
           {sleepHours < 6
-            ? 'Cortisol is likely elevated. Swap HIIT for active recovery or a long walk.'
+            ? t('Cortisol is likely elevated. Swap HIIT for active recovery or a long walk.')
             : stress > 7
-            ? 'Try a 5-minute 4-7-8 breathing session before your next meal.'
-            : 'Nervous system balanced. Your body is primed for a hard session.'}
+            ? t('Try a 5-minute 4-7-8 breathing session before your next meal.')
+            : t('Nervous system balanced. Your body is primed for a hard session.')}
         </p>
       </motion.div>
 
@@ -186,7 +190,7 @@ export const Wellness: React.FC = () => {
         <div className="glass p-5 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent-3/12 border border-accent-3/25 text-accent-3 flex items-center justify-center"><Moon size={16} /></div>
-            <h3 className="font-display text-base font-bold text-white tracking-tight">Sleep last night</h3>
+            <h3 className="font-display text-base font-bold text-white tracking-tight">{t('Sleep last night')}</h3>
           </div>
           <div className="flex flex-col items-center gap-3">
             <span className="num font-display text-5xl font-bold text-white">{sleepHours}<span className="text-lg text-text-dim font-medium">h</span></span>
@@ -207,16 +211,16 @@ export const Wellness: React.FC = () => {
         <div className="glass p-5 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent/12 border border-accent/25 text-accent flex items-center justify-center"><Smile size={16} /></div>
-            <h3 className="font-display text-base font-bold text-white tracking-tight">How are you feeling?</h3>
+            <h3 className="font-display text-base font-bold text-white tracking-tight">{t('How are you feeling?')}</h3>
           </div>
           <div className="grid grid-cols-4 gap-2">
-            {['Energetic', 'Calm', 'Neutral', 'Tired'].map(m => (
+            {MOODS.map(m => (
               <button
                 key={m}
                 onClick={() => setMood(m)}
                 className={`py-3 rounded-xl text-xs font-semibold border transition-all ${mood === m ? 'bg-accent text-bg border-accent' : 'bg-surface text-text-dim border-white/[0.06] hover:border-white/15'}`}
               >
-                {m}
+                {tDyn(m)}
               </button>
             ))}
           </div>
@@ -225,7 +229,7 @@ export const Wellness: React.FC = () => {
         <div className="glass p-5 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent-2/12 border border-accent-2/25 text-accent-2 flex items-center justify-center"><Zap size={16} /></div>
-            <h3 className="font-display text-base font-bold text-white tracking-tight">Stress level</h3>
+            <h3 className="font-display text-base font-bold text-white tracking-tight">{t('Stress level')}</h3>
           </div>
           <div className="flex flex-col items-center gap-3">
             <span className="num font-display text-5xl font-bold text-white">{stress}<span className="text-lg text-text-dim font-medium">/10</span></span>
@@ -236,8 +240,8 @@ export const Wellness: React.FC = () => {
               className="w-full h-2 bg-white/[0.05] rounded-full appearance-none accent-accent-2"
             />
             <div className="w-full flex justify-between text-xs text-text-dim">
-              <span>Calm</span>
-              <span>High</span>
+              <span>{t('Calm')}</span>
+              <span>{t('High')}</span>
             </div>
           </div>
         </div>
@@ -248,20 +252,20 @@ export const Wellness: React.FC = () => {
         disabled={isLogging}
         className="btn-3d w-full h-14 disabled:opacity-50"
       >
-        {isLogging ? 'Saving…' : 'Log recovery'}
+        {isLogging ? t('Saving…') : t('Log recovery')}
       </button>
 
       {history.length > 0 && (
         <section className="space-y-3">
-          <h3 className="font-display text-lg font-bold text-white tracking-tight px-1">Recent logs</h3>
+          <h3 className="font-display text-lg font-bold text-white tracking-tight px-1">{t('Recent logs')}</h3>
           <div className="space-y-2">
             {history.map((h, i) => (
               <div key={i} className="glass p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">✨</span>
                   <div>
-                    <p className="text-white font-medium text-sm">{h.mood}</p>
-                    <p className="text-xs text-text-dim">Stress {h.stressLevel}/10</p>
+                    <p className="text-white font-medium text-sm">{tDyn(h.mood)}</p>
+                    <p className="text-xs text-text-dim">{t('Stress {n}/10', { n: h.stressLevel })}</p>
                   </div>
                 </div>
                 <p className="num text-xs text-accent font-semibold">+30 XP</p>
