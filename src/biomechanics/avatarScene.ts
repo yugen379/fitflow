@@ -8,7 +8,8 @@
  *
  * The muscle heatmap is driven by a 17x1 lookup texture rather than per-vertex
  * colour updates. Each vertex carries the two muscle regions it sits between;
- * the fragment shader samples their current activation. Repainting the heatmap
+ * the vertex shader samples their current activation (per vertex, never per
+ * fragment from an interpolated index — see VERTEX_SHADER). Repainting the heatmap
  * is therefore a 68-byte texture upload per frame instead of a rewrite of every
  * vertex colour.
  */
@@ -187,20 +188,33 @@ const assignRegions = (
 // ---------------------------------------------------------------------------
 
 const VERTEX_SHADER = /* glsl */ `
+  uniform sampler2D uActivation;
+  uniform float uLookupWidth;
+
   attribute float aMuscleA;
   attribute float aMuscleB;
   attribute float aBlend;
 
   varying vec3 vNormal;
   varying vec3 vViewPosition;
-  varying float vMuscleA;
-  varying float vMuscleB;
-  varying float vBlend;
+  varying float vActivation;
+
+  float sampleActivation(float index) {
+    // Sample the centre of the texel so NEAREST filtering can never land on a
+    // boundary and pick up the neighbouring muscle.
+    float u = (index + 0.5) / uLookupWidth;
+    return texture2D(uActivation, vec2(u, 0.5)).r;
+  }
 
   void main() {
-    vMuscleA = aMuscleA;
-    vMuscleB = aMuscleB;
-    vBlend = aBlend;
+    // The lookup happens HERE, per vertex, and only the resulting activation is
+    // interpolated. Muscle indices are categorical: passed as varyings, a
+    // triangle whose corners belong to different muscles (glutes on the top
+    // ring of a thigh, quads on the bottom ring) interpolates the index itself,
+    // and the fragment shader then samples every muscle numbered in between —
+    // painting unrelated muscles' heat as blocky stripes across limbs and torso.
+    // Interpolating the activation value is always well defined.
+    vActivation = clamp(mix(sampleActivation(aMuscleA), sampleActivation(aMuscleB), aBlend), 0.0, 1.0);
     vNormal = normalize(normalMatrix * normal);
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     vViewPosition = -mvPosition.xyz;
@@ -211,8 +225,6 @@ const VERTEX_SHADER = /* glsl */ `
 const FRAGMENT_SHADER = /* glsl */ `
   precision mediump float;
 
-  uniform sampler2D uActivation;
-  uniform float uLookupWidth;
   uniform float uHeatOpacity;
   uniform vec3 uSkin;
   uniform vec3 uSkinDeep;
@@ -223,21 +235,10 @@ const FRAGMENT_SHADER = /* glsl */ `
 
   varying vec3 vNormal;
   varying vec3 vViewPosition;
-  varying float vMuscleA;
-  varying float vMuscleB;
-  varying float vBlend;
-
-  float sampleActivation(float index) {
-    // Sample the centre of the texel so NEAREST filtering can never land on a
-    // boundary and pick up the neighbouring muscle.
-    float u = (index + 0.5) / uLookupWidth;
-    return texture2D(uActivation, vec2(u, 0.5)).r;
-  }
+  varying float vActivation;
 
   void main() {
-    float a = sampleActivation(vMuscleA);
-    float b = sampleActivation(vMuscleB);
-    float activation = clamp(mix(a, b, vBlend), 0.0, 1.0);
+    float activation = vActivation;
 
     vec3 normal = normalize(vNormal);
     vec3 viewDir = normalize(vViewPosition);
@@ -656,10 +657,15 @@ export class AvatarScene {
   /** Builds (or rebuilds, after a quality change) all pose-driven geometry. */
   private buildAvatar(): void {
     const radial = this.quality.radialSegments;
+    // A few rings along each limb, not one. Heat is interpolated per vertex,
+    // and a single-ring cylinder stretches each triangle from hip to knee, so a
+    // thigh whose top ring is glutes and bottom ring is quads shades as a fan
+    // of diagonal streaks. ~2.4k extra triangles at the high tier.
+    const rings = Math.max(2, Math.round(radial / 4));
 
     for (const spec of SEGMENTS) {
       const geometry = this.geometryBin.track(
-        new CylinderGeometry(spec.radiusTop, spec.radiusBottom, 1, radial, 1, false),
+        new CylinderGeometry(spec.radiusTop, spec.radiusBottom, 1, radial, rings, false),
       );
       // Cylinders are built centred; shift so the segment runs 0..1 along +Y,
       // which lets the frame matrix place it directly from the proximal joint.

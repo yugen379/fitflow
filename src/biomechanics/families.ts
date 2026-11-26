@@ -1104,7 +1104,10 @@ const verticalPull = (p: FamilyParams): FamilyOut => {
   out.solve = STAND;
   const legs2: PoseIn = { trunkDeg: 25, femurDeg: 18, tibiaDeg: -6, legYawDegL: -8, legYawDegR: 8 };
   const up: PoseIn = { ...legs2, shoulderFlexDeg: 140, shoulderAbdDeg: 10, elbowDeg: 10 };
-  const down: PoseIn = { ...legs2, shoulderFlexDeg: -8, shoulderAbdDeg: 10, elbowDeg: 8 };
+  // Finish with the bar at the front of the thighs. Flex is measured from the
+  // leaning trunk, so -8 put the hands BEHIND the hips and ran the cable
+  // through the torso.
+  const down: PoseIn = { ...legs2, shoulderFlexDeg: 20, shoulderAbdDeg: 10, elbowDeg: 8 };
   out.frames = [F(0, 0.45, up), F(0.46, 1, down), F(0.56, 1, down)];
   out.cableAnchor = { x: 0, y: 2.0, z: 1.1 };
   out.primary = ['lats'];
@@ -1197,7 +1200,10 @@ const triceps = (p: FamilyParams): FamilyOut => {
       out.cues.isometric = 'Arms straight overhead, elbows pointing forward.';
       return out;
     case 'pushdown':
-      rep({ ...legs, trunkDeg: 10, shoulderFlexDeg: 2, shoulderAbdDeg: 8, elbowDeg: 100 }, { ...legs, trunkDeg: 10, shoulderFlexDeg: -2, shoulderAbdDeg: 8, elbowDeg: 4 });
+      // Elbows pinned a little in front of the ribs, not hanging straight: the
+      // cable ends at the midpoint of the hands, and with the arms vertical
+      // that point sat inside the pelvis at lockout (cable through the body).
+      rep({ ...legs, trunkDeg: 10, shoulderFlexDeg: 18, shoulderAbdDeg: 6, elbowDeg: 100 }, { ...legs, trunkDeg: 10, shoulderFlexDeg: 18, shoulderAbdDeg: 6, elbowDeg: 4 });
       out.cableAnchor = { x: 0, y: 2.0, z: 0.45 };
       return out;
     case 'kickback':
@@ -1292,7 +1298,11 @@ const raise = (p: FamilyParams): FamilyOut => {
     case 'crossover': {
       const lean: PoseIn = { ...legs, trunkDeg: 15, femurDeg: 10 };
       rep({ ...lean, shoulderFlexDeg: 55, shoulderAbdDeg: 85, elbowDeg: 15 }, { ...lean, shoulderFlexDeg: 60, shoulderAbdDeg: -10, elbowDeg: 12 });
-      out.cableAnchor = { x: 0, y: 2.0, z: -0.3 };
+      // One cable line is drawn, so it is the right hand's, from a high pulley
+      // out to the right. A single line to the midpoint of two wide-open hands
+      // sat inside the chest and ran through the head.
+      out.barAnchor = 'wristR';
+      out.cableAnchor = { x: 1.15, y: 2.1, z: -0.15 };
       out.primary = ['pecs'];
       out.secondary = ['delt_front'];
       out.cues.concentric = 'Sweep the handles down and together in front of the hips.';

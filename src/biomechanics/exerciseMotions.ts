@@ -110,7 +110,7 @@ export const EXERCISE_MOTIONS: Readonly<Record<string, ExerciseMotionSpec>> = {
   front_raise: { family: 'raise', params: { variant: 'front' }, equipment: ['dumbbell'] },
   rear_delt_fly: { family: 'raise', params: { variant: 'rear' }, equipment: ['dumbbell'] },
   chest_fly_db: { family: 'raise', params: { variant: 'fly' }, equipment: ['dumbbell'] },
-  cable_crossover: { family: 'raise', params: { variant: 'crossover' }, equipment: ['cable'] },
+  cable_crossover: { family: 'raise', params: { variant: 'crossover' }, equipment: ['cable'], simplified: 'Only the right-hand cable is drawn; a crossover uses a pulley on each side.' },
 
   // --- Core ----------------------------------------------------------------
   toe_touch_crunch: { family: 'core', params: { variant: 'toetouch' }, equipment: BW, simplified: 'The spine is one rigid segment, so the curl is shown as a trunk lift.' },

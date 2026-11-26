@@ -21,9 +21,9 @@
 
 import { readFileSync } from 'node:fs';
 
-const { RIG, solvePose, romViolations, clampPoseToRom, signedKneeFlex, angleBetween } = await import('../src/biomechanics/rig.ts');
+const { RIG, solvePose, romViolations, clampPoseToRom, signedKneeFlex, angleBetween, barPosition } = await import('../src/biomechanics/rig.ts');
 const motions = await import('../src/biomechanics/motions.ts');
-const { getExerciseClip, sampleClip, solveOptionsFor, EXERCISE_TO_CLIP, hasClipFor, getClip } = motions;
+const { getExerciseClip, sampleClip, solveOptionsFor, EXERCISE_TO_CLIP, hasClipFor, getClip, effectiveTrunkDeg } = motions;
 const { EXERCISE_MOTIONS } = await import('../src/biomechanics/exerciseMotions.ts');
 const { MOTION_FAMILIES, buildFamilyClip } = await import('../src/biomechanics/families.ts');
 
@@ -211,6 +211,40 @@ check('ROM clamp is total: hostile poses come back finite and in range', (() => 
   return true;
 })());
 
+// The viewport draws a cable/band as ONE line from the clip's anchor (default:
+// high pulley behind) to the bar point. That line must not pass through the
+// torso or the head. The last 12 cm before the grip is exempt: the hands
+// themselves may legitimately be close to the body.
+const DEFAULT_CABLE_ANCHOR = { x: 0, y: 1.95, z: -1.4 };
+const cableClearance = (clip) => {
+  const errs = [];
+  const cableEq = clip.equipment.filter((e) => e === 'cable' || e === 'band');
+  const anchor = clip.cableAnchor ?? DEFAULT_CABLE_ANCHOR;
+  for (const eq of cableEq) {
+    const opts = solveOptionsFor(clip, eq);
+    for (let i = 0; i <= 120 && errs.length < 2; i++) {
+      const t = i / 120;
+      const { pose } = sampleClip(clip, t);
+      const s = solvePose(pose, opts);
+      const bar = barPosition(s, clip.barAnchor, effectiveTrunkDeg(pose));
+      const cut = Math.max(0, 1 - 0.12 / (dist(anchor, bar) || 1));
+      for (let k = 0; k <= 40; k++) {
+        const u = (k / 40) * cut;
+        const p = { x: anchor.x + (bar.x - anchor.x) * u, y: anchor.y + (bar.y - anchor.y) * u, z: anchor.z + (bar.z - anchor.z) * u };
+        const dT = segDist(p, s.pelvis, s.chest);
+        const dH = dist(p, s.head);
+        if (dT < 0.15) { errs.push(`${eq} cable through torso (${dT.toFixed(3)} m)@${t.toFixed(2)}`); break; }
+        if (dH < RIG.headRadius) { errs.push(`${eq} cable through head (${dH.toFixed(3)} m)@${t.toFixed(2)}`); break; }
+      }
+    }
+  }
+  return errs;
+};
+const cableClips = [...clips.values()].filter((c) => c.equipment.some((e) => e === 'cable' || e === 'band'));
+const cableFailures = cableClips.map((c) => [c.id, cableClearance(c)]).filter(([, e]) => e.length);
+for (const [id, e] of cableFailures) console.log(`  ${C.r}x${C.x} ${id}: ${e.join(' | ')}`);
+check(`every drawn cable/band clears the torso and head (${cableClips.length - cableFailures.length}/${cableClips.length})`, cableClips.length > 0 && cableFailures.length === 0);
+
 // ─── Part C ──────────────────────────────────────────────────────────────────
 section('Part C — per-family biomechanics');
 
@@ -348,6 +382,12 @@ const doctor = (clip, fn) => ({ ...clip, keyframes: clip.keyframes.map((k) => fn
   // The whole push-up drifts 8 cm forward as it descends: hands and feet skate on the floor.
   const slide = doctor(clips.get('pushups'), (k) => ({ ...k, shiftZ: 0.08 * ((k.elbowDeg ?? 3) - 3) / 115 }));
   check('control: hands that slide while planted fail plausibility', plausibility(slide).errs.some((e) => e.includes('slides') || e.includes('floor')));
+  // The pre-fix pushdown: arms hanging straight, so the cable ended inside the pelvis.
+  const oldPushdown = doctor(clips.get('tricep_pushdown'), (k) => ({ ...k, shoulderFlexDeg: -2 }));
+  check('control: a pushdown whose cable ends inside the pelvis fails cable clearance', cableClearance(oldPushdown).some((e) => e.includes('torso')));
+  // The pre-fix crossover: one line from behind the head to the midpoint of both hands.
+  const oldCross = { ...clips.get('cable_crossover'), barAnchor: 'wrists', cableAnchor: { x: 0, y: 2.0, z: -0.3 } };
+  check('control: a crossover cable drawn through the head fails cable clearance', cableClearance(oldCross).length > 0);
   check('control: an extra unknown id fails the mapping check', mappingProblems(libIds, { ...EXERCISE_MOTIONS, made_up: { family: 'squat', params: {}, equipment: ['bodyweight'] } }).length === 1);
   const missing = { ...EXERCISE_MOTIONS };
   delete missing.swimming;

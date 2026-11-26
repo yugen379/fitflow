@@ -1,6 +1,7 @@
 // Render key frames of generated exercise demos to PNGs for eyeballing.
 //
 //   node scripts/exercise-screens.mjs <outDir> [id@t@azimuth ...]
+//   (prefix an id with `lab:` for a hand-authored Lab clip, e.g. lab:deadlift@0.5@-1.2)
 //
 // Defaults to the five key frames called out in the motion spec (squat bottom,
 // push-up bottom, deadlift hinge, curl top, jumping-jack open). Uses the same
@@ -36,7 +37,7 @@ try {
   for (const spec of specs) {
     const [id, t = '0.5', az = '-0.9'] = spec.split('@');
     const r = await page.evaluate(([a, b, c]) => window.renderExercise(a, Number(b), Number(c)), [id, t, az]);
-    const file = join(outDir, `${id}_t${t}_az${az}.png`);
+    const file = join(outDir, `${id.replace(':', '-')}_t${t}_az${az}.png`);
     await page.locator('canvas').screenshot({ path: file });
     console.log(`${r === 'ok' ? 'saved' : r} ${file}`);
   }
@@ -44,7 +45,7 @@ try {
   // Contact sheet of everything rendered, labelled, for a one-glance review.
   const files = specs.map((spec) => {
     const [id, t = '0.5', az = '-0.9'] = spec.split('@');
-    return { label: `${id} t=${t}`, src: pathToFileURL(join(outDir, `${id}_t${t}_az${az}.png`)).href };
+    return { label: `${id} t=${t}`, src: pathToFileURL(join(outDir, `${id.replace(':', '-')}_t${t}_az${az}.png`)).href };
   });
   const cols = 4;
   const sheet = join(work, 'sheet.html');

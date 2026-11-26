@@ -7,7 +7,7 @@
  */
 
 import { AvatarScene } from '../src/biomechanics/avatarScene';
-import { effectiveTrunkDeg, getExerciseClip, resolveEquipment, sampleClip, solveOptionsFor } from '../src/biomechanics/motions';
+import { effectiveTrunkDeg, getClip, getExerciseClip, resolveEquipment, sampleClip, solveOptionsFor } from '../src/biomechanics/motions';
 import { barPosition, solvePose } from '../src/biomechanics/rig';
 import { QUALITY_PROFILES } from '../src/biomechanics/viewportSlice';
 import { MUSCLE_COUNT } from '../src/biomechanics/types';
@@ -26,7 +26,10 @@ scene.setSize(W, H, 1);
 const LAYERS = { heatmap: true, jointVectors: false, barPath: false, skeleton: false, equipment: true };
 
 (window as unknown as { renderExercise: (id: string, t: number, azimuth: number) => string }).renderExercise = (id, t, azimuth) => {
-  const clip = getExerciseClip(id);
+  // `lab:<id>` renders one of the five hand-authored Lab clips (squats,
+  // bench_press, deadlift, shoulder_press, cable_row); a bare id is the
+  // generated demo of that library exercise.
+  const clip = id.startsWith('lab:') ? getClip(id.slice(4)) : getExerciseClip(id);
   if (!clip) return 'no clip';
   const equipment = resolveEquipment(clip, clip.equipment[0]);
   const opts = solveOptionsFor(clip, equipment);
