@@ -19,6 +19,8 @@
  */
 import { FieldValue, Query, QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { db } from "./db";
+// Push text in the user doc's `language` (English, unchanged, by default).
+import { pushText, type PushTextKey } from "./pushText";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
@@ -122,13 +124,14 @@ export const runWorkoutReminders = async (opts: JobOptions): Promise<JobReport> 
     (docs) => runPool(docs, opts.concurrency ?? 25, async (doc) => {
       const u = doc.data();
       if (!u.fcmToken || !u.preferredWorkoutTime || u.lastReminderDate === today) return;
+      const time = { time: u.preferredWorkoutTime };
       const push: PushContent = {
-        title: "Training window opens soon",
-        body: `You usually train around ${u.preferredWorkoutTime}. 30 minutes — let's go.`,
+        title: pushText(u.language, "workout.title"),
+        body: pushText(u.language, "workout.body", time),
         type: "workout_reminder",
       };
       await deliver(doc, u.fcmToken, push, { lastReminderDate: today }, "reminder",
-        `You usually train around ${u.preferredWorkoutTime}.`, opts, report);
+        pushText(u.language, "workout.inbox", time), opts, report);
     }),
   );
   return report;
@@ -183,10 +186,10 @@ export const runTrialReminders = async (opts: JobOptions & { trialDays: number }
       // Skip users who already pay.
       if (u.subscriptionType === "premium" || u.trialEndingNotifiedAt || !u.fcmToken) return;
       await deliver(doc, u.fcmToken, {
-        title: "Your free trial ends tomorrow",
-        body: "Keep your AI coach, form check & analytics — subscribe to stay Pro.",
+        title: pushText(u.language, "trial.title"),
+        body: pushText(u.language, "trial.body"),
         type: "trial_ending",
-      }, { trialEndingNotifiedAt: FieldValue.serverTimestamp() }, "system", "Subscribe to keep FitFlow Pro.", opts, report);
+      }, { trialEndingNotifiedAt: FieldValue.serverTimestamp() }, "system", pushText(u.language, "trial.inbox"), opts, report);
     }),
   );
   return report;
@@ -211,13 +214,11 @@ const ENG = {
   WINBACK_HOUR: 10, // local hour to send the daily win-back check (once/day/user)
 };
 
-const WINBACK_COPY: Record<number, { title: string; body: string }> = {
-  1: { title: "Pick up where you left off", body: "A 2-minute log keeps your momentum going. You’ve got this." },
-  3: { title: "Your coach misses you", body: "Three days off is fine — jump back in and we’ll adjust your plan." },
-  7: { title: "One week — let’s restart", body: "A fresh week is the perfect reset. Log one thing to get rolling." },
-  14: { title: "Still here for you", body: "Two weeks out. Your data’s exactly where you left it — come finish what you started." },
-  30: { title: "We saved your spot", body: "A month away happens. One tap brings your whole plan back to life." },
-};
+// Win-back copy per tier lives in pushText.ts ("winback.<tier>.title|body").
+const winbackCopy = (gap: number, lang: unknown): { title: string; body: string } => ({
+  title: pushText(lang, `winback.${gap}.title` as PushTextKey),
+  body: pushText(lang, `winback.${gap}.body` as PushTextKey),
+});
 
 // 'YYYY-MM-DD' (UTC fields of a wall-clock-shifted instant) → whole-day ordinal.
 const dayOrdinal = (key: string): number | null => {
@@ -253,8 +254,8 @@ export const decideNudge = (u: Record<string, any>, now: number): Nudge | null =
     u.streakRiskNotifiedDate !== today
   ) {
     return {
-      title: `🔥 Your ${streak}-day streak ends at midnight`,
-      body: `Don't lose it now — a quick log keeps your ${streak}-day streak alive.`,
+      title: pushText(u.language, "streak.title", { n: streak }),
+      body: pushText(u.language, "streak.body", { n: streak }),
       type: "streak_risk",
       update: { streakRiskNotifiedDate: today },
     };
@@ -265,7 +266,7 @@ export const decideNudge = (u: Record<string, any>, now: number): Nudge | null =
     const gap = todayOrd - lastActiveOrd;
     const lastTier = Number(u.winbackLastTier) || 0;
     if (ENG.WINBACK_TIERS.includes(gap) && gap > lastTier) {
-      const copy = WINBACK_COPY[gap];
+      const copy = winbackCopy(gap, u.language);
       return { title: copy.title, body: copy.body, type: "winback", update: { winbackLastTier: gap } };
     }
   }
@@ -276,8 +277,8 @@ export const decideNudge = (u: Record<string, any>, now: number): Nudge | null =
       : (typeof u.lastMealAt?._seconds === "number" ? u.lastMealAt._seconds * 1000 : null);
     if (!(lastMealMs != null && lastMealMs >= startOfTodayMs)) {
       return {
-        title: "Haven't logged today?",
-        body: "Capture a meal in 2 taps — scan a barcode or just describe it.",
+        title: pushText(u.language, "meal.title"),
+        body: pushText(u.language, "meal.body"),
         type: "meal_nudge",
         update: { mealNudgeDate: today },
       };

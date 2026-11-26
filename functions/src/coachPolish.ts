@@ -7,6 +7,8 @@
  * any rewritten text with a number the original lacks is dropped, and the app
  * then shows its own wording for that field.
  */
+import { languageLineAfter } from "./languagePrompt";
+
 const clip = (v: unknown, max: number) => String(v ?? "").slice(0, max);
 const MAX_NUDGES = 8;
 
@@ -24,11 +26,12 @@ export const boundBriefing = (raw: any): BaseBriefing => ({
   })),
 });
 
-export const briefingPrompt = (goal: unknown, base: BaseBriefing) =>
+/** `language` is the request's app language (validated by languageLineAfter; English adds nothing). */
+export const briefingPrompt = (goal: unknown, base: BaseBriefing, language?: unknown) =>
   `You are FitFlow Coach. Rewrite this daily briefing in your own voice: direct, warm, specific, motivating.
 Plain text only — no markdown, no emojis. Keep each "message" to ONE or TWO short sentences.
 Preserve every "id" EXACTLY. Do NOT add, drop, or reorder nudges, and do NOT change any numbers or targets mentioned.
-User goal: ${clip(goal, 100) || "general fitness"}.
+User goal: ${clip(goal, 100) || "general fitness"}.${languageLineAfter(language)}
 Briefing to rewrite:
 ${JSON.stringify(base)}
 Return ONLY valid JSON, same shape: {"headline":string,"subtitle":string,"nudges":[{"id":string,"title":string,"message":string}]}`;
@@ -40,6 +43,9 @@ const accept = (polished: unknown, original: string, max: number): string | unde
   if (typeof polished !== "string") return undefined;
   const text = polished.replace(/[*_`#]/g, "").trim();
   if (!text) return undefined;
+  // Digits other than 0-9 (e.g. Devanagari in a Hindi rewrite) would slip past
+  // the number check below, so a rewrite that uses them is not accepted.
+  if (/[^\P{Nd}0-9]/u.test(text)) return undefined;
   const allowed = new Set(numbersIn(original));
   return numbersIn(text).every((n) => allowed.has(n)) ? text.slice(0, max) : undefined;
 };

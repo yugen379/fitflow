@@ -2,6 +2,10 @@ import * as functions from "firebase-functions";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { boundBriefing, briefingPrompt, sanitizePolish } from "./coachPolish";
 import { unitsPromptLine } from "./unitsPrompt";
+// Only for prompts whose text the user reads. The parsing actions (estimateCalories,
+// analyzeMealImage, analyzeNutritionLabel, generateWorkoutPlan, quickAdd,
+// decomposeMeal) stay English: the app looks their names up in English tables.
+import { languageLineAfter } from "./languagePrompt";
 import {
   checkAiAllowance, coolModel, isQuotaError, modelIsCooling, secondsUntilAnyModel,
 } from "./aiGuard";
@@ -846,7 +850,7 @@ If you genuinely cannot determine any nutrition, return {"calories": 0}.`),
           vision(payload.base64Image, payload.mimeType, `You are an elite strength coach. Analyze ONLY this exact frame for ${exercise} form.
 Return ONLY valid JSON, no markdown:
 {"exercise":"${exercise}","rating":<1-10 form score>,"status":"good"|"fix"|"danger","cue":"<single short coaching cue, max 12 words, imperative voice>","details":"<one optional secondary detail, max 18 words>"}
-If no person visible, return rating 0 status "fix" cue "Step into frame so I can see your full body."`),
+If no person visible, return rating 0 status "fix" cue "Step into frame so I can see your full body."${languageLineAfter(payload.language)}`),
           { exercise, rating: 0, status: "fix", cue: "Show your full body for a check." },
         );
         res.json(out);
@@ -868,7 +872,7 @@ Return ONLY valid JSON: {"title": string, "description": string, "type": string,
 
       case "generateMealPlan": {
         const out = await json(
-          `Generate a 7-day meal plan. Preferences: ${clip(payload.dietaryPreferences, 300)}. Target: ${Number(payload.kCalTarget) || 2000} kcal/day.
+          `Generate a 7-day meal plan. Preferences: ${clip(payload.dietaryPreferences, 300)}. Target: ${Number(payload.kCalTarget) || 2000} kcal/day.${languageLineAfter(payload.language)}
 Return ONLY a valid JSON array of 7 objects:
 [{"day": string, "breakfast": string, "lunch": string, "dinner": string, "snack": string, "calories": number}]`,
           [],
@@ -879,7 +883,7 @@ Return ONLY a valid JSON array of 7 objects:
 
       case "getRecipe": {
         const out = await json(
-          `Healthy recipe for "${clip(payload.mealName, 200)}". Return ONLY valid JSON:
+          `Healthy recipe for "${clip(payload.mealName, 200)}".${languageLineAfter(payload.language)} Return ONLY valid JSON:
 {"ingredients": string[], "instructions": string[], "prepTime": string, "protein": number, "carbs": number, "fats": number}`,
           null,
         );
@@ -890,7 +894,7 @@ Return ONLY a valid JSON array of 7 objects:
       case "swapMeal": {
         const out = await json(
           `Suggest ONE alternative meal that replaces "${clip(payload.original, 200)}". Reason: ${clip(payload.reason, 300)}. Preferences: ${clip(payload.dietaryPreferences, 300)}. Do NOT return "${clip(payload.original, 200)}" — return a different dish.
-Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number, "why": string}`,
+Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, "carbs": number, "fats": number, "why": string}${languageLineAfter(payload.language)}`,
           {},
         );
         res.json(out);
@@ -902,7 +906,7 @@ Return ONLY valid JSON: {"name": string, "calories": number, "protein": number, 
         const out = await json(
           `Generate ONE specific, doable daily fitness micro-challenge for someone with goal "${clip(p.goal, 100) || "general fitness"}" and a ${Number(p.streak) || 0}-day streak.
 Pick something they can finish in a single day. Vary the category.
-${unitsPromptLine(p.units)}
+${unitsPromptLine(p.units)}${languageLineAfter(payload.language)}
 Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sentence>","target":<number>,"unit":"<short unit string>","category":"movement"|"nutrition"|"recovery"|"mindfulness"}`,
           { title: "Move 30 minutes", description: "Any sustained movement — walk, lift, ride.", target: 30, unit: "minutes", category: "movement" },
         );
@@ -914,7 +918,7 @@ Return ONLY valid JSON: {"title":"<8 words max>","description":"<one short sente
         const text = await cascadeText(
           ai,
           `You are an elite fitness AI. Give ONE sharp, motivational insight (max 20 words) based on:
-Calories today: ${Number(payload.calories) || 0}, Water: ${Number(payload.water) || 0}ml, Workouts: ${Number(payload.workouts) || 0}, Streak: ${Number(payload.streak) || 0} days.
+Calories today: ${Number(payload.calories) || 0}, Water: ${Number(payload.water) || 0}ml, Workouts: ${Number(payload.workouts) || 0}, Streak: ${Number(payload.streak) || 0} days.${languageLineAfter(payload.language)}
 Return ONLY plain text, no JSON.`,
           { deadline },
         );
@@ -932,7 +936,7 @@ Return ONLY plain text, no JSON.`,
 The user's goal is ${clip(profile.goal, 100) || "general fitness"}. Weight: ${Number(profile.weight) || "n/a"}kg. Age: ${Number(profile.age) || "n/a"}.
 Be direct, practical, and motivating. Reply in 2–4 sentences. Use plain language, no markdown, no emojis.
 Accuracy rules: when you compare foods or give calories/macros, use standard USDA-style values per stated portion and name the portion (e.g. "a medium potato, ~160 kcal"). If you are not sure, say it is an estimate. Never invent a number to sound confident. If the message includes "FitFlow app data for today", treat it as the user's real log and use it.
-${unitsPromptLine(profile.units)}
+${unitsPromptLine(profile.units)}${languageLineAfter(payload.language)}
 
 ${transcript ? "Conversation so far:\n" + transcript + "\n\n" : ""}User: ${clip(payload.message, 2000)}
 Coach:`,
@@ -953,7 +957,7 @@ Goal: ${clip(payload.goal, 100) || "general fitness"}. This week:
 - ${Number(payload.caloriesBurned) || 0} kcal burned, ${Number(payload.caloriesConsumed) || 0} consumed
 - ${Number(payload.waterMl) || 0}ml water, ${Number(payload.sleepHours) || 0} hours sleep
 - ${Number(payload.streak) || 0}-day streak${payload.topExercise ? `, top exercise: ${clip(payload.topExercise, 100)}` : ""}
-${unitsPromptLine(payload.units)}
+${unitsPromptLine(payload.units)}${languageLineAfter(payload.language)}
 
 Return ONLY valid JSON, no markdown:
 {"headline":"<≤8 word title>","highlight":"<1-2 sentence summary in plain English, sentence case>","win":"<1 short positive observation>","focus":"<one thing to focus on next week, plain language>","nextStep":"<one specific action they can take Monday>"}
@@ -1007,7 +1011,7 @@ If you cannot parse any food, return [].`,
 
       case "coachBriefing": {
         const base = boundBriefing(payload.base);
-        const text = await cascadeOnce(ai, briefingPrompt(payload.ctx?.goal, base), deadline);
+        const text = await cascadeOnce(ai, briefingPrompt(payload.ctx?.goal, base, payload.language), deadline);
         // Null tells the app to keep its own wording.
         res.json(text ? sanitizePolish(base, safeJsonParse(text, null)) : null);
         return;

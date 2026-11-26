@@ -19,8 +19,14 @@ export interface StoredPolish {
 
 export type PolishDecision = 'reuse' | 'plain' | 'call';
 
-export const polishSlot = (now: Date, hour: number): string =>
-  `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${partOfDay(hour)}`;
+/**
+ * The language is part of the slot: a rewrite is written in one language, so
+ * after a language change the stored one must not be reused (a cached English
+ * rewrite shown to a Malay user). English keeps the original slot string.
+ */
+export const polishSlot = (now: Date, hour: number, lang = 'en'): string =>
+  `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${partOfDay(hour)}` +
+  (lang && lang !== 'en' ? `-${String(lang).replace(/[^a-z]/g, '').slice(0, 5)}` : '');
 
 export const polishBaseKey = (base: CoachBriefing): string =>
   JSON.stringify([base.headline, base.subtitle, base.nudges.map((n) => [n.id, n.title, n.message])]);

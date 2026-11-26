@@ -27,6 +27,8 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./db";
 import { unitsPromptLine } from "./unitsPrompt";
+import { languageLineAfter } from "./languagePrompt";
+import { pushText } from "./pushText";
 
 export interface WeekStats {
   workouts: number;
@@ -95,8 +97,12 @@ const statsFor = async (uid: string, since: Date): Promise<WeekStats> => {
 
 const isActive = (s: WeekStats) => s.workouts + s.consumed + s.water + s.sleepHours > 0;
 
-/** A recap written from the numbers alone — used when every model is busy. `units` follows the user doc (numbers stay metric in `stats`). */
-export const fallbackRecap = (s: WeekStats, streak: number, units?: unknown): Recap => {
+/**
+ * A recap written from the numbers alone — used when every model is busy.
+ * `units` and `language` follow the user doc (numbers stay metric in `stats`;
+ * an unknown language is English, exactly as before).
+ */
+export const fallbackRecap = (s: WeekStats, streak: number, units?: unknown, language?: unknown): Recap => {
   const o = (units && typeof units === "object" ? units : {}) as Record<string, unknown>;
   const imperial = o.system === "imperial";
   const energy = (kcal: number) => o.energy === "kJ"
@@ -104,28 +110,32 @@ export const fallbackRecap = (s: WeekStats, streak: number, units?: unknown): Re
     : `${kcal.toLocaleString("en-US")} kcal`;
   // 1 US fl oz = 29.5735 ml (same factor as src/lib/units.ts).
   const water = (ml: number) => imperial ? `${Math.round(ml / 29.5735).toLocaleString("en-US")} fl oz` : `${(ml / 1000).toFixed(1)} L`;
+  const L = language;
+  // In English this reads exactly as it always did: "3 workouts, 90 active minutes, 600 kcal logged, 1.5 L of water."
+  const parts = [
+    pushText(L, s.workouts === 1 ? "recap.workouts.one" : "recap.workouts.other", { n: s.workouts }),
+    ...(s.minutes ? [pushText(L, "recap.minutes", { n: s.minutes })] : []),
+    ...(s.consumed ? [pushText(L, "recap.logged", { energy: energy(s.consumed) })] : []),
+    ...(s.water ? [pushText(L, "recap.water", { water: water(s.water) })] : []),
+  ];
   return {
-    headline: s.workouts >= 3 ? "A strong week of training." : s.workouts > 0 ? "You kept moving this week." : "A week of steady logging.",
-    highlight:
-      `${s.workouts} workout${s.workouts === 1 ? "" : "s"}` +
-      (s.minutes ? `, ${s.minutes} active minutes` : "") +
-      (s.consumed ? `, ${energy(s.consumed)} logged` : "") +
-      (s.water ? `, ${water(s.water)} of water` : "") + ".",
-    win: streak >= 3 ? `A ${streak}-day streak — consistency is doing the work.` : "Every log this week is data your plan can use.",
-    focus: s.workouts < 2 ? "One more session than last week." : s.water < 10_000
-      ? `Hydration — aim for ${imperial ? "about 68 fl oz" : "2 L"} a day.` : "Sleep — it is where training turns into progress.",
-    nextStep: s.workouts < 2 ? "Put a 30-minute session in your calendar for Monday." : "Log breakfast before 10am on Monday.",
+    headline: pushText(L, s.workouts >= 3 ? "recap.headline.strong" : s.workouts > 0 ? "recap.headline.moving" : "recap.headline.logging"),
+    highlight: parts.join(", ") + ".",
+    win: streak >= 3 ? pushText(L, "recap.win.streak", { n: streak }) : pushText(L, "recap.win.logs"),
+    focus: s.workouts < 2 ? pushText(L, "recap.focus.session") : s.water < 10_000
+      ? pushText(L, imperial ? "recap.focus.waterImperial" : "recap.focus.waterMetric") : pushText(L, "recap.focus.sleep"),
+    nextStep: pushText(L, s.workouts < 2 ? "recap.next.session" : "recap.next.breakfast"),
   };
 };
 
-/** `units` is the user doc's display-units map; the numbers stay metric, only the wording follows it. */
-const promptFor = (goal: string, s: WeekStats, streak: number, units?: unknown) => `You are an elite performance coach writing a friendly weekly recap.
+/** `units` and `language` come from the user doc; the numbers stay metric, only the wording follows them. */
+export const promptFor = (goal: string, s: WeekStats, streak: number, units?: unknown, language?: unknown) => `You are an elite performance coach writing a friendly weekly recap.
 Goal: ${goal || "general fitness"}. This week:
 - ${s.workouts} workouts, ${s.minutes} active minutes
 - ${s.calories} kcal burned, ${s.consumed} consumed
 - ${s.water}ml water, ${s.sleepHours} hours sleep
 - ${streak}-day streak
-${unitsPromptLine(units)}
+${unitsPromptLine(units)}${languageLineAfter(language)}
 
 Return ONLY valid JSON:
 {"headline":"<≤8 word title>","highlight":"<1-2 sentence summary>","win":"<1 short positive observation>","focus":"<one thing to focus on next week>","nextStep":"<one specific action they can take Monday>"}
@@ -198,18 +208,18 @@ export const runWeeklyRecaps = async (opts: RecapRunOptions): Promise<RecapRunRe
             report.maxConcurrent = Math.max(report.maxConcurrent, inFlight);
             calledAi = true;
             try {
-              recap = parseRecap(await opts.writeRecap(promptFor(String(u.goal || ""), stats, streak, u.units)));
+              recap = parseRecap(await opts.writeRecap(promptFor(String(u.goal || ""), stats, streak, u.units, u.language)));
             } finally {
               inFlight--;
             }
           }
           const source = recap ? "ai" : "fallback";
-          recap ||= fallbackRecap(stats, streak, u.units);
+          recap ||= fallbackRecap(stats, streak, u.units, u.language);
 
           await ref.set({ recap, stats, source, generatedAt: FieldValue.serverTimestamp() });
           report.written++;
           if (source === "ai") report.aiWritten++; else report.fallbackWritten++;
-          await opts.sendPush(u.fcmToken, "Your weekly recap is ready", recap.headline).catch((err) => {
+          await opts.sendPush(u.fcmToken, pushText(u.language, "recap.pushTitle"), recap.headline).catch((err) => {
             console.warn("recap push failed for", uid, err?.code || err);
           });
         } catch (err) {
