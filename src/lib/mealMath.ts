@@ -251,7 +251,28 @@ const fromBundled = (index: FoodIndex | null, q: string, exact: boolean): Found 
  * or alias exactly. USDA and the model's own density are the caller's later
  * steps (network / last resort).
  */
+/**
+ * Plated dishes that are really "rice + a protein", where the nearest table row
+ * is a different cuisine's dish: "chicken rice" fuzzy-matched Latin "Arroz con
+ * pollo" (and without that row, "Chicken curry with rice"). A Malaysian user
+ * typing it must never see either. These names never match a table row; the
+ * local split turns them into their parts from verified table rows instead,
+ * each one a row the user sees and can edit.
+ */
+const LOCAL_DISHES: { re: RegExp; parts: [string, number][] }[] = [
+  {
+    re: /^(?:(?:hainanese|hainan|roast(?:ed)?|steamed|white|poached)\s+)*chicken\s+rice$|^nasi\s+ayam(?:\s+(?:hainan|panggang|rebus|kukus|stim))?$/,
+    // Skin-on thigh: chicken rice is served with skin, so the fat is in the row.
+    parts: [['white rice', 200], ['chicken thigh', 100]],
+  },
+];
+const localDish = (name: string) => {
+  const n = String(name || '').toLowerCase().replace(/[^\p{L}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  return LOCAL_DISHES.find((d) => d.re.test(n)) ?? null;
+};
+
 export const lookupOffline = (name: string, bundled: FoodIndex | null = null): Found | null => {
+  if (localDish(name)) return null;
   for (const { q, exact } of nameVariants(name)) {
     const hit = fromTable(q, exact) || fromBundled(bundled, q, exact);
     if (hit) return hit;
@@ -489,6 +510,16 @@ export const localDecompose = (text: string): DecomposedItem[] => {
     if (num && grams == null) { count = Number(num[1]) || NUMBER_WORDS[num[1]] || 1; rest = rest.trim().slice(num[0].length); }
     const name = rest.replace(FILLER, ' ').replace(/[^\p{L}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim();
     if (name.length < 2) continue;
+    const dish = localDish(name);
+    if (dish) {
+      // "2 plates chicken rice" doubles every part; "400g chicken rice" scales them to 400 g.
+      const total = dish.parts.reduce((t, [, g]) => t + g, 0);
+      const scale = grams != null ? grams / total : count;
+      for (const [part, g] of dish.parts) {
+        out.push({ name: part, grams: clampGrams(g * scale), confidence: grams != null ? 0.7 : 0.55, method: 'boiled', per100Hint: null });
+      }
+      continue;
+    }
     // "2 big macs": a chain item has a real weight per item; anything else a typical portion.
     const g = grams ?? (chainServingGrams(name) ?? typicalPortionG(name)) * count;
     const method: CookMethod = /\bfried\b|\bgoreng\b/.test(name) ? (/\bstir\b/.test(name) ? 'stir_fried' : 'fried')

@@ -152,6 +152,23 @@ ok('local split: every part found in the table', ld2.every((i) => lookupOffline(
 const ld3 = localDecompose('zorblax pie and rice');
 ok('local split: an unknown food still gets a row', ld3.length === 2 && ld3[0].name === 'zorblax pie' && !lookupOffline('zorblax pie'));
 ok('local split: fried / curry methods read', localDecompose('fried chicken')[0].method === 'fried' && localDecompose('chicken curry')[0].method === 'saucy');
+// "chicken rice" fuzzy-matched Latin "Arroz con pollo" after the +310 USDA foods.
+for (const q of ['chicken rice', 'Hainanese chicken rice', 'roast chicken rice', 'nasi ayam', 'nasi ayam hainan']) {
+  const hit = lookupOffline(q);
+  ok(`"${q}" never lands on another cuisine's dish`, !hit || !/arroz|curry/i.test(hit.matched));
+  const parts = localDecompose(q);
+  ok(`"${q}" splits into white rice 200 g + chicken thigh 100 g from the table`,
+    parts.length === 2 && parts[0].grams === 200 && parts[1].grams === 100
+    && lookupOffline(parts[0].name)?.matched === 'White rice' && lookupOffline(parts[1].name)?.matched === 'Chicken thigh');
+}
+const cr2 = localDecompose('2 plates of chicken rice and teh tarik');
+ok('"2 plates of chicken rice and teh tarik": parts doubled, drink kept', cr2.length === 3 && cr2[0].grams === 400 && cr2[1].grams === 200 && cr2[2].name === 'teh tarik');
+const cr3 = localDecompose('450g chicken rice');
+ok('"450g chicken rice": parts scaled to 450 g total', cr3.length === 2 && cr3[0].grams + cr3[1].grams === 450);
+ok('control: arroz con pollo, chicken fried rice and chicken curry with rice still match themselves',
+  lookupOffline('arroz con pollo')?.matched === 'Arroz con pollo' && lookupOffline('chicken fried rice')?.matched === 'Chicken fried rice'
+  && lookupOffline('chicken curry with rice')?.matched === 'Chicken curry with rice');
+ok('control: chicken + rice typed apart still split normally', localDecompose('chicken and rice').length === 2);
 ok('local split: empty and junk -> nothing', localDecompose('').length === 0 && localDecompose(', , and').length === 0);
 ok('local split: at most 12 parts', localDecompose(Array(30).fill('rice').join(', ')).length === 12);
 // Restaurant-chain items carry the USDA weight of one item: "2 big macs" is 2 x 219 g, not 2 x a guess.
