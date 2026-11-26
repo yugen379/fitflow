@@ -194,7 +194,7 @@ export const Pro: React.FC = () => {
         : ent.status === 'expired'
           ? t('Your free trial has ended.')
             + (showPurchaseUi ? ` ${t('Subscribe to bring back the full AI coach, Meal Scan, and advanced analytics.')}` : '')
-          : t('The full AI coach. Native wearable sync. Unlimited everything. Built to make every other fitness app obsolete.');
+          : t('The full AI coach, your whole history and the 3D form lab. Cancel anytime.');
 
   return (
     <div className="pb-28 pt-4 px-5 min-h-screen relative overflow-hidden">

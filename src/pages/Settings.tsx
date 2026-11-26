@@ -49,7 +49,9 @@ export const Settings: React.FC = () => {
   const [managingBilling, setManagingBilling] = useState(false);
 
   const ent = getEntitlement(profile);
-  const billingLabel = allFeaturesFree()
+  // source 'launch' = every feature free: launch mode OR the creator account.
+  // It used to fall through to "Free plan" + "Upgrade to Pro" for the creator.
+  const billingLabel = allFeaturesFree() || ent.source === 'launch'
     ? t('FitFlow Pro · free during launch')
     : ent.source === 'paid'
       ? (ent.plan === 'yearly' ? t('Subscribed · Yearly plan') : t('Subscribed · Monthly plan'))
@@ -362,7 +364,7 @@ export const Settings: React.FC = () => {
                 <><Loader2 size={16} className="animate-spin" /> {t('Opening…')}</>
               ) : ent.source === 'paid' ? (
                 <><Crown size={16} /> {t('Manage subscription')}</>
-              ) : purchaseUiAllowed() ? (
+              ) : purchaseUiAllowed() && ent.source !== 'launch' ? (
                 <><Sparkles size={16} /> {t('Upgrade to Pro')}</>
               ) : (
                 <><Sparkles size={16} /> {t('About FitFlow Pro')}</>
