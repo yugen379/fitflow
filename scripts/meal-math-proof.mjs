@@ -5,6 +5,7 @@ import {
   lookupOffline, nameVariants, per100FromServingFood, servingGrams, makeLine, servingLine,
   oilGrams, oilMacros, oilBaseGrams, needsOilChoice, suggestedOil, mealTotals, OIL_MAX_G,
   needsHint, mealConfidence, cleanHint, diaryName, clampGrams, isVagueMeal, pickUsdaHit, mealCacheKey, localDecompose,
+  chainServingGrams, typicalPortionG,
 } from '../src/lib/mealMath.ts';
 import { buildFoodIndex, searchFoodIndex } from '../src/services/foodSearchIndex.ts';
 import { INGREDIENTS_100G } from '../src/data/ingredients100g.ts';
@@ -153,6 +154,15 @@ ok('local split: an unknown food still gets a row', ld3.length === 2 && ld3[0].n
 ok('local split: fried / curry methods read', localDecompose('fried chicken')[0].method === 'fried' && localDecompose('chicken curry')[0].method === 'saucy');
 ok('local split: empty and junk -> nothing', localDecompose('').length === 0 && localDecompose(', , and').length === 0);
 ok('local split: at most 12 parts', localDecompose(Array(30).fill('rice').join(', ')).length === 12);
+// Restaurant-chain items carry the USDA weight of one item: "2 big macs" is 2 x 219 g, not 2 x a guess.
+ok('chain serving: "big mac" -> 219 g (USDA portion)', chainServingGrams('big mac') === 219);
+ok('chain serving: a generic "burger" has no fixed size -> null', chainServingGrams('burger') === null && chainServingGrams('white rice') === null);
+ok('chain serving: unknown food -> null', chainServingGrams('zorblax pie') === null);
+const ldc = localDecompose('2 big macs and a medium coke');
+ok('local split: "2 big macs" = 438 g from the chain serving', ldc[0].grams === 438);
+// CONTROL: without the chain serving the same line would have been a 2 x 100 g guess.
+ok('CONTROL: the typical-portion guess for "big macs" differs', typicalPortionG('big macs') * 2 !== ldc[0].grams);
+ok('local split: non-chain foods keep the typical portion', localDecompose('2 eggs')[0].grams === 100);
 ok('cleanHint trims and caps', cleanHint('  chicken   curry!! with rice ') === 'chicken curry with rice' && cleanHint('a b c d e f g h') === 'a b c d e f');
 ok('empty hint -> null', cleanHint('   ') === null && cleanHint(5) === null);
 

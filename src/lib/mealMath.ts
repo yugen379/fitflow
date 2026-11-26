@@ -259,6 +259,19 @@ export const lookupOffline = (name: string, bundled: FoodIndex | null = null): F
   return null;
 };
 
+/**
+ * Grams in ONE item of a named restaurant-chain food ("big mac" -> 219), from
+ * the USDA portion stored on the table row, or null when the name is not a
+ * chain item (a generic "burger" has no fixed size, so it gets no number).
+ */
+export const chainServingGrams = (name: string): number | null => {
+  const hit = lookupOffline(name);
+  if (!hit) return null;
+  const row = INGREDIENTS_100G.find((r) => r.name === hit.matched);
+  const g = row?.servingG;
+  return typeof g === 'number' && g > 0 && g <= MAX_ITEM_GRAMS ? g : null;
+};
+
 // References that already contain their frying or cooking fat; adding the
 // oil selector's grams on top would count the fat twice.
 const OIL_INCLUDED = /fried|goreng|fries|roti canai|prata|paratha|chapati|naan|rendang|sambal|curry|laksa|omelette|scrambled|instant|peanut sauce|coconut rice|nasi lemak|mayonnaise|oil|butter|ghee|margarine|cookies|chocolate|crackers/i;
@@ -476,7 +489,8 @@ export const localDecompose = (text: string): DecomposedItem[] => {
     if (num && grams == null) { count = Number(num[1]) || NUMBER_WORDS[num[1]] || 1; rest = rest.trim().slice(num[0].length); }
     const name = rest.replace(FILLER, ' ').replace(/[^\p{L}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim();
     if (name.length < 2) continue;
-    const g = grams ?? typicalPortionG(name) * count;
+    // "2 big macs": a chain item has a real weight per item; anything else a typical portion.
+    const g = grams ?? (chainServingGrams(name) ?? typicalPortionG(name)) * count;
     const method: CookMethod = /\bfried\b|\bgoreng\b/.test(name) ? (/\bstir\b/.test(name) ? 'stir_fried' : 'fried')
       : /\bgrilled|bakar|roast/.test(name) ? 'grilled' : /\bboiled|steamed|rebus/.test(name) ? 'boiled'
         : /\bcurry|kari|gulai|sauce|masak/.test(name) ? 'saucy' : 'raw';
