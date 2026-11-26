@@ -40,6 +40,7 @@ import { useUnits } from '../hooks/useUnits';
 import { spawnRipple } from './ui/WaterRipple';
 import { prefetchRoute } from '../lib/prefetch';
 import { SPRING, prefersReducedMotion } from '../lib/motion';
+import { t } from '../i18n/i18n';
 
 /**
  * Clean SVG ring. Lives in its own slot in the header, so the progress bar
@@ -187,7 +188,7 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
       transition={SPRING.weighty}
       role="button"
       tabIndex={0}
-      aria-label={`Steps today: ${Math.round(steps)} of ${goal}. Open step analytics.`}
+      aria-label={t('Steps today: {steps} of {goal}. Open step analytics.', { steps: Math.round(steps), goal })}
       onPointerDown={(event) => open(event.clientX, event.clientY, event.currentTarget)}
       // ALSO on click, not only pointerdown. Screen readers activate a
       // role="button" by dispatching a synthetic click — no pointer events at
@@ -226,7 +227,7 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
           <div className="min-w-0">
             <p className="text-eyebrow text-accent inline-flex items-center gap-1.5">
               <Footprints size={12} aria-hidden="true" />
-              Steps today
+              {t('Steps today')}
             </p>
             <p className="num text-4xl font-bold text-white tabular-nums leading-none mt-1.5">
               <AnimatedNumber value={Math.round(steps)} />
@@ -263,14 +264,14 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
 
       <p className="text-[11px] text-text-dim mt-2 relative" style={layer(16)}>
         {remaining > 0
-          ? `${remaining.toLocaleString()} steps to your goal`
-          : 'Daily goal complete — nice work.'}
+          ? t('{n} steps to your goal', { n: remaining.toLocaleString() })
+          : t('Daily goal complete — nice work.')}
       </p>
 
       <div className="grid grid-cols-3 gap-3 mt-4 relative" style={layer(10)}>
-        <Metric icon={<MapPin size={14} />} value={units.formatDistance(distanceKm)} label="Distance" />
-        <Metric icon={<Flame size={14} />} value={units.formatEnergy(Math.round(calories))} label="Burned" />
-        <Metric icon={<Timer size={14} />} value={formatActiveTime(activeMs)} label="Active" />
+        <Metric icon={<MapPin size={14} />} value={units.formatDistance(distanceKm)} label={t('Distance')} />
+        <Metric icon={<Flame size={14} />} value={units.formatEnergy(Math.round(calories))} label={t('Burned')} />
+        <Metric icon={<Timer size={14} />} value={formatActiveTime(activeMs)} label={t('Active')} />
       </div>
 
       {permissionDenied ? (
@@ -281,8 +282,7 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
           style={layer(10)}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          Motion access is off, so steps are not being counted. Turn on Physical activity for FitFlow in your
-          device settings, or connect Health Connect.
+          {t('Motion access is off, so steps are not being counted. Turn on Physical activity for FitFlow in your device settings, or connect Health Connect.')}
         </p>
       ) : needsPermission && onEnable ? (
         <button
@@ -296,7 +296,7 @@ export const StepHubWidget: React.FC<StepHubWidgetProps> = ({
           }}
           className="mt-4 w-full h-11 rounded-2xl bg-accent/12 border border-accent/30 text-accent text-xs font-semibold active:scale-[0.98] transition-transform relative"
         >
-          Enable motion access to count steps
+          {t('Enable motion access to count steps')}
         </button>
       ) : null}
     </motion.div>

@@ -19,6 +19,7 @@
 // contradict what the proactive coach is nudging about.
 
 import { computeTargets } from './coachBriefing';
+import { t } from '../i18n/i18n'; // pure, import-free
 
 // ─── XP awards ────────────────────────────────────────────────────────────────
 // Centralised award sizes for the two core actions (wired in dataService).
@@ -157,14 +158,14 @@ export const buildMission = (snapIn: MissionSnapshot): Mission => {
   const workout: MissionTask = {
     id: 'workout',
     icon: '💪',
-    label: 'Workout',
+    label: t('Workout'),
     current: Math.min(workouts, 1),
     target: 1,
     unit: 'session',
     pct: workoutDone ? 100 : 0,
     state: workoutDone ? 'done' : 'pending',
     action: {
-      label: workoutDone ? 'View session' : hour >= 17 ? 'Quick 15-min' : 'Start workout',
+      label: workoutDone ? t('View session') : hour >= 17 ? t('Quick 15-min') : t('Start workout'),
       route: '/workout',
     },
   };
@@ -176,14 +177,14 @@ export const buildMission = (snapIn: MissionSnapshot): Mission => {
   const calories: MissionTask = {
     id: 'calories',
     icon: '🥗',
-    label: 'Calories',
+    label: t('Calories'),
     current: Math.round(cal),
     target: targets.calories,
     unit: 'kcal',
     pct: pctOf(cal, targets.calories),
     state: calOver ? 'over' : calDone ? 'done' : 'pending',
     action: {
-      label: calOver ? 'Review meals' : meals === 0 ? 'Log first meal' : 'Log meal',
+      label: calOver ? t('Review meals') : meals === 0 ? t('Log first meal') : t('Log meal'),
       route: '/track',
     },
   };
@@ -194,15 +195,15 @@ export const buildMission = (snapIn: MissionSnapshot): Mission => {
   const stepsTask: MissionTask = {
     id: 'steps',
     icon: '👟',
-    label: 'Steps',
+    label: t('Steps'),
     current: steps,
     target: STEPS_GOAL,
     unit: 'steps',
     pct: stepsConnected ? pctOf(steps, STEPS_GOAL) : 0,
     state: stepsDone ? 'done' : 'pending',
     action: stepsConnected
-      ? { label: 'Take a walk', route: '/steps' }
-      : { label: 'Set up', route: '/steps', kind: 'steps-connect' },
+      ? { label: t('Take a walk'), route: '/steps' }
+      : { label: t('Set up'), route: '/steps', kind: 'steps-connect' },
   };
 
   const tasks: MissionTask[] = [workout, calories, stepsTask];
@@ -233,18 +234,19 @@ export const buildMission = (snapIn: MissionSnapshot): Mission => {
   const urgency: Mission['urgency'] =
     streak >= 3 && hour >= 19 && workouts === 0 && meals === 0 ? 'streak-risk' : 'normal';
 
-  const nextLabel = next ? tasks.find((t) => t.id === next)!.label.toLowerCase() : '';
+  // Lower-case task names for the mid-sentence slot ("calories first").
+  const nextLabel = next === 'workout' ? t('workout') : next === 'calories' ? t('calories') : next === 'steps' ? t('steps') : '';
   const headline = complete
-    ? 'Mission complete — recover well.'
+    ? t('Mission complete — recover well.')
     : urgency === 'streak-risk'
-      ? `Protect your ${streak}-day streak.`
+      ? t('Protect your {n}-day streak.', { n: streak })
       : next === null
         // Only reachable when every unfinished row is 'over' (calories blew the
         // band): nothing left to *start*, so steer correction instead.
-        ? `${done} of ${tasks.length} done — rein the calories back in.`
+        ? t('{done} of {total} done — rein the calories back in.', { done, total: tasks.length })
         : done === 0
-          ? `Today's mission — ${nextLabel} first.`
-          : `${done} of ${tasks.length} done — ${nextLabel} next.`;
+          ? t("Today's mission — {task} first.", { task: nextLabel })
+          : t('{done} of {total} done — {task} next.', { done, total: tasks.length, task: nextLabel });
 
   return { tasks, next, done, total: tasks.length, complete, urgency, headline };
 };

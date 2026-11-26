@@ -3,13 +3,22 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { dayKey } from '../services/retentionUtils';
+import { t, getLanguage } from '../i18n/i18n';
 
 const WEEKS = 13; // ~3 months
 const DAYS = 7;
 
 // One formatter for all 91 cells. Calling toLocaleDateString per cell built a
 // fresh Intl formatter 91 times on EVERY render of the Profile tab.
-const CELL_DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+// Built on first use, in the app's language (the module loads before it does).
+let cellDate: Intl.DateTimeFormat | null = null;
+const cellDateFormat = (): Intl.DateTimeFormat => {
+  if (!cellDate) {
+    try { cellDate = new Intl.DateTimeFormat(getLanguage(), { month: 'short', day: 'numeric' }); }
+    catch { cellDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }); }
+  }
+  return cellDate;
+};
 
 const startOfDay = (d: Date) => {
   const c = new Date(d);
@@ -63,6 +72,7 @@ export const StreakHeatmap: React.FC<Props> = ({ className }) => {
   const todayKey = dayKey(new Date());
   const cells = useMemo(() => {
     const today = startOfDay(new Date());
+    const fmt = cellDateFormat();
     const out: { key: string; col: number; row: number; count: number; label: string }[] = [];
     // Align rightmost column to today's weekday position
     for (let col = WEEKS - 1; col >= 0; col--) {
@@ -72,7 +82,12 @@ export const StreakHeatmap: React.FC<Props> = ({ className }) => {
         date.setDate(today.getDate() - offsetFromToday);
         const key = dayKey(date);
         const count = counts[key] || 0;
-        out.push({ key, col, row, count, label: `${CELL_DATE.format(date)} — ${count} session${count === 1 ? '' : 's'}` });
+        out.push({
+          key, col, row, count,
+          label: count === 1
+            ? t('{date} — 1 session', { date: fmt.format(date) })
+            : t('{date} — {n} sessions', { date: fmt.format(date), n: count }),
+        });
       }
     }
     return out;
@@ -106,12 +121,12 @@ export const StreakHeatmap: React.FC<Props> = ({ className }) => {
         <div>
           {/* "Activity", not "Consistency": the RetentionCard right above it on
               Analytics already owns that heading, so the page showed it twice. */}
-          <p className="text-eyebrow text-accent">Activity</p>
-          <p className="font-display text-lg font-bold text-white tracking-tight">Last {WEEKS} weeks</p>
+          <p className="text-eyebrow text-accent">{t('Activity')}</p>
+          <p className="font-display text-lg font-bold text-white tracking-tight">{t('Last {n} weeks', { n: WEEKS })}</p>
         </div>
         <div className="text-right">
-          <p className="num text-sm font-semibold text-white">{totalDaysActive} <span className="text-text-dim text-xs">days</span></p>
-          <p className="num text-xs text-text-dim">{totalSessions} sessions</p>
+          <p className="num text-sm font-semibold text-white">{totalDaysActive} <span className="text-text-dim text-xs">{t('days')}</span></p>
+          <p className="num text-xs text-text-dim">{t('{n} sessions', { n: totalSessions })}</p>
         </div>
       </div>
 
@@ -145,15 +160,15 @@ export const StreakHeatmap: React.FC<Props> = ({ className }) => {
             ))}
           </div>
           <div className="flex justify-between items-center mt-3">
-            <span className="text-xs text-text-mute">{WEEKS * 7} days ago</span>
+            <span className="text-xs text-text-mute">{t('{n} days ago', { n: WEEKS * 7 })}</span>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-text-mute">Less</span>
+              <span className="text-xs text-text-mute">{t('Less')}</span>
               {[0, 1, 2, 3, 4].map(i => (
                 <div key={i} className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorFor(i === 0 ? 0 : (i / 4) * maxCount) }} />
               ))}
-              <span className="text-xs text-text-mute">More</span>
+              <span className="text-xs text-text-mute">{t('More')}</span>
             </div>
-            <span className="text-xs text-text-mute">Today</span>
+            <span className="text-xs text-text-mute">{t('Today')}</span>
           </div>
         </>
       )}

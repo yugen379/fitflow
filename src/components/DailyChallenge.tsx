@@ -7,6 +7,7 @@ import { useUnits } from '../hooks/useUnits';
 import { haptic } from '../lib/haptics';
 import { celebrateSession } from '../lib/celebrate';
 import { dayKey } from '../services/retentionUtils';
+import { t } from '../i18n/i18n';
 
 const STORAGE_KEY = (uid: string, date: string) => `ff_challenge_${uid}_${date}`;
 // LOCAL day, not UTC. With toISOString() the challenge rolled over at UTC
@@ -99,9 +100,13 @@ export const DailyChallenge: React.FC = () => {
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${CATEGORY_TONE[data.category]}`}>
               <Target size={10} className="inline mr-1 -mt-0.5" />
-              {data.category}
+              {data.category === 'movement' ? t('movement')
+                : data.category === 'nutrition' ? t('nutrition')
+                : data.category === 'recovery' ? t('recovery')
+                : data.category === 'mindfulness' ? t('mindfulness')
+                : data.category}
             </span>
-            <span className="text-eyebrow text-text-dim">Daily challenge</span>
+            <span className="text-eyebrow text-text-dim">{t('Daily challenge')}</span>
           </div>
           <h3 className={`font-display text-lg font-bold tracking-tight leading-tight transition-colors ${completed ? 'text-text-dim line-through' : 'text-white'}`}>
             {data.title}
@@ -114,7 +119,7 @@ export const DailyChallenge: React.FC = () => {
 
         <button
           onClick={toggleComplete}
-          aria-label={completed ? 'Mark incomplete' : 'Mark complete'}
+          aria-label={completed ? t('Mark incomplete') : t('Mark complete')}
           className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
             completed
               ? 'bg-accent text-bg shadow-[0_8px_24px_-4px_rgba(198,255,61,0.5)]'
@@ -129,7 +134,7 @@ export const DailyChallenge: React.FC = () => {
         onClick={() => load(true)}
         disabled={refreshing}
         className="absolute top-3 right-3 w-7 h-7 rounded-lg text-text-mute hover:text-white transition-colors flex items-center justify-center disabled:opacity-50"
-        aria-label="New challenge"
+        aria-label={t('New challenge')}
       >
         <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
       </button>

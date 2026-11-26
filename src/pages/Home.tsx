@@ -36,6 +36,8 @@ import { useSteps } from '../hooks/useSteps';
 import { computeDailyTargets } from '../lib/nutritionTargets';
 import { buildMission, MissionTask, STEPS_GOAL } from '../services/missionUtils';
 import { Sparkles as SparklesIcon } from 'lucide-react';
+import { goalWords } from '../services/coachBriefing';
+import { t } from '../i18n/i18n';
 
 /** Daily step goal. Matches the target the /steps page and the nudge engine use. */
 const STEP_GOAL = STEPS_GOAL;
@@ -94,8 +96,8 @@ export const Home: React.FC = () => {
         return;
       }
       // Slight delay so the prompt doesn't slam onto an unmounted-feeling home screen.
-      const t = setTimeout(() => setPermsOpen(true), 800);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setPermsOpen(true), 800);
+      return () => clearTimeout(timer);
     });
   }, [profile?.uid]);
 
@@ -353,7 +355,7 @@ export const Home: React.FC = () => {
             className="flex items-center justify-center gap-2 bg-accent-2/12 border border-accent-2/25 text-accent-2 py-2 px-3 rounded-xl text-xs font-medium mb-2"
           >
             <WifiOff size={12} />
-            <span>You're offline. AI features paused.</span>
+            <span>{t("You're offline. AI features paused.")}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -370,11 +372,11 @@ export const Home: React.FC = () => {
             <p className="text-xs text-text-dim font-medium">
               {(() => {
                 const h = new Date().getHours();
-                return h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+                return h < 5 ? t('Late night') : h < 12 ? t('Good morning') : h < 17 ? t('Good afternoon') : t('Good evening');
               })()}
             </p>
             <h1 className="font-display text-xl font-bold text-white leading-tight tracking-tight">
-              {profile?.displayName?.split(' ')[0] || 'Athlete'}
+              {profile?.displayName?.split(' ')[0] || t('Athlete')}
             </h1>
           </div>
         </motion.div>
@@ -444,10 +446,10 @@ export const Home: React.FC = () => {
       />
 
       <div className="grid grid-cols-2 gap-3 perspective-1000">
-        <ActionCard3D icon="🥗" label="Log meal" onClick={() => { haptic('light'); navigate('/track'); }} />
-        <ActionCard3D icon="💪" label="Workout" onClick={() => { haptic('light'); navigate('/workout'); }} />
-        <ActionCard3D icon="🧘" label="Recovery" onClick={() => { haptic('light'); navigate('/wellness'); }} />
-        <ActionCard3D icon="🎯" label="Discover" onClick={() => { haptic('light'); navigate('/explore'); }} />
+        <ActionCard3D icon="🥗" label={t('Log meal')} onClick={() => { haptic('light'); navigate('/track'); }} />
+        <ActionCard3D icon="💪" label={t('Workout')} onClick={() => { haptic('light'); navigate('/workout'); }} />
+        <ActionCard3D icon="🧘" label={t('Recovery')} onClick={() => { haptic('light'); navigate('/wellness'); }} />
+        <ActionCard3D icon="🎯" label={t('Discover')} onClick={() => { haptic('light'); navigate('/explore'); }} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -479,12 +481,12 @@ export const Home: React.FC = () => {
               <Zap size={16} />
             </div>
             <div className="flex-1">
-              <p className="text-white text-sm font-medium">Count steps even when FitFlow is closed</p>
+              <p className="text-white text-sm font-medium">{t('Count steps even when FitFlow is closed')}</p>
               <p className="text-xs text-text-dim mt-0.5">
-                Uses your phone&rsquo;s own step sensor. No wearable, no Google account, no Health Connect.
+                {t('Uses your phone’s own step sensor. No wearable, no Google account, no Health Connect.')}
               </p>
             </div>
-            <span className="text-eyebrow text-accent shrink-0">Turn on →</span>
+            <span className="text-eyebrow text-accent shrink-0">{t('Turn on')} →</span>
           </button>
         ) : null}
 
@@ -499,10 +501,10 @@ export const Home: React.FC = () => {
               <HeartPulse size={16} />
             </div>
             <div className="flex-1">
-              <p className="text-white text-sm font-medium">Also pull in Health Connect</p>
-              <p className="text-xs text-text-dim mt-0.5">Optional — folds in steps your watch or other apps recorded.</p>
+              <p className="text-white text-sm font-medium">{t('Also pull in Health Connect')}</p>
+              <p className="text-xs text-text-dim mt-0.5">{t('Optional — folds in steps your watch or other apps recorded.')}</p>
             </div>
-            <span className="text-eyebrow text-accent-3 shrink-0">Connect →</span>
+            <span className="text-eyebrow text-accent-3 shrink-0">{t('Connect')} →</span>
           </button>
         ) : null}
         <motion.button
@@ -512,7 +514,7 @@ export const Home: React.FC = () => {
         >
           <div className="flex justify-between items-start z-10">
             <div className="w-9 h-9 rounded-xl bg-accent-3/12 border border-accent-3/25 flex items-center justify-center text-base">💧</div>
-            <span className="text-eyebrow text-text-dim">Tap to add</span>
+            <span className="text-eyebrow text-text-dim">{t('Tap to add')}</span>
           </div>
           <div className="z-10">
             <h3 className="num font-display text-2xl font-bold text-white leading-none">
@@ -520,7 +522,7 @@ export const Home: React.FC = () => {
               <AnimatedNumber value={Math.round(units.volumeValue(water))} />
               <span className="text-sm text-text-dim font-medium ml-0.5">{units.volumeUnit}</span>
             </h3>
-            <p className="text-xs text-text-dim mt-1">Hydration · <AnimatedNumber value={Math.min(Math.round((water / 3000) * 100), 100)} />%</p>
+            <p className="text-xs text-text-dim mt-1">{t('Hydration')} · <AnimatedNumber value={Math.min(Math.round((water / 3000) * 100), 100)} />%</p>
           </div>
           {/* Animated liquid fill with wave */}
           <motion.div
@@ -574,7 +576,7 @@ export const Home: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent-3/12 border border-accent-3/25 flex items-center justify-center text-lg">💧</div>
                   <div>
-                    <p className="text-eyebrow text-accent-3">Hydration</p>
+                    <p className="text-eyebrow text-accent-3">{t('Hydration')}</p>
                     <p className="num text-white font-display text-xl font-bold tracking-tight">
                       {units.volumeValue(water).toLocaleString()}
                       <span className="text-base text-text-dim font-medium ml-1">
@@ -607,7 +609,7 @@ export const Home: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                <button onClick={() => setWaterPicker(false)} className="btn-ghost h-11 w-full">Cancel</button>
+                <button onClick={() => setWaterPicker(false)} className="btn-ghost h-11 w-full">{t('Cancel')}</button>
               </motion.div>
             </div>
           )}
@@ -620,11 +622,11 @@ export const Home: React.FC = () => {
         >
           <div className="flex justify-between items-start">
             <div className="w-9 h-9 rounded-xl bg-accent-2/12 border border-accent-2/25 flex items-center justify-center text-base">😴</div>
-            <span className="text-eyebrow text-text-dim">Log</span>
+            <span className="text-eyebrow text-text-dim">{t('Log')}</span>
           </div>
           <div>
             <h3 className="num font-display text-2xl font-bold text-white leading-none">{sleep}<span className="text-sm text-text-dim font-medium ml-0.5">h</span></h3>
-            <p className="text-xs text-text-dim mt-1">Sleep last night</p>
+            <p className="text-xs text-text-dim mt-1">{t('Sleep last night')}</p>
           </div>
         </motion.button>
       </div>
@@ -649,8 +651,8 @@ export const Home: React.FC = () => {
           <SparklesIcon size={18} className="text-accent" />
         </div>
         <div className="flex-1 relative">
-          <p className="text-eyebrow text-accent">AI Coach Chat</p>
-          <p className="text-white font-medium text-sm mt-0.5">Ask anything — training, nutrition, recovery</p>
+          <p className="text-eyebrow text-accent">{t('AI Coach Chat')}</p>
+          <p className="text-white font-medium text-sm mt-0.5">{t('Ask anything — training, nutrition, recovery')}</p>
         </div>
         <span className="text-accent text-xl relative">›</span>
       </motion.button>
@@ -667,10 +669,10 @@ export const Home: React.FC = () => {
           <ChefHat size={18} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-eyebrow text-accent-4">Meal plan</p>
-          <p className="text-white text-sm font-medium mt-0.5">Your AI week of meals</p>
+          <p className="text-eyebrow text-accent-4">{t('Meal plan')}</p>
+          <p className="text-white text-sm font-medium mt-0.5">{t('Your AI week of meals')}</p>
           <p className="text-xs text-text-dim mt-0.5">
-            Seven days, every meal listed, with ingredients and a shopping list.
+            {t('Seven days, every meal listed, with ingredients and a shopping list.')}
           </p>
         </div>
         <ChevronRight size={18} className="text-text-mute shrink-0" aria-hidden="true" />
@@ -678,19 +680,19 @@ export const Home: React.FC = () => {
 
       <section className="space-y-3">
         <div className="flex justify-between items-end">
-          <h3 className="font-display text-lg font-bold text-white tracking-tight">Featured workouts</h3>
-          <button onClick={() => navigate('/library')} className="text-xs font-semibold text-accent">View all</button>
+          <h3 className="font-display text-lg font-bold text-white tracking-tight">{t('Featured workouts')}</h3>
+          <button onClick={() => navigate('/library')} className="text-xs font-semibold text-accent">{t('View all')}</button>
         </div>
         <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
           <HighlightCard 
-            title="HIIT Explosions" 
-            type="Cardio" 
+            title={t('HIIT Explosions')} 
+            type={t('Cardio')} 
             img="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&q=80" 
             onClick={() => navigate('/library')}
           />
           <HighlightCard 
-            title="Iron Strength" 
-            type="Weightlifting" 
+            title={t('Iron Strength')} 
+            type={t('Weightlifting')} 
             img="https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&q=80" 
             onClick={() => navigate('/library')}
           />
@@ -699,28 +701,28 @@ export const Home: React.FC = () => {
 
       <section className="space-y-3">
         <div className="flex justify-between items-end">
-          <h3 className="font-display text-lg font-bold text-white tracking-tight">Community</h3>
-          <button onClick={() => navigate('/community')} className="text-xs font-semibold text-accent">Open feed</button>
+          <h3 className="font-display text-lg font-bold text-white tracking-tight">{t('Community')}</h3>
+          <button onClick={() => navigate('/community')} className="text-xs font-semibold text-accent">{t('Open feed')}</button>
         </div>
         <div className="glass p-4 flex items-center gap-3">
           <div className="flex -space-x-2">
             {[1,2,3].map(i => (
-              <img key={i} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`} className="w-8 h-8 rounded-full border-2 border-bg" alt="user" />
+              <img key={i} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`} className="w-8 h-8 rounded-full border-2 border-bg" alt={t('user')} />
             ))}
           </div>
           {communityCount === null ? (
-            <p className="text-sm text-white/80 leading-snug">Train alongside the FitFlow community.</p>
+            <p className="text-sm text-white/80 leading-snug">{t('Train alongside the FitFlow community.')}</p>
           ) : communityCount === 0 ? (
             <p className="text-sm text-white/80 leading-snug">
-              You're the first one here. <button onClick={() => navigate('/community')} className="text-accent font-semibold">Make the first post</button>.
+              {t("You're the first one here.")} <button onClick={() => navigate('/community')} className="text-accent font-semibold">{t('Make the first post')}</button>.
             </p>
           ) : (
-            <p className="text-sm text-white/80 leading-snug">
-              <span className="text-accent font-semibold num">
-                {communityCount === 1 ? 'You' : `${communityCount.toLocaleString()} athletes`}
-              </span>{' '}
-              {communityCount === 1 ? 'are' : 'are'} training toward {profile?.goal?.replace('_', ' ') || 'their goal'}{communityCount === 1 ? '' : ' today'}.
-            </p>
+            <CommunityLine
+              who={communityCount === 1 ? t('You') : t('{n} athletes', { n: communityCount.toLocaleString() })}
+              sentence={communityCount === 1
+                ? t('{who} are training toward {goal}.', { goal: profile?.goal ? goalWords(profile.goal) : t('their goal') })
+                : t('{who} are training toward {goal} today.', { goal: profile?.goal ? goalWords(profile.goal) : t('their goal') })}
+            />
           )}
         </div>
       </section>
@@ -735,8 +737,8 @@ export const Home: React.FC = () => {
           <Calendar size={18} className="text-accent-3" />
         </div>
         <div className="flex-1">
-          <p className="text-eyebrow text-accent-3">Weekly summary</p>
-          <p className="text-white font-medium text-sm mt-0.5">Last 7 days · AI recap</p>
+          <p className="text-eyebrow text-accent-3">{t('Weekly summary')}</p>
+          <p className="text-white font-medium text-sm mt-0.5">{t('Last 7 days · AI recap')}</p>
         </div>
         <span className="text-accent-3 text-xl">›</span>
       </motion.button>
@@ -754,12 +756,30 @@ export const Home: React.FC = () => {
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 220, damping: 18, delay: 0.4 }}
         className="fixed bottom-24 right-5 w-14 h-14 bg-accent rounded-full flex items-center justify-center shadow-[0_16px_40px_-8px_rgba(198,255,61,0.5)] z-50 text-bg"
-        aria-label="Scan food"
+        aria-label={t('Scan food')}
       >
         <div className="absolute inset-0 rounded-full bg-accent/30 ring-pulse" />
         <span className="text-xl relative">📸</span>
       </motion.button>
     </div>
+  );
+};
+
+/**
+ * "<who> are training toward <goal>." with <who> highlighted. The whole
+ * sentence is one translation (word order differs by language); `{who}` is
+ * left unfilled by t() and split out here so the highlight lands on it.
+ */
+const CommunityLine: React.FC<{ who: string; sentence: string }> = ({ who, sentence }) => {
+  const at = sentence.indexOf('{who}');
+  const before = at >= 0 ? sentence.slice(0, at) : '';
+  const after = at >= 0 ? sentence.slice(at + '{who}'.length) : ` ${sentence}`;
+  return (
+    <p className="text-sm text-white/80 leading-snug">
+      {before}
+      <span className="text-accent font-semibold num">{who}</span>
+      {after}
+    </p>
   );
 };
 

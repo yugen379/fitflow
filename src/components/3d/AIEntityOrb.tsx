@@ -18,6 +18,7 @@
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { msg, tDyn } from '../../i18n/i18n';
 import { AdditiveBlending, BufferAttribute, Color, IcosahedronGeometry, Mesh, Points } from 'three';
 
 import { cn } from '../../lib/utils';
@@ -223,10 +224,10 @@ const hasWebGL = (): boolean => {
 };
 
 const LABEL: Record<EntityState, string> = {
-  idle: 'Coach is ready',
-  listening: 'Coach is listening',
-  thinking: 'Coach is thinking',
-  responding: 'Coach is responding',
+  idle: msg('Coach is ready'),
+  listening: msg('Coach is listening'),
+  thinking: msg('Coach is thinking'),
+  responding: msg('Coach is responding'),
 };
 
 /**
@@ -325,7 +326,7 @@ export const AIEntityOrb: React.FC<{ state?: EntityState; className?: string }> 
           CSS fallback orb, and on the reduced-motion path. */}
       <OrbMark />
       <p className="sr-only" aria-live="polite">
-        {LABEL[state]}
+        {tDyn(LABEL[state])}
       </p>
     </div>
   );
